@@ -500,6 +500,9 @@
         <div class="card" onclick="window.location.href='consignes_permanentes.html'">
             📘 Consignes permanentes
         </div>
+        <div class="card" onclick="window.location.href='https://lebonmarche.sharepoint.com/:x:/s/CONSIGNESSSIAP/IQCjVPIz99kkSrzsXjpCEC3CAWxWx5e2FjX3p_78tJAJdRk?e=TvlGaJ'">
+    📅 Consignes journalières
+</div>
     </div>
 </div>
 
@@ -691,6 +694,30 @@ const MENU = [
             { icon: "📋", label: "Essai triennal Bureau de contrôle", link: "report.html?type=verif_essai_triennal_bureau" }
         ]
     },
+    {
+    category: "Travaux & Stockage",
+    icon: "🛠",
+    visibleFor: ["admin", "superviseur", "stationnaire", "agent"],
+    items: [
+        { icon: "👤", label: "SSiap 2 Chantier", link: "ssiap2chantier.html?type=Travaux" },
+        { icon: "🚧", label: "Suivi des travaux et zone de stockage exceptionnel", link: "suivi_travaux.html?type=Travaux" },
+        { icon: "🪟", label: "Vérification Pop up", link: "report.html?type=verif_popup" },
+        { icon: "🏗", label: "Réception Travaux", link: "report.html?type=verifreceptiontravaux" }
+    ]
+},
+{
+    category: "Gestion de crise",
+    icon: "⚠️",
+    visibleFor: ["admin", "superviseur", "stationnaire", "agent"],
+    items: [
+        { icon: "📘", label: "Procédures", link: "#" },
+        { icon: "📑", label: "Plan opérationnel interne", link: "#" },
+        { icon: "🗺", label: "Carte numérique du bâtiment", link: "#" },
+        { icon: "🏢", label: "Présentation des installations + plans", link: "#" },
+        { icon: "🚨", label: "UAE", link: "#" },
+        { icon: "🛡", label: "SOGS", link: "#" }
+    ]
+},
     {
         category: "Administration & IA",
         icon: "🤖",

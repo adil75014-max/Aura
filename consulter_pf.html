@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Permis Feu — Consultation</title>
+
+<style>
+/* PAGE SOMBRE */
+body {
+    background:#0d0f14;
+    color:white;
+    font-family:system-ui, Arial;
+    padding:20px;
+    margin:0;
+}
+
+/* TITRE */
+h1 {
+    text-align:center;
+    color:#4da3ff;
+    margin-bottom:25px;
+    font-size:1.8rem;
+    letter-spacing:0.5px;
+}
+
+/* CARD */
+.card {
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.15);
+    padding:20px;
+    border-radius:14px;
+    margin-bottom:25px;
+    box-shadow:0 4px 12px rgba(0,0,0,0.35);
+}
+
+/* LABELS */
+label {
+    display:block;
+    margin-bottom:6px;
+    color:#7ab8ff;
+    font-size:1.1rem;
+}
+
+/* INPUTS SOMBRES PREMIUM */
+input, select {
+    width:100%;
+    padding:12px;
+    border-radius:10px;
+    border:1px solid rgba(255,255,255,0.35);
+    background:rgba(255,255,255,0.12);
+    color:white;
+    margin-bottom:15px;
+    font-size:1rem;
+    transition:0.25s;
+}
+
+input:focus, select:focus {
+    border-color:#4da3ff;
+    box-shadow:0 0 8px rgba(77,163,255,0.5);
+    outline:none;
+}
+
+/* TABLEAU SOMBRE PREMIUM */
+table {
+    width:100%;
+    border-collapse:collapse;
+    margin-top:20px;
+    background:rgba(255,255,255,0.05);
+    border-radius:12px;
+    overflow:hidden;
+    border:1px solid rgba(255,255,255,0.12);
+}
+
+th, td {
+    padding:14px;
+    border-bottom:1px solid rgba(255,255,255,0.12);
+    text-align:left;
+    color:white;
+}
+
+th {
+    background:rgba(255,255,255,0.12);
+    color:#7ab8ff;
+}
+
+tr:hover {
+    background:rgba(255,255,255,0.08);
+}
+
+/* STATUTS */
+.status-open {
+    color:#ff6b6b;
+    font-weight:700;
+}
+
+.status-closed {
+    color:#4dff88;
+    font-weight:700;
+}
+
+/* BOUTON PREMIUM SOMBRE */
+.btn {
+    padding:10px 16px;
+    background:linear-gradient(135deg, #7ab8ff, #4d9dff);
+    border:none;
+    border-radius:8px;
+    color:#0a0f1c;
+    cursor:pointer;
+    font-weight:700;
+    transition:0.25s;
+}
+
+.btn:hover {
+    transform:translateY(-2px);
+    box-shadow:0 6px 18px rgba(122,184,255,0.6);
+}
+</style>
+</head>
+
+<body>
+
+<h1>Permis Feu — Consultation</h1>
+
+<div class="card">
+    <label>Date</label>
+    <input type="date" id="filtreDate">
+
+    <label>Entreprise</label>
+    <select id="filtreEntreprise">
+        <option value="all">Toutes</option>
+    </select>
+
+    <button class="btn" onclick="chargerPermisFeu()">🔍 Rechercher</button>
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Entreprise</th>
+            <th>Zone</th>
+            <th>Agent</th>
+            <th>Statut</th>
+            <th>Voir</th>
+        </tr>
+    </thead>
+    <tbody id="tablePermis"></tbody>
+</table>
+
+<script type="module">
+/* ============================================================
+   SUPABASE
+============================================================ */
+import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+const supabase = createClient(
+    "SUPABASE_URL",
+    "SUPABASE_KEY"
+);
+
+/* ============================================================
+   CHARGEMENT DES PERMIS FEU
+============================================================ */
+async function chargerPermisFeu() {
+
+    const dateFiltre = document.getElementById("filtreDate").value;
+    const entrepriseFiltre = document.getElementById("filtreEntreprise").value;
+
+    let query = supabase.from("permis_feu").select("*").order("date", { ascending:false });
+
+    if (dateFiltre) query = query.eq("date", dateFiltre);
+    if (entrepriseFiltre !== "all") query = query.eq("entreprise", entrepriseFiltre);
+
+    const { data, error } = await query;
+
+    if (error) {
+        alert("Erreur Supabase : " + error.message);
+        return;
+    }
+
+    afficherPermis(data);
+}
+
+/* ============================================================
+   AFFICHAGE TABLEAU
+============================================================ */
+function afficherPermis(permis) {
+    const tbody = document.getElementById("tablePermis");
+    tbody.innerHTML = "";
+
+    permis.forEach(p => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${p.date}</td>
+            <td>${p.entreprise}</td>
+            <td>${p.zone}</td>
+            <td>${p.agent}</td>
+            <td class="${p.cloture ? 'status-closed' : 'status-open'}">
+                ${p.cloture ? "Clos" : "Ouvert"}
+            </td>
+            <td>
+                <button class="btn" onclick="ouvrirPermis('${p.id}')">Ouvrir</button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+/* ============================================================
+   OUVERTURE PERMIS FEU
+============================================================ */
+function ouvrirPermis(id) {
+    location.href = `permis_feu_detail.html?id=${id}`;
+}
+
+/* ============================================================
+   CHARGEMENT ENTREPRISES UNIQUES
+============================================================ */
+async function chargerEntreprises() {
+    const { data } = await supabase.from("permis_feu").select("entreprise");
+
+    const select = document.getElementById("filtreEntreprise");
+    const uniques = [...new Set(data.map(e => e.entreprise))];
+
+    uniques.forEach(ent => {
+        const opt = document.createElement("option");
+        opt.value = ent;
+        opt.textContent = ent;
+        select.appendChild(opt);
+    });
+}
+
+chargerEntreprises();
+chargerPermisFeu();
+</script>
+
+</body>
+</html>

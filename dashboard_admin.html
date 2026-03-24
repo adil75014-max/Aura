@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Superviseur - LBM Sécurité</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- 🎨 Design global -->
+    <link rel="stylesheet" href="global.css">
+
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+/* 🎨 Styles spécifiques à cette page */
+h1 {
+    text-align: center;
+    color: var(--accent);
+    margin-bottom: 30px;
+}
+
+/* Indicateurs */
+.indicators {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+.indicator {
+    background: var(--card);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.indicator h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--accent);
+}
+
+.indicator p {
+    margin: 8px 0 0;
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+/* Filtres */
+.filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+select, input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    font-size: 1rem;
+}
+
+/* Options visibles */
+select option {
+    background: var(--card);
+    color: var(--text);
+}
+
+/* Tableau */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 25px;
+    background: var(--card);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+}
+
+th, td {
+    padding: 14px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+}
+
+th {
+    background: var(--bg2);
+    color: var(--accent);
+}
+
+tr:hover {
+    background: rgba(255,255,255,0.05);
+}
+
+/* Liens */
+a {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/* Boutons */
+.btn-excel {
+    margin-top: 20px;
+    padding: 14px;
+    background: var(--accent);
+    border: none;
+    border-radius: 10px;
+    color: #000;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    font-size: 1.1rem;
+}
+
+.btn-mail {
+    margin-top: 15px;
+    padding: 14px;
+    background: linear-gradient(135deg, #7ab8ff, #4d9dff);
+    border: none;
+    border-radius: 10px;
+    color: #0a0f1c;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 12px rgba(122,184,255,0.4);
+    transition: 0.25s ease;
+}
+
+.btn-mail:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(122,184,255,0.6);
+}
+</style>
+</head>
+
+<body>
+
+<h1>Dashboard Superviseur</h1>
+
+<!-- INDICATEURS -->
+<div class="indicators">
+    <div class="indicator">
+        <h3>Total interventions</h3>
+        <p id="indTotal">0</p>
+    </div>
+
+    <div class="indicator">
+        <h3>Ce mois</h3>
+        <p id="indMonth">0</p>
+    </div>
+
+    <div class="indicator">
+        <h3>Incidents critiques</h3>
+        <p id="indCritique">0</p>
+    </div>
+
+    <div class="indicator">
+        <h3>Thème sélectionné</h3>
+        <p id="indTheme">0</p>
+    </div>
+</div>
+
+<!-- FILTRES -->
+<div class="filters">
+
+    <select id="periode" onchange="applyFilters()">
+        <option value="all">Toutes les périodes</option>
+        <option value="today">Aujourd’hui</option>
+        <option value="week">Cette semaine</option>
+        <option value="month">Ce mois</option>
+        <option value="year">Cette année</option>
+        <option value="custom">Personnalisé</option>
+    </select>
+
+    <input type="date" id="dateStart" style="display:none;" onchange="applyFilters()">
+    <input type="date" id="dateEnd" style="display:none;" onchange="applyFilters()">
+
+    <select id="theme" onchange="applyFilters()">
+        <option value="all">Tous les thèmes</option>
+
+        <!-- 🔥 Interventions -->
+        <option value="incendie">Détection incendie</option>
+        <option value="odeur">Odeur suspecte</option>
+        <option value="desincarceration">Désincarcération</option>
+        <option value="fuite">Fuite d’eau</option>
+        <option value="alarme">Alarme technique</option>
+        <option value="coupure">Coupure électrique</option>
+        <option value="animalier">Sauvetage animalier</option>
+
+        <!-- 🔄 Rondes -->
+        <option value="ronde_ouverture">Ronde d’ouverture</option>
+        <option value="ronde_travaux">Ronde Travaux</option>
+        <option value="rondepermisfeu">Ronde Permis feu</option>
+        <option value="rondeissuessecours">Ronde Issue de secours</option>
+        <option value="rondesurfacevente">Ronde Surface de vente</option>
+        <option value="ronde_technique">Ronde Technique</option>
+        <option value="ronde_fermeture">Ronde de fermeture</option>
+
+        <!-- 🔍 Vérifications -->
+        <option value="verifj1baie_ssi">J1 Baie SSI</option>
+        <option value="verifj2materiel_pc">J2 Matériel PC</option>
+        <option value="verifj3materiel_secours">J3 Matériel de secours</option>
+        <option value="verifj4epi">J4 EPI</option>
+        <option value="verifj5interphonieascmc">J5 Interphonie ASC/MC</option>
+        <option value="verifextincteursria_baes">Extincteur / RIA / BAES</option>
+        <option value="verif_sprinkler">Sprinkler</option>
+        <option value="verif_surpresseur">Surpresseur</option>
+        <option value="verifcolonneseche">Colonne sèche</option>
+        <option value="verifdesenfumagenaturel">Désenfumage naturel</option>
+        <option value="verifbaieaccessible">Baie accessible</option>
+        <option value="verif_eas">EAS</option>
+        <option value="verifsallegaz">Salle automatique à gaz</option>
+        <option value="verifessaiannuel_technicien">Essai annuel Technicien</option>
+        <option value="verifessaitriennal_bureau">Essai triennal Bureau de contrôle</option>
+
+        <!-- 🛠 Travaux -->
+        <option value="Travaux">Suivi des travaux</option>
+        <option value="verif_popup">Vérification Pop up</option>
+        <option value="verifreceptiontravaux">Réception Travaux</option>
+    </select>
+
+    <select id="tri" onchange="applyFilters()">
+        <option value="recent">Plus récent → plus ancien</option>
+        <option value="old">Plus ancien → plus récent</option>
+        <option value="theme">Par thème</option>
+        <option value="agent">Par agent</option>
+    </select>
+
+</div>
+
+<!-- TABLEAU -->
+<table id="tableRapports">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Heure</th>
+            <th>Type</th>
+            <th>Agent</th>
+            <th>Lieu</th>
+            <th>Résumé</th>
+            <th>Voir</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+</table>
+
+<!-- BOUTON EXPORT EXCEL -->
+<button class="btn-excel" onclick="exportExcel()">📤 Exporter la sélection en Excel</button>
+
+<!-- BOUTONS PDF / MAIL -->
+<button class="btn-mail" onclick="envoyerRapportsPDF('jour')">📧 Envoyer PDF 8h → 20h</button>
+<button class="btn-mail" onclick="envoyerRapportsPDF('nuit')">🌙 Envoyer PDF 20h → 8h</button><script>
+/* =========================
+   Données exemple rapports
+   ========================= */
+
+let rapports = [
+    { date: "2026-02-19", heure: "09:15", type: "incendie",  agent: "Jean",  lieu: "Niveau -1",       resume: "Déclenchement détecteur fumée" },
+    { date: "2026-02-19", heure: "11:42", type: "fuite",     agent: "Marc",  lieu: "Local technique", resume: "Fuite d’eau sur vanne" },
+    { date: "2026-02-19", heure: "19:05", type: "alarme",    agent: "Luc",   lieu: "Toiture",         resume: "Alarme technique groupe froid" },
+    { date: "2026-02-19", heure: "21:30", type: "incendie",  agent: "Sarah", lieu: "Réserve",         resume: "Détection chaleur anormale" },
+    { date: "2026-02-19", heure: "02:10", type: "verif",     agent: "Nadia", lieu: "Parking -2",      resume: "Vérification suite odeur suspecte" }
+];
+
+/* =========================
+   Affichage tableau + filtres
+   ========================= */
+
+function renderTable(data) {
+    const tbody = document.getElementById("tableBody");
+    tbody.innerHTML = "";
+
+    data.forEach(r => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${r.date}</td>
+            <td>${r.heure}</td>
+            <td>${r.type}</td>
+            <td>${r.agent}</td>
+            <td>${r.lieu}</td>
+            <td>${r.resume}</td>
+            <td><a href="#">Voir</a></td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+
+    // Indicateurs
+    document.getElementById("indTotal").textContent = data.length;
+    document.getElementById("indMonth").textContent = data.length;
+    document.getElementById("indCritique").textContent = data.filter(r => r.type === "incendie").length;
+    document.getElementById("indTheme").textContent = document.getElementById("theme").value;
+}
+
+/* =========================
+   Filtres
+   ========================= */
+
+function applyFilters() {
+    let filtered = [...rapports];
+
+    const periode = document.getElementById("periode").value;
+    const theme   = document.getElementById("theme").value;
+    const tri     = document.getElementById("tri").value;
+    const ds      = document.getElementById("dateStart").value;
+    const de      = document.getElementById("dateEnd").value;
+
+    const today = new Date().toISOString().split("T")[0];
+
+    // Période
+    if (periode === "today") {
+        filtered = filtered.filter(r => r.date === today);
+    }
+
+    // Thème
+    if (theme !== "all") {
+        filtered = filtered.filter(r => r.type === theme);
+    }
+
+    // Tri
+    if (tri === "recent") {
+        filtered.sort((a,b) => (b.date + b.heure).localeCompare(a.date + a.heure));
+    } 
+    else if (tri === "old") {
+        filtered.sort((a,b) => (a.date + a.heure).localeCompare(b.date + b.heure));
+    } 
+    else if (tri === "agent") {
+        filtered.sort((a,b) => a.agent.localeCompare(b.agent));
+    } 
+    else if (tri === "theme") {
+        filtered.sort((a,b) => a.type.localeCompare(b.type));
+    }
+
+    renderTable(filtered);
+}
+
+// Affichage initial
+renderTable(rapports);
+
+/* =========================
+   Export Excel (placeholder)
+   ========================= */
+
+function exportExcel() {
+    alert("Export Excel à implémenter (ou à connecter à ton backend).");
+}
+
+/* =========================
+   Filtrage par plage horaire
+   ========================= */
+
+function getRapportsPlage(type) {
+    const today = new Date().toISOString().split("T")[0];
+
+    return rapports.filter(r => {
+        if (r.date !== today) return false;
+
+        const h = parseInt(r.heure.split(":")[0]);
+
+        if (type === "jour") {
+            return h >= 8 && h < 20;
+        }
+
+        if (type === "nuit") {
+            return (h >= 20 && h <= 23) || (h >= 0 && h < 8);
+        }
+
+        return false;
+    });
+}
+
+/* =========================
+   Génération PDF premium
+   ========================= */
+
+async function genererPDFUltra(rapportsFiltrés, titre) {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    // Bandeau bleu acier
+    pdf.setFillColor(30, 60, 120);
+    pdf.rect(0, 0, 210, 40, "F");
+
+    // Titre
+    pdf.setFontSize(20);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(titre, 10, 25);
+
+    // Ligne
+    pdf.setDrawColor(77, 163, 255);
+    pdf.line(10, 50, 200, 50);
+
+    // Tableau
+    pdf.setFontSize(11);
+    pdf.setTextColor(0, 0, 0);
+
+    let y = 60;
+
+    if (rapportsFiltrés.length === 0) {
+        pdf.text("Aucun rapport dans cette plage horaire.", 10, y);
+        return pdf;
+    }
+
+    rapportsFiltrés.forEach(r => {
+        pdf.setFontSize(12);
+        pdf.setTextColor(0, 102, 204);
+        pdf.text(`• ${r.type.toUpperCase()}`, 10, y);
+        y += 6;
+
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
+
+        const bloc = [
+            `Date : ${r.date}`,
+            `Heure : ${r.heure}`,
+            `Agent : ${r.agent}`,
+            `Lieu : ${r.lieu}`,
+            `Résumé : ${r.resume}`,
+        ];
+
+        bloc.forEach(line => {
+            pdf.text(line, 15, y);
+            y += 6;
+        });
+
+        y += 4;
+
+        if (y > 260) {
+            pdf.addPage();
+            y = 20;
+        }
+    });
+
+    // QR CODE
+    const qr = await fetch("https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://tonsite.netlify.app/dashboard")
+        .then(r => r.blob())
+        .then(b => new Promise(res => {
+            const reader = new FileReader();
+            reader.onload = () => res(reader.result);
+            reader.readAsDataURL(b);
+        }));
+
+    pdf.addImage(qr, "PNG", 160, 250, 35, 35);
+
+    // Pied de page
+    pdf.setFontSize(9);
+    pdf.setTextColor(120);
+    pdf.text("LBM Sécurité – SEGEP RG – Bâtiment 3", 10, 290);
+
+    return pdf;
+}
+
+/* =========================
+   Envoi mail avec PDF
+   ========================= */
+
+async function envoyerRapportsPDF(type) {
+    const rapportsFiltrés = getRapportsPlage(type);
+
+    const titre =
+        type === "jour"
+        ? "Rapports du jour (8h → 20h)"
+        : "Rapports de nuit (20h → 8h)";
+
+    const pdf = await genererPDFUltra(rapportsFiltrés, titre);
+
+    const pdfBlob = pdf.output("blob");
+    const pdfURL = URL.createObjectURL(pdfBlob);
+
+    window.location.href =
+        `mailto:?subject=${encodeURIComponent(titre)}` +
+        `&body=${encodeURIComponent("Veuillez trouver ci-joint les rapports premium.")}` +
+        `&attachment=${pdfURL}`;
+}
+</script>
+
+<!-- 🔐 Sécurité -->
+<script src="js/security.js"></script>
+
+<!-- 🎨 Thème global -->
+<script src="global.js"></script>
+
+</body>
+</html>

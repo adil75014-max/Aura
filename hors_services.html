@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DAI Hors Service</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #eef1f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        /* Bouton menu */
+        .menu-btn {
+            background: #007bff;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .menu-btn:hover {
+            background: #0056b3;
+        }
+
+        /* Formulaire */
+        form {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        label {
+            font-weight: bold;
+            margin-top: 10px;
+            display: block;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            margin-top: 5px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 16px;
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            padding: 14px;
+            margin-top: 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        button[type="submit"]:hover {
+            background: #0056b3;
+        }
+
+        /* Messages */
+        .success, .error {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 8px;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Tableau responsive */
+        table {
+            width: 100%;
+            margin-top: 30px;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        th {
+            background: #007bff;
+            color: white;
+        }
+
+        .btn-rs {
+            background: #28a745;
+            padding: 6px 12px;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-rs:hover {
+            background: #1e7e34;
+        }
+
+        /* MOBILE OPTIMISATION */
+        @media (max-width: 600px) {
+            th, td {
+                font-size: 12px;
+                padding: 8px;
+            }
+
+            button[type="submit"] {
+                font-size: 16px;
+            }
+
+            input, select, textarea {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <button class="menu-btn" onclick="window.location.href='index.html'">⟵ Menu</button>
+
+    <h2>Gestion des DAI Hors Service</h2>
+
+    <!-- FORMULAIRE -->
+    <form id="hsForm">
+
+        <label>Site :</label>
+        <select id="site">
+            <option value="">Sélectionner un site</option>
+            <option value="Le Bon Marché">Le Bon Marché</option>
+            <option value="La Grande Épicerie Rive Gauche">La Grande Épicerie Rive Gauche</option>
+            <option value="Moët Hennessy">Moët Hennessy</option>
+            <option value="Magasin 3 – 115 Rue du Bac">Magasin 3 – 115 Rue du Bac</option>
+            <option value="La Grande Épicerie Rive Droite">La Grande Épicerie Rive Droite</option>
+            <option value="Bagneux">Bagneux</option>
+        </select>
+
+        <label>Zone :</label>
+        <input type="text" id="zone" placeholder="Ex : Zone 12">
+
+        <label>Boucle :</label>
+        <input type="text" id="boucle" placeholder="Ex : Boucle 3">
+
+        <label>Point :</label>
+        <input type="text" id="point" placeholder="Ex : Point 45">
+
+        <label>Adresse :</label>
+        <input type="text" id="adresse" placeholder="Ex : 12.3.45">
+
+        <label>Date & heure de mise hors service :</label>
+        <input type="datetime-local" id="date_hs">
+
+        <label>Motif :</label>
+        <textarea id="motif" placeholder="Décrivez le motif…"></textarea>
+
+        <button type="submit">Déclarer hors service</button>
+    </form>
+
+    <div id="message"></div>
+
+    <h3 style="margin-top:40px;">DAI actuellement hors service</h3>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Site</th>
+                <th>Zone</th>
+                <th>Boucle</th>
+                <th>Point</th>
+                <th>Adresse</th>
+                <th>Date HS</th>
+                <th>Motif</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody id="hsList"></tbody>
+    </table>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+    const SUPABASE_URL = "https://ltdjzkavuwoopdbrustn.supabase.co";
+    const SUPABASE_KEY = "TA_CLE_ANON_ICI"; // Mets ta clé ici
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // INSERTION
+    document.getElementById("hsForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const site = document.getElementById("site").value;
+        const zone = document.getElementById("zone").value;
+        const boucle = document.getElementById("boucle").value;
+        const point = document.getElementById("point").value;
+        const adresse = document.getElementById("adresse").value;
+        const date_hs = document.getElementById("date_hs").value;
+        const motif = document.getElementById("motif").value;
+
+        const agent = "NomAgent"; 
+        const statut = "hors_service";
+
+        const { error } = await supabase
+            .from("hors_service")
+            .insert([{ site, zone, boucle, point, adresse, date_hs, motif, agent, statut }]);
+
+        const msg = document.getElementById("message");
+
+        if (error) {
+            msg.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
+        } else {
+            msg.innerHTML = `<div class="success">Mise hors service enregistrée.</div>`;
+            document.getElementById("hsForm").reset();
+            loadHS();
+        }
+    });
+
+    // AFFICHAGE
+    async function loadHS() {
+        const { data } = await supabase
+            .from("hors_service")
+            .select("*")
+            .eq("statut", "hors_service")
+            .order("date_hs", { ascending: false });
+
+        const list = document.getElementById("hsList");
+        list.innerHTML = "";
+
+        data.forEach(item => {
+            list.innerHTML += `
+                <tr>
+                    <td>${item.site}</td>
+                    <td>${item.zone}</td>
+                    <td>${item.boucle}</td>
+                    <td>${item.point}</td>
+                    <td>${item.adresse}</td>
+                    <td>${new Date(item.date_hs).toLocaleString()}</td>
+                    <td>${item.motif}</td>
+                    <td><span class="btn-rs" onclick="remiseService('${item.id}')">OK</span></td>
+                </tr>
+            `;
+        });
+    }
+
+    // REMISE EN SERVICE
+    async function remiseService(id) {
+        const date_rs = new Date().toISOString();
+
+        await supabase
+            .from("hors_service")
+            .update({ date_rs, statut: "remis_en_service" })
+            .eq("id", id);
+
+        loadHS();
+    }
+
+    loadHS();
+</script>
+
+</body>
+</html>

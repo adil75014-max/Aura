@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Gestion des comptes</title>
+
+<style>
+    :root {
+        --bg:#050712;
+        --card-bg:rgba(15,20,35,0.9);
+        --accent:#7ab8ff;
+        --accent-soft:rgba(122,184,255,0.25);
+        --danger:#ff4d6a;
+        --success:#4dff88;
+        --text:#f5f7ff;
+    }
+
+    * {
+        box-sizing:border-box;
+    }
+
+    body {
+        background:radial-gradient(circle at top, #1b2740 0, #050712 55%);
+        color:var(--text);
+        font-family:system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", Arial;
+        padding:24px;
+        margin:0;
+        min-height:100vh;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+    }
+
+    h1 {
+        color:var(--accent);
+        text-align:center;
+        margin-bottom:10px;
+        font-size:2.2rem;
+        letter-spacing:1px;
+        text-shadow:0 0 18px rgba(122,184,255,0.6);
+    }
+
+    .subtitle {
+        opacity:0.8;
+        margin-bottom:24px;
+        font-size:0.95rem;
+    }
+
+    .layout {
+        width:100%;
+        max-width:1100px;
+        display:grid;
+        grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+        gap:20px;
+    }
+
+    .card {
+        background:var(--card-bg);
+        padding:20px 18px;
+        border-radius:20px;
+        margin-bottom:10px;
+        box-shadow:0 18px 45px rgba(0,0,0,0.55);
+        border:1px solid rgba(255,255,255,0.06);
+        backdrop-filter:blur(18px) saturate(140%);
+        position:relative;
+        overflow:hidden;
+    }
+
+    .card::before {
+        content:"";
+        position:absolute;
+        inset:-40%;
+        background:radial-gradient(circle at top left, rgba(122,184,255,0.12), transparent 55%);
+        opacity:0.7;
+        pointer-events:none;
+    }
+
+    .card > * {
+        position:relative;
+        z-index:1;
+    }
+
+    .card-title {
+        font-size:1.1rem;
+        margin-bottom:10px;
+        font-weight:600;
+        display:flex;
+        align-items:center;
+        gap:8px;
+    }
+
+    .pill {
+        font-size:0.7rem;
+        padding:3px 8px;
+        border-radius:999px;
+        background:rgba(255,255,255,0.06);
+        border:1px solid rgba(255,255,255,0.12);
+        text-transform:uppercase;
+        letter-spacing:0.06em;
+        opacity:0.8;
+    }
+
+    label {
+        display:block;
+        margin-top:12px;
+        font-size:0.95rem;
+        opacity:0.9;
+    }
+
+    input, select {
+        width:100%;
+        padding:12px 13px;
+        margin-top:6px;
+        border-radius:12px;
+        border:1px solid rgba(255,255,255,0.12);
+        background:rgba(5,8,20,0.85);
+        color:var(--text);
+        font-size:0.95rem;
+        transition:0.2s;
+    }
+
+    input:focus, select:focus {
+        background:rgba(10,14,30,0.95);
+        outline:none;
+        border-color:var(--accent);
+        box-shadow:0 0 0 1px rgba(122,184,255,0.4);
+    }
+
+    button {
+        margin-top:18px;
+        padding:12px 16px;
+        background:linear-gradient(135deg, #7ab8ff, #4d9dff);
+        border:none;
+        border-radius:999px;
+        color:#050712;
+        cursor:pointer;
+        width:100%;
+        font-size:0.98rem;
+        font-weight:600;
+        box-shadow:0 10px 25px rgba(122,184,255,0.45);
+        transition:0.25s ease;
+    }
+
+    button:hover {
+        transform:translateY(-1px) translateZ(0);
+        box-shadow:0 14px 32px rgba(122,184,255,0.7);
+    }
+
+    button:active {
+        transform:translateY(0);
+        box-shadow:0 6px 18px rgba(122,184,255,0.5);
+    }
+
+    .btn-secondary {
+        background:rgba(255,255,255,0.04);
+        color:var(--text);
+        box-shadow:none;
+        border:1px solid rgba(255,255,255,0.12);
+    }
+
+    .btn-secondary:hover {
+        box-shadow:0 10px 26px rgba(0,0,0,0.6);
+    }
+
+    .btn-danger {
+        background:linear-gradient(135deg, #ff4d6a, #ff7b6b);
+        color:#fff;
+        box-shadow:0 10px 26px rgba(255,77,106,0.55);
+    }
+
+    .top-row {
+        display:flex;
+        gap:10px;
+        align-items:center;
+        margin-bottom:10px;
+    }
+
+    .top-row input {
+        flex:1;
+    }
+
+    .top-row small {
+        opacity:0.7;
+        font-size:0.8rem;
+    }
+
+    .user-list {
+        max-height:520px;
+        overflow:auto;
+        padding-right:4px;
+    }
+
+    .user {
+        padding:12px 0;
+        border-bottom:1px solid rgba(255,255,255,0.06);
+        animation:fadeInUp 0.25s ease;
+    }
+
+    .user:last-child {
+        border-bottom:none;
+    }
+
+    .row {
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:10px;
+    }
+
+    .user-main strong {
+        font-size:0.98rem;
+    }
+
+    .role-badge {
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        padding:3px 9px;
+        border-radius:999px;
+        font-size:0.75rem;
+        margin-top:3px;
+        border:1px solid rgba(255,255,255,0.12);
+        background:rgba(255,255,255,0.03);
+    }
+
+    .role-Agent { color:#9be7ff; border-color:rgba(155,231,255,0.4); }
+    .role-Stationnaire { color:#ffd27b; border-color:rgba(255,210,123,0.4); }
+    .role-Superviseur { color:#b5ff9b; border-color:rgba(181,255,155,0.4); }
+    .role-Admin { color:#ff9bb5; border-color:rgba(255,155,181,0.5); }
+
+    .badge-status {
+        font-size:0.8rem;
+        margin-top:4px;
+    }
+
+    .badge-ok { color:var(--success); }
+    .badge-none { color:var(--danger); }
+
+    .actions {
+        display:flex;
+        flex-wrap:wrap;
+        gap:6px;
+        justify-content:flex-end;
+    }
+
+    .actions button {
+        margin-top:0;
+        padding:7px 11px;
+        font-size:0.78rem;
+        border-radius:999px;
+        width:auto;
+        box-shadow:none;
+    }
+
+    .nfc-inline {
+        margin-top:8px;
+        padding:8px 10px;
+        background:rgba(255,255,255,0.03);
+        border-radius:12px;
+        display:none;
+        font-size:0.8rem;
+        border:1px dashed rgba(255,255,255,0.18);
+    }
+
+    .nfc-inline small {
+        opacity:0.85;
+    }
+
+    .status-bar {
+        margin-top:6px;
+        font-size:0.8rem;
+        opacity:0.8;
+    }
+
+    .status-bar span {
+        margin-right:10px;
+    }
+
+    .pagination {
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-top:10px;
+        font-size:0.8rem;
+        opacity:0.85;
+    }
+
+    .pagination-controls {
+        display:flex;
+        gap:6px;
+    }
+
+    .pagination-controls button {
+        width:auto;
+        padding:5px 10px;
+        font-size:0.78rem;
+        margin-top:0;
+        box-shadow:none;
+    }
+
+    .log-list {
+        max-height:180px;
+        overflow:auto;
+        font-size:0.8rem;
+        opacity:0.85;
+    }
+
+    .log-item {
+        padding:4px 0;
+        border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+
+    .log-item:last-child {
+        border-bottom:none;
+    }
+
+    .log-action {
+        color:var(--accent);
+        font-weight:500;
+    }
+
+    .log-date {
+        opacity:0.7;
+        font-size:0.75rem;
+    }
+
+    @keyframes fadeInUp {
+        from { opacity:0; transform:translateY(4px); }
+        to { opacity:1; transform:translateY(0); }
+    }
+
+    @media (max-width:900px) {
+        .layout {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Gestion des comptes</h1>
+<div class="subtitle">Création, rôles, badges NFC, logs d’activité</div>
+
+<div class="layout">
+    <!-- COLONNE GAUCHE : CREATION + LOGS -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                Création de compte
+                <span class="pill">Secure • SHA‑256</span>
+            </div>
+
+            <label>Nom d'utilisateur</label>
+            <input type="text" id="username" placeholder="Ex : Dupont J.">
+
+            <label>Mot de passe</label>
+            <input type="password" id="password" placeholder="Mot de passe provisoire">
+
+            <label>Rôle</label>
+            <select id="roleUser">
+                <option value="Agent">Agent</option>
+                <option value="Stationnaire">Stationnaire</option>
+                <option value="Superviseur">Superviseur</option>
+                <option value="Admin">Admin</option>
+            </select>
+
+            <button onclick="creerCompte()">Créer le compte</button>
+
+            <div class="status-bar" id="statusGlobal"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                Logs d’activité
+                <span class="pill">Audit</span>
+            </div>
+            <div class="log-list" id="logList"></div>
+        </div>
+    </div>
+
+    <!-- COLONNE DROITE : LISTE COMPTES -->
+    <div class="card">
+        <div class="card-title">
+            Comptes existants
+            <span class="pill" id="compteCount">0</span>
+        </div>
+
+        <div class="top-row">
+            <input type="text" id="searchInput" placeholder="Rechercher par nom ou rôle…" oninput="appliquerFiltre()">
+            <small>Filtre instantané</small>
+        </div>
+
+        <div class="user-list" id="listeComptes"></div>
+
+        <div class="pagination">
+            <div>
+                <span id="pageInfo"></span>
+            </div>
+            <div class="pagination-controls">
+                <button class="btn-secondary" onclick="pagePrecedente()">Précédent</button>
+                <button class="btn-secondary" onclick="pageSuivante()">Suivant</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+/* ============================================================
+   CONFIG SUPABASE
+============================================================ */
+const SUPABASE_URL = "https://hwqlajdytnxavqigmzio.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cWxhamR5dG54YXZxaWdtemlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzg1NjgsImV4cCI6MjA4OTUxNDU2OH0.riGzQlfEPmo9SVK9Rs_fl33DnC5RR5qd2OUhgk4Twvs";
+
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ============================================================
+   ETAT LOCAL
+============================================================ */
+let comptesBruts = [];
+let comptesFiltres = [];
+let pageCourante = 1;
+const TAILLE_PAGE = 8;
+
+/* ============================================================
+   LOGS
+============================================================ */
+async function ajouterLog(action, details) {
+    await client.from("logs").insert([{ action, details }]);
+    chargerLogs();
+}
+
+async function chargerLogs() {
+    const { data, error } = await client
+        .from("logs")
+        .select("*")
+        .order("created_at", { ascending:false })
+        .limit(30);
+
+    if (error) return console.error("Erreur logs:", error);
+
+    const logList = document.getElementById("logList");
+    logList.innerHTML = "";
+
+    data.forEach(log => {
+        const d = new Date(log.created_at);
+        const dateStr = d.toLocaleString("fr-FR", { hour12:false });
+
+        logList.innerHTML += `
+            <div class="log-item">
+                <div><span class="log-action">${log.action}</span> — ${log.details}</div>
+                <div class="log-date">${dateStr}</div>
+            </div>
+        `;
+    });
+}
+
+/* ============================================================
+   CHARGER COMPTES
+============================================================ */
+async function chargerComptes() {
+    const { data, error } = await client.from("users").select("*")
+        .order("nom", { ascending:true });
+
+    if (error) {
+        console.error(error);
+        setStatus("Erreur chargement comptes : " + error.message, true);
+        return;
+    }
+
+    comptesBruts = data || [];
+    document.getElementById("compteCount").textContent = comptesBruts.length;
+
+    appliquerFiltre();
+}
+
+/* ============================================================
+   FILTRE + PAGINATION
+============================================================ */
+function appliquerFiltre() {
+    const q = document.getElementById("searchInput").value.trim().toLowerCase();
+
+    comptesFiltres = !q
+        ? [...comptesBruts]
+        : comptesBruts.filter(c =>
+            (c.nom || "").toLowerCase().includes(q) ||
+            (c.role || "").toLowerCase().includes(q)
+        );
+
+    pageCourante = 1;
+    afficherPage();
+}
+
+function afficherPage() {
+    const liste = document.getElementById("listeComptes");
+    liste.innerHTML = "";
+
+    const total = comptesFiltres.length;
+    const totalPages = Math.max(1, Math.ceil(total / TAILLE_PAGE));
+
+    if (pageCourante > totalPages) pageCourante = totalPages;
+
+    const start = (pageCourante - 1) * TAILLE_PAGE;
+    const end = start + TAILLE_PAGE;
+    const pageData = comptesFiltres.slice(start, end);
+
+    pageData.forEach(c => {
+        const badgeOK = !!c.badgeuid;
+        const roleClass = "role-" + (c.role || "").replace(/\s+/g, "");
+
+        liste.innerHTML += `
+            <div class="user">
+                <div class="row">
+                    <div class="user-main">
+                        <strong>${c.nom}</strong><br>
+                        <span class="role-badge ${roleClass}">
+                            ${c.role || "—"}
+                        </span><br>
+                        ${
+                            badgeOK
+                            ? `<span class="badge-status badge-ok">🟢 Badge : ${c.badgeuid}</span>`
+                            : `<span class="badge-status badge-none">🔴 Aucun badge</span>`
+                        }
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn-secondary" onclick="toggleNFC('${c.id}')">Badge NFC</button>
+                        ${badgeOK ? `<button class="btn-secondary" onclick="supprimerBadge('${c.id}')">Supprimer badge</button>` : ""}
+                        <button class="btn-secondary" onclick="modifierCompte('${c.id}')">Modifier</button>
+                        <button class="btn-secondary" onclick="resetPassword('${c.id}')">Reset MDP</button>
+                        <button class="btn-danger" onclick="supprimerCompte('${c.id}')">Supprimer</button>
+                    </div>
+                </div>
+
+                <div class="nfc-inline" id="nfc-${c.id}">
+                    <small id="nfcStatus-${c.id}">Approchez un badge…</small>
+                </div>
+            </div>
+        `;
+    });
+
+    document.getElementById("pageInfo").textContent =
+        `Page ${pageCourante} / ${totalPages} — ${total} compte(s)`;
+}
+
+function pagePrecedente() {
+    if (pageCourante > 1) {
+        pageCourante--;
+        afficherPage();
+    }
+}
+
+function pageSuivante() {
+    const totalPages = Math.max(1, Math.ceil(comptesFiltres.length / TAILLE_PAGE));
+    if (pageCourante < totalPages) {
+        pageCourante++;
+        afficherPage();
+    }
+}
+
+/* ============================================================
+   NFC
+============================================================ */
+function toggleNFC(id) {
+    const box = document.getElementById("nfc-" + id);
+    if (!box) return;
+
+    box.style.display = box.style.display === "block" ? "none" : "block";
+    if (box.style.display === "block") lancerNFC(id);
+}
+
+async function lancerNFC(id) {
+    const status = document.getElementById("nfcStatus-" + id);
+
+    if (!("NDEFReader" in window)) {
+        status.textContent = "NFC non supporté sur cet appareil.";
+        return;
+    }
+
+    try {
+        const ndef = new NDEFReader();
+        await ndef.scan();
+
+        status.textContent = "Approchez un badge…";
+
+        ndef.onreading = async event => {
+            const uid = event.serialNumber;
+            status.textContent = "Badge détecté : " + uid;
+
+            await fetch("https://hwqlajdytnxavqigmzio.supabase.co/functions/v1/dynamic-endpoint", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ user_id: id, nfc_uid: uid })
+            });
+
+            await ajouterLog("Badge associé", `Compte ID ${id}, UID ${uid}`);
+            chargerComptes();
+        };
+
+    } catch (err) {
+        status.textContent = "Erreur NFC : " + err;
+    }
+}
+
+/* ============================================================
+   STATUS
+============================================================ */
+function setStatus(msg, isError = false) {
+    const el = document.getElementById("statusGlobal");
+    el.textContent = msg;
+    el.style.color = isError ? "#ff9ba8" : "#9be7ff";
+}
+
+/* ============================================================
+   CREATION DE COMPTE — via Edge Function create-user
+============================================================ */
+async function creerCompte() {
+    const nom = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const role = document.getElementById("roleUser").value;
+
+    if (!nom || !password) {
+        setStatus("Champs manquants.", true);
+        return;
+    }
+
+    setStatus("Création du compte…");
+
+    try {
+        const res = await fetch("https://hwqlajdytnxavqigmzio.supabase.co/functions/v1/bright-function", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                username: nom,
+                password: password,
+                role: role
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            setStatus("Erreur : " + (data.error || "Création impossible"), true);
+            return;
+        }
+
+        await ajouterLog("Création compte", `Nom: ${nom}, Rôle: ${role}`);
+        setStatus("Compte créé avec succès.");
+
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
+
+        chargerComptes();
+    } catch (e) {
+        setStatus("Erreur réseau lors de la création.", true);
+    }
+}
+
+/* ============================================================
+   SUPPRESSION COMPTE
+============================================================ */
+async function supprimerCompte(id) {
+    if (!confirm("Supprimer ce compte ?")) return;
+
+    const { error } = await client
+        .from("users")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        console.error("Erreur suppression :", error);
+        setStatus("Erreur suppression : " + error.message, true);
+        return;
+    }
+
+    await ajouterLog("Suppression compte", `ID: ${id}`);
+    chargerComptes();
+}
+
+/* ============================================================
+   MODIFIER COMPTE
+============================================================ */
+async function modifierCompte(id) {
+    const nom = prompt("Nouveau nom :");
+    if (!nom) return;
+
+    const role = prompt("Nouveau rôle (Agent / Stationnaire / Superviseur / Admin) :");
+    if (!role) return;
+
+    const { error } = await client
+        .from("users")
+        .update({ nom, role })
+        .eq("id", id);
+
+    if (error) {
+        console.error("Erreur modification :", error);
+        setStatus("Erreur modification : " + error.message, true);
+        return;
+    }
+
+    await ajouterLog("Modification compte", `ID: ${id}, Nom: ${nom}, Rôle: ${role}`);
+    chargerComptes();
+}
+
+/* ============================================================
+   RESET MOT DE PASSE — via Edge Function reset-password
+============================================================ */
+async function resetPassword(id) {
+    const mdp = prompt("Nouveau mot de passe :");
+    if (!mdp) return;
+
+    try {
+        const res = await fetch("https://hwqlajdytnxavqigmzio.supabase.co/functions/v1/clever-function", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                user_id: id,
+                new_password: mdp
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            setStatus("Erreur : " + (data.error || "Reset impossible"), true);
+            return;
+        }
+
+        await ajouterLog("Reset mot de passe", `ID: ${id}`);
+        setStatus("Mot de passe réinitialisé.");
+        chargerComptes();
+    } catch (e) {
+        setStatus("Erreur réseau lors du reset.", true);
+    }
+}
+
+/* ============================================================
+   SUPPRIMER BADGE
+============================================================ */
+async function supprimerBadge(id) {
+    if (!confirm("Supprimer le badge ?")) return;
+
+    client.from("users").update({ badgeuid: null }).eq("id", id)
+    await ajouterLog("Suppression badge", `ID: ${id}`);
+    chargerComptes();
+}
+
+/* ============================================================
+   LANCEMENT
+============================================================ */
+chargerComptes();
+chargerLogs();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <title>LBM Incendie – Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- 🔐 Protection login -->
+    <script>
+        const user = localStorage.getItem("nom");
+        const role = localStorage.getItem("role");
+        if (!user) window.location.href = "login.html";
+    </script>
+
+    <style>
+        :root {
+            --transition: 0.25s ease;
+            --toast-bg: rgba(255,255,255,0.25);
+            --toast-border: rgba(255,255,255,0.45);
+            --toast-glow: rgba(255,255,255,0.35);
+        }
+
+        html[data-theme="light"] {
+            --bg: #f3f4f6;
+            --bg2: rgba(255,255,255,0.8);
+            --text: #111827;
+            --card: #ffffff;
+            --border: rgba(0,0,0,0.08);
+            --shadow: 0 4px 10px rgba(0,0,0,0.06);
+            --accent: #d4af37;
+        }
+
+        html[data-theme="dark"] {
+            --bg: #111827;
+            --bg2: rgba(31,41,55,0.9);
+            --text: #e5e7eb;
+            --card: #1f2933;
+            --border: rgba(249,250,251,0.08);
+            --shadow: none;
+            --accent: #9ca3af;
+            --toast-bg: rgba(255,255,255,0.08);
+            --toast-border: rgba(255,255,255,0.18);
+            --toast-glow: rgba(255,255,255,0.15);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: system-ui, sans-serif;
+            transition: background var(--transition), color var(--transition), border var(--transition);
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .topbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 70px;
+            background: var(--card);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 22px;
+            box-shadow: var(--shadow);
+            z-index: 9000;
+        }
+
+        .top-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .hamburger {
+            font-size: 1.8rem;
+            cursor: pointer;
+        }
+
+        .brand-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        #searchBar {
+            width: 60%;
+            max-width: 500px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            color: var(--text);
+            font-size: 0.95rem;
+            box-shadow: var(--shadow);
+        }
+
+        .sidebar {
+            width: 270px;
+            background: var(--card);
+            backdrop-filter: blur(18px);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            top: 70px;
+            bottom: 0;
+            left: 0;
+            overflow-y: auto;
+            transform: translateX(-270px);
+            transition: transform 0.3s ease;
+            padding-bottom: 40px;
+            box-shadow: var(--shadow);
+            z-index: 9999;
+        }
+
+        .sidebar.show {
+            transform: translateX(0);
+        }
+
+        .menu-section-title {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--accent);
+            padding: 14px 22px 6px;
+            opacity: 0.9;
+            font-weight: 600;
+        }
+
+        .menu-item {
+            padding: 12px 22px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-radius: 8px;
+        }
+
+        .menu-item:hover {
+            background: rgba(212,175,55,0.12);
+        }
+
+        .content {
+            margin-left: 270px;
+            padding: 40px;
+            margin-top: 110px;
+        }
+
+        .cards-container {
+            display: grid;
+            gap: 22px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .card {
+            height: 150px;
+            background: var(--card);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: 0.3s;
+            text-align: center;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent);
+        }
+
+        .panel {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 85%;
+            max-width: 380px;
+            height: 100%;
+            background: var(--card);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid var(--border);
+            transition: right 0.35s ease;
+            z-index: 99999;
+            padding: 20px;
+            color: var(--text);
+            box-shadow: var(--shadow);
+        }
+
+        .panel.open {
+            right: 0;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.2rem;
+            color: var(--accent);
+            margin-bottom: 15px;
+            font-weight: 700;
+        }
+
+        #calendarOverlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.0);
+            display: none;
+            z-index: 99998;
+        }
+
+        #toastContainer {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 999999;
+        }
+
+        .toast {
+            min-width: 260px;
+            padding: 14px 18px;
+            border-radius: 14px;
+            background: var(--toast-bg);
+            border: 1px solid var(--toast-border);
+            backdrop-filter: blur(12px);
+            color: var(--text);
+            font-size: 0.9rem;
+            box-shadow: 0 0 12px var(--toast-glow);
+            animation: toastIn 0.35s ease;
+        }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        #supervisionScreen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: var(--bg);
+            z-index: 999999;
+            display: none;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #supervisionHeader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+
+        #supervisionHeader h1 {
+            font-size: 1.8rem;
+            color: var(--accent);
+        }
+
+        #supervisionCloseBtn {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            padding: 8px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .supervision-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .supervision-bloc {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+
+        .supervision-bloc h2 {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+            color: var(--accent);
+        }
+
+        .supervision-item {
+            padding: 10px;
+            border-radius: 10px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            margin-bottom: 10px;
+        }
+
+        .sup-btn {
+            margin-top: 8px;
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        #dispatchPanel {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 420px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 20px;
+            display: none;
+            z-index: 99999999;
+            box-shadow: var(--shadow);
+        }
+
+        .dispatch-back {
+            background: transparent;
+            border: none;
+            color: var(--accent);
+            font-size: 1rem;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .dispatch-agent {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+
+        .dispatch-agent button {
+            margin-top: 8px;
+            background: var(--accent);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        @media (max-width: 1024px) {
+            .topbar { padding: 0 12px; }
+            .brand-title { font-size: 1.1rem; }
+            #searchBar { width: 100%; max-width: 320px; font-size: 0.85rem; padding: 10px 12px; }
+            .sidebar { width: 240px; transform: translateX(-240px); }
+            .content { margin-left: 0; margin-top: 90px; padding: 16px; }
+            .cards-container { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; }
+            .card { height: 120px; font-size: 0.9rem; border-radius: 14px; }
+        }
+
+        @media (max-width: 640px) {
+            .topbar { height: 64px; }
+            .top-left .brand-title { display: none; }
+            .top-right { gap: 8px !important; }
+            #searchBar { max-width: 260px; }
+            .sidebar { width: 220px; transform: translateX(-220px); }
+            .cards-container { grid-template-columns: 1fr; }
+            .panel { width: 100%; max-width: 100%; }
+            #dispatchPanel { width: 95%; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="top-left">
+        <div class="hamburger" onclick="toggleSidebar()">☰</div>
+        <div class="brand-title">LBM Service Incendie</div>
+    </div>
+
+    <div style="flex:1; display:flex; justify-content:center;">
+        <input type="text" id="searchBar" placeholder="Rechercher…" onclick="openSearchPalette()">
+    </div>
+
+    <div class="top-right" style="display:flex; align-items:center; gap:16px;">
+        <div id="notifBell" style="cursor:pointer; font-size:1.4rem; position:relative;" onclick="openNotificationsPanel()">
+            🔔
+            <span id="notifBadge" style="
+                position:absolute;
+                top:-6px; right:-6px;
+                background:red;
+                color:white;
+                font-size:0.65rem;
+                padding:2px 6px;
+                border-radius:50%;
+                display:none;
+            ">0</span>
+        </div>
+
+        <div style="cursor:pointer; font-size:1.4rem;" onclick="openCalendar()">
+            📅
+        </div>
+
+        <button onclick="cycleTheme()" id="themeLabel" style="
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+        ">Mode sombre</button>
+
+        <div id="userInfo" style="font-weight:600;"></div>
+
+        <button class="logout-top-btn" onclick="logout()" style="
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            padding: 6px 14px;
+            border-radius: 8px;
+            color: var(--text);
+            cursor: pointer;
+            font-size: 0.85rem;
+        ">⎋</button>
+    </div>
+</div>
+
+<div class="sidebar" id="sidebar">
+    <h2 style="text-align:center; margin-top:20px; color:var(--accent);">Menu</h2>
+    <div id="sidebarContent"></div>
+</div>
+
+<div class="content">
+    <div id="meteoBloc" style="
+        margin-bottom: 18px;
+        padding: 14px 18px;
+        border-radius: 14px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        font-size:0.9rem;
+    ">
+        <div style="display:flex; align-items:center; gap:10px;">
+            <span id="meteoIcon" style="font-size:1.6rem;"></span>
+            <div>
+                <div id="meteoTemp" style="font-weight:600;"></div>
+                <div id="meteoMessage" style="opacity:0.9;"></div>
+            </div>
+        </div>
+        <div style="font-size:0.8rem; opacity:0.8;">Paris • Conditions opérationnelles</div>
+    </div>
+
+    <div class="cards-container">
+        <div class="card" onclick="window.location.href='consulte_anomalie.html'">
+            📄 Anomalies
+        </div>
+
+        <div class="card" onclick="window.location.href='hors_services.html'">
+            🛠 DAI Hors Service
+        </div>
+
+        <div class="card" id="card-permis-feu" onclick="window.location.href='permis_feu.html'">
+            🔥 Créer un permis feu
+        </div>
+
+        <div class="card" onclick="window.location.href='consulter_pf.html'">
+            📁 Consulter les permis feu
+        </div>
+
+        <button id="btn-stop-alarme" style="
+            margin-top: 12px;
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            background: #111;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+            display: none;
+        ">🛑 Arrêter l’alarme déclenchée par le permis feu</button>
+
+        <div class="card" onclick="window.location.href='consignes_permanentes.html'">
+            📘 Consignes permanentes
+        </div>
+    </div>
+</div>
+
+<audio id="alarme-feu" src="sons/alarme-incendie.mp3"></audio>
+<audio id="alarme-svv" src="sons/alarme-ambulance.mp3"></audio>
+
+<div id="modulesPanel" class="panel">
+    <div class="panel-header">
+        <span>⚙️ Administration & IA</span>
+        <button onclick="closeModulesPanel()" style="font-size:1.4rem; cursor:pointer;">✖</button>
+    </div>
+    <div id="modulesContent" class="panel-content"></div>
+</div>
+
+<div id="outlookPanel" class="panel">
+    <div class="panel-header">
+        <span>📅 Rendez-vous du jour</span>
+        <button onclick="closeCalendar()" style="font-size:1.4rem; cursor:pointer;">✖</button>
+    </div>
+    <div id="outlookContent" class="panel-content">
+        Chargement des rendez-vous...
+    </div>
+</div>
+
+<div id="notificationsPanel" class="panel">
+    <div class="panel-header">
+        <span>🔔 Notifications</span>
+        <button onclick="closeNotificationsPanel()" style="font-size:1.4rem; cursor:pointer;">✖</button>
+    </div>
+    <div id="notificationsContent" class="panel-content">
+        Aucune notification pour le moment.
+    </div>
+</div>
+
+<div id="calendarOverlay"></div>
+
+<div id="searchPalette" style="
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.45);
+    backdrop-filter: blur(6px);
+    display: none;
+    z-index: 999999;
+    padding-top: 120px;
+">
+    <div style="
+        max-width: 600px;
+        margin: auto;
+        background: var(--card);
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--border);
+    ">
+        <input id="searchInput" type="text" placeholder="Rechercher…" style="
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            color: var(--text);
+            margin-bottom: 12px;
+        " oninput="updateSearchResults()">
+
+        <div id="searchResults"></div>
+    </div>
+</div>
+
+<div id="toastContainer"></div>
+
+<div id="supervisionScreen">
+    <div id="supervisionHeader">
+        <h1>🛰️ Mode Supervision</h1>
+        <button id="supervisionCloseBtn" onclick="closeSupervision()">Quitter</button>
+    </div>
+
+    <div class="supervision-grid">
+        <div class="supervision-bloc">
+            <h2>🔥 Feux</h2>
+            <div id="sup-feux-content">Chargement…</div>
+        </div>
+
+        <div class="supervision-bloc">
+            <h2>🚨 Interventions</h2>
+            <div id="sup-interventions-content">Chargement…</div>
+        </div>
+
+        <div class="supervision-bloc">
+            <h2>🛠 Vérifications</h2>
+            <div id="sup-verif-content">Chargement…</div>
+        </div>
+
+        <div class="supervision-bloc">
+            <h2>🧭 Rondes</h2>
+            <div id="sup-rondes-content">Chargement…</div>
+        </div>
+
+        <div class="supervision-bloc">
+            <h2>🧯 DAI Hors Service</h2>
+            <div id="sup-dai-content">Chargement…</div>
+        </div>
+
+        <div class="supervision-bloc">
+            <h2>📡 Dispatch Agents</h2>
+            <div id="sup-dispatch-content">Chargement…</div>
+        </div>
+
+        <div class="supervision-bloc">
+            <h2>📋 Feuille de garde</h2>
+            <div id="sup-feuille-garde-content">Chargement…</div>
+        </div>
+    </div>
+</div>
+
+<div id="dispatchPanel">
+    <button class="dispatch-back" onclick="closeDispatchPanel()">← Retour</button>
+    <h2>Dépêcher un agent</h2>
+    <div id="dispatchAgentsList">Chargement…</div>
+</div>
+
+<script>
+const MENU = [
+    {
+        category: "Exploitation",
+        icon: "📄",
+        visibleFor: ["admin", "superviseur", "stationnaire", "agent"],
+        items: [
+            { icon: "📄", label: "Feuille de garde", link: "feuille_de_garde.html" },
+            { icon: "🕒", label: "Permanence", link: "permanence.html" },
+            { icon: "📋", label: "Plan de prévention", link: "plan_de_prevention_import.html" },
+            { icon: "🪪", label: "Laisser passer", link: "#" },
+            { icon: "📊", label: "Fils de l’eau (export Excel)", link: "dashboard_admin.html" },
+            { icon: "🧯", label: "Compte rendu incendie / technique / travaux", link: "compte_rendu.html" }
+        ]
+    },
+    {
+        category: "Interventions",
+        icon: "🚨",
+        visibleFor: ["admin", "superviseur", "stationnaire", "agent"],
+        items: [
+            { icon: "🔥", label: "Détection incendie", link: "report.html?type=incendie" },
+            { icon: "👃", label: "Odeur suspecte", link: "report.html?type=odeur" },
+            { icon: "🛗", label: "Désincarcération ASC/MC/Escalator/Toilette", link: "report.html?type=desincarceration" },
+            { icon: "💧", label: "Fuite d’eau", link: "report.html?type=fuite" },
+            { icon: "🔔", label: "Alarme technique", link: "report.html?type=alarme" },
+            { icon: "⚡", label: "Coupure électrique", link: "report.html?type=coupure" },
+            { icon: "🏗", label: "Intervention entreprise extérieure", link: "rapport_intervention_exterieure.html" },
+            { icon: "📅", label: "Liste journalière interventions extérieures", link: "intervention_exterieure_journalier.html" },
+            { icon: "🚪", label: "Entrée & Sortie", link: "rapport_entree_sortie.html" },
+            { icon: "🚪", label: "Rapports Entrée/Sortie ouverts", link: "rapport_entree_sortie_ouverts.html" },
+            { icon: "🧑‍⚕️", label: "Intervention sanitaire Syope", link: "rapport_interventions_syope.html" },
+            { icon: "🐕", label: "Sauvetage animalier", link: "report.html?type=animalier" }
+        ]
+    },
+    {
+        category: "Rondes",
+        icon: "🔄",
+        visibleFor: ["admin", "superviseur", "stationnaire", "agent"],
+        items: [
+            { icon: "🚪", label: "Ronde d’ouverture", link: "ronde_agent_ble.html?type=ronde_ouverture" },
+            { icon: "🏗", label: "Ronde Travaux", link: "ronde_agent_ble.html?type=ronde_travaux" },
+            { icon: "🔥", label: "Ronde Permis feu", link: "ronde_agent_ble.html?type=ronde_permis_feu" },
+            { icon: "🚨", label: "Ronde issue de secours", link: "ronde_agent_ble.html?type=ronde_issues_secours" },
+            { icon: "🛍", label: "Ronde Surface de vente", link: "ronde_agent_ble.html?type=ronde_surface_vente" },
+            { icon: "🛠", label: "Ronde Technique", link: "ronde_agent_ble.html?type=ronde_technique" },
+            { icon: "🚪", label: "Ronde de fermeture", link: "ronde_agent_ble.html?type=ronde_fermeture" },
+            { icon: "🏢", label: "Ronde Toiture", link: "rondeagentble.html?type=ronde_toiture" }
+        ]
+    },
+    {
+        category: "Vérifications",
+        icon: "🔍",
+        visibleFor: ["admin", "superviseur", "stationnaire", "agent"],
+        items: [
+            { icon: "🧯", label: "J1 Baie SSI", link: "report.html?type=verif_j1_baie_ssi" },
+            { icon: "🖥", label: "J2 Matériel PC", link: "report.html?type=verif_j2_materiel_pc" },
+            { icon: "🚨", label: "J3 Matériel de secours", link: "report.html?type=verif_j3_materiel_secours" },
+            { icon: "🦺", label: "J4 EPI", link: "report.html?type=verif_j4_epi" },
+            { icon: "🛗", label: "J5 Interphonie ASC/MC", link: "report.html?type=verif_j5_interphonie_asc_mc" },
+            { icon: "🔥", label: "Extincteur / RIA / BAES", link: "report.html?type=verif_extincteurs_ria_baes" },
+            { icon: "💦", label: "Sprinkler", link: "report.html?type=verif_sprinkler" },
+            { icon: "⚙️", label: "Surpresseur", link: "report.html?type=verif_surpresseur" },
+            { icon: "🧱", label: "Colonne sèche", link: "report.html?type=verif_colonne_seche" },
+            { icon: "🌬", label: "Désenfumage naturel", link: "report.html?type=verif_desenfumage_naturel" },
+            { icon: "📦", label: "Baie accessible", link: "report.html?type=verif_baie_accessible" },
+            { icon: "🚨", label: "EAS", link: "report.html?type=verif_eas" },
+            { icon: "🧯", label: "Salle automatique à gaz", link: "report.html?type=verif_salle_gaz" },
+            { icon: "🧰", label: "Essai annuel Technicien", link: "report.html?type=verif_essai_annuel_technicien" },
+            { icon: "📋", label: "Essai triennal Bureau de contrôle", link: "report.html?type=verif_essai_triennal_bureau" }
+        ]
+    },
+    {
+        category: "Administration & IA",
+        icon: "🤖",
+        visibleFor: ["admin", "superviseur"],
+        items: [
+            { icon: "👤", label: "Gestion des comptes", link: "gestion_de_compte.html" },
+            { icon: "🛠", label: "Gestion des Vérifications", link: "verifications_admin.html" },
+            { icon: "🔄", label: "Gestion des rondes", link: "ronde_admin.html" },
+            { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" },
+            { icon: "🤖", label: "Analyse IA – Tous les rapports", link: "#" },
+            { icon: "⚠️", label: "Analyse IA – Anomalies", link: "#" },
+            { icon: "🚧", label: "Analyse IA – Hors Service", link: "#" },
+            { icon: "⚙️", label: "Gestion des modules", link: "javascript:openModulesPanel()" }
+        ]
+    },
+    {
+        category: "Ressources externes",
+        icon: "🌐",
+        visibleFor: ["admin", "superviseur", "stationnaire", "agent"],
+        items: [
+            { icon: "📦", label: "Lootibox", link: "https://app.lootibox.com/login", external: true },
+            { icon: "🛠", label: "Apogee", link: "https://www.oneapave.com/Login?ReturnUrl=%2f", external: true },
+            { icon: "📚", label: "SiteSecurite", link: "https://sitesecurite.com/", external: true },
+            { icon: "🛡️", label: "GRC Assurance", link: "https://grcconnect.globalriskconsultants.com/ins/app/Main/Registry.aspx?q=0&t1=7B8BF0FC58054F0396B0629B59E09D4F&c2=false", external: true }
+        ]
+    }
+];
+
+function generateSidebar() {
+    const role = localStorage.getItem("role") || "agent";
+    const container = document.getElementById("sidebarContent");
+    container.innerHTML = "";
+
+    MENU.forEach((section, index) => {
+        if (!section.visibleFor.includes(role)) return;
+
+        const wrapper = document.createElement("div");
+
+        const header = document.createElement("div");
+        header.className = "menu-section-title";
+        header.style.display = "flex";
+        header.style.justifyContent = "space-between";
+        header.style.cursor = "pointer";
+        header.innerHTML = `<span>${section.icon} ${section.category}</span><span id="chevron-${index}">▾</span>`;
+        wrapper.appendChild(header);
+
+        const list = document.createElement("div");
+        list.id = `section-items-${index}`;
+        list.style.overflow = "hidden";
+        list.style.maxHeight = "0";
+        list.style.transition = "max-height 0.25s ease";
+
+        section.items.forEach(item => {
+            const div = document.createElement("div");
+            div.className = "menu-item";
+            div.innerHTML = `${item.icon} ${item.label}`;
+            div.onclick = () => item.link.startsWith("javascript:")
+                ? eval(item.link.replace("javascript:", ""))
+                : window.location.href = item.link;
+            list.appendChild(div);
+        });
+
+        header.addEventListener("click", () => {
+            const open = list.style.maxHeight !== "0px";
+            list.style.maxHeight = open ? "0" : list.scrollHeight + "px";
+            document.getElementById(`chevron-${index}`).textContent = open ? "▾" : "▴";
+        });
+
+        wrapper.appendChild(list);
+        container.appendChild(wrapper);
+    });
+}
+
+function toggleSidebar() {
+    document.getElementById("sidebar").classList.toggle("show");
+}
+
+function cycleTheme() {
+    const html = document.documentElement;
+    const current = html.getAttribute("data-theme");
+    const next = current === "light" ? "dark" : "light";
+    html.setAttribute("data-theme", next);
+    localStorage.setItem("theme", next);
+    document.getElementById("themeLabel").textContent =
+        next === "light" ? "Mode sombre" : "Mode clair";
+}
+
+function logout() {
+    localStorage.clear();
+    window.location.href = "login.html";
+}
+
+const API_KEY = "0850cb68205bee64103ec5fb0673296a1c74569b5b55d0c65276e7f16c9ad9b4";
+const INSEE = "75056";
+
+async function updateMeteo() {
+    const iconEl  = document.getElementById("meteoIcon");
+    const tempEl  = document.getElementById("meteoTemp");
+    const msgEl   = document.getElementById("meteoMessage");
+
+    try {
+        const res = await fetch(
+            `https://api.meteo-concept.com/api/forecast/nextHours?token=${API_KEY}&insee=${INSEE}`
+        );
+        const data = await res.json();
+
+        const now = data.forecast[0];
+        const temp = now.temp2m;
+        const weather = now.weather;
+        const wind = now.wind10m;
+
+        const hour = new Date().getHours();
+        const isNight = (hour >= 20 || hour < 6);
+
+        const iconsDay = {
+            0:"☀️",1:"🌤️",2:"⛅",3:"☁️",
+            4:"🌫️",5:"🌦️",6:"🌧️",7:"🌧️",
+            10:"🌨️",11:"❄️",12:"❄️",
+            13:"⛈️",14:"⛈️"
+        };
+
+        const iconsNight = {
+            0:"🌙",1:"🌙",2:"🌥️",3:"☁️",
+            4:"🌫️",5:"🌧️",6:"🌧️",7:"🌧️",
+            10:"🌨️",11:"❄️",12:"❄️",
+            13:"🌩️",14:"🌩️"
+        };
+
+        const icon = isNight ? iconsNight[weather] : iconsDay[weather];
+
+        iconEl.textContent = icon;
+        tempEl.textContent = `${temp}°C`;
+
+        let message = "Aucun phénomène dangereux prévu aujourd’hui.";
+
+        if (now.probarain > 70) message = "🌧️ Pluie forte probable.";
+        if (now.probabilitysnow > 40) message = "❄️ Risque de neige.";
+        if (now.probabilityhail > 20) message = "🧊 Risque de grêle.";
+        if (now.probabilitythunderstorm > 30) message = "⚡ Orages possibles.";
+        if (now.wind10m > 60) message = "💨 Vent fort prévu.";
+
+        msgEl.textContent = `${message} — Vent ${wind} km/h`;
+
+    } catch (e) {
+        iconEl.textContent = "⚠️";
+        tempEl.textContent = "N/A";
+        msgEl.textContent = "Météo indisponible";
+    }
+}
+
+function checkUrgence() {
+    const cardPermis = document.getElementById("card-permis-feu");
+    const sonFeu     = document.getElementById("alarme-feu");
+    const sonSVV     = document.getElementById("alarme-svv");
+    const btnStop    = document.getElementById("btn-stop-alarme");
+
+    const etat = localStorage.getItem("permisFeuUrgence");
+
+    if (etat === "feu") {
+        btnStop.style.display = "block";
+        cardPermis.style.background = "rgba(255,0,0,0.45)";
+        cardPermis.style.border = "3px solid red";
+        cardPermis.innerHTML = "🔥 URGENCE INCENDIE — PERMIS FEU";
+
+        sonSVV.pause();
+        sonFeu.loop = true;
+        sonFeu.play().catch(()=>{});
+        return;
+    }
+
+    if (etat === "svv") {
+        btnStop.style.display = "block";
+        cardPermis.style.background = "rgba(0,80,255,0.45)";
+        cardPermis.style.border = "3px solid #0055ff";
+        cardPermis.innerHTML = "🚑 URGENCE — SECOURS À VICTIME";
+
+        sonFeu.pause();
+        sonSVV.loop = true;
+        sonSVV.play().catch(()=>{});
+        return;
+    }
+
+    btnStop.style.display = "none";
+    cardPermis.style.background = "";
+    cardPermis.style.border = "";
+    cardPermis.innerHTML = "🔥 Créer un permis feu";
+    sonFeu.pause();
+    sonSVV.pause();
+}
+
+let searchTimeout;
+
+function openSearchPalette() {
+    document.getElementById("searchPalette").style.display = "block";
+    document.getElementById("searchInput").focus();
+}
+
+function closeSearchPalette() {
+    document.getElementById("searchPalette").style.display = "none";
+}
+
+function updateSearchResults() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        const q = document.getElementById("searchInput").value.toLowerCase();
+        const results = document.getElementById("searchResults");
+        results.innerHTML = "";
+
+        MENU.forEach(section => {
+            section.items.forEach(item => {
+                if (item.label.toLowerCase().includes(q)) {
+                    const div = document.createElement("div");
+                    div.style.padding = "8px 0";
+                    div.style.cursor = "pointer";
+                    div.innerHTML = `${item.icon} ${item.label}`;
+                    div.onclick = () => window.location.href = item.link;
+                    results.appendChild(div);
+                }
+            });
+        });
+    }, 200);
+}
+
+let notifications = JSON.parse(localStorage.getItem("notifications") || "[]");
+
+function saveNotifications() {
+    localStorage.setItem("notifications", JSON.stringify(notifications));
+}
+
+function updateNotifBadge() {
+    const badge = document.getElementById("notifBadge");
+    const unread = notifications.filter(n => !n.read).length;
+
+    if (unread > 0) {
+        badge.style.display = "block";
+        badge.textContent = unread;
+    } else {
+        badge.style.display = "none";
+    }
+}
+
+function pushNotification(text) {
+    const notif = {
+        id: Date.now(),
+        text,
+        date: new Date().toLocaleString(),
+        read: false
+    };
+
+    notifications.unshift(notif);
+    saveNotifications();
+    updateNotifBadge();
+    renderNotificationsPanel();
+    showToast(text);
+}
+
+function showToast(text) {
+    const container = document.getElementById("toastContainer");
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = text;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(20px)";
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
+}
+
+function openNotificationsPanel() {
+    document.getElementById("notificationsPanel").classList.add("open");
+    document.getElementById("calendarOverlay").style.display = "block";
+
+    notifications.forEach(n => n.read = true);
+    saveNotifications();
+    updateNotifBadge();
+    renderNotificationsPanel();
+}
+
+function closeNotificationsPanel() {
+    document.getElementById("notificationsPanel").classList.remove("open");
+    document.getElementById("calendarOverlay").style.display = "none";
+}
+
+function renderNotificationsPanel() {
+    const container = document.getElementById("notificationsContent");
+    container.innerHTML = "";
+
+    if (notifications.length === 0) {
+        container.innerHTML = "<div style='opacity:0.7;'>Aucune notification.</div>";
+        return;
+    }
+
+    notifications.forEach(n => {
+        const div = document.createElement("div");
+        div.style.padding = "10px 0";
+        div.style.borderBottom = "1px solid var(--border)";
+        div.innerHTML = `
+            <div style="font-weight:600;">${n.text}</div>
+            <div style="font-size:0.8rem; opacity:0.7;">${n.date}</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function openCalendar() {
+    document.getElementById("outlookPanel").classList.add("open");
+    document.getElementById("calendarOverlay").style.display = "block";
+}
+
+function closeCalendar() {
+    document.getElementById("outlookPanel").classList.remove("open");
+    document.getElementById("calendarOverlay").style.display = "none";
+}
+
+function openModulesPanel() {
+    const role = localStorage.getItem("role");
+    if (role !== "admin") return;
+
+    document.getElementById("modulesPanel").classList.add("open");
+    document.getElementById("calendarOverlay").style.display = "block";
+    renderModulesPanel();
+}
+
+function closeModulesPanel() {
+    document.getElementById("modulesPanel").classList.remove("open");
+    document.getElementById("calendarOverlay").style.display = "none";
+}
+
+function renderModulesPanel() {
+    const container = document.getElementById("modulesContent");
+    container.innerHTML = "";
+
+    MENU.forEach((section, sIndex) => {
+        const title = document.createElement("div");
+        title.style.margin = "12px 0 6px";
+        title.style.fontWeight = "600";
+        title.style.color = "var(--accent)";
+        title.textContent = section.category;
+        container.appendChild(title);
+
+        section.items.forEach((item, iIndex) => {
+            if (item.label === "Gestion des modules") return;
+
+            const row = document.createElement("div");
+            row.style.display = "flex";
+            row.style.justifyContent = "space-between";
+            row.style.marginBottom = "6px";
+
+            row.innerHTML = `
+                <span>${item.icon} ${item.label}</span>
+                <span>
+                    <button onclick="editModule(${sIndex},${iIndex})">✏️</button>
+                    <button onclick="deleteModule(${sIndex},${iIndex})">🗑</button>
+                </span>
+            `;
+            container.appendChild(row);
+        });
+    });
+
+    const addBtn = document.createElement("button");
+    addBtn.textContent = "+ Ajouter un module";
+    addBtn.style.marginTop = "20px";
+    addBtn.style.width = "100%";
+    addBtn.style.padding = "10px";
+    addBtn.style.borderRadius = "10px";
+    addBtn.style.border = "1px solid var(--border)";
+    addBtn.style.background = "var(--bg2)";
+    addBtn.onclick = addModule;
+    container.appendChild(addBtn);
+}
+
+function addModule() {
+    const role = localStorage.getItem("role");
+    if (role !== "admin") return;
+
+    const category = prompt("Catégorie :");
+    if (!category) return;
+
+    const section = MENU.find(s => s.category.toLowerCase() === category.toLowerCase());
+    if (!section) return alert("Catégorie inconnue.");
+
+    const label = prompt("Nom du module :");
+    if (!label) return;
+
+    const link = prompt("Lien (URL ou page) :") || "#";
+    const icon = prompt("Icône (emoji) :", "📄") || "📄";
+
+    section.items.push({ icon, label, link });
+    generateSidebar();
+    renderModulesPanel();
+}
+
+function editModule(sIndex, iIndex) {
+    const role = localStorage.getItem("role");
+    if (role !== "admin") return;
+
+    const item = MENU[sIndex].items[iIndex];
+    item.label = prompt("Nom :", item.label) || item.label;
+    item.link = prompt("Lien :", item.link) || item.link;
+    item.icon = prompt("Icône :", item.icon) || item.icon;
+
+    generateSidebar();
+    renderModulesPanel();
+}
+
+function deleteModule(sIndex, iIndex) {
+    const role = localStorage.getItem("role");
+    if (role !== "admin") return;
+
+    if (!confirm("Supprimer ce module ?")) return;
+    MENU[sIndex].items.splice(iIndex, 1);
+
+    generateSidebar();
+    renderModulesPanel();
+}
+
+function openSupervision() {
+    document.getElementById("supervisionScreen").style.display = "block";
+    refreshSupervision();
+}
+
+function closeSupervision() {
+    document.getElementById("supervisionScreen").style.display = "none";
+}
+
+function refreshSupervision() {
+    loadSupervisionFeux();
+    loadSupervisionInterventions();
+    loadSupervisionVerifications();
+    loadSupervisionRondes();
+    loadSupervisionDAI();
+    loadSupervisionDispatch();
+    loadSupervisionFeuilleDeGarde();
+}
+
+function loadSupervisionFeux() {
+    document.getElementById("sup-feux-content").innerHTML = `
+        <div class="supervision-item">Aucun feu en cours</div>
+    `;
+}
+
+function loadSupervisionInterventions() {
+    document.getElementById("sup-interventions-content").innerHTML = `
+        <div class="supervision-item">Aucune intervention active</div>
+    `;
+}
+
+function loadSupervisionVerifications() {
+    document.getElementById("sup-verif-content").innerHTML = `
+        <div class="supervision-item">Toutes les vérifications sont à jour</div>
+    `;
+}
+
+function loadSupervisionRondes() {
+    document.getElementById("sup-rondes-content").innerHTML = `
+        <div class="supervision-item">Aucune ronde en retard</div>
+    `;
+}
+
+function loadSupervisionDAI() {
+    document.getElementById("sup-dai-content").innerHTML = `
+        <div class="supervision-item">0 DAI hors service</div>
+    `;
+}
+
+const AGENTS = [
+    { id: 1, nom: "Agent A", statut: "disponible" },
+    { id: 2, nom: "Agent B", statut: "disponible" },
+    { id: 3, nom: "Agent C", statut: "indisponible" }
+];
+
+function loadSupervisionDispatch() {
+    let html = "";
+
+    AGENTS.forEach(a => {
+        html += `
+            <div class="supervision-item">
+                <b>${a.nom}</b><br>
+                Statut : ${a.statut}<br>
+                <button class="sup-btn" onclick="openDispatchPanel(${a.id})">Dépêcher</button>
+            </div>
+        `;
+    });
+
+    document.getElementById("sup-dispatch-content").innerHTML = html;
+}
+
+function openDispatchPanel(agentId) {
+    const panel = document.getElementById("dispatchPanel");
+    const list = document.getElementById("dispatchAgentsList");
+
+    const agent = AGENTS.find(a => a.id === agentId);
+
+    list.innerHTML = `
+        <div class="dispatch-agent">
+            <b>${agent.nom}</b><br>
+            Statut actuel : ${agent.statut}<br><br>
+
+            <button onclick="dispatchAgent(${agent.id}, 'en_route')">🚓 En route</button>
+            <button onclick="dispatchAgent(${agent.id}, 'sur_place')">📍 Sur place</button>
+            <button onclick="dispatchAgent(${agent.id}, 'disponible')">✔ Disponible</button>
+            <button onclick="dispatchAgent(${agent.id}, 'indisponible')">⛔ Indisponible</button>
+        </div>
+    `;
+
+    panel.style.display = "block";
+}
+
+function closeDispatchPanel() {
+    document.getElementById("dispatchPanel").style.display = "none";
+}
+
+function dispatchAgent(id, newStatus) {
+    const agent = AGENTS.find(a => a.id === id);
+    agent.statut = newStatus;
+
+    pushNotification(`Mise à jour : ${agent.nom} → ${newStatus}`);
+
+    closeDispatchPanel();
+    refreshSupervision();
+}
+
+setInterval(refreshSupervision, 5000);
+
+document.addEventListener("DOMContentLoaded", () => {
+    generateSidebar();
+    updateMeteo();
+    setInterval(updateMeteo, 1800000);
+    setInterval(checkUrgence, 2000);
+    updateNotifBadge();
+
+    const sidebar = document.getElementById("sidebarContent");
+    const bloc = document.createElement("div");
+    bloc.className = "menu-item";
+    bloc.style.marginTop = "20px";
+    bloc.innerHTML = "🛰️ Mode Supervision";
+    bloc.onclick = openSupervision;
+    sidebar.appendChild(bloc);
+
+    const saved = localStorage.getItem("theme");
+    if (saved) {
+        document.documentElement.setAttribute("data-theme", saved);
+        document.getElementById("themeLabel").textContent =
+            saved === "light" ? "Mode sombre" : "Mode clair";
+    }
+
+    document.addEventListener("keydown", e => {
+        if (e.key === "Escape") closeSearchPalette();
+        if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+            e.preventDefault();
+            openSearchPalette();
+        }
+    });
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const supabaseFg = supabase.createClient(
+    "https://hwqlajdytnxavqigmzio.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cWxhamR5dG54YXZxaWdtemlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzg1NjgsImV4cCI6MjA4OTUxNDU2OH0.riGzQlfEPmo9SVK9Rs_fl33DnC5RR5qd2OUhgk4Twvs"
+);
+
+const GARDE_ID = "00000000-0000-0000-0000-000000000001";
+
+async function loadSupervisionFeuilleDeGarde() {
+    const container = document.getElementById("sup-feuille-garde-content");
+    if (!container) return;
+
+    container.innerHTML = "<div class='supervision-item'>Chargement…</div>";
+
+    const { data, error } = await supabaseFg
+        .from("feuille_de_garde")
+        .select("*")
+        .eq("id", GARDE_ID)
+        .single();
+
+    if (error || !data) {
+        container.innerHTML = "<div class='supervision-item'>Feuille de garde indisponible</div>";
+        return;
+    }
+
+    updateSupervisionFeuilleDeGarde(data);
+}
+
+function updateSupervisionFeuilleDeGarde(data) {
+    const container = document.getElementById("sup-feuille-garde-content");
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="supervision-item">
+            <b>Date :</b> ${data.date_garde || "—"}<br>
+            <b>Effectif :</b> ${data.effectif || "—"}<br>
+            <b>Responsable BM :</b> ${data.responsable_bm || "—"}<br>
+            <b>Chef de poste :</b> ${data.chef_poste || "—"}
+        </div>
+    `;
+}
+
+supabaseFg
+    .channel("feuille_de_garde_realtime")
+    .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "feuille_de_garde" },
+        (payload) => {
+            updateSupervisionFeuilleDeGarde(payload.new);
+        }
+    )
+    .subscribe();
+</script>
+
+</body>
+</html>

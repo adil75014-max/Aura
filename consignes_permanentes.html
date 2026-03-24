@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Consignes permanentes - LBM Sécurité</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- 🎨 Design global -->
+<link rel="stylesheet" href="global.css">
+
+<style>
+/* Styles spécifiques à cette page */
+h2 {
+    margin-bottom: 15px;
+}
+
+.viewer {
+    width: 100%;
+    height: 90vh;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--card);
+    box-shadow: var(--shadow);
+}
+
+a.back {
+    display: inline-block;
+    margin-bottom: 15px;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.95rem;
+}
+
+a.back:hover {
+    text-decoration: underline;
+}
+</style>
+</head>
+
+<body>
+
+<script type="module">
+import { requireLogin } from "./js/users.js";
+requireLogin();
+</script>
+
+<a href="index.html" class="back">← Retour à l’accueil</a>
+<h2>📄 Consignes permanentes</h2>
+
+<div class="viewer">
+    <iframe src="pdf/consignes_permanentes/consigne1.pdf" width="100%" height="100%"></iframe>
+</div>
+
+<script src="js/security.js"></script>
+<script src="global.js"></script>
+
+</body>
+</html>

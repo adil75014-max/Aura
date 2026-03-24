@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Gestion des vérifications - LBM</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap">
+
+<style>
+    :root {
+        --bg:#050712;
+        --card-bg:rgba(15,20,35,0.9);
+        --accent:#7ab8ff;
+        --accent-soft:rgba(122,184,255,0.25);
+        --danger:#ff4d6a;
+        --success:#4dff88;
+        --text:#f5f7ff;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+        background:radial-gradient(circle at top, #1b2740 0, #050712 55%);
+        color:var(--text);
+        font-family:Inter, system-ui, -apple-system, BlinkMacSystemFont;
+        margin:0;
+        padding:24px;
+        min-height:100vh;
+    }
+
+    h1 {
+        text-align:center;
+        color:var(--accent);
+        font-size:2.2rem;
+        margin-bottom:10px;
+        text-shadow:0 0 18px rgba(122,184,255,0.6);
+    }
+
+    .subtitle {
+        text-align:center;
+        opacity:0.8;
+        margin-bottom:25px;
+        font-size:0.95rem;
+    }
+
+    /* ------------------ ONGLET BAR ------------------ */
+    .tabs {
+        display:flex;
+        justify-content:center;
+        gap:20px;
+        margin-bottom:25px;
+    }
+
+    .tab-btn {
+        padding:12px 22px;
+        border-radius:12px;
+        cursor:pointer;
+        font-weight:600;
+        font-size:0.95rem;
+        background:rgba(255,255,255,0.05);
+        border:1px solid rgba(255,255,255,0.12);
+        color:var(--text);
+        transition:0.25s ease;
+    }
+
+    .tab-btn:hover {
+        background:rgba(255,255,255,0.12);
+    }
+
+    .tab-btn.active {
+        background:linear-gradient(135deg, #7ab8ff, #4d9dff);
+        color:#050712;
+        box-shadow:0 10px 25px rgba(122,184,255,0.45);
+        border:none;
+    }
+
+    /* ------------------ CARDS ------------------ */
+    .card {
+        background:var(--card-bg);
+        padding:20px 18px;
+        border-radius:20px;
+        box-shadow:0 18px 45px rgba(0,0,0,0.55);
+        border:1px solid rgba(255,255,255,0.06);
+        backdrop-filter:blur(18px) saturate(140%);
+        position:relative;
+        overflow:hidden;
+        max-width:1200px;
+        margin:auto;
+    }
+
+    .card::before {
+        content:"";
+        position:absolute;
+        inset:-40%;
+        background:radial-gradient(circle at top left, rgba(122,184,255,0.12), transparent 55%);
+        opacity:0.7;
+        pointer-events:none;
+    }
+
+    .card > * { position:relative; z-index:1; }
+
+    .card-title {
+        font-size:1.2rem;
+        margin-bottom:12px;
+        font-weight:600;
+        display:flex;
+        align-items:center;
+        gap:8px;
+    }
+
+    .pill {
+        font-size:0.7rem;
+        padding:3px 8px;
+        border-radius:999px;
+        background:rgba(255,255,255,0.06);
+        border:1px solid rgba(255,255,255,0.12);
+        text-transform:uppercase;
+        letter-spacing:0.06em;
+        opacity:0.8;
+    }
+
+    label {
+        display:block;
+        margin-top:12px;
+        font-size:0.95rem;
+        opacity:0.9;
+    }
+
+    input, select, textarea {
+        width:100%;
+        padding:12px 13px;
+        margin-top:6px;
+        border-radius:12px;
+        border:1px solid rgba(255,255,255,0.12);
+        background:rgba(5,8,20,0.85);
+        color:var(--text);
+        font-size:0.95rem;
+        transition:0.2s;
+    }
+
+    input:focus, select:focus, textarea:focus {
+        background:rgba(10,14,30,0.95);
+        outline:none;
+        border-color:var(--accent);
+        box-shadow:0 0 0 1px rgba(122,184,255,0.4);
+    }
+
+    textarea { min-height:120px; resize:vertical; }
+
+    button {
+        margin-top:18px;
+        padding:12px 16px;
+        background:linear-gradient(135deg, #7ab8ff, #4d9dff);
+        border:none;
+        border-radius:12px;
+        color:#050712;
+        cursor:pointer;
+        width:100%;
+        font-size:0.98rem;
+        font-weight:600;
+        box-shadow:0 10px 25px rgba(122,184,255,0.45);
+        transition:0.25s ease;
+    }
+
+    button:hover {
+        transform:translateY(-1px);
+        box-shadow:0 14px 32px rgba(122,184,255,0.7);
+    }
+
+    .btn-secondary {
+        background:rgba(255,255,255,0.05);
+        color:var(--text);
+        border:1px solid rgba(255,255,255,0.12);
+        box-shadow:none;
+    }
+
+    .btn-danger {
+        background:linear-gradient(135deg, #ff4d6a, #ff7b6b);
+        color:#fff;
+        box-shadow:0 10px 26px rgba(255,77,106,0.55);
+    }
+
+    /* ------------------ TYPES DE VERIFICATIONS ------------------ */
+    #typesContainer {
+        display:none;
+    }
+
+    .type-item {
+        padding:12px;
+        border-radius:12px;
+        background:rgba(255,255,255,0.05);
+        border:1px solid rgba(255,255,255,0.1);
+        margin-bottom:10px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        cursor:grab;
+    }
+
+    .type-item:active {
+        cursor:grabbing;
+    }
+
+    .type-actions button {
+        width:auto;
+        padding:6px 10px;
+        margin-left:6px;
+        font-size:0.8rem;
+    }
+
+</style>
+</head>
+
+<body>
+
+<h1>Gestion des vérifications</h1>
+<div class="subtitle">Création + gestion des types — réservé superviseur</div>
+
+<!-- ONGLET BAR -->
+<div class="tabs">
+    <div class="tab-btn active" onclick="switchTab('createTab', this)">Créer une vérification</div>
+    <div class="tab-btn" onclick="switchTab('typesTab', this)">Types de vérifications</div>
+</div>
+
+<!-- ONGLET 1 : CREATION -->
+<div id="createTab" class="card">
+    <div class="card-title">
+        Création d’un rapport
+        <span class="pill">Formulaire</span>
+    </div>
+
+    <label>Type de vérification</label>
+    <select id="typeVerif"></select>
+
+    <label>Localisation principale</label>
+    <input type="text" id="localisation">
+
+    <label>Description</label>
+    <textarea id="description"></textarea>
+
+    <label>Sections personnalisées</label>
+    <div id="sectionsZone"></div>
+    <button class="btn-secondary" onclick="addSection()">+ Ajouter une section</button>
+
+    <label>Photos</label>
+    <div id="photosZone"></div>
+    <button class="btn-secondary" onclick="addPhotoInput()">+ Ajouter une photo</button>
+
+    <button onclick="saveReport()">Créer la vérification</button>
+    <div id="formMsg" style="margin-top:10px;font-size:0.9rem;"></div>
+</div>
+
+<!-- ONGLET 2 : TYPES -->
+<div id="typesTab" class="card" style="display:none;">
+    <div class="card-title">
+        Types de vérifications
+        <span class="pill">Superviseur</span>
+    </div>
+
+    <div id="typesList"></div>
+
+    <div style="margin-top:20px;">
+        <label>Nouveau type</label>
+        <input type="text" id="newTypeLabel" placeholder="Ex : J1 Baie SSI">
+        <button onclick="addType()">Ajouter</button>
+    </div>
+</div>
+
+<script>
+function switchTab(id, btn) {
+    document.getElementById("createTab").style.display = "none";
+    document.getElementById("typesTab").style.display = "none";
+
+    document.getElementById(id).style.display = "block";
+
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+}
+</script>
+
+</body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script type="module">
+
+/* ============================================================
+   CONFIG SUPABASE
+============================================================ */
+const SUPABASE_URL = "https://giragifrxvsmcljvrwyh.supabase.co";
+const SUPABASE_KEY = "sb_publishable_P6Ci6iKMss4PNCKklWYIOw_IqWt-JF6";
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ============================================================
+   ROLE SUPERVISEUR
+============================================================ */
+import { requireSuperviseur, requireRole } from "./js/users.js";
+const user = requireSuperviseur(); // Bloque l’accès si pas superviseur
+
+/* ============================================================
+   CHARGEMENT DES TYPES DE VERIFICATIONS
+============================================================ */
+async function loadTypes() {
+    const { data, error } = await client
+        .from("verifications_types")
+        .select("*")
+        .order("ordre", { ascending: true });
+
+    if (error) {
+        console.error("Erreur chargement types :", error);
+        return;
+    }
+
+    renderTypesList(data);
+    fillSelectTypes(data);
+}
+
+/* Remplit le <select> du formulaire */
+function fillSelectTypes(types) {
+    const select = document.getElementById("typeVerif");
+    select.innerHTML = "";
+
+    types.forEach(t => {
+        const opt = document.createElement("option");
+        opt.value = t.label;
+        opt.textContent = t.label;
+        select.appendChild(opt);
+    });
+}
+
+/* ============================================================
+   AFFICHAGE LISTE TYPES (ONGLET 2)
+============================================================ */
+function renderTypesList(types) {
+    const container = document.getElementById("typesList");
+    container.innerHTML = "";
+
+    types.forEach(t => {
+        const div = document.createElement("div");
+        div.className = "type-item";
+        div.draggable = true;
+        div.dataset.id = t.id;
+
+        div.innerHTML = `
+            <span>${t.label}</span>
+            <div class="type-actions">
+                <button class="btn-secondary" onclick="editType('${t.id}', '${t.label}')">Modifier</button>
+                <button class="btn-danger" onclick="deleteType('${t.id}')">Supprimer</button>
+            </div>
+        `;
+
+        addDragEvents(div);
+        container.appendChild(div);
+    });
+}
+
+/* ============================================================
+   AJOUT D’UN TYPE
+============================================================ */
+async function addType() {
+    const label = document.getElementById("newTypeLabel").value.trim();
+    if (!label) return alert("Nom invalide");
+
+    // Trouver le dernier ordre
+    const { data: existing } = await client
+        .from("verifications_types")
+        .select("ordre")
+        .order("ordre", { ascending: false })
+        .limit(1);
+
+    const ordre = existing?.length ? existing[0].ordre + 1 : 1;
+
+    const { error } = await client
+        .from("verifications_types")
+        .insert([{ label, ordre }]);
+
+    if (error) {
+        alert("Erreur : " + error.message);
+        return;
+    }
+
+    document.getElementById("newTypeLabel").value = "";
+    loadTypes();
+}
+
+/* ============================================================
+   MODIFICATION D’UN TYPE
+============================================================ */
+async function editType(id, oldLabel) {
+    const label = prompt("Nouveau nom :", oldLabel);
+    if (!label) return;
+
+    await client
+        .from("verifications_types")
+        .update({ label })
+        .eq("id", id);
+
+    loadTypes();
+}
+
+/* ============================================================
+   SUPPRESSION D’UN TYPE
+============================================================ */
+async function deleteType(id) {
+    if (!confirm("Supprimer ce type ?")) return;
+
+    await client
+        .from("verifications_types")
+        .delete()
+        .eq("id", id);
+
+    loadTypes();
+}
+
+/* ============================================================
+   DRAG & DROP POUR REORGANISER
+============================================================ */
+let draggedType = null;
+
+function addDragEvents(el) {
+    el.addEventListener("dragstart", () => {
+        draggedType = el;
+        el.style.opacity = "0.4";
+    });
+
+    el.addEventListener("dragend", async () => {
+        el.style.opacity = "1";
+        draggedType = null;
+
+        // Sauvegarde de l’ordre dans Supabase
+        await saveNewOrder();
+    });
+
+    el.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const container = document.getElementById("typesList");
+        const items = [...container.children];
+
+        const after = items.find(item => {
+            return e.clientY <= item.offsetTop + item.offsetHeight / 2;
+        });
+
+        if (after == null) {
+            container.appendChild(draggedType);
+        } else {
+            container.insertBefore(draggedType, after);
+        }
+    });
+}
+
+/* Sauvegarde l’ordre dans Supabase */
+async function saveNewOrder() {
+    const items = [...document.querySelectorAll(".type-item")];
+
+    for (let i = 0; i < items.length; i++) {
+        const id = items[i].dataset.id;
+
+        await client
+            .from("verifications_types")
+            .update({ ordre: i + 1 })
+            .eq("id", id);
+    }
+}
+
+/* ============================================================
+   INITIALISATION
+============================================================ */
+loadTypes();
+<script type="module">
+
+/* ============================================================
+   CONFIG SUPABASE (déjà défini dans PARTIE 2/3)
+============================================================ */
+const bucketName = "verifications_photos"; // Bucket Supabase
+
+/* ============================================================
+   LOCALSTORAGE (offline)
+============================================================ */
+const STORAGE_KEY = "verificationsReports_v3";
+
+function getReports() {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+}
+
+function saveReports(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
+/* ============================================================
+   PHOTOS
+============================================================ */
+function addPhotoInput() {
+    const zone = document.getElementById("photosZone");
+    const div = document.createElement("div");
+    div.className = "photo-input";
+    div.innerHTML = `<input type="file" accept="image/*">`;
+    zone.appendChild(div);
+}
+
+function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+        if (!file) return resolve(null);
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+/* Upload photo dans Supabase */
+async function uploadPhoto(base64, reportId, index) {
+    const fileName = `${reportId}/photo_${index}.jpg`;
+
+    const { error } = await client.storage
+        .from(bucketName)
+        .upload(fileName, decodeBase64(base64), {
+            contentType: "image/jpeg",
+            upsert: true
+        });
+
+    if (error) {
+        console.error("Erreur upload photo :", error);
+        return null;
+    }
+
+    const { data: publicUrl } = client.storage
+        .from(bucketName)
+        .getPublicUrl(fileName);
+
+    return publicUrl.publicUrl;
+}
+
+/* Convertir base64 → Blob */
+function decodeBase64(base64) {
+    const arr = base64.split(",");
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8 = new Uint8Array(n);
+    while (n--) u8[n] = bstr.charCodeAt(n);
+    return new Blob([u8], { type: mime });
+}
+
+/* ============================================================
+   SECTIONS
+============================================================ */
+function addSection(localisation = "", texte = "") {
+    const zone = document.getElementById("sectionsZone");
+
+    const div = document.createElement("div");
+    div.className = "section-block";
+    div.draggable = true;
+
+    div.innerHTML = `
+        <label>Localisation</label>
+        <input type="text" class="section-loc" value="${localisation}">
+
+        <label>Zone de texte</label>
+        <textarea class="section-text">${texte}</textarea>
+
+        <div class="section-actions">
+            <button onclick="duplicateSection(this)">Dupliquer</button>
+            <button class="btn-danger" onclick="deleteSection(this)">Supprimer</button>
+        </div>
+    `;
+
+    addDragEvents(div);
+    zone.appendChild(div);
+}
+
+function duplicateSection(btn) {
+    const block = btn.closest(".section-block");
+    const loc = block.querySelector(".section-loc").value;
+    const txt = block.querySelector(".section-text").value;
+    addSection(loc, txt);
+}
+
+function deleteSection(btn) {
+    btn.closest(".section-block").remove();
+}
+
+/* Drag & drop sections */
+let draggedSection = null;
+
+function addDragEvents(el) {
+    el.addEventListener("dragstart", () => {
+        draggedSection = el;
+        el.style.opacity = "0.4";
+    });
+
+    el.addEventListener("dragend", () => {
+        draggedSection = null;
+        el.style.opacity = "1";
+    });
+
+    el.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const zone = document.getElementById("sectionsZone");
+        const children = [...zone.children];
+
+        const after = children.find(child => {
+            return e.clientY <= child.offsetTop + child.offsetHeight / 2;
+        });
+
+        if (after == null) {
+            zone.appendChild(draggedSection);
+        } else {
+            zone.insertBefore(draggedSection, after);
+        }
+    });
+}
+
+/* ============================================================
+   SAUVEGARDE DU RAPPORT (LOCAL + SUPABASE)
+============================================================ */
+async function saveReport() {
+    const msg = document.getElementById("formMsg");
+    msg.textContent = "";
+
+    const type = document.getElementById("typeVerif").value.trim();
+    const loc = document.getElementById("localisation").value.trim();
+    const desc = document.getElementById("description").value.trim();
+
+    if (!type || !loc || !desc) {
+        msg.textContent = "Merci de remplir tous les champs obligatoires.";
+        msg.style.color = "#ff6b6b";
+        return;
+    }
+
+    /* Photos */
+    const photoInputs = document.querySelectorAll("#photosZone input[type='file']");
+    const photosBase64 = [];
+
+    for (let input of photoInputs) {
+        const file = input.files[0];
+        const base64 = await readFileAsDataURL(file);
+        if (base64) photosBase64.push(base64);
+    }
+
+    /* Sections */
+    const sections = [];
+    document.querySelectorAll(".section-block").forEach(block => {
+        sections.push({
+            localisation: block.querySelector(".section-loc").value,
+            texte: block.querySelector(".section-text").value
+        });
+    });
+
+    const now = new Date();
+    const reportId = "VRF-" + Date.now();
+
+    /* Upload photos dans Supabase */
+    const photosUrls = [];
+    for (let i = 0; i < photosBase64.length; i++) {
+        const url = await uploadPhoto(photosBase64[i], reportId, i);
+        if (url) photosUrls.push(url);
+    }
+
+    /* Enregistrement dans Supabase */
+    const { error } = await client
+        .from("verifications")
+        .insert([{
+            id: reportId,
+            type,
+            localisation: loc,
+            description: desc,
+            sections,
+            photos: photosUrls,
+            created_at: now.toISOString(),
+            created_by: user.username
+        }]);
+
+    if (error) {
+        msg.textContent = "Erreur Supabase : " + error.message;
+        msg.style.color = "#ff6b6b";
+        return;
+    }
+
+    /* Sauvegarde locale */
+    const list = getReports();
+    list.unshift({
+        id: reportId,
+        type,
+        localisation: loc,
+        description: desc,
+        sections,
+        photos: photosUrls,
+        createdAt: now.toISOString(),
+        createdLabel: now.toLocaleString("fr-FR"),
+        createdBy: user.username
+    });
+    saveReports(list);
+
+    msg.textContent = "Vérification enregistrée ✔";
+    msg.style.color = "#4da3ff";
+
+    /* Reset */
+    document.getElementById("typeVerif").value = "";
+    document.getElementById("localisation").value = "";
+    document.getElementById("description").value = "";
+    document.getElementById("photosZone").innerHTML = "";
+    document.getElementById("sectionsZone").innerHTML = "";
+}
+
+</script>
+</script>
+</html>

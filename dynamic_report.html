@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rapport dynamique - LBM Sécurité</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- 🎨 Design global -->
+<link rel="stylesheet" href="global.css">
+
+<style>
+/* 🎨 Styles spécifiques à cette page */
+
+h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: var(--accent);
+    font-size: 1.7rem;
+    font-weight: 600;
+}
+
+/* Bouton retour */
+.menu-return {
+    margin-bottom: 25px;
+}
+
+.menu-return button {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 10px;
+    color: var(--accent);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.menu-return button:hover {
+    background: var(--accent);
+    color: #000;
+}
+
+/* Bloc principal */
+.panel {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 18px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow);
+}
+
+/* Champs */
+.field {
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.field label {
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+input, textarea, select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+textarea {
+    min-height: 80px;
+}
+
+/* Bouton principal */
+.btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, #4da3ff, #7b5cff);
+    border: none;
+    padding: 14px;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #3a8be0, #6a4ae0);
+}
+
+/* Titres internes */
+.title-block {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 10px;
+}
+
+.subtitle-block {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin-top: 5px;
+}
+
+/* Séparateur */
+.separator {
+    height: 1px;
+    background: var(--border);
+    margin: 15px 0;
+}
+
+/* Bloc info */
+.info-block {
+    background: var(--bg2);
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Rapport dynamique</h1>
+
+<div class="menu-return">
+    <button onclick="history.back()">⟵ Retour</button>
+</div>
+
+<div id="formContainer" class="panel"></div>
+
+<button class="btn-primary" onclick="saveReport()">💾 Enregistrer le rapport</button><script>
+/* ------------------ Récupération du modèle ------------------ */
+const urlParams = new URLSearchParams(window.location.search);
+const formId = urlParams.get("form");
+
+if (!formId) {
+    document.getElementById("formContainer").innerHTML =
+        "<p style='opacity:0.7;'>Aucun modèle trouvé.</p>";
+}
+
+const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+const model = models.find(m => m.id === formId);
+
+if (!model) {
+    document.getElementById("formContainer").innerHTML =
+        "<p style='opacity:0.7;'>Modèle introuvable.</p>";
+}
+
+/* ------------------ Génération du formulaire ------------------ */
+function renderForm() {
+    const container = document.getElementById("formContainer");
+    container.innerHTML = "";
+
+    model.fields.forEach(f => {
+        const field = document.createElement("div");
+        field.className = "field";
+
+        switch (f.type) {
+
+            case "title":
+                field.innerHTML = `<div class="title-block">${f.label}</div>`;
+                break;
+
+            case "subtitle":
+                field.innerHTML = `<div class="subtitle-block">${f.label}</div>`;
+                break;
+
+            case "separator":
+                field.innerHTML = `<div class="separator"></div>`;
+                break;
+
+            case "info":
+                field.innerHTML = `<div class="info-block">${f.info || f.label}</div>`;
+                break;
+
+            case "text":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <input type="text" id="${f.id}" placeholder="${f.placeholder}">
+                `;
+                break;
+
+            case "textarea":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <textarea id="${f.id}" placeholder="${f.placeholder}"></textarea>
+                `;
+                break;
+
+            case "number":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <input type="number" id="${f.id}" placeholder="${f.placeholder}">
+                `;
+                break;
+
+            case "date":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <input type="date" id="${f.id}">
+                `;
+                break;
+
+            case "time":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <input type="time" id="${f.id}">
+                `;
+                break;
+
+            case "select":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <select id="${f.id}">
+                        ${f.options.split(";").map(o => `<option>${o.trim()}</option>`).join("")}
+                    </select>
+                `;
+                break;
+
+            case "checkbox":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    ${f.options.split(";").map(o => `
+                        <label style="display:flex;align-items:center;gap:6px;">
+                            <input type="checkbox" value="${o.trim()}" id="${f.id}_${o.trim()}">
+                            ${o.trim()}
+                        </label>
+                    `).join("")}
+                `;
+                break;
+
+            case "radio":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    ${f.options.split(";").map(o => `
+                        <label style="display:flex;align-items:center;gap:6px;">
+                            <input type="radio" name="${f.id}" value="${o.trim()}">
+                            ${o.trim()}
+                        </label>
+                    `).join("")}
+                `;
+                break;
+
+            case "photo":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <input type="file" id="${f.id}" accept="image/*" capture="environment">
+                `;
+                break;
+
+            case "location":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <button onclick="getLocation('${f.id}')" class="btn-primary" style="padding:8px;font-size:0.8rem;">📍 Obtenir la position</button>
+                    <input type="text" id="${f.id}" readonly placeholder="Latitude, Longitude">
+                `;
+                break;
+
+            default:
+                field.innerHTML = `<p style="opacity:0.7;">Type non supporté : ${f.type}</p>`;
+        }
+
+        container.appendChild(field);
+    });
+}
+
+renderForm();
+
+/* ------------------ Localisation ------------------ */
+function getLocation(id) {
+    if (!navigator.geolocation) {
+        alert("La géolocalisation n'est pas supportée.");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        document.getElementById(id).value = latitude + ", " + longitude;
+    });
+}
+
+/* ------------------ Enregistrement ------------------ */
+function saveReport() {
+    const data = {};
+
+    model.fields.forEach(f => {
+        if (["title","subtitle","separator","info"].includes(f.type)) return;
+
+        if (f.type === "checkbox") {
+            const opts = f.options.split(";").map(o => o.trim());
+            data[f.id] = opts
+                .filter(o => document.getElementById(f.id + "_" + o)?.checked)
+                .join(", ");
+            return;
+        }
+
+        if (f.type === "radio") {
+            const selected = document.querySelector(`input[name="${f.id}"]:checked`);
+            data[f.id] = selected ? selected.value : "";
+            return;
+        }
+
+        const el = document.getElementById(f.id);
+        if (el) data[f.id] = el.value;
+    });
+
+    const rapports = JSON.parse(localStorage.getItem("rapports") || "[]");
+
+    rapports.push({
+        id: "RAP_" + Date.now(),
+        title: model.title,
+        site: model.site,
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString(),
+        data
+    });
+
+    localStorage.setItem("rapports", JSON.stringify(rapports));
+
+    alert("Rapport enregistré !");
+    history.back();
+}
+</script>
+
+<!-- 🎨 Thème global -->
+<script src="global.js"></script>
+
+</body>
+</html>

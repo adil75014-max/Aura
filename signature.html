@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Signature numérique</title>
+
+<!-- 🎨 Design global -->
+<link rel="stylesheet" href="global.css">
+
+<style>
+/* Ajustements MINIMAUX pour le canvas (nécessaires) */
+.signature-container {
+    width: 100%;
+    max-width: 500px;
+    margin: auto;
+    text-align: center;
+}
+
+canvas {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    height: 220px;
+    border: 2px solid var(--border);
+    touch-action: none;
+}
+</style>
+</head>
+
+<body>
+
+<script type="module">
+import { requireSuperviseur } from "./js/users.js";
+requireSuperviseur();
+</script>
+
+<script>
+// Sécurisation : accès uniquement si connecté
+if (!localStorage.getItem("nom")) {
+    alert("Veuillez vous connecter");
+    window.location.href = "login.html";
+}
+</script>
+
+<div class="page-container">
+
+<h1 class="title">Signature numérique</h1>
+<p style="text-align:center; opacity:0.8;">Veuillez signer ci-dessous :</p>
+
+<div class="signature-container">
+    <canvas id="sig"></canvas>
+
+    <button class="btn" onclick="clearSig()">Effacer</button>
+    <button class="btn" onclick="saveSig()">Enregistrer la signature</button>
+    <button class="btn" onclick="location.href='accueil.html'">Retour à l’accueil</button>
+</div>
+
+</div>
+
+<script>
+const canvas = document.getElementById("sig");
+const ctx = canvas.getContext("2d");
+
+let drawing = false;
+
+// Ajuste la taille réelle du canvas
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+}
+resizeCanvas();
+
+// Position relative
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (e.clientX || e.touches[0].clientX) - rect.left,
+        y: (e.clientY || e.touches[0].clientY) - rect.top
+    };
+}
+
+// Souris
+canvas.addEventListener("mousedown", e => {
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+});
+canvas.addEventListener("mousemove", e => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+});
+canvas.addEventListener("mouseup", () => drawing = false);
+canvas.addEventListener("mouseleave", () => drawing = false);
+
+// Touch (Android / iPhone)
+canvas.addEventListener("touchstart", e => {
+    e.preventDefault();
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+});
+canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+});
+canvas.addEventListener("touchend", () => drawing = false);
+
+// Effacer
+function clearSig() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// Enregistrer
+function saveSig() {
+    const data = canvas.toDataURL("image/png");
+    const nom = localStorage.getItem("nom") || "inconnu";
+
+    localStorage.setItem("signature_" + nom, data);
+
+    alert("Signature enregistrée !");
+}
+</script>
+
+<script src="js/security.js"></script>
+<script src="global.js"></script>
+
+</body>
+</html>

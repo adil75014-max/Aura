@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Gestion des rondes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    body {
+        background: #0d0f14;
+        color: #fff;
+        font-family: system-ui;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        text-align: center;
+        color: #4da3ff;
+        margin-bottom: 30px;
+    }
+
+    .section {
+        background: rgba(255,255,255,0.08);
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    label {
+        display: block;
+        margin-top: 12px;
+        font-weight: 600;
+    }
+
+    input, textarea, select {
+        width: 100%;
+        padding: 12px;
+        margin-top: 6px;
+        border-radius: 10px;
+        border: none;
+        background: rgba(255,255,255,0.12);
+        color: white;
+    }
+
+    button {
+        margin-top: 15px;
+        padding: 12px;
+        background: #4da3ff;
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+    }
+
+    button:hover {
+        background: #1d7be6;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    th, td {
+        padding: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+
+    th {
+        background: rgba(255,255,255,0.12);
+        color: #4da3ff;
+    }
+
+    tr:hover {
+        background: rgba(255,255,255,0.08);
+    }
+
+    .drag {
+        cursor: grab;
+    }
+</style>
+
+</head>
+<body>
+<script type="module">
+import { requireSuperviseur } from "./js/users.js";
+
+requireSuperviseur();
+</script>
+<h1>Gestion des rondes (Superviseur)</h1>
+
+<!-- GESTION DES ZONES -->
+<div class="section">
+    <h2>Gestion des zones de passage</h2>
+
+    <label>Ajouter une zone</label>
+    <input type="text" id="zoneInput" placeholder="Ex : Escalier A, Local TGBT, Parking -1...">
+    <button onclick="ajouterZone()">Ajouter la zone</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Zone</th>
+                <th>Supprimer</th>
+            </tr>
+        </thead>
+        <tbody id="zonesTable"></tbody>
+    </table>
+</div>
+
+<!-- CRÉATION DE RONDE -->
+<div class="section">
+    <h2>Créer une nouvelle ronde</h2>
+
+    <label>Nom de la ronde</label>
+    <input type="text" id="nomRonde" placeholder="Ex : Ronde ouverture matin">
+
+    <label>Description</label>
+    <textarea id="descRonde" placeholder="Description de la ronde..."></textarea>
+
+    <button onclick="creerRonde()">Créer la ronde</button>
+</div>
+
+<!-- POINTS DE PASSAGE -->
+<div class="section" id="sectionPoints" style="display:none;">
+    <h2>Points de passage</h2>
+
+    <label>Zone du point</label>
+    <select id="zoneSelect"></select>
+
+    <label>ID Balise BLE (UUID ou ID)</label>
+    <input type="text" id="beaconId" placeholder="Ex : BEACON-TGBT-002">
+
+    <button onclick="ajouterPoint()">Ajouter ce point</button>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Ordre</th>
+                <th>Zone</th>
+                <th>Balise BLE</th>
+                <th>Supprimer</th>
+            </tr>
+        </thead>
+        <tbody id="tablePoints"></tbody>
+    </table>
+
+    <button onclick="sauvegarderRonde()">Sauvegarder la ronde</button>
+</div>
+
+<script>
+// ----------------------------
+// GESTION DES ZONES
+// ----------------------------
+
+let zones = JSON.parse(localStorage.getItem("zones") || "[]");
+
+function afficherZones() {
+    const tbody = document.getElementById("zonesTable");
+    tbody.innerHTML = "";
+
+    zones.forEach((z, i) => {
+        tbody.innerHTML += `
+            <tr>
+                <td contenteditable="true" oninput="modifierZone(${i}, this.innerText)">
+                    ${z}
+                </td>
+                <td><button onclick="supprimerZone(${i})">X</button></td>
+            </tr>
+        `;
+    });
+
+    remplirZonesSelect();
+}
+
+function ajouterZone() {
+    const zone = document.getElementById("zoneInput").value.trim();
+    if (!zone) {
+        alert("Veuillez entrer un nom de zone.");
+        return;
+    }
+
+    zones.push(zone);
+    localStorage.setItem("zones", JSON.stringify(zones));
+    document.getElementById("zoneInput").value = "";
+    afficherZones();
+}
+
+function modifierZone(i, nom) {
+    zones[i] = nom.trim();
+    localStorage.setItem("zones", JSON.stringify(zones));
+}
+
+function supprimerZone(i) {
+    zones.splice(i, 1);
+    localStorage.setItem("zones", JSON.stringify(zones));
+    afficherZones();
+}
+
+function remplirZonesSelect() {
+    const select = document.getElementById("zoneSelect");
+    select.innerHTML = "";
+
+    zones.forEach(z => {
+        const opt = document.createElement("option");
+        opt.value = z;
+        opt.textContent = z;
+        select.appendChild(opt);
+    });
+}
+
+afficherZones();
+
+// ----------------------------
+// GESTION DES RONDES
+// ----------------------------
+
+let ronde = {
+    nom: "",
+    description: "",
+    points: []
+};
+
+function creerRonde() {
+    const nom = document.getElementById("nomRonde").value.trim();
+    const desc = document.getElementById("descRonde").value.trim();
+
+    if (!nom) {
+        alert("Veuillez entrer un nom de ronde.");
+        return;
+    }
+
+    ronde.nom = nom;
+    ronde.description = desc;
+    ronde.points = [];
+
+    document.getElementById("sectionPoints").style.display = "block";
+    alert("Ronde créée. Vous pouvez ajouter des points.");
+}
+
+function ajouterPoint() {
+    const zone = document.getElementById("zoneSelect").value;
+    const beacon = document.getElementById("beaconId").value.trim();
+
+    if (!zone) {
+        alert("Veuillez choisir une zone.");
+        return;
+    }
+
+    if (!beacon) {
+        alert("Veuillez entrer l'ID de la balise BLE.");
+        return;
+    }
+
+    ronde.points.push({
+        nom: zone,
+        beaconId: beacon
+    });
+
+    afficherPoints();
+}
+
+function afficherPoints() {
+    const tbody = document.getElementById("tablePoints");
+    tbody.innerHTML = "";
+
+    ronde.points.forEach((p, i) => {
+        tbody.innerHTML += `
+            <tr class="drag" draggable="true" ondragstart="dragStart(event, ${i})" ondragover="dragOver(event, ${i})">
+                <td>${i + 1}</td>
+                <td>${p.nom}</td>
+                <td>${p.beaconId}</td>
+                <td><button onclick="supprimerPoint(${i})">X</button></td>
+            </tr>
+        `;
+    });
+}
+
+function supprimerPoint(i) {
+    ronde.points.splice(i, 1);
+    afficherPoints();
+}
+
+// Drag & drop
+let draggedIndex = null;
+
+function dragStart(e, i) {
+    draggedIndex = i;
+}
+
+function dragOver(e, i) {
+    e.preventDefault();
+    if (i !== draggedIndex) {
+        const temp = ronde.points[draggedIndex];
+        ronde.points[draggedIndex] = ronde.points[i];
+        ronde.points[i] = temp;
+        draggedIndex = i;
+        afficherPoints();
+    }
+}
+
+function sauvegarderRonde() {
+    let rondes = JSON.parse(localStorage.getItem("rondes") || "[]");
+    rondes.push(ronde);
+    localStorage.setItem("rondes", JSON.stringify(rondes));
+
+    alert("Ronde sauvegardée !");
+}
+</script>
+</script src="js/security.js"></script>
+</body>
+</html>

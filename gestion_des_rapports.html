@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Form Builder - LBM Sécurité</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            background: radial-gradient(circle at top left, #2b3350, #111522 50%, #05060a);
+            color: #fff;
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #6fb3ff;
+            font-size: 1.7rem;
+            font-weight: 600;
+        }
+
+        .menu-return {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 25px;
+        }
+
+        .menu-return button {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 8px 16px;
+            border-radius: 10px;
+            color: #6fb3ff;
+            font-size: 0.9rem;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: 0.25s;
+        }
+
+        .menu-return button:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        .builder-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        @media (min-width: 900px) {
+            .builder-layout {
+                display: grid;
+                grid-template-columns: 280px 1fr;
+                align-items: flex-start;
+            }
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(14px);
+            padding: 18px;
+            border-radius: 14px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .panel h2 {
+            color: #6fb3ff;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+
+        .panel small {
+            opacity: 0.8;
+            font-size: 0.8rem;
+        }
+
+        .field-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 8px 10px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.8rem;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: 0.25s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4da3ff, #7b5cff);
+            border-color: rgba(255,255,255,0.25);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #3a8be0, #6a4ae0);
+        }
+
+        .btn-danger {
+            border-color: rgba(255,80,80,0.4);
+            color: #ff8080;
+        }
+
+        .btn-danger:hover {
+            background: rgba(255,80,80,0.2);
+        }
+
+        .builder-canvas {
+            min-height: 200px;
+            border-radius: 14px;
+            border: 1px dashed rgba(255,255,255,0.25);
+            padding: 12px;
+            background: radial-gradient(circle at top left, rgba(255,255,255,0.06), rgba(0,0,0,0.2));
+        }
+
+        .builder-empty {
+            text-align: center;
+            opacity: 0.7;
+            font-size: 0.85rem;
+            padding: 30px 10px;
+        }
+
+        .field-block {
+            background: rgba(0,0,0,0.35);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: grab;
+        }
+
+        .field-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .field-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .field-type {
+            font-size: 0.7rem;
+            opacity: 0.7;
+        }
+
+        .field-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .field-body {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .field-body input[type="text"],
+        .field-body textarea {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-size: 0.8rem;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .builder-footer {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .report-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .report-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(14px);
+            padding: 10px;
+            border-radius: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .report-card h3 {
+            margin: 0 0 4px 0;
+            color: #6fb3ff;
+            font-size: 0.95rem;
+        }
+
+        .report-actions {
+            margin-top: 6px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .meta-row {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .meta-row label {
+            font-size: 0.8rem;
+            opacity: 0.85;
+        }
+
+        .meta-row input {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-size: 0.8rem;
+        }
+
+        #replaceMenu {
+            margin-top: 25px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Form Builder Premium</h1>
+
+<div class="menu-return">
+    <button onclick="window.location.href='index.html'">⟵ Menu</button>
+</div>
+
+<div class="builder-layout">
+
+    <!-- PALETTE -->
+    <div class="panel">
+        <h2>Champs disponibles</h2>
+        <small>Ajoute des champs</small>
+
+        <div class="meta-row">
+            <label>Titre du modèle</label>
+            <input type="text" id="modelTitle" placeholder="Ex : Intervention magasin / ADS blessé">
+        </div>
+
+        <div class="meta-row">
+            <label>Site par défaut</label>
+            <input type="text" id="modelSite" placeholder="Ex : Le Bon Marché / La Grande Épicerie">
+        </div>
+
+        <div class="field-toolbar">
+            <button class="btn" onclick="addField('text')">✏️ Texte court</button>
+            <button class="btn" onclick="addField('textarea')">📝 Texte long</button>
+            <button class="btn" onclick="addField('number')"># Numérique</button>
+            <button class="btn" onclick="addField('date')">📅 Date</button>
+            <button class="btn" onclick="addField('time')">⏰ Heure</button>
+            <button class="btn" onclick="addField('select')">🔽 Liste</button>
+            <button class="btn" onclick="addField('checkbox')">☑️ Cases</button>
+            <button class="btn" onclick="addField('radio')">🔘 Radios</button>
+            <button class="btn" onclick="addField('photo')">📷 Photo</button>
+
+            <button class="btn" onclick="addField('title')">🏷 Titre</button>
+            <button class="btn" onclick="addField('subtitle')">🪪 Sous-titre</button>
+            <button class="btn" onclick="addField('section')">📂 Section</button>
+            <button class="btn" onclick="addField('separator')">➖ Séparateur</button>
+            <button class="btn" onclick="addField('info')">ℹ️ Info</button>
+
+            <button class="btn" onclick="addField('location')">📍 Localisation</button>
+            <button class="btn" onclick="addField('qrcode')">📡 QR Code</button>
+            <button class="btn" onclick="addField('equipier')">👤 Équipier</button>
+            <button class="btn" onclick="addField('siteSelector')">🏢 Sélecteur de site</button>
+        </div>
+
+        <h2 style="margin-top:18px;">Actions</h2>
+
+        <div class="builder-footer">
+            <button class="btn btn-danger" onclick="clearBuilder()">🧹 Vider</button>
+            <button class="btn btn-primary" onclick="saveModel()">💾 Enregistrer modèle</button>
+            <button class="btn" onclick="useAsIntervention()">📄 Utiliser comme intervention</button>
+            <button class="btn" onclick="openReplaceMenu()">🔄 Remplacer intervention</button>
+        </div>
+    </div>
+
+    <!-- CANVAS -->
+    <div class="panel">
+        <h2>Structure du rapport</h2>
+        <small>Glisse les blocs pour les réorganiser.</small>
+        <div id="builderCanvas" class="builder-canvas">
+            <div id="builderEmpty" class="builder-empty">
+                Aucun champ pour l’instant.<br>
+                Ajoute des champs à gauche.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LISTE DES MODÈLES -->
+<div class="panel" style="margin-top:25px;">
+    <h2>Modèles enregistrés</h2>
+    <div id="modelList" class="report-list"></div>
+</div>
+
+<!-- LISTE DES INTERVENTIONS POUR REMPLACEMENT -->
+<div id="replaceMenu" class="panel" style="display:none;">
+    <h2>Remplacer une intervention existante</h2>
+    <small>Choisis une intervention à remplacer par ce modèle.</small>
+    <div id="interventionList" class="report-list"></div>
+</div>
+
+<script>
+let fields = [];
+let dragSrcEl = null;
+let touchDragging = false;
+let touchClone = null;
+let touchStartY = 0;
+let currentIndex = null;
+
+/* ---------- Helpers ---------- */
+function uid() {
+    return 'f_' + Math.random().toString(36).substring(2, 9);
+}
+
+/* ---------- Ajout de champs ---------- */
+function addField(type) {
+    const id = uid();
+    const base = {
+        id,
+        type,
+        label: '',
+        placeholder: '',
+        options: '',
+        info: '',
+    };
+
+    switch (type) {
+        case 'text': base.label = 'Texte'; break;
+        case 'textarea': base.label = 'Description'; break;
+        case 'number': base.label = 'Valeur numérique'; break;
+        case 'date': base.label = 'Date'; break;
+        case 'time': base.label = 'Heure'; break;
+        case 'select': base.label = 'Liste déroulante'; base.options = 'Option 1; Option 2'; break;
+        case 'checkbox': base.label = 'Cases à cocher'; base.options = 'Option A; Option B'; break;
+        case 'radio': base.label = 'Boutons radio'; base.options = 'Option 1; Option 2'; break;
+        case 'photo': base.label = 'Photo'; break;
+        case 'title': base.label = 'Titre de section'; break;
+        case 'subtitle': base.label = 'Sous-titre'; break;
+        case 'section': base.label = 'Section'; break;
+        case 'separator': base.label = 'Séparateur'; break;
+        case 'info': base.label = 'Bloc info'; base.info = 'Information'; break;
+        case 'location': base.label = 'Localisation'; break;
+        case 'qrcode': base.label = 'QR Code'; break;
+        case 'equipier': base.label = 'Équipier'; break;
+        case 'siteSelector': base.label = 'Sélecteur de site'; break;
+    }
+
+    fields.push(base);
+    renderFields();
+}
+
+/* ---------- Render ---------- */
+function renderFields() {
+    const canvas = document.getElementById("builderCanvas");
+    const empty = document.getElementById("builderEmpty");
+
+    canvas.innerHTML = "";
+
+    if (fields.length === 0) {
+        empty.style.display = "block";
+        return;
+    }
+
+    empty.style.display = "none";
+
+    fields.forEach((f, index) => {
+        const block = document.createElement("div");
+        block.className = "field-block";
+        block.setAttribute("draggable", "true");
+        block.dataset.id = f.id;
+        block.dataset.index = index;
+
+        block.innerHTML = `
+            <div class="field-header">
+                <div class="field-title">
+                    <span class="drag-handle">☰</span>
+                    <span>${f.label || '(Sans titre)'}</span>
+                    <span class="field-type">· ${f.type}</span>
+                </div>
+                <div class="field-actions">
+                    <button class="btn" onclick="moveFieldUp('${f.id}')">↑</button>
+                    <button class="btn" onclick="moveFieldDown('${f.id}')">↓</button>
+                    <button class="btn btn-danger" onclick="deleteField('${f.id}')">🗑</button>
+                </div>
+            </div>
+
+            <div class="field-body">
+                <input type="text" placeholder="Label" value="${f.label}"
+                    oninput="updateField('${f.id}','label',this.value)">
+                ${renderFieldOptionsEditor(f)}
+            </div>
+        `;
+
+        /* PC drag */
+        block.addEventListener("dragstart", dragStart);
+        block.addEventListener("dragover", dragOver);
+        block.addEventListener("drop", dragDrop);
+        block.addEventListener("dragend", dragEnd);
+
+        /* Mobile drag */
+        block.addEventListener("touchstart", touchStart, { passive: false });
+        block.addEventListener("touchmove", touchMove, { passive: false });
+        block.addEventListener("touchend", touchEnd);
+
+        canvas.appendChild(block);
+    });
+}
+
+function renderFieldOptionsEditor(f) {
+    if (['select','checkbox','radio'].includes(f.type)) {
+        return `
+            <textarea placeholder="Options séparées par ;"
+                oninput="updateField('${f.id}','options',this.value)">${f.options}</textarea>
+        `;
+    }
+
+    if (['title','subtitle','section','separator','info','photo','location','qrcode','equipier','siteSelector'].includes(f.type)) {
+        return `
+            <textarea placeholder="Info (facultatif)"
+                oninput="updateField('${f.id}','info',this.value)">${f.info}</textarea>
+        `;
+    }
+
+    return `
+        <input type="text" placeholder="Placeholder" value="${f.placeholder}"
+            oninput="updateField('${f.id}','placeholder',this.value)">
+    `;
+}
+
+/* ---------- PC Drag & Drop ---------- */
+function dragStart(e) {
+    dragSrcEl = this;
+    this.classList.add("dragging");
+}
+
+function dragOver(e) {
+    e.preventDefault();
+    const canvas = document.getElementById("builderCanvas");
+    const blocks = [...canvas.children];
+    const target = e.target.closest(".field-block");
+    if (!target || target === dragSrcEl) return;
+
+    const srcIndex = blocks.indexOf(dragSrcEl);
+    const targetIndex = blocks.indexOf(target);
+
+    if (srcIndex < targetIndex) {
+        canvas.insertBefore(dragSrcEl, target.nextSibling);
+    } else {
+        canvas.insertBefore(dragSrcEl, target);
+    }
+}
+
+function dragDrop() {
+    reorderFields();
+}
+
+function dragEnd() {
+    this.classList.remove("dragging");
+}
+
+/* ---------- Mobile Drag (tactile) ---------- */
+function touchStart(e) {
+    e.preventDefault();
+    touchDragging = true;
+
+    const block = e.target.closest(".field-block");
+    currentIndex = [...block.parentNode.children].indexOf(block);
+
+    touchClone = block.cloneNode(true);
+    touchClone.style.position = "fixed";
+    touchClone.style.left = "0";
+    touchClone.style.right = "0";
+    touchClone.style.zIndex = "9999";
+    touchClone.style.opacity = "0.85";
+    touchClone.style.transform = "scale(1.03)";
+    touchClone.style.pointerEvents = "none";
+
+    document.body.appendChild(touchClone);
+
+    touchStartY = e.touches[0].clientY;
+    touchClone.style.top = touchStartY + "px";
+}
+
+function touchMove(e) {
+    if (!touchDragging) return;
+
+    const y = e.touches[0].clientY;
+    touchClone.style.top = y + "px";
+
+    const canvas = document.getElementById("builderCanvas");
+    const blocks = [...canvas.children];
+
+    blocks.forEach((b, i) => {
+        const rect = b.getBoundingClientRect();
+        if (y > rect.top && y < rect.bottom) {
+            if (i !== currentIndex) {
+                canvas.insertBefore(blocks[currentIndex], i > currentIndex ? b.nextSibling : b);
+                currentIndex = i;
+            }
+        }
+    });
+}
+
+function touchEnd() {
+    if (!touchDragging) return;
+    touchDragging = false;
+
+    if (touchClone) touchClone.remove();
+    touchClone = null;
+
+    reorderFields();
+}
+
+/* ---------- Reorder ---------- */
+function reorderFields() {
+    const canvas = document.getElementById("builderCanvas");
+    const blocks = [...canvas.children];
+    const newOrder = [];
+
+    blocks.forEach(b => {
+        const id = b.dataset.id;
+        const f = fields.find(x => x.id === id);
+        if (f) newOrder.push(f);
+    });
+
+    fields = newOrder;
+}
+
+/* ---------- Boutons ↑ ↓ ---------- */
+function moveFieldUp(id) {
+    const index = fields.findIndex(f => f.id === id);
+    if (index > 0) {
+        [fields[index - 1], fields[index]] = [fields[index], fields[index - 1]];
+        renderFields();
+    }
+}
+
+function moveFieldDown(id) {
+    const index = fields.findIndex(f => f.id === id);
+    if (index < fields.length - 1) {
+        [fields[index + 1], fields[index]] = [fields[index], fields[index + 1]];
+        renderFields();
+    }
+}
+
+/* ---------- Update / Delete ---------- */
+function updateField(id, key, value) {
+    const f = fields.find(x => x.id === id);
+    if (!f) return;
+    f[key] = value;
+}
+
+function deleteField(id) {
+    fields = fields.filter(f => f.id !== id);
+    renderFields();
+}
+
+function clearBuilder() {
+    if (!confirm("Vider tous les champs ?")) return;
+    fields = [];
+    renderFields();
+}
+
+/* ---------- Modèles ---------- */
+/* (inchangé, ton système fonctionne parfaitement) */
+
+function saveModel() {
+    if (fields.length === 0) return alert("Ajoute des champs avant d’enregistrer.");
+
+    const title = document.getElementById("modelTitle").value.trim() || "Modèle sans titre";
+    const site = document.getElementById("modelSite").value.trim() || "—";
+
+    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+
+    const model = {
+        id: "FORM_" + Date.now(),
+        title,
+        site,
+        fields
+    };
+
+    models.push(model);
+    localStorage.setItem("customForms", JSON.stringify(models));
+
+    alert("Modèle enregistré.");
+    loadModels();
+}
+
+/* ---------- Liste des modèles ---------- */
+/* (inchangé) */
+
+function loadModels() {
+    const container = document.getElementById("modelList");
+    container.innerHTML = "";
+
+    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+
+    if (models.length === 0) {
+        container.innerHTML = "<p style='opacity:0.7;font-size:0.85rem;'>Aucun modèle enregistré.</p>";
+        return;
+    }
+
+    models.slice().reverse().forEach(m => {
+        const card = document.createElement("div");
+        card.className = "report-card";
+
+        card.innerHTML = `
+            <h3>${m.title}</h3>
+            <div style="font-size:0.8rem;opacity:0.9;">
+                <strong>ID :</strong> ${m.id}<br>
+                <strong>Site :</strong> ${m.site}<br>
+                <strong>Champs :</strong> ${m.fields.length}
+            </div>
+            <div class="report-actions">
+                <button class="btn" onclick="loadModelIntoBuilder('${m.id}')">🛠 Charger dans le builder</button>
+                <button class="btn btn-danger" onclick="deleteModel('${m.id}')">🗑 Supprimer</button>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+function loadModelIntoBuilder(id) {
+    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+    const m = models.find(x => x.id === id);
+    if (!m) return;
+
+    document.getElementById("modelTitle").value = m.title;
+    document.getElementById("modelSite").value = m.site;
+    fields = m.fields || [];
+    renderFields();
+}
+
+function deleteModel(id) {
+    if (!confirm("Supprimer ce modèle ?")) return;
+    let models = JSON.parse(localStorage.getItem("customForms") || "[]");
+    models = models.filter(m => m.id !== id);
+    localStorage.setItem("customForms", JSON.stringify(models));
+    loadModels();
+}
+
+/* ---------- Utiliser comme intervention ---------- */
+/* (inchangé) */
+
+function useAsIntervention() {
+    if (fields.length === 0) return alert("Ajoute des champs avant.");
+
+    const title = document.getElementById("modelTitle").value.trim() || "Intervention personnalisée";
+    const site = document.getElementById("modelSite").value.trim() || "—";
+
+    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+
+    const model = {
+        id: "FORM_" + Date.now(),
+        title,
+        site,
+        fields
+    };
+
+    models.push(model);
+    localStorage.setItem("customForms", JSON.stringify(models));
+
+    alert("Modèle enregistré comme intervention.\nIl sera visible dans la page interventions.");
+    loadModels();
+}
+
+/* ---------- Remplacer une intervention existante ---------- */
+/* (inchangé) */
+
+function openReplaceMenu() {
+    const menu = document.getElementById("replaceMenu");
+    menu.style.display = "block";
+    loadInterventionsForReplace();
+}
+
+function loadInterventionsForReplace() {
+    const container = document.getElementById("interventionList");
+    container.innerHTML = "";
+
+    const rapports = JSON.parse(localStorage.getItem("rapports") || "[]");
+
+    if (rapports.length === 0) {
+        container.innerHTML = "<p style='opacity:0.7;font-size:0.85rem;'>Aucune intervention existante.</p>";
+        return;
+    }
+
+    rapports.slice().reverse().forEach(r => {
+        const card = document.createElement("div");
+        card.className = "report-card";
+
+        card.innerHTML = `
+            <h3>${r.title || r.type || 'Intervention'}</h3>
+            <div style="font-size:0.8rem;opacity:0.9;">
+                <strong>ID :</strong> ${r.id || '—'}<br>
+                <strong>Date :</strong> ${r.date || '—'}<br>
+                <strong>Agent :</strong> ${r.agent || '—'}
+            </div>
+            <div class="report-actions">
+                <button class="btn" onclick="replaceIntervention('${r.id}')">🔄 Remplacer par ce modèle</button>
+            </div>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+function replaceIntervention(id) {
+    if (!id) return alert("Intervention sans ID, remplacement impossible.");
+
+    if (fields.length === 0) return alert("Ajoute des champs avant de remplacer.");
+
+    let rapports = JSON.parse(localStorage.getItem("rapports") || "[]");
+    const index = rapports.findIndex(r => r.id === id);
+    if (index === -1) return alert("Intervention introuvable.");
+
+    const title = document.getElementById("modelTitle").value.trim() || "Intervention personnalisée";
+    const site = document.getElementById("modelSite").value.trim() || "—";
+
+    const newRapport = {
+        id,
+        title,
+        site,
+        date: new Date().toLocaleDateString(),
+        timeStart: new Date().toLocaleTimeString(),
+        fields
+    };
+
+    rapports[index] = newRapport;
+    localStorage.setItem("rapports", JSON.stringify(rapports));
+
+    alert("Intervention remplacée par ce modèle.");
+}
+
+/* ---------- Init ---------- */
+loadModels();
+renderFields();
+</script>
+</body>
+</html>

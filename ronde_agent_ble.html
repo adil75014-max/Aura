@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Ronde agent – Détection BLE automatique</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    body {
+        background: #0d0f14;
+        color: #fff;
+        font-family: system-ui;
+        margin: 0;
+        padding: 20px;
+    }
+
+    h1 {
+        text-align: center;
+        color: #4da3ff;
+        margin-bottom: 10px;
+    }
+
+    h2 {
+        margin-top: 0;
+        color: #ffffff;
+    }
+
+    .section {
+        background: rgba(255,255,255,0.08);
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .info {
+        font-size: 0.9rem;
+        color: #b0b0b0;
+        margin-bottom: 10px;
+    }
+
+    .progress-container {
+        background: rgba(255,255,255,0.12);
+        border-radius: 10px;
+        overflow: hidden;
+        height: 18px;
+        margin-top: 10px;
+    }
+
+    .progress-bar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #4da3ff, #00d4ff);
+        transition: width 0.3s ease;
+    }
+
+    .points-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .point-item {
+        padding: 12px;
+        border-radius: 10px;
+        margin-bottom: 8px;
+        background: rgba(255,255,255,0.06);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .point-item.current {
+        border: 1px solid #4da3ff;
+        box-shadow: 0 0 10px rgba(77,163,255,0.4);
+    }
+
+    .point-item.done {
+        background: rgba(0,180,80,0.18);
+        border: 1px solid rgba(0,200,100,0.6);
+    }
+
+    .point-title {
+        font-weight: 600;
+    }
+
+    .point-status {
+        font-size: 0.85rem;
+        color: #b0b0b0;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        margin-right: 6px;
+    }
+
+    .badge-current {
+        background: #4da3ff;
+        color: #fff;
+    }
+
+    .badge-done {
+        background: #00b86b;
+        color: #fff;
+    }
+
+    .badge-pending {
+        background: #555;
+        color: #fff;
+    }
+
+    button {
+        margin-top: 10px;
+        padding: 12px;
+        background: #4da3ff;
+        border: none;
+        border-radius: 10px;
+        color: white;
+        font-weight: 600;
+        cursor: pointer;
+        width: 100%;
+        font-size: 1rem;
+    }
+
+    button:hover {
+        background: #1d7be6;
+    }
+
+    .log {
+        font-size: 0.8rem;
+        max-height: 140px;
+        overflow-y: auto;
+        background: rgba(0,0,0,0.35);
+        padding: 10px;
+        border-radius: 8px;
+        margin-top: 10px;
+    }
+
+    .log-line {
+        margin-bottom: 4px;
+        color: #c0c0c0;
+    }
+
+    .log-line strong {
+        color: #4da3ff;
+    }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+<script type="module">
+import { requireLogin } from "./js/users.js";
+requireLogin();
+</script>
+
+<h1>Ronde en cours – Agent</h1>
+
+<div class="section" id="rondeInfo">
+    <h2 id="rondeNom">Ronde</h2>
+    <div class="info" id="rondeDesc">Description de la ronde…</div>
+
+    <div>
+        <span>Progression :</span>
+        <div class="progress-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="info">
+            <span id="progressText">0 / 0 points validés</span>
+        </div>
+    </div>
+
+    <button id="btnStartScan" onclick="demarrerScan()">Démarrer la ronde (scan BLE)</button>
+</div>
+
+<div class="section">
+    <h2>Points de passage</h2>
+    <ul class="points-list" id="pointsList"></ul>
+</div>
+
+<div class="section">
+    <h2>Journal</h2>
+    <div class="log" id="log"></div>
+</div>
+
+<div class="section">
+    <h2>Ajouter un commentaire / photos / vidéos</h2>
+
+    <textarea id="commentaire" placeholder="Commentaire..." style="width:100%;height:80px;border-radius:10px;padding:10px;"></textarea>
+
+    <label style="margin-top:10px;display:block;">📸 Photos (multiples)</label>
+    <input type="file" id="photos" accept="image/*" capture="camera" multiple style="margin-bottom:10px;">
+
+    <label style="margin-top:10px;display:block;">🎥 Vidéos (multiples)</label>
+    <input type="file" id="videos" accept="video/*" capture="camcorder" multiple>
+
+    <button onclick="ajouterMedia()">Ajouter au journal</button>
+</div>
+<div class="section">
+    <button onclick="ouvrirRapportFinal()">Voir le rapport final</button>
+</div>
+
+<div id="rapportModal" style="
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);
+    display:none;justify-content:center;align-items:center;
+    padding:20px;z-index:9999;">
+    
+    <div style="background:#1a1d25;border-radius:12px;padding:20px;
+                width:100%;max-width:600px;max-height:90%;overflow-y:auto;">
+        
+        <h2 style="color:#4da3ff;">Rapport final de la ronde</h2>
+        <div id="rapportContent"></div>
+
+        <button onclick="exportPDF()" style="margin-top:15px;">Exporter en PDF</button>
+        <button onclick="fermerRapport()" style="margin-top:10px;background:#555;">Fermer</button>
+    </div>
+</div>
+
+<script>
+// ---------------------------
+// UTILITAIRE BASE64
+// ---------------------------
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// ---------------------------
+// CONFIG
+// ---------------------------
+
+// Seuil RSSI pour valider (≈ –75 dBm → 5–8 m)
+const RSSI_THRESHOLD = -75;
+
+// ---------------------------
+// DONNÉES RONDE
+// ---------------------------
+
+let rondeCourante = null;
+let indexPointCourant = 0;
+let scanActif = false;
+let bleScan = null;
+
+// Exemple de fallback si aucune ronde n'est trouvée
+const rondeExemple = {
+    nom: "Ronde exemple – Bâtiment A",
+    description: "Ronde de démonstration avec 3 points BLE.",
+    points: [
+        { nom: "Entrée principale", beaconId: "BEACON-ENTREE-001", valide: false, horodatage: null },
+        { nom: "Local TGBT",        beaconId: "BEACON-TGBT-002",   valide: false, horodatage: null },
+        { nom: "Parking -1 Nord",   beaconId: "BEACON-PARK-003",   valide: false, horodatage: null }
+    ]
+};
+
+// Chargement de la dernière ronde depuis localStorage
+function chargerRonde() {
+    const rondes = JSON.parse(localStorage.getItem("rondes") || "[]");
+    if (rondes.length === 0) {
+        rondeCourante = rondeExemple;
+        log("Aucune ronde trouvée dans le stockage. Utilisation d'une ronde d'exemple.");
+    } else {
+        rondeCourante = rondes[rondes.length - 1]; // dernière ronde créée
+        // On s'assure que les points ont les champs nécessaires
+        rondeCourante.points = rondeCourante.points.map(p => ({
+            nom: p.nom || "Point",
+            beaconId: p.beaconId || "",
+            valide: p.valide || false,
+            horodatage: p.horodatage || null,
+            media: p.media || []
+        }));
+        log("Ronde chargée depuis le stockage local.");
+    }
+
+    document.getElementById("rondeNom").innerText  = rondeCourante.nom || "Ronde";
+    document.getElementById("rondeDesc").innerText = rondeCourante.description || "";
+
+    indexPointCourant = trouverPremierPointNonValide();
+    afficherPoints();
+    majProgression();
+}
+
+function trouverPremierPointNonValide() {
+    for (let i = 0; i < rondeCourante.points.length; i++) {
+        if (!rondeCourante.points[i].valide) return i;
+    }
+    return rondeCourante.points.length; // tous validés
+}
+
+// ---------------------------
+// AFFICHAGE
+// ---------------------------
+
+function afficherPoints() {
+    const ul = document.getElementById("pointsList");
+    ul.innerHTML = "";
+
+    rondeCourante.points.forEach((p, i) => {
+        const li = document.createElement("li");
+        li.className = "point-item";
+
+        if (p.valide) {
+            li.classList.add("done");
+        } else if (i === indexPointCourant) {
+            li.classList.add("current");
+        }
+
+        const titre = document.createElement("div");
+        titre.className = "point-title";
+
+        const badge = document.createElement("span");
+        badge.className = "badge";
+
+        if (p.valide) {
+            badge.classList.add("badge-done");
+            badge.textContent = "Validé";
+        } else if (i === indexPointCourant) {
+            badge.classList.add("badge-current");
+            badge.textContent = "En cours";
+        } else {
+            badge.classList.add("badge-pending");
+            badge.textContent = "À venir";
+        }
+
+        titre.appendChild(badge);
+        titre.appendChild(document.createTextNode(" " + p.nom));
+
+        const status = document.createElement("div");
+        status.className = "point-status";
+
+        if (p.valide && p.horodatage) {
+            status.textContent = "Validé le " + p.horodatage;
+        } else if (!p.valide && p.beaconId) {
+            status.textContent = "Balise : " + p.beaconId;
+        } else if (!p.valide && !p.beaconId) {
+            status.textContent = "Aucune balise associée (configuration superviseur requise)";
+        }
+
+        li.appendChild(titre);
+        li.appendChild(status);
+        ul.appendChild(li);
+    });
+}
+
+function majProgression() {
+    const total = rondeCourante.points.length;
+    const valides = rondeCourante.points.filter(p => p.valide).length;
+
+    const pourcentage = total === 0 ? 0 : Math.round((valides / total) * 100);
+    document.getElementById("progressBar").style.width = pourcentage + "%";
+    document.getElementById("progressText").innerText = `${valides} / ${total} points validés`;
+}
+
+// ---------------------------
+// LOG
+// ---------------------------
+
+function log(msg) {
+    const logDiv = document.getElementById("log");
+    const line = document.createElement("div");
+    line.className = "log-line";
+    const now = new Date().toLocaleTimeString();
+    line.innerHTML = `<strong>[${now}]</strong> ${msg}`;
+    logDiv.prepend(line);
+}
+
+// ---------------------------
+// AJOUT COMMENTAIRES / PHOTOS / VIDÉOS
+// ---------------------------
+
+async function ajouterMedia() {
+    const commentaire = document.getElementById("commentaire").value.trim();
+    const photoFiles = document.getElementById("photos").files;
+    const videoFiles = document.getElementById("videos").files;
+
+    let photosBase64 = [];
+    let videosBase64 = [];
+
+    for (let file of photoFiles) {
+        photosBase64.push(await toBase64(file));
+    }
+
+    for (let file of videoFiles) {
+        videosBase64.push(await toBase64(file));
+    }
+
+    if (commentaire) log(`<strong>Commentaire :</strong> ${commentaire}`);
+
+    photosBase64.forEach(p => {
+        log(`<strong>Photo :</strong><br><img src="${p}" style="width:100%;border-radius:10px;margin-top:5px;">`);
+    });
+
+    videosBase64.forEach(v => {
+        log(`<strong>Vidéo :</strong><br><video controls style="width:100%;border-radius:10px;margin-top:5px;"><source src="${v}"></video>`);
+    });
+
+    const point = rondeCourante.points[indexPointCourant] || rondeCourante.points[rondeCourante.points.length - 1];
+    if (!point.media) point.media = [];
+
+    point.media.push({
+        commentaire,
+        photos: photosBase64,
+        videos: videosBase64,
+        date: new Date().toLocaleString()
+    });
+
+    sauvegarderRonde();
+
+    document.getElementById("commentaire").value = "";
+    document.getElementById("photos").value = "";
+    document.getElementById("videos").value = "";
+}
+
+// ---------------------------
+// SCAN BLE
+// ---------------------------
+
+async function demarrerScan() {
+    if (!navigator.bluetooth || !navigator.bluetooth.requestLEScan) {
+        alert("Le scan BLE n'est pas supporté sur ce navigateur / appareil.");
+        return;
+    }
+
+    if (!rondeCourante || !rondeCourante.points || rondeCourante.points.length === 0) {
+        alert("Aucune ronde chargée.");
+        return;
+    }
+
+    if (scanActif) {
+        arreterScan();
+        return;
+    }
+
+    try {
+        log("Demande d'autorisation pour le scan BLE…");
+
+        bleScan = await navigator.bluetooth.requestLEScan({
+            acceptAllAdvertisements: true
+        });
+
+        scanActif = true;
+        document.getElementById("btnStartScan").innerText = "Arrêter le scan BLE";
+        log("Scan BLE démarré. Approchez-vous des balises de la ronde.");
+
+        navigator.bluetooth.addEventListener("advertisementreceived", onAdvertisement);
+
+    } catch (e) {
+        log("Erreur lors du démarrage du scan BLE : " + e);
+    }
+}
+
+function arreterScan() {
+    if (bleScan && bleScan.active) {
+        bleScan.stop();
+    }
+    scanActif = false;
+    document.getElementById("btnStartScan").innerText = "Démarrer la ronde (scan BLE)";
+    log("Scan BLE arrêté.");
+}
+
+function onAdvertisement(event) {
+    if (!scanActif) return;
+
+    const rssi = event.rssi;
+    const deviceName = event.device && event.device.name ? event.device.name : "Inconnu";
+    const id = event.device && event.device.id ? event.device.id : "";
+
+    log(`Signal reçu : ${deviceName} (id: ${id}, RSSI: ${rssi} dBm)`);
+
+    if (rssi < RSSI_THRESHOLD) {
+        return;
+    }
+
+    const point = rondeCourante.points[indexPointCourant];
+    if (!point || !point.beaconId) return;
+
+    if (id.includes(point.beaconId) || deviceName.includes(point.beaconId)) {
+        validerPointCourant(rssi);
+    }
+}
+
+// ---------------------------
+// VALIDATION DES POINTS
+// ---------------------------
+
+function validerPointCourant(rssi) {
+    if (indexPointCourant >= rondeCourante.points.length) return;
+
+    const point = rondeCourante.points[indexPointCourant];
+    if (point.valide) return;
+
+    const now = new Date();
+    point.valide = true;
+    point.horodatage = now.toLocaleString();
+
+    log(`Point validé automatiquement : "${point.nom}" (RSSI: ${rssi} dBm)`);
+
+    sauvegarderRonde();
+
+    indexPointCourant = trouverPremierPointNonValide();
+    afficherPoints();
+    majProgression();
+
+    if (indexPointCourant >= rondeCourante.points.length) {
+        log("Ronde terminée. Tous les points ont été validés.");
+        arreterScan();
+        alert("Ronde terminée. Tous les points ont été validés.");
+    }
+}
+
+function sauvegarderRonde() {
+    let rondes = JSON.parse(localStorage.getItem("rondes") || "[]");
+    if (rondes.length === 0) {
+        rondes = [rondeCourante];
+    } else {
+        rondes[rondes.length - 1] = rondeCourante;
+    }
+    localStorage.setItem("rondes", JSON.stringify(rondes));
+}
+
+// ---------------------------
+// RAPPORT FINAL + PDF
+// ---------------------------
+
+function ouvrirRapportFinal() {
+    let html = "";
+
+    html += `<p><strong>Nom de la ronde :</strong> ${rondeCourante.nom}</p>`;
+    html += `<p><strong>Description :</strong> ${rondeCourante.description}</p>`;
+    html += `<hr>`;
+
+    rondeCourante.points.forEach((p, i) => {
+        html += `<h3 style="color:#4da3ff;">${i+1}. ${p.nom}</h3>`;
+        html += `<p><strong>Statut :</strong> ${p.valide ? "Validé" : "Non validé"}</p>`;
+        if (p.horodatage) html += `<p><strong>Horodatage :</strong> ${p.horodatage}</p>`;
+
+        if (p.media && p.media.length > 0) {
+            html += `<div style="margin-left:10px;">`;
+
+            p.media.forEach(m => {
+                if (m.commentaire) {
+                    html += `<p><strong>Commentaire :</strong> ${m.commentaire}</p>`;
+                }
+
+                m.photos.forEach(photo => {
+                    html += `<img src="${photo}" style="width:100%;border-radius:10px;margin:10px 0;">`;
+                });
+
+                m.videos.forEach(video => {
+                    html += `
+                        <video controls style="width:100%;border-radius:10px;margin:10px 0;">
+                            <source src="${video}">
+                        </video>
+                    `;
+                });
+            });
+
+            html += `</div>`;
+        }
+
+        html += `<hr>`;
+    });
+
+    document.getElementById("rapportContent").innerHTML = html;
+    document.getElementById("rapportModal").style.display = "flex";
+}
+
+function fermerRapport() {
+    document.getElementById("rapportModal").style.display = "none";
+}
+
+async function exportPDF() {
+    const { jsPDF } = window.jspdf;
+
+    const pdf = new jsPDF("p", "mm", "a4");
+    const rapport = document.getElementById("rapportContent");
+
+    const canvas = await html2canvas(rapport, { scale: 2 });
+    const imgData = canvas.toDataURL("image/png");
+
+    const imgWidth = 190;
+    const pageHeight = 295;
+    const imgHeight = canvas.height * imgWidth / canvas.width;
+
+    let heightLeft = imgHeight;
+    let position = 10;
+
+    pdf.addImage(imgData, "PNG", 10, position, imgWidth, imgHeight);
+    heightLeft -= pageHeight;
+
+    while (heightLeft > 0) {
+        pdf.addPage();
+        position = 10;
+        pdf.addImage(imgData, "PNG", 10, position - heightLeft, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+    }
+
+    pdf.save(`Ronde_${Date.now()}.pdf`);
+}
+
+// ---------------------------
+// INIT
+// ---------------------------
+
+chargerRonde();
+</script>
+
+<script src="js/security.js"></script>
+</body>
+</html>

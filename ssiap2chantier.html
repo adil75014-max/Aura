@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Sociétés & Permis Feu – Suivi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    background: #111522;
+    color: white;
+    font-family: system-ui, sans-serif;
+    padding: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #6fb3ff;
+}
+
+.menu-return {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+
+.menu-return button {
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 8px 16px;
+    border-radius: 10px;
+    color: #6fb3ff;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+    transition: 0.25s;
+}
+
+.menu-return button:hover {
+    background: rgba(255,255,255,0.18);
+}
+
+.card {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 20px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    backdrop-filter: blur(10px);
+}
+
+label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 6px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: none;
+}
+
+button {
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: #6fb3ff;
+    color: black;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
+
+td, th {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
+
+th {
+    cursor: pointer;
+    color: #6fb3ff;
+}
+
+.actions-bar {
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:15px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>🏗️ Sociétés & Permis Feu</h1>
+
+<div class="menu-return">
+    <button onclick="goMenu()">⟵ Menu</button>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:flex; gap:15px; margin-bottom:25px; flex-wrap:wrap;">
+    <div class="card" style="flex:1; min-width:180px; text-align:center;">
+        <h3>Interventions actives</h3>
+        <p id="dashActifs" style="font-size:1.6rem; color:#4ade80;">0</p>
+    </div>
+
+    <div class="card" style="flex:1; min-width:180px; text-align:center;">
+        <h3>Permis feu requis</h3>
+        <p id="dashFeuRequis" style="font-size:1.6rem; color:#fbbf24;">0</p>
+    </div>
+
+    <div class="card" style="flex:1; min-width:180px; text-align:center;">
+        <h3>Ouvriers présents</h3>
+        <p id="dashOuvriers" style="font-size:1.6rem; color:#6fb3ff;">0</p>
+    </div>
+</div>
+
+<!-- ALERTES -->
+<div id="alertes" class="card" style="display:none; border-left:4px solid #ef4444;">
+    <h3 style="color:#ef4444;">⚠️ Alertes critiques</h3>
+    <ul id="alertList"></ul>
+</div>
+
+<!-- FORMULAIRE -->
+<div class="card">
+    <h2>Déclarer une intervention</h2>
+
+    <label>PDF Permis Feu (si existant) :</label>
+    <input type="file" id="pdfInput" accept="application/pdf">
+
+    <label>Société :</label>
+    <input type="text" id="inputSociete">
+
+    <label>Zone :</label>
+    <input type="text" id="inputZone">
+
+    <label>Date de fin d’intervention :</label>
+    <input type="date" id="inputDate">
+
+    <label>Heure d’arrivée :</label>
+    <input type="time" id="inputArrivee">
+
+    <label>Permis feu requis :</label>
+    <select id="inputFeuRequis">
+        <option value="Non">Non</option>
+        <option value="Oui">Oui</option>
+    </select>
+
+    <label>Permis feu signé :</label>
+    <select id="inputFeuSigne">
+        <option value="Non">Non</option>
+        <option value="Oui">Oui</option>
+    </select>
+
+    <label>Nombre d’ouvriers :</label>
+    <input type="number" id="inputOuvriers" min="0" value="0">
+
+    <label>Observations :</label>
+    <input type="text" id="inputObs">
+
+    <button onclick="ajouterIntervention()" style="width:100%;">Enregistrer</button>
+</div>
+
+<!-- TABLEAU -->
+<div class="card">
+    <h2>Interventions en cours</h2>
+
+    <div class="actions-bar">
+        <select id="filtreSociete">
+            <option value="">Toutes les sociétés</option>
+        </select>
+
+        <select id="filtreZone">
+            <option value="">Toutes les zones</option>
+        </select>
+
+        <select id="filtreFeu">
+            <option value="">Permis feu ?</option>
+            <option value="Oui">Oui</option>
+            <option value="Non">Non</option>
+        </select>
+
+        <button onclick="exportExcel()">Exporter Excel</button>
+    </div>
+
+    <input type="text" id="searchInput" placeholder="🔍 Recherche..." style="margin-bottom:15px; width:100%;">
+
+    <table id="tableInterv">
+        <tr>
+            <th onclick="trier('societe')">Société ⬍</th>
+            <th onclick="trier('zone')">Zone ⬍</th>
+            <th onclick="trier('dateFin')">Fin prévue ⬍</th>
+            <th>Arrivée</th>
+            <th>Départ</th>
+            <th>Permis requis</th>
+            <th>Permis signé</th>
+            <th>Ouvriers</th>
+            <th>Observations</th>
+            <th>Permis</th>
+            <th>Modifier</th>
+        </tr>
+    </table>
+</div>
+
+<!-- MODALE EDITION -->
+<div id="modalEdit" style="
+    display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
+    justify-content:center; align-items:center;
+">
+    <div style="
+        background:rgba(255,255,255,0.12); padding:20px; border-radius:12px;
+        width:90%; max-width:400px; border:1px solid rgba(255,255,255,0.2);
+    ">
+        <h3 style="color:#6fb3ff;">Modifier l’intervention</h3>
+
+        <label>Heure d’arrivée :</label>
+        <input type="time" id="editArrivee">
+
+        <label>Permis feu requis :</label>
+        <select id="editFeuRequis">
+            <option value="Non">Non</option>
+            <option value="Oui">Oui</option>
+        </select>
+
+        <label>Permis feu signé :</label>
+        <select id="editFeuSigne">
+            <option value="Non">Non</option>
+            <option value="Oui">Oui</option>
+        </select>
+
+        <label>Nombre d’ouvriers :</label>
+        <input type="number" id="editOuvriers" min="0">
+
+        <label>Observations :</label>
+        <input type="text" id="editObs">
+
+        <button onclick="saveEdit()" style="width:100%;">Enregistrer</button>
+        <button onclick="closeModal()" style="background:#444; color:white; margin-top:10px; width:100%;">Annuler</button>
+    </div>
+</div>
+
+<script>
+let interventions = JSON.parse(localStorage.getItem("interventionsFeu") || "[]");
+let triActuel = { colonne: null, ordre: 1 };
+let editIndex = null;
+
+/* TEMPS RÉEL LOCAL */
+function refreshAll() {
+    afficherInterventions();
+    remplirFiltres();
+    updateDashboard();
+    updateAlertes();
+}
+
+/* AFFICHAGE */
+function afficherInterventions() {
+    const table = document.getElementById("tableInterv");
+
+    table.innerHTML = `
+        <tr>
+            <th onclick="trier('societe')">Société ⬍</th>
+            <th onclick="trier('zone')">Zone ⬍</th>
+            <th onclick="trier('dateFin')">Fin prévue ⬍</th>
+            <th>Arrivée</th>
+            <th>Départ</th>
+            <th>Permis requis</th>
+            <th>Permis signé</th>
+            <th>Ouvriers</th>
+            <th>Observations</th>
+            <th>Permis</th>
+            <th>Modifier</th>
+        </tr>
+    `;
+
+    const now = new Date();
+    const fSoc = document.getElementById("filtreSociete").value;
+    const fZone = document.getElementById("filtreZone").value;
+    const fFeu = document.getElementById("filtreFeu").value;
+    const search = document.getElementById("searchInput").value.toLowerCase();
+
+    interventions.forEach((i, index) => {
+        const fin = new Date(i.dateFin);
+        if (fin < now) return;
+
+        if (fSoc && i.societe !== fSoc) return;
+        if (fZone && i.zone !== fZone) return;
+        if (fFeu && i.feuRequis !== fFeu) return;
+
+        if (
+            !i.societe.toLowerCase().includes(search) &&
+            !i.zone.toLowerCase().includes(search) &&
+            !(i.observations || "").toLowerCase().includes(search)
+        ) return;
+
+        let colorFeu = "#4ade80";
+        if (i.feuRequis === "Oui" && i.feuSigne === "Non") colorFeu = "#ef4444";
+        else if (i.feuRequis === "Oui") colorFeu = "#fbbf24";
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${i.societe}</td>
+            <td>${i.zone}</td>
+            <td>${i.dateFin}</td>
+            <td>${i.arrivee || "-"}</td>
+            <td>
+                ${i.depart 
+                    ? i.depart 
+                    : `<button onclick="declarerDepart(${index})" style="padding:6px 10px; border-radius:6px; background:#ef4444; color:white;">Sortie</button>`
+                }
+            </td>
+            <td>${i.feuRequis}</td>
+            <td style="color:${colorFeu}; font-weight:700;">${i.feuSigne}</td>
+            <td>${i.ouvriers}</td>
+            <td>${i.observations || "-"}</td>
+            <td>${i.url ? `<a href="${i.url}" target="_blank" style="color:#6fb3ff;">Ouvrir</a>` : "-"}</td>
+            <td><button onclick="editIntervention(${index})">✏️</button></td>
+        `;
+        table.appendChild(row);
+    });
+}
+
+/* BOUTON SORTIE */
+function declarerDepart(index) {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, "0");
+    const m = now.getMinutes().toString().padStart(2, "0");
+
+    interventions[index].depart = `${h}:${m}`;
+
+    localStorage.setItem("interventionsFeu", JSON.stringify(interventions));
+    refreshAll();
+}
+
+/* TRI */
+function trier(colonne) {
+    if (triActuel.colonne === colonne) triActuel.ordre *= -1;
+    else { triActuel.colonne = colonne; triActuel.ordre = 1; }
+
+    interventions.sort((a, b) => {
+        if (colonne === "dateFin")
+            return (new Date(a[colonne]) - new Date(b[colonne])) * triActuel.ordre;
+        return a[colonne].localeCompare(b[colonne]) * triActuel.ordre;
+    });
+
+    refreshAll();
+}
+
+/* FILTRES */
+function remplirFiltres() {
+    const fSoc = document.getElementById("filtreSociete");
+    const fZone = document.getElementById("filtreZone");
+
+    fSoc.innerHTML = `<option value="">Toutes les sociétés</option>`;
+    fZone.innerHTML = `<option value="">Toutes les zones</option>`;
+
+    [...new Set(interventions.map(i => i.societe))].forEach(s => {
+        fSoc.innerHTML += `<option value="${s}">${s}</option>`;
+    });
+
+    [...new Set(interventions.map(i => i.zone))].forEach(z => {
+        fZone.innerHTML += `<option value="${z}">${z}</option>`;
+    });
+}
+
+/* AJOUT */
+function ajouterIntervention() {
+    const fileInput = document.getElementById("pdfInput");
+    const societe = document.getElementById("inputSociete").value.trim();
+    const zone = document.getElementById("inputZone").value.trim();
+    const dateFin = document.getElementById("inputDate").value;
+    const arrivee = document.getElementById("inputArrivee").value;
+    const feuRequis = document.getElementById("inputFeuRequis").value;
+    const feuSigne = document.getElementById("inputFeuSigne").value;
+    const ouvriers = parseInt(document.getElementById("inputOuvriers").value || "0");
+    const observations = document.getElementById("inputObs").value.trim();
+
+    if (!societe || !zone || !dateFin || !arrivee) 
+        return alert("Société, zone, date et heure d’arrivée obligatoires.");
+
+    let url = "";
+    if (fileInput.files.length) url = URL.createObjectURL(fileInput.files[0]);
+
+    interventions.push({
+        societe, zone, dateFin, arrivee,
+        depart: null,
+        feuRequis, feuSigne, ouvriers, observations, url
+    });
+
+    localStorage.setItem("interventionsFeu", JSON.stringify(interventions));
+    refreshAll();
+}
+
+/* DASHBOARD */
+function updateDashboard() {
+    const now = new Date();
+    let actifs = 0, feuRequis = 0, ouvriersPresent = 0;
+
+    interventions.forEach(i => {
+        const fin = new Date(i.dateFin);
+        if (fin < now) return;
+
+        actifs++;
+        if (i.feuRequis === "Oui") feuRequis++;
+
+        if (i.arrivee) {
+            const start = new Date(`${i.dateFin}T${i.arrivee}`);
+            const end = i.depart 
+                ? new Date(`${i.dateFin}T${i.depart}`)
+                : null;
+
+            if (now >= start && (!end || now <= end)) {
+                ouvriersPresent += Number(i.ouvriers || 0);
+            }
+        }
+    });
+
+    document.getElementById("dashActifs").textContent = actifs;
+    document.getElementById("dashFeuRequis").textContent = feuRequis;
+    document.getElementById("dashOuvriers").textContent = ouvriersPresent;
+}
+
+/* ALERTES */
+function updateAlertes() {
+    const now = new Date();
+    const alertBox = document.getElementById("alertes");
+    const alertList = document.getElementById("alertList");
+
+    alertList.innerHTML = "";
+    let count = 0;
+
+    interventions.forEach(i => {
+        const diff = (new Date(i.dateFin) - now) / (1000 * 3600 * 24);
+
+        if ((i.feuRequis === "Oui" && i.feuSigne === "Non") ||
+            (diff <= 1 && diff >= 0 && i.ouvriers > 0)) {
+
+            alertList.innerHTML += `<li>${i.societe} – ${i.zone}</li>`;
+            count++;
+        }
+    });
+
+    alertBox.style.display = count > 0 ? "block" : "none";
+}
+/* EDITION */
+function editIntervention(index) {
+    editIndex = index;
+    const i = interventions[index];
+
+    document.getElementById("editArrivee").value = i.arrivee || "";
+    document.getElementById("editFeuRequis").value = i.feuRequis || "Non";
+    document.getElementById("editFeuSigne").value = i.feuSigne || "Non";
+    document.getElementById("editOuvriers").value = i.ouvriers || 0;
+    document.getElementById("editObs").value = i.observations || "";
+
+    document.getElementById("modalEdit").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("modalEdit").style.display = "none";
+}
+
+function saveEdit() {
+    if (editIndex === null) return;
+
+    const i = interventions[editIndex];
+
+    i.arrivee = document.getElementById("editArrivee").value;
+    i.feuRequis = document.getElementById("editFeuRequis").value;
+    i.feuSigne = document.getElementById("editFeuSigne").value;
+    i.ouvriers = parseInt(document.getElementById("editOuvriers").value || "0", 10);
+    i.observations = document.getElementById("editObs").value.trim();
+
+    localStorage.setItem("interventionsFeu", JSON.stringify(interventions));
+    closeModal();
+    refreshAll();
+}
+
+/* EXPORT */
+function exportExcel() {
+    if (!interventions.length) {
+        alert("Aucune intervention à exporter.");
+        return;
+    }
+
+    const headers = [
+        "Société",
+        "Zone",
+        "Date fin",
+        "Heure arrivée",
+        "Heure départ",
+        "Permis requis",
+        "Permis signé",
+        "Ouvriers",
+        "Observations",
+        "URL Permis"
+    ];
+
+    const rows = interventions.map(i => [
+        i.societe,
+        i.zone,
+        i.dateFin,
+        i.arrivee || "",
+        i.depart || "",
+        i.feuRequis || "Non",
+        i.feuSigne || "Non",
+        i.ouvriers || 0,
+        (i.observations || "").replace(/(\r\n|\n|\r)/gm, " "),
+        i.url || ""
+    ]);
+
+    let csvContent = "\uFEFF" + headers.join(";") + "\n";
+    rows.forEach(r => {
+        csvContent += r.map(v => `"${(v || "").toString().replace(/"/g, '""')}"`).join(";") + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "interventions_permis_feu.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/* INIT */
+function init() {
+    refreshAll();
+
+    document.getElementById("filtreSociete").addEventListener("change", refreshAll);
+    document.getElementById("filtreZone").addEventListener("change", refreshAll);
+    document.getElementById("filtreFeu").addEventListener("change", refreshAll);
+    document.getElementById("searchInput").addEventListener("input", refreshAll);
+}
+
+init();
+</script>
+
+<script>
+function goMenu() {
+    window.location.href = "index.html";
+}
+</script>
+
+<script src="js/security.js"></script>
+</body>
+</html>

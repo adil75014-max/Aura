@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Interventions Entreprises Extérieures — Liste journalière</title>
+
+<!-- 🎨 Design global -->
+<link rel="stylesheet" href="global.css">
+
+<!-- 🎯 FORÇAGE MODE SOMBRE UNIQUEMENT POUR CETTE PAGE -->
+<style>
+:root {
+    --bg: #0d0f14;
+    --text: #ffffff;
+    --card: rgba(255,255,255,0.06);
+    --bg2: rgba(255,255,255,0.10);
+    --bg3: rgba(255,255,255,0.14);
+    --border: rgba(255,255,255,0.18);
+    --accent: #4da3ff;
+    --shadow: 0 0 20px rgba(0,0,0,0.4);
+}
+
+.page-container {
+    width: 100%;
+    max-width: 900px;
+    margin: auto;
+}
+
+.compteur, .rapport {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 15px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    margin-bottom: 20px;
+}
+</style>
+</head>
+
+<body style="background:var(--bg); color:var(--text);">
+
+<!-- 🔐 LOGIN -->
+<script type="module">
+import { requireLogin } from "./js/users.js";
+requireLogin();
+</script>
+
+<div class="page-container">
+
+<h1 class="title">Interventions Entreprises Extérieures — Liste journalière</h1>
+
+<!-- 🔵 BOUTON MENU -->
+<div class="menu-return">
+    <button onclick="goMenu()">⟵ Menu</button>
+</div>
+
+<p style="opacity:0.8;">Date du jour : <span id="dateDuJour"></span></p>
+
+<!-- COMPTEURS -->
+<div class="compteur">
+    <h3 style="color:var(--accent); margin-top:0;">Compteurs du jour</h3>
+    <p>Total : <span id="countTotal">0</span></p>
+    <p>8h → 20h : <span id="countDay">0</span></p>
+    <p>20h → 8h : <span id="countNight">0</span></p>
+</div>
+
+<input type="text" id="search" placeholder="Rechercher (entreprise, agent, localisation)…">
+
+<h2 style="color:var(--accent);">🕗 8h → 20h</h2>
+<div id="dayShift"></div>
+
+<h2 style="color:var(--accent); margin-top:30px;">🌙 20h → 8h</h2>
+<div id="nightShift"></div>
+
+</div> <!-- page-container -->
+
+<script>
+/* MENU */
+function goMenu() {
+    location.href = "index.html";
+}
+
+/* DATE DU JOUR */
+const today = new Date().toLocaleDateString("fr-FR");
+document.getElementById("dateDuJour").textContent = today;
+
+/* CHARGER LES RAPPORTS */
+function chargerRapports() {
+    const rapports = JSON.parse(localStorage.getItem("rapports")) || [];
+
+    const journaliers = rapports.filter(r =>
+        r.date === today &&
+        r.type === "Intervention Entreprise Extérieure"
+    );
+
+    afficher(journaliers);
+    updateCounters(journaliers);
+}
+
+/* AFFICHAGE */
+function afficher(liste) {
+    const day = document.getElementById("dayShift");
+    const night = document.getElementById("nightShift");
+
+    day.innerHTML = "";
+    night.innerHTML = "";
+
+    if (liste.length === 0) {
+        day.innerHTML = "<p>Aucune intervention aujourd’hui.</p>";
+        return;
+    }
+
+    liste.forEach(r => {
+        const div = document.createElement("div");
+        div.className = "rapport";
+
+        div.innerHTML = `
+            <p><strong>Entreprise :</strong> ${r.entreprise}</p>
+            <p><strong>Agent :</strong> ${r.agent}</p>
+            <p><strong>Localisation :</strong> ${r.localisation}</p>
+            <p><strong>Heure début :</strong> ${r.heureDebut}</p>
+            <p><strong>Heure fin :</strong> ${r.heureFin || "—"}</p>
+            <p><strong>Contrôle EPI :</strong> ${r.epi}</p>
+        `;
+
+        const heure = r.heureDebut;
+        const h = heure ? parseInt(heure.split(":")[0]) : 12;
+
+        if (h >= 8 && h < 20) day.appendChild(div);
+        else night.appendChild(div);
+    });
+}
+
+/* COMPTEURS */
+function updateCounters(liste) {
+    let total = liste.length;
+    let day = 0;
+    let night = 0;
+
+    liste.forEach(r => {
+        const heure = r.heureDebut;
+        const h = heure ? parseInt(heure.split(":")[0]) : 12;
+
+        if (h >= 8 && h < 20) day++;
+        else night++;
+    });
+
+    document.getElementById("countTotal").textContent = total;
+    document.getElementById("countDay").textContent = day;
+    document.getElementById("countNight").textContent = night;
+}
+
+/* RECHERCHE */
+document.getElementById("search").addEventListener("input", function () {
+    const q = this.value.toLowerCase();
+    const rapports = JSON.parse(localStorage.getItem("rapports")) || [];
+
+    const journaliers = rapports.filter(r =>
+        r.date === today &&
+        r.type === "Intervention Entreprise Extérieure" &&
+        (
+            (r.entreprise && r.entreprise.toLowerCase().includes(q)) ||
+            (r.agent && r.agent.toLowerCase().includes(q)) ||
+            (r.localisation && r.localisation.toLowerCase().includes(q))
+        )
+    );
+
+    afficher(journaliers);
+    updateCounters(journaliers);
+});
+
+/* LANCEMENT */
+chargerRapports();
+</script>
+
+<script src="js/security.js"></script>
+
+</body>
+</html>

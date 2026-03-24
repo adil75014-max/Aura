@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Entrée & Sortie — Personnel / Société / Livraison</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- 🎨 Design global -->
+<link rel="stylesheet" href="global.css">
+
+<style>
+/* 🎨 Styles spécifiques à cette page */
+
+h1 {
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 1.8rem;
+    letter-spacing: 0.5px;
+}
+
+/* Bouton menu */
+.menu-return {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+
+.menu-return button {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 10px;
+    color: var(--accent);
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: 0.25s;
+}
+
+.menu-return button:hover {
+    background: var(--accent);
+    color: #000;
+}
+
+/* Cards */
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    padding: 20px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    box-shadow: var(--shadow);
+}
+
+.info {
+    margin-bottom: 8px;
+    font-size: 1rem;
+    opacity: 0.9;
+}
+
+h3 {
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: var(--accent);
+    font-size: 1.2rem;
+}
+
+/* Inputs */
+input, select {
+    width: 100%;
+    padding: 12px;
+    margin-top: 6px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    font-size: 1rem;
+    transition: 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    background: var(--bg3);
+}
+
+/* Options */
+select option {
+    background: var(--card);
+    color: var(--text);
+}
+
+/* Textarea */
+textarea {
+    width: 100%;
+    height: 150px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    color: var(--text);
+    resize: none;
+    margin-top: 10px;
+    transition: 0.2s;
+}
+
+/* Boutons */
+button {
+    margin-top: 15px;
+    padding: 14px;
+    background: linear-gradient(135deg, #7ab8ff, #4d9dff);
+    border: none;
+    border-radius: 10px;
+    color: #0a0f1c;
+    cursor: pointer;
+    width: 100%;
+    font-size: 1.1rem;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(122,184,255,0.4);
+    transition: 0.25s ease;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(122,184,255,0.6);
+}
+
+.btn-secondary {
+    background: var(--accent);
+    color: #000;
+    font-weight: 600;
+}
+
+.hidden { display: none; }
+</style>
+</head>
+
+<body>
+
+<!-- 🔐 LOGIN -->
+<script type="module">
+import { requireLogin } from "./js/users.js";
+requireLogin();
+</script>
+
+<h1>Entrée & Sortie — Personnel / Société / Livraison</h1>
+
+<!-- Bouton menu -->
+<div class="menu-return">
+    <button onclick="goMenu()">⟵ Menu</button>
+</div>
+
+<!-- Infos agent -->
+<div class="card">
+    <div class="info">👤 Agent : <span id="nom"></span></div>
+    <div class="info">🎖 Statut : <span id="statut"></span></div>
+    <div class="info">📅 Date : <span id="dateDuJour"></span></div>
+</div>
+
+<!-- Formulaire principal -->
+<div class="card">
+
+    <h3>Type d’entrée</h3>
+    <select id="typeEntree">
+        <option value="personnel">Personnel</option>
+        <option value="societe">Société</option>
+        <option value="livraison">Livraison</option>
+    </select>
+
+    <!-- Personnel / Société -->
+    <div id="blocSociete">
+        <h3>Nom de la société ou employé</h3>
+        <select id="societe">
+            <option value="Le Bon Marché">Le Bon Marché</option>
+            <option value="La Grande Épicerie Rive Gauche">La Grande Épicerie Rive Gauche</option>
+            <option value="Autre">Autre (à préciser)</option>
+        </select>
+
+        <input type="text" id="autreSociete" placeholder="Nom personnalisé" class="hidden">
+    </div>
+
+    <h3 id="labelNb">Nombre de personnes</h3>
+    <input type="number" id="nbPersonnes" min="1" placeholder="Ex : 3">
+
+    <!-- Livraison -->
+    <div id="blocLivraison" class="hidden">
+        <h3>Société de livraison</h3>
+        <select id="livraisonSociete">
+            <option value="Chronopost">Chronopost</option>
+            <option value="Colissimo">Colissimo</option>
+            <option value="DHL">DHL</option>
+            <option value="UPS">UPS</option>
+            <option value="FedEx">FedEx</option>
+            <option value="Autre">Autre (à préciser)</option>
+        </select>
+
+        <input type="text" id="livraisonAutre" placeholder="Nom personnalisé" class="hidden">
+
+        <h3>Nombre de colis / palettes</h3>
+        <input type="number" id="nbColis" min="1" placeholder="Ex : 12">
+    </div>
+
+    <!-- Heures -->
+    <h3>Heure d’entrée</h3>
+    <input type="time" id="heureEntree">
+
+    <h3>Heure de sortie</h3>
+    <input type="time" id="heureSortie">
+
+    <h3>Observations (optionnel)</h3>
+    <textarea id="observations" placeholder="Notes supplémentaires…"></textarea>
+
+    <button id="save">💾 Enregistrer</button>
+    <button class="btn-secondary" onclick="window.print()">📄 Exporter en PDF</button>
+    <button class="btn-secondary" onclick="location.href='rapportentreesortie_ouvert.html'">📂 Voir les rapports ouverts</button>
+
+</div><script>
+/* ============================
+   BOUTON MENU
+============================ */
+function goMenu() {
+    window.location.href = "index.html";
+}
+
+/* ============================
+   IDENTITÉ AGENT
+============================ */
+document.getElementById("nom").textContent = localStorage.getItem("nom");
+document.getElementById("statut").textContent = localStorage.getItem("statut");
+
+/* ============================
+   DATE AUTOMATIQUE
+============================ */
+document.getElementById("dateDuJour").textContent =
+    new Date().toLocaleDateString("fr-FR");
+
+/* ============================
+   AFFICHAGE DYNAMIQUE
+============================ */
+document.getElementById("typeEntree").addEventListener("change", function () {
+    const type = this.value;
+
+    const blocSociete = document.getElementById("blocSociete");
+    const blocLivraison = document.getElementById("blocLivraison");
+    const labelNb = document.getElementById("labelNb");
+
+    if (type === "personnel" || type === "societe") {
+        blocSociete.classList.remove("hidden");
+        blocLivraison.classList.add("hidden");
+        labelNb.textContent = "Nombre de personnes";
+    }
+
+    if (type === "livraison") {
+        blocSociete.classList.add("hidden");
+        blocLivraison.classList.remove("hidden");
+        labelNb.textContent = "Nombre de colis / palettes";
+    }
+});
+
+/* ============================
+   CHAMPS "AUTRE"
+============================ */
+document.getElementById("societe").addEventListener("change", function () {
+    document.getElementById("autreSociete").classList.toggle("hidden", this.value !== "Autre");
+});
+
+document.getElementById("livraisonSociete").addEventListener("change", function () {
+    document.getElementById("livraisonAutre").classList.toggle("hidden", this.value !== "Autre");
+});
+
+/* ============================
+   ENREGISTREMENT DU RAPPORT
+============================ */
+document.getElementById("save").addEventListener("click", () => {
+
+    const rapports = JSON.parse(localStorage.getItem("rapports")) || [];
+    const type = document.getElementById("typeEntree").value;
+
+    let data = {
+        id: Date.now(),
+        agent: localStorage.getItem("nom"),
+        statut: localStorage.getItem("statut"),
+        date: new Date().toLocaleDateString("fr-FR"),
+        heureEntree: document.getElementById("heureEntree").value,
+        heureSortie: document.getElementById("heureSortie").value || null,
+        observations: document.getElementById("observations").value,
+        cloture: document.getElementById("heureSortie").value ? true : false
+    };
+
+    /* --- PERSONNEL / SOCIÉTÉ --- */
+    if (type === "personnel" || type === "societe") {
+        let nomSociete = document.getElementById("societe").value;
+        if (nomSociete === "Autre") {
+            nomSociete = document.getElementById("autreSociete").value || "Non précisé";
+        }
+
+        data.type = "Entrée & Sortie du personnel / société";
+        data.societe = nomSociete;
+        data.nbPersonnes = document.getElementById("nbPersonnes").value;
+    }
+
+    /* --- LIVRAISON --- */
+    if (type === "livraison") {
+        let nomLivraison = document.getElementById("livraisonSociete").value;
+        if (nomLivraison === "Autre") {
+            nomLivraison = document.getElementById("livraisonAutre").value || "Non précisé";
+        }
+
+        data.type = "Entrée & Sortie Livraison";
+        data.societe = nomLivraison;
+        data.nbColis = document.getElementById("nbColis").value;
+    }
+
+    rapports.push(data);
+    localStorage.setItem("rapports", JSON.stringify(rapports));
+
+    alert("Rapport enregistré !");
+});
+</script><!-- ============================
+     BOUTON MENU
+============================ -->
+<script>
+function goMenu() {
+    window.location.href = "index.html";
+}
+</script>
+
+<!-- 🔐 Sécurité -->
+<script src="js/security.js"></script>
+
+<!-- 🎨 Thème global -->
+<script src="global.js"></script>
+
+</body>
+</html>

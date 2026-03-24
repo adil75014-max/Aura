@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Aura Sentinelle LBM – Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    body {
+        background: radial-gradient(circle at top left, #2b1b1b, #120b0b 50%, #050305);
+        color: white;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .login-box {
+        width: 90%;
+        max-width: 360px;
+        background: rgba(10, 5, 5, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        box-shadow: 0 3px 18px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(14px);
+        overflow: hidden;
+        padding-bottom: 12px;
+    }
+
+    .content {
+        padding: 0;
+        text-align: center;
+    }
+
+    .logo {
+        width: 65%;
+        max-width: 140px;
+        margin: 12px auto 6px auto;
+        display: block;
+        border-radius: 10px;
+        padding: 4px;
+        box-shadow: 0 0 14px rgba(255, 140, 0, 0.4);
+    }
+
+    .header-photo {
+        width: 100%;
+        height: 90px;
+        background: url('https://upload.wikimedia.org/wikipedia/commons/4/4c/Le_Bon_March%C3%A9_Paris.jpg');
+        background-size: cover;
+        background-position: center;
+        filter: brightness(0.8) saturate(1.1);
+    }
+
+    .app-name {
+        font-size: 0.75rem;
+        opacity: 0.9;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        color: #ffd27f;
+        margin-top: 8px;
+    }
+
+    .secure {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        margin-bottom: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    label {
+        display: block;
+        margin-top: 8px;
+        font-size: 0.8rem;
+        opacity: 0.9;
+        text-align: left;
+        width: 86%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    input {
+        width: 86%;
+        padding: 8px 10px;
+        margin-top: 4px;
+        border-radius: 7px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+        color: white;
+        font-size: 0.85rem;
+    }
+
+    button {
+        margin-top: 14px;
+        width: 86%;
+        padding: 10px;
+        background: linear-gradient(135deg, #ffb347, #ff7b47);
+        border: none;
+        border-radius: 8px;
+        color: #1b0f08;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 700;
+        box-shadow: 0 3px 12px rgba(255, 140, 0, 0.55);
+    }
+
+    .badge-hint {
+        margin-top: 10px;
+        font-size: 0.85rem;
+        opacity: 0.8;
+    }
+
+    .error {
+        margin-top: 10px;
+        color: #ff6b6b;
+        text-align: center;
+        font-size: 0.8rem;
+        display: none;
+    }
+
+    .footer {
+        margin-top: 10px;
+        font-size: 0.65rem;
+        opacity: 0.6;
+        padding-bottom: 8px;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="login-box">
+    <div class="content">
+
+        <img src="logo.png" class="logo">
+
+        <div class="header-photo"></div>
+
+        <div class="app-name">Aura Sentinelle – Main courante électronique</div>
+        <div class="secure">Authentification requise</div>
+
+        <label for="username">Nom d'utilisateur</label>
+        <input type="text" id="username" placeholder="Votre identifiant">
+
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" placeholder="Votre mot de passe">
+
+        <button id="loginBtn" onclick="login()">Se connecter</button>
+
+        <div class="badge-hint">Ou présentez votre badge NFC compatible Aura Sentinelle.</div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="footer">© <span id="year"></span> Aura Sentinelle LBM</div>
+    </div>
+</div>
+
+<script>
+document.getElementById("year").textContent = new Date().getFullYear();
+
+async function login() {
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const errorMsg = document.getElementById("errorMsg");
+
+    errorMsg.style.display = "none";
+
+    if (!username || !password) {
+        errorMsg.textContent = "Veuillez remplir tous les champs.";
+        errorMsg.style.display = "block";
+        return;
+    }
+
+    const form = new URLSearchParams();
+    form.append("username", username);
+    form.append("password", password);
+
+    try {
+        const res = await fetch("https://hwqlajdytnxavqigmzio.supabase.co/functions/v1/super-action", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: form.toString()
+        });
+
+        // 🔥 DEBUG : lire la réponse brute
+        const raw = await res.text();
+        console.log("RAW RESPONSE:", raw);
+
+        let data = null;
+        try {
+            data = JSON.parse(raw);
+        } catch (e) {
+            console.error("JSON PARSE ERROR:", e);
+        }
+
+        if (!res.ok || !data || !data.user) {
+            errorMsg.textContent = (data && data.error) || "Identifiants incorrects.";
+            errorMsg.style.display = "block";
+            return;
+        }
+
+        localStorage.setItem("nom", data.user.nom);
+        localStorage.setItem("role", data.user.role);
+
+        window.location.href = "index.html";
+
+    } catch (err) {
+        console.error("FETCH ERROR:", err);
+        errorMsg.textContent = "Erreur réseau.";
+        errorMsg.style.display = "block";
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Suivi des travaux - LBM Sécurité</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <style>
+        body {
+            background: radial-gradient(circle at top left, #2b3350, #111522 50%, #05060a);
+            color: #fff;
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #6fb3ff;
+            font-size: 1.7rem;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .menu-return button {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 8px 16px;
+            border-radius: 10px;
+            color: #6fb3ff;
+            cursor: pointer;
+            transition: 0.25s;
+        }
+
+        .menu-return button:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        .mode-tabs {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        .mode-tab {
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.25s;
+        }
+
+        .mode-tab.active {
+            background: #6fb3ff;
+            color: #000;
+            font-weight: 600;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.25s;
+        }
+
+        .tab.active {
+            background: #6fb3ff;
+            color: #000;
+            font-weight: 600;
+        }
+
+        .section {
+            display: none;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(14px);
+            padding: 18px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 10px;
+            color: #fff;
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
+
+        textarea {
+            min-height: 80px;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 8px 14px;
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.25s;
+            margin-top: 10px;
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            font-size: 0.9rem;
+        }
+
+        th {
+            color: #6fb3ff;
+            text-align: left;
+        }
+
+        pre {
+            background: rgba(255,255,255,0.06);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Suivi des travaux et stockage temporaire</h1>
+
+<div class="mode-tabs">
+    <div class="mode-tab active" onclick="selectMode('mode-travaux')">🛠 Suivi Travaux</div>
+    <div class="mode-tab" onclick="selectMode('mode-stockage')">📦 Zones de Stockage</div>
+    <div class="mode-tab" onclick="selectMode('mode-plans')">🗺 Plans</div>
+</div>
+
+<div class="section active" id="mode-travaux">
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('travaux')">🛠 Travaux</div>
+        <div class="tab" onclick="showTab('archives')">📦 Archives</div>
+        <div class="tab" onclick="showTab('stats')">📊 Statistiques</div>
+    </div>
+
+    <div class="section active" id="travaux">
+        <h2>Ajouter un travail</h2>
+
+        <input type="text" id="travailTitre" placeholder="Titre du travail">
+        <textarea id="travailDesc" placeholder="Description du travail"></textarea>
+
+        <select id="travailStatut">
+            <option value="en-cours">En cours</option>
+            <option value="attente">En attente</option>
+            <option value="termine">Terminé</option>
+        </select>
+
+        <button class="btn" onclick="ajouterTravail()">➕ Ajouter</button>
+
+        <h2 style="margin-top:25px;">Travaux en cours</h2>
+
+        <table id="tableTravaux">
+            <thead>
+                <tr>
+                    <th>Titre</th>
+                    <th>Description</th>
+                    <th>Statut</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="section" id="archives">
+        <h2>Archives</h2>
+
+        <table id="tableArchives">
+            <thead>
+                <tr>
+                    <th>Titre</th>
+                    <th>Description</th>
+                    <th>Date archivage</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="section" id="stats">
+        <h2>Statistiques</h2>
+
+        <p id="resume"></p>
+        <p id="statut"></p>
+
+        <h3>Travaux ajoutés par mois</h3>
+        <pre id="graph"></pre>
+    </div>
+</div>
+
+<div class="section" id="mode-stockage">
+    <h2>Zones de stockage</h2>
+
+    <input type="text" id="zoneDebut" placeholder="Date de début">
+    <input type="text" id="zoneFin" placeholder="Date de fin">
+    <input type="file" id="zonePlan" accept="image/*,application/pdf">
+    <input type="text" id="zoneNom" placeholder="Nom de la zone">
+    <textarea id="zoneDesc" placeholder="Description / remarques"></textarea>
+
+    <button class="btn" onclick="ajouterZone()">➕ Ajouter une zone</button>
+
+    <h2 style="margin-top:25px;">Liste des zones</h2>
+
+    <table id="tableZones">
+        <thead>
+            <tr>
+                <th>Zone</th>
+                <th>Description</th>
+                <th>Début</th>
+                <th>Fin</th>
+                <th>Plan</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+</div>
+
+<div class="section" id="mode-plans">
+    <h2>Plans du site</h2>
+
+    <input type="file" id="planFile" accept="image/*,application/pdf">
+    <button class="btn" onclick="ajouterPlan()">📤 Ajouter un plan</button>
+
+    <h2 style="margin-top:25px;">Plans enregistrés</h2>
+
+    <div id="listePlans"></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+/* ----------------------------------------------------------
+   🔵 CONNEXION SUPABASE
+---------------------------------------------------------- */
+const supabaseClient = supabase.createClient(
+    "https://xfhkvopenjhegfwptxag.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmaGt2b3BlbmpoZWdmd3B0eGFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MTIyMTIsImV4cCI6MjA4ODE4ODIxMn0.KekREteKN3qEkiJyNSxnYIAX6rABVJWrxlEiq8ISEdY"
+);
+
+/* ----------------------------------------------------------
+   🔵 MODE (TRAVAUX / STOCKAGE / PLANS)
+---------------------------------------------------------- */
+function selectMode(modeId) {
+    document.querySelectorAll(".mode-tab").forEach(t => t.classList.remove("active"));
+    document.querySelector(`.mode-tab[onclick="selectMode('${modeId}')"]`).classList.add("active");
+
+    document.querySelectorAll("body > .section").forEach(s => s.classList.remove("active"));
+    document.getElementById(modeId).classList.add("active");
+
+    if (modeId === "mode-stockage") chargerZones();
+    if (modeId === "mode-plans") chargerPlans();
+}
+
+/* ----------------------------------------------------------
+   🔵 ONGLET INTERNE TRAVAUX
+---------------------------------------------------------- */
+function showTab(id) {
+    document.querySelectorAll("#mode-travaux .tab").forEach(t => t.classList.remove("active"));
+    document.querySelector(`#mode-travaux .tab[onclick="showTab('${id}')"]`).classList.add("active");
+
+    document.querySelectorAll("#mode-travaux .section").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+
+    if (id === "archives") chargerArchives();
+    if (id === "stats") chargerStats();
+}
+
+/* ----------------------------------------------------------
+   🔵 TRAVAUX — AJOUT
+---------------------------------------------------------- */
+async function ajouterTravail() {
+    const titre = document.getElementById("travailTitre").value.trim();
+    const description = document.getElementById("travailDesc").value.trim();
+    const statut = document.getElementById("travailStatut").value;
+
+    if (!titre) return alert("Merci d’indiquer un titre.");
+
+    const { error } = await supabaseClient.from("travaux").insert({
+        titre,
+        description,
+        statut,
+        date: new Date().toISOString()
+    });
+
+    if (error) {
+        console.error(error);
+        return alert("Erreur Supabase lors de l'ajout.");
+    }
+
+    document.getElementById("travailTitre").value = "";
+    document.getElementById("travailDesc").value = "";
+
+    chargerTravaux();
+}
+
+/* ----------------------------------------------------------
+   🔵 TRAVAUX — CHARGEMENT
+---------------------------------------------------------- */
+async function chargerTravaux() {
+    const { data, error } = await supabaseClient
+        .from("travaux")
+        .select("*")
+        .order("date", { ascending: false });
+
+    if (error) return console.error(error);
+
+    const tbody = document.querySelector("#tableTravaux tbody");
+    tbody.innerHTML = "";
+
+    data.forEach(t => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${t.titre}</td>
+            <td>${t.description}</td>
+            <td>
+                <select onchange="changerStatut('${t.id}', this.value)">
+                    <option value="en-cours" ${t.statut === "en-cours" ? "selected" : ""}>En cours</option>
+                    <option value="attente" ${t.statut === "attente" ? "selected" : ""}>En attente</option>
+                    <option value="termine" ${t.statut === "termine" ? "selected" : ""}>Terminé</option>
+                </select>
+            </td>
+            <td>
+                <button class="btn" onclick="archiverTravail('${t.id}')">📦 Archiver</button>
+            </td>
+        `;
+
+        tbody.appendChild(row);
+    });
+}
+
+/* ----------------------------------------------------------
+   🔵 TRAVAUX — CHANGER STATUT
+---------------------------------------------------------- */
+async function changerStatut(id, statut) {
+    const { error } = await supabaseClient
+        .from("travaux")
+        .update({ statut })
+        .eq("id", id);
+
+    if (error) console.error(error);
+}
+
+/* ----------------------------------------------------------
+   🔵 TRAVAUX — ARCHIVER
+---------------------------------------------------------- */
+async function archiverTravail(id) {
+    const { data, error } = await supabaseClient
+        .from("travaux")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+    if (error) return console.error(error);
+
+    const { error: insertError } = await supabaseClient
+        .from("archivestravaux")
+        .insert({
+            titre: data.titre,
+            description: data.description,
+            statut: data.statut,
+            date: data.date,
+            date_archive: new Date().toISOString()
+        });
+
+    if (insertError) return console.error(insertError);
+
+    await supabaseClient.from("travaux").delete().eq("id", id);
+
+    chargerTravaux();
+}
+
+/* ----------------------------------------------------------
+   🔵 ARCHIVES — CHARGEMENT
+---------------------------------------------------------- */
+async function chargerArchives() {
+    const { data, error } = await supabaseClient
+        .from("archivestravaux")
+        .select("*")
+        .order("date_archive", { ascending: false });
+
+    if (error) return console.error(error);
+
+    const tbody = document.querySelector("#tableArchives tbody");
+    tbody.innerHTML = "";
+
+    data.forEach(a => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${a.titre}</td>
+            <td>${a.description}</td>
+            <td>${new Date(a.date_archive).toLocaleDateString("fr-FR")}</td>
+            <td>
+                <button class="btn" onclick="restaurer('${a.id}')">↩ Restaurer</button>
+                <button class="btn" onclick="supprimer('${a.id}')">🗑 Supprimer</button>
+            </td>
+        `;
+
+        tbody.appendChild(row);
+    });
+}
+
+/* ----------------------------------------------------------
+   🔵 ARCHIVES — RESTAURER
+---------------------------------------------------------- */
+async function restaurer(id) {
+    const { data, error } = await supabaseClient
+        .from("archivestravaux")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+    if (error) return console.error(error);
+
+    await supabaseClient.from("travaux").insert({
+        titre: data.titre,
+        description: data.description,
+        statut: data.statut,
+        date: data.date
+    });
+
+    await supabaseClient.from("archivestravaux").delete().eq("id", id);
+
+    chargerArchives();
+}
+
+/* ----------------------------------------------------------
+   🔵 ARCHIVES — SUPPRIMER
+---------------------------------------------------------- */
+async function supprimer(id) {
+    await supabaseClient.from("archivestravaux").delete().eq("id", id);
+    chargerArchives();
+}
+</script>
+<script>
+/* ----------------------------------------------------------
+   🟧 ZONES — AJOUT (upload fichier + base64)
+---------------------------------------------------------- */
+async function ajouterZone() {
+    const nom = zoneNom.value.trim();
+    const description = zoneDesc.value.trim();
+    const debut = zoneDebut.value;
+    const fin = zoneFin.value;
+    const file = zonePlan.files[0];
+
+    if (!nom) return alert("Merci d’indiquer un nom de zone.");
+    if (!file) return alert("Merci de sélectionner un fichier pour la zone.");
+
+    const reader = new FileReader();
+
+    reader.onload = async function(e) {
+        const base64 = e.target.result;
+
+        const { error } = await supabaseClient.from("zonesstockage").insert({
+            nom,
+            description,
+            debut,
+            fin,
+            plan: base64
+        });
+
+        if (error) {
+            console.error(error);
+            return alert("Erreur Supabase lors de l'ajout de la zone.");
+        }
+
+        zoneNom.value = "";
+        zoneDesc.value = "";
+        zoneDebut.value = "";
+        zoneFin.value = "";
+        zonePlan.value = "";
+
+        chargerZones();
+    };
+
+    reader.readAsDataURL(file);
+}
+
+/* ----------------------------------------------------------
+   🟧 ZONES — CHARGEMENT (miniature + agrandissement)
+---------------------------------------------------------- */
+async function chargerZones() {
+    const { data, error } = await supabaseClient
+        .from("zonesstockage")
+        .select("*")
+        .order("debut", { ascending: false });
+
+    if (error) return console.error(error);
+
+    const tbody = document.querySelector("#tableZones tbody");
+    tbody.innerHTML = "";
+
+    data.forEach(z => {
+        let affichagePlan = "-";
+
+        if (z.plan) {
+            if (z.plan.startsWith("data:image")) {
+                affichagePlan = `
+                    <img src="${z.plan}" style="width:80px;border-radius:6px;cursor:pointer"
+                         onclick="window.open('${z.plan}', '_blank')">
+                    <br>
+                    <button class="btn" onclick="window.open('${z.plan}', '_blank')">🖼 Agrandir</button>
+                `;
+            } else {
+                affichagePlan = `
+                    <button class="btn" onclick="window.open('${z.plan}', '_blank')">📄 Ouvrir PDF</button>
+                `;
+            }
+        }
+
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td>${z.nom}</td>
+            <td>${z.description}</td>
+            <td>${z.debut || "-"}</td>
+            <td>${z.fin || "-"}</td>
+            <td>${affichagePlan}</td>
+            <td><button class="btn" onclick="supprimerZone('${z.id}')">🗑</button></td>
+        `;
+
+        tbody.appendChild(row);
+    });
+}
+
+/* ----------------------------------------------------------
+   🟧 ZONES — SUPPRESSION
+---------------------------------------------------------- */
+async function supprimerZone(id) {
+    await supabaseClient.from("zonesstockage").delete().eq("id", id);
+    chargerZones();
+}
+
+/* ----------------------------------------------------------
+   🟪 PLANS — AJOUT (upload base64)
+---------------------------------------------------------- */
+async function ajouterPlan() {
+    const file = planFile.files[0];
+    if (!file) return alert("Merci de sélectionner un fichier.");
+
+    const reader = new FileReader();
+
+    reader.onload = async function(e) {
+        const base64 = e.target.result;
+
+        const { error } = await supabaseClient.from("site de plans").insert({
+            nom: file.name,
+            type: file.type,
+            data: base64,
+            date: new Date().toISOString()
+        });
+
+        if (error) {
+            console.error(error);
+            return alert("Erreur Supabase lors de l'ajout du plan.");
+        }
+
+        planFile.value = "";
+        chargerPlans();
+    };
+
+    reader.readAsDataURL(file);
+}
+
+/* ----------------------------------------------------------
+   🟪 PLANS — CHARGEMENT
+---------------------------------------------------------- */
+async function chargerPlans() {
+    const { data, error } = await supabaseClient
+        .from("site de plans")
+        .select("*")
+        .order("date", { ascending: false });
+
+    if (error) return console.error(error);
+
+    const container = document.getElementById("listePlans");
+    container.innerHTML = "";
+
+    data.forEach(p => {
+        const div = document.createElement("div");
+        div.style.marginBottom = "15px";
+
+        const isImage = p.type.startsWith("image/");
+
+        div.innerHTML = `
+            <p><b>${p.nom}</b></p>
+            ${isImage
+                ? `<img src="${p.data}" style="max-width:100%;border-radius:10px;">`
+                : `<button class="btn" onclick="window.open('${p.data}', '_blank')">📄 Ouvrir PDF</button>`
+            }
+            <br>
+            <button class="btn" onclick="supprimerPlan('${p.id}')">🗑 Supprimer</button>
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+/* ----------------------------------------------------------
+   🟪 PLANS — SUPPRESSION
+---------------------------------------------------------- */
+async function supprimerPlan(id) {
+    await supabaseClient.from("site de plans").delete().eq("id", id);
+    chargerPlans();
+}
+
+/* ----------------------------------------------------------
+   📊 STATISTIQUES — depuis Supabase
+---------------------------------------------------------- */
+async function chargerStats() {
+    const { data: travaux } = await supabaseClient.from("travaux").select("*");
+    const { data: archives } = await supabaseClient.from("archivestravaux").select("*");
+
+    document.getElementById("resume").innerHTML =
+        `Travaux actifs : <b>${travaux.length}</b><br>Archivés : <b>${archives.length}</b>`;
+
+    const enCours = travaux.filter(t => t.statut === "en-cours").length;
+    const attente = travaux.filter(t => t.statut === "attente").length;
+    const termine = travaux.filter(t => t.statut === "termine").length;
+
+    document.getElementById("statut").innerHTML = `
+        En cours : <b>${enCours}</b><br>
+        En attente : <b>${attente}</b><br>
+        Terminés : <b>${termine}</b>
+    `;
+
+    const mois = {};
+    travaux.forEach(t => {
+        const m = new Date(t.date).getMonth();
+        mois[m] = (mois[m] || 0) + 1;
+    });
+
+    let graph = "";
+    for (let i = 0; i < 12; i++) {
+        const bar = "█".repeat(mois[i] || 0);
+        graph += `${i+1} : ${bar}\n`;
+    }
+
+    document.getElementById("graph").textContent = graph;
+}
+
+/* ----------------------------------------------------------
+   🚀 INIT
+---------------------------------------------------------- */
+chargerTravaux();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Consultation des Anomalies</title>
+
+<!-- SheetJS pour export Excel multi-feuilles -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+<style>
+    body {
+        background:#0d0f14;
+        color:white;
+        font-family:system-ui, Arial;
+        padding:20px;
+        margin:0;
+    }
+
+    h1 {
+        text-align:center;
+        color:#4da3ff;
+        margin-bottom:25px;
+        font-size:1.8rem;
+        letter-spacing:0.5px;
+    }
+
+    h2 {
+        color:#7ab8ff;
+        margin-top:40px;
+        margin-bottom:10px;
+    }
+
+    .card {
+        background:rgba(255,255,255,0.06);
+        border:1px solid rgba(255,255,255,0.12);
+        padding:20px;
+        border-radius:14px;
+        margin-bottom:25px;
+        box-shadow:0 4px 12px rgba(0,0,0,0.25);
+    }
+
+    label {
+        display:block;
+        margin-bottom:6px;
+        color:#7ab8ff;
+        font-size:1.1rem;
+    }
+
+    input, select {
+        width:100%;
+        padding:12px;
+        border-radius:10px;
+        border:none;
+        background:rgba(255,255,255,0.12);
+        color:white;
+        margin-bottom:15px;
+        font-size:1rem;
+    }
+
+    table {
+        width:100%;
+        border-collapse:collapse;
+        margin-top:20px;
+        background:rgba(255,255,255,0.05);
+        border-radius:12px;
+        overflow:hidden;
+    }
+
+    th, td {
+        padding:14px;
+        border-bottom:1px solid rgba(255,255,255,0.12);
+        text-align:left;
+    }
+
+    th {
+        background:rgba(255,255,255,0.12);
+        color:#7ab8ff;
+    }
+
+    tr:hover {
+        background:rgba(255,255,255,0.08);
+    }
+
+    .categorie {
+        font-weight:700;
+        color:#4da3ff;
+    }
+
+    .gravite-1 { color:#4dff88; }
+    .gravite-2 { color:#aaff66; }
+    .gravite-3 { color:#ffe066; }
+    .gravite-4 { color:#ff944d; }
+    .gravite-5 { color:#ff4d4d; }
+
+    .btn {
+        padding:10px 16px;
+        background:linear-gradient(135deg, #7ab8ff, #4d9dff);
+        border:none;
+        border-radius:8px;
+        color:#0a0f1c;
+        cursor:pointer;
+        font-weight:700;
+        transition:0.25s;
+        margin-right:8px;
+        margin-top:5px;
+    }
+
+    .btn:hover {
+        transform:translateY(-2px);
+        box-shadow:0 6px 18px rgba(122,184,255,0.6);
+    }
+
+    .detail {
+        margin-top:30px;
+        display:none;
+    }
+
+    .photos img {
+        width:100%;
+        max-width:300px;
+        border-radius:10px;
+        margin:10px 0;
+        border:1px solid rgba(255,255,255,0.2);
+    }
+
+    .btn-row {
+        display:flex;
+        flex-wrap:wrap;
+        gap:8px;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Consultation des Anomalies</h1>
+
+<div class="card">
+
+    <label>Filtrer par :</label>
+    <select id="typeFiltre">
+        <option value="jour">Jour</option>
+        <option value="mois">Mois</option>
+        <option value="annee">Année</option>
+        <option value="periode">Période personnalisée</option>
+    </select>
+
+    <div id="filtreJour">
+        <label>Date</label>
+        <input type="date" id="filtreDate">
+    </div>
+
+    <div id="filtreMois" style="display:none;">
+        <label>Mois</label>
+        <input type="month" id="filtreMonth">
+    </div>
+
+    <div id="filtreAnnee" style="display:none;">
+        <label>Année</label>
+        <input type="number" id="filtreYear" min="2000" max="2100" placeholder="2026">
+    </div>
+
+    <div id="filtrePeriode" style="display:none;">
+        <label>Du</label>
+        <input type="date" id="dateDebut">
+        <label>Au</label>
+        <input type="date" id="dateFin">
+    </div>
+
+    <label>Catégorie IA</label>
+    <select id="filtreCategorie">
+        <option value="all">Toutes</option>
+        <option>Défaut SSI</option>
+        <option>Extincteur</option>
+        <option>RIA</option>
+        <option>SPK</option>
+        <option>Colonne sèche</option>
+        <option>BES</option>
+        <option>ECM</option>
+        <option>PCF</option>
+        <option>EAS</option>
+        <option>Plan évacuation</option>
+        <option>Escalator</option>
+        <option>Monte-charge / Ascenseur</option>
+        <option>Lecteur de badge</option>
+        <option>Lien technique</option>
+        <option>Lien menuiserie</option>
+        <option>Vacuité des dégagements</option>
+        <option>IS</option>
+        <option>Baie accessible</option>
+        <option>Ouvrant</option>
+        <option>Coffret de relayage</option>
+    </select>
+
+    <div class="btn-row">
+        <button class="btn" onclick="chargerAnomalies()">🔍 Rechercher</button>
+        <button class="btn" onclick="exporterMultiFeuilles()">📤 Export Excel multi‑feuilles</button>
+    </div>
+</div>
+
+<h2>Anomalies NON levées</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Lieu</th>
+            <th>Catégorie IA</th>
+            <th>Gravité</th>
+            <th>Voir</th>
+        </tr>
+    </thead>
+    <tbody id="tableNonLevees"></tbody>
+</table>
+
+<h2>Anomalies LEVÉES</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Lieu</th>
+            <th>Catégorie IA</th>
+            <th>Gravité</th>
+            <th>Date levée</th>
+            <th>Voir</th>
+        </tr>
+    </thead>
+    <tbody id="tableLevees"></tbody>
+</table>
+
+<div id="detailBloc" class="card detail">
+    <h2 style="color:#4da3ff;">Détail de l’anomalie</h2>
+    <div id="detailContent"></div>
+
+    <button class="btn" onclick="leverAnomalie()">✔ Lever l’anomalie</button>
+</div>
+
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+const supabase = createClient("SUPABASE_URL", "SUPABASE_KEY");
+let anomalieCourante = null;
+
+/* Gestion affichage filtres */
+document.getElementById("typeFiltre").addEventListener("change", () => {
+    const type = document.getElementById("typeFiltre").value;
+
+    document.getElementById("filtreJour").style.display    = type === "jour"    ? "block" : "none";
+    document.getElementById("filtreMois").style.display    = type === "mois"    ? "block" : "none";
+    document.getElementById("filtreAnnee").style.display   = type === "annee"   ? "block" : "none";
+    document.getElementById("filtrePeriode").style.display = type === "periode" ? "block" : "none";
+});
+
+/* Construction de la requête Supabase selon les filtres */
+function construireRequeteBase() {
+    const type = document.getElementById("typeFiltre").value;
+    const catFiltre = document.getElementById("filtreCategorie").value;
+
+    let query = supabase.from("rapports_bruts").select("*").order("date", { ascending:false });
+
+    if (type === "jour") {
+        const d = document.getElementById("filtreDate").value;
+        if (d) query = query.eq("date", d);
+    }
+
+    if (type === "mois") {
+        const m = document.getElementById("filtreMonth").value;
+        if (m) query = query.like("date", m + "%");
+    }
+
+    if (type === "annee") {
+        const y = document.getElementById("filtreYear").value;
+        if (y) query = query.like("date", y + "%");
+    }
+
+    if (type === "periode") {
+        const d1 = document.getElementById("dateDebut").value;
+        const d2 = document.getElementById("dateFin").value;
+        if (d1 && d2) query = query.gte("date", d1).lte("date", d2);
+    }
+
+    if (catFiltre !== "all") query = query.eq("ai_result->>categorie", catFiltre);
+
+    return query;
+}
+
+/* Chargement anomalies */
+async function chargerAnomalies() {
+    const { data, error } = await construireRequeteBase();
+
+    if (error) {
+        alert("Erreur Supabase : " + error.message);
+        return;
+    }
+
+    afficherAnomalies(data || []);
+}
+
+/* Affichage tableau */
+function afficherAnomalies(anomalies) {
+    const nonLevees = document.getElementById("tableNonLevees");
+    const levees = document.getElementById("tableLevees");
+
+    nonLevees.innerHTML = "";
+    levees.innerHTML = "";
+
+    anomalies.forEach(a => {
+        const cat = a.ai_result?.categorie || "Non classé";
+        const grav = a.ai_result?.gravite || 1;
+
+        const tr = document.createElement("tr");
+
+        const html = `
+            <td>${a.date}</td>
+            <td>${a.lieu}</td>
+            <td class="categorie">${cat}</td>
+            <td class="gravite-${grav}">${grav}</td>
+            ${a.date_levee ? `<td>${a.date_levee}</td>` : ""}
+            <td><button class="btn" onclick="ouvrirDetail('${a.id}')">Ouvrir</button></td>
+        `;
+
+        tr.innerHTML = html;
+
+        if (a.date_levee) {
+            levees.appendChild(tr);
+        } else {
+            nonLevees.appendChild(tr);
+        }
+    });
+}
+
+/* Détail */
+window.ouvrirDetail = async function(id) {
+    const { data, error } = await supabase.from("rapports_bruts").select("*").eq("id", id).single();
+
+    if (error) {
+        alert("Erreur Supabase : " + error.message);
+        return;
+    }
+
+    anomalieCourante = data;
+
+    const cat = data.ai_result?.categorie || "Non classé";
+    const grav = data.ai_result?.gravite || 1;
+
+    let photosHTML = "";
+    if (data.photos && data.photos.length > 0) {
+        photosHTML = data.photos.map(p => `<img src="${p}">`).join("");
+    }
+
+    document.getElementById("detailContent").innerHTML = `
+        <p><b>Date :</b> ${data.date}</p>
+        <p><b>Lieu :</b> ${data.lieu}</p>
+        <p><b>Catégorie IA :</b> ${cat}</p>
+        <p><b>Gravité :</b> <span class="gravite-${grav}">${grav}</span></p>
+        <p><b>Rapport brut :</b><br>${data.rapport_texte}</p>
+        ${data.date_levee ? `<p><b>Date levée :</b> ${data.date_levee}</p>` : ""}
+        <div class="photos">${photosHTML}</div>
+    `;
+
+    document.getElementById("detailBloc").style.display = "block";
+};
+
+/* LEVER UNE ANOMALIE */
+window.leverAnomalie = async function () {
+
+    if (!anomalieCourante) return;
+
+    const today = new Date().toISOString().split("T")[0];
+
+    const { error } = await supabase
+        .from("rapports_bruts")
+        .update({
+            date_levee: today,
+            action_realisee: "Anomalie levée"
+        })
+        .eq("id", anomalieCourante.id);
+
+    if (error) {
+        alert("Erreur Supabase : " + error.message);
+        return;
+    }
+
+    alert("Anomalie levée !");
+    chargerAnomalies();
+    document.getElementById("detailBloc").style.display = "none";
+};
+
+/* EXPORT MULTI-FEUILLES */
+window.exporterMultiFeuilles = async function () {
+
+    const { data, error } = await construireRequeteBase();
+
+    if (error) {
+        alert("Erreur Supabase : " + error.message);
+        return;
+    }
+
+    const nonLevees = data.filter(a => !a.date_levee);
+    const levees = data.filter(a => a.date_levee);
+
+    const wb = XLSX.utils.book_new();
+
+    function toSheet(rows) {
+        return XLSX.utils.json_to_sheet(rows.map(a => ({
+            Date: a.date,
+            Lieu: a.lieu,
+            "Catégorie IA": a.ai_result?.categorie || "Non classé",
+            Gravité: a.ai_result?.gravite || 1,
+            Rapport: a.rapport_texte,
+            Photos: a.photos ? a.photos.join(", ") : "",
+            "Date levée": a.date_levee || ""
+        })));
+    }
+
+    XLSX.utils.book_append_sheet(wb, toSheet(nonLevees), "Non levées");
+    XLSX.utils.book_append_sheet(wb, toSheet(levees), "Levées");
+
+    XLSX.writeFile(wb, "anomalies.xlsx");
+};
+
+chargerAnomalies();
+</script>
+
+</body>
+</html>

@@ -725,7 +725,9 @@ function generateSidebar() {
     container.innerHTML = "";
 
     MENU.forEach((section, index) => {
-        if (!section.visibleFor.includes(role)) return;
+
+        // 🔥 Filtrage supprimé → tout le monde voit tout
+        // if (!section.visibleFor.includes(role)) return;
 
         const wrapper = document.createElement("div");
 

@@ -167,8 +167,17 @@ function goMenu() {
 <script src="js/security.js"></script>
 <script src="global.js"></script>
 
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-// Conversion intervention → code
+const supabase = supabase.createClient(
+  "https://hwqlajdytnxavqigmzio.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cWxhamR5dG54YXZxaWdtemlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzg1NjgsImV4cCI6MjA4OTUxNDU2OH0.riGzQlfEPmo9SVK9Rs_fl33DnC5RR5qd2OUhgk4Twv"
+);
+</script>
+
+<!-- Génération du code intervention -->
+<script>
 function getTypeCode(label) {
     const map = {
         "Détection incendie": "INC",
@@ -183,26 +192,45 @@ function getTypeCode(label) {
     };
     return map[label] || "UNK";
 }
+</script>
 
+<!-- Génération ID -->
+<script>
+async function generateReportId(siteCode, typeCode) {
+    const today = new Date();
+    const dateCode = today.toISOString().slice(0, 10).replace(/-/g, "");
+
+    const { count } = await supabase
+        .from("main_courante_reports")
+        .select("*", { count: "exact", head: true })
+        .eq("site", siteCode)
+        .eq("type_code", typeCode)
+        .gte("created_at", today.toISOString().slice(0, 10));
+
+    const index = (count || 0) + 1;
+    const paddedIndex = String(index).padStart(3, "0");
+
+    return `${siteCode}-${typeCode}-${dateCode}-${paddedIndex}`;
+}
+</script>
+
+<!-- Pré-remplissage automatique -->
+<script>
 document.addEventListener("DOMContentLoaded", async () => {
 
-    // Récupération du type depuis l’index
     const intervention = localStorage.getItem("selectedIntervention");
     const typeCode = getTypeCode(intervention);
     document.getElementById("reportType").textContent = intervention;
 
-    // Date & heure
     const now = new Date();
     document.getElementById("reportDate").textContent =
         now.toLocaleDateString("fr-FR");
     document.getElementById("reportTime").textContent =
         now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
 
-    // Agent
     const agent = localStorage.getItem("agentName") || "Inconnu";
     document.getElementById("reportAgent").textContent = agent;
 
-    // Génération ID quand le site est choisi
     document.getElementById("reportSite").addEventListener("change", async () => {
         const siteCode = document.getElementById("reportSite").value;
         if (!siteCode) return;
@@ -211,6 +239,87 @@ document.addEventListener("DOMContentLoaded", async () => {
         document.getElementById("reportId").textContent = reportId;
     });
 });
+</script>
+
+<!-- Enregistrement du rapport -->
+<script>
+async function saveReport() {
+    const site = document.getElementById("reportSite").value;
+    const reportId = document.getElementById("reportId").textContent;
+    const agent = document.getElementById("reportAgent").textContent;
+    const type = document.getElementById("reportType").textContent;
+    const info = document.getElementById("infoGenerales").value;
+    const constat = document.getElementById("constat").value;
+    const actions = document.getElementById("actions").value;
+    const endTime = document.getElementById("reportEndTime").value;
+
+    if (!site || !reportId) {
+        alert("Sélectionne un site avant d’enregistrer.");
+        return;
+    }
+
+    // Upload photos
+    const photoFiles = document.getElementById("photos").files;
+    const photoUrls = [];
+
+    for (let file of photoFiles) {
+        const path = `photos/${reportId}-${file.name}`;
+        const { error } = await supabase.storage
+            .from("main-courante")
+            .upload(path, file);
+
+        if (!error) {
+            const { data } = supabase.storage
+                .from("main-courante")
+                .getPublicUrl(path);
+            photoUrls.push(data.publicUrl);
+        }
+    }
+
+    // Upload vidéos
+    const videoFiles = document.getElementById("videos").files;
+    const videoUrls = [];
+
+    for (let file of videoFiles) {
+        const path = `videos/${reportId}-${file.name}`;
+        const { error } = await supabase.storage
+            .from("main-courante")
+            .upload(path, file);
+
+        if (!error) {
+            const { data } = supabase.storage
+                .from("main-courante")
+                .getPublicUrl(path);
+            videoUrls.push(data.publicUrl);
+        }
+    }
+
+    // Enregistrement du rapport
+    const { error } = await supabase
+        .from("main_courante_reports")
+        .insert([{
+            id_custom: reportId,
+            site: site,
+            type_code: getTypeCode(type),
+            type_label: type,
+            agent: agent,
+            info_generales: info,
+            constat: constat,
+            actions: actions,
+            end_time: endTime,
+            photos: photoUrls,
+            videos: videoUrls
+        }]);
+
+    if (error) {
+        console.error(error);
+        alert("Erreur lors de l’enregistrement.");
+        return;
+    }
+
+    alert("Rapport enregistré avec succès !");
+    window.location.href = "index.html";
+}
 </script>
 
 </body>

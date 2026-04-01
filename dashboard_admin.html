@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+   <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
@@ -190,44 +190,20 @@ a:hover {
         <option value="all">Tous les thèmes</option>
 
         <!-- 🔥 Interventions -->
-        <option value="incendie">Détection incendie</option>
-        <option value="odeur">Odeur suspecte</option>
-        <option value="desincarceration">Désincarcération</option>
-        <option value="fuite">Fuite d’eau</option>
-        <option value="alarme">Alarme technique</option>
-        <option value="coupure">Coupure électrique</option>
-        <option value="animalier">Sauvetage animalier</option>
+        <option value="INC">Détection incendie</option>
+        <option value="ODS">Odeur suspecte</option>
+        <option value="DES">Désincarcération</option>
+        <option value="FUE">Fuite d’eau</option>
+        <option value="ALT">Alarme technique</option>
+        <option value="ELE">Coupure électrique</option>
+        <option value="ANI">Sauvetage animalier</option>
 
         <!-- 🔄 Rondes -->
-        <option value="ronde_ouverture">Ronde d’ouverture</option>
-        <option value="ronde_travaux">Ronde Travaux</option>
-        <option value="rondepermisfeu">Ronde Permis feu</option>
-        <option value="rondeissuessecours">Ronde Issue de secours</option>
-        <option value="rondesurfacevente">Ronde Surface de vente</option>
-        <option value="ronde_technique">Ronde Technique</option>
-        <option value="ronde_fermeture">Ronde de fermeture</option>
+        <option value="RONDE_OUVERTURE">Ronde d’ouverture</option>
+        <option value="RONDE_TRAVAUX">Ronde Travaux</option>
+        <option value="RONDE_PERMIS_FEU">Ronde Permis feu</option>
 
-        <!-- 🔍 Vérifications -->
-        <option value="verifj1baie_ssi">J1 Baie SSI</option>
-        <option value="verifj2materiel_pc">J2 Matériel PC</option>
-        <option value="verifj3materiel_secours">J3 Matériel de secours</option>
-        <option value="verifj4epi">J4 EPI</option>
-        <option value="verifj5interphonieascmc">J5 Interphonie ASC/MC</option>
-        <option value="verifextincteursria_baes">Extincteur / RIA / BAES</option>
-        <option value="verif_sprinkler">Sprinkler</option>
-        <option value="verif_surpresseur">Surpresseur</option>
-        <option value="verifcolonneseche">Colonne sèche</option>
-        <option value="verifdesenfumagenaturel">Désenfumage naturel</option>
-        <option value="verifbaieaccessible">Baie accessible</option>
-        <option value="verif_eas">EAS</option>
-        <option value="verifsallegaz">Salle automatique à gaz</option>
-        <option value="verifessaiannuel_technicien">Essai annuel Technicien</option>
-        <option value="verifessaitriennal_bureau">Essai triennal Bureau de contrôle</option>
-
-        <!-- 🛠 Travaux -->
-        <option value="Travaux">Suivi des travaux</option>
-        <option value="verif_popup">Vérification Pop up</option>
-        <option value="verifreceptiontravaux">Réception Travaux</option>
+        <!-- etc. -->
     </select>
 
     <select id="tri" onchange="applyFilters()">
@@ -260,23 +236,48 @@ a:hover {
 
 <!-- BOUTONS PDF / MAIL -->
 <button class="btn-mail" onclick="envoyerRapportsPDF('jour')">📧 Envoyer PDF 8h → 20h</button>
-<button class="btn-mail" onclick="envoyerRapportsPDF('nuit')">🌙 Envoyer PDF 20h → 8h</button><script>
-/* =========================
-   Données exemple rapports
-   ========================= */
+<button class="btn-mail" onclick="envoyerRapportsPDF('nuit')">🌙 Envoyer PDF 20h → 8h</button>
 
-let rapports = [
-    { date: "2026-02-19", heure: "09:15", type: "incendie",  agent: "Jean",  lieu: "Niveau -1",       resume: "Déclenchement détecteur fumée" },
-    { date: "2026-02-19", heure: "11:42", type: "fuite",     agent: "Marc",  lieu: "Local technique", resume: "Fuite d’eau sur vanne" },
-    { date: "2026-02-19", heure: "19:05", type: "alarme",    agent: "Luc",   lieu: "Toiture",         resume: "Alarme technique groupe froid" },
-    { date: "2026-02-19", heure: "21:30", type: "incendie",  agent: "Sarah", lieu: "Réserve",         resume: "Détection chaleur anormale" },
-    { date: "2026-02-19", heure: "02:10", type: "verif",     agent: "Nadia", lieu: "Parking -2",      resume: "Vérification suite odeur suspecte" }
-];
+<!-- 🔌 Connexion Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const supabase = supabase.createClient(
+  "https://hwqlajdytnxavqigmzio.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cWxhamR5dG54YXZxaWdtemlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzg1NjgsImV4cCI6MjA4OTUxNDU2OH0.riGzQlfEPmo9SVK9Rs_fl33DnC5RR5qd2OUhgk4Twv"
+);
 
 /* =========================
-   Affichage tableau + filtres
+   📥 Charger les rapports depuis Supabase
    ========================= */
+let rapports = [];
 
+async function loadRapports() {
+    const { data, error } = await supabase
+        .from("main_courante_reports")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error("Erreur Supabase :", error);
+        return;
+    }
+
+    // Transformer les données Supabase → format dashboard
+    rapports = data.map(r => ({
+        date: r.created_at.split("T")[0],
+        heure: r.created_at.split("T")[1].slice(0,5),
+        type: r.type_code || "inconnu",
+        agent: r.agent || "N/A",
+        lieu: r.site || "N/A",
+        resume: r.info_generales?.slice(0,50) + "..." || "—",
+        id: r.id_custom
+    }));
+
+    renderTable(rapports);
+}
+/* =========================
+   📊 Affichage tableau + indicateurs
+   ========================= */
 function renderTable(data) {
     const tbody = document.getElementById("tableBody");
     tbody.innerHTML = "";
@@ -291,7 +292,7 @@ function renderTable(data) {
             <td>${r.agent}</td>
             <td>${r.lieu}</td>
             <td>${r.resume}</td>
-            <td><a href="#">Voir</a></td>
+            <td><a href="rapport_view.html?id=${r.id}">Voir</a></td>
         `;
 
         tbody.appendChild(tr);
@@ -299,15 +300,21 @@ function renderTable(data) {
 
     // Indicateurs
     document.getElementById("indTotal").textContent = data.length;
-    document.getElementById("indMonth").textContent = data.length;
-    document.getElementById("indCritique").textContent = data.filter(r => r.type === "incendie").length;
-    document.getElementById("indTheme").textContent = document.getElementById("theme").value;
+
+    const month = new Date().toISOString().slice(0,7);
+    document.getElementById("indMonth").textContent =
+        data.filter(r => r.date.startsWith(month)).length;
+
+    document.getElementById("indCritique").textContent =
+        data.filter(r => r.type === "INC").length;
+
+    document.getElementById("indTheme").textContent =
+        document.getElementById("theme").value;
 }
 
 /* =========================
-   Filtres
+   🔍 Filtres
    ========================= */
-
 function applyFilters() {
     let filtered = [...rapports];
 
@@ -346,21 +353,16 @@ function applyFilters() {
     renderTable(filtered);
 }
 
-// Affichage initial
-renderTable(rapports);
-
 /* =========================
-   Export Excel (placeholder)
+   📤 Export Excel (placeholder)
    ========================= */
-
 function exportExcel() {
-    alert("Export Excel à implémenter (ou à connecter à ton backend).");
+    alert("Export Excel à connecter.");
 }
 
 /* =========================
-   Filtrage par plage horaire
+   🕗 Filtrage par plage horaire
    ========================= */
-
 function getRapportsPlage(type) {
     const today = new Date().toISOString().split("T")[0];
 
@@ -382,27 +384,22 @@ function getRapportsPlage(type) {
 }
 
 /* =========================
-   Génération PDF premium
+   🧾 Génération PDF
    ========================= */
-
 async function genererPDFUltra(rapportsFiltrés, titre) {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF("p", "mm", "a4");
 
-    // Bandeau bleu acier
     pdf.setFillColor(30, 60, 120);
     pdf.rect(0, 0, 210, 40, "F");
 
-    // Titre
     pdf.setFontSize(20);
     pdf.setTextColor(255, 255, 255);
     pdf.text(titre, 10, 25);
 
-    // Ligne
     pdf.setDrawColor(77, 163, 255);
     pdf.line(10, 50, 200, 50);
 
-    // Tableau
     pdf.setFontSize(11);
     pdf.setTextColor(0, 0, 0);
 
@@ -443,29 +440,12 @@ async function genererPDFUltra(rapportsFiltrés, titre) {
         }
     });
 
-    // QR CODE
-    const qr = await fetch("https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https://tonsite.netlify.app/dashboard")
-        .then(r => r.blob())
-        .then(b => new Promise(res => {
-            const reader = new FileReader();
-            reader.onload = () => res(reader.result);
-            reader.readAsDataURL(b);
-        }));
-
-    pdf.addImage(qr, "PNG", 160, 250, 35, 35);
-
-    // Pied de page
-    pdf.setFontSize(9);
-    pdf.setTextColor(120);
-    pdf.text("LBM Sécurité – SEGEP RG – Bâtiment 3", 10, 290);
-
     return pdf;
 }
 
 /* =========================
-   Envoi mail avec PDF
+   📧 Envoi mail PDF
    ========================= */
-
 async function envoyerRapportsPDF(type) {
     const rapportsFiltrés = getRapportsPlage(type);
 
@@ -484,6 +464,11 @@ async function envoyerRapportsPDF(type) {
         `&body=${encodeURIComponent("Veuillez trouver ci-joint les rapports.")}` +
         `&attachment=${pdfURL}`;
 }
+
+/* =========================
+   🚀 Lancement du dashboard
+   ========================= */
+loadRapports();
 </script>
 
 <!-- 🔐 Sécurité -->

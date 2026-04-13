@@ -213,13 +213,14 @@
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
 
 <script>
-    const SUPABASE_URL = "https://ltdjzkavuwoopdbrustn.supabase.co";
-    const SUPABASE_KEY = "TA_CLE_ANON_ICI"; // Mets ta clé ici
+    // Config loaded from supabaseClient.js
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cWxhamR5dG54YXZxaWdtemlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzg1NjgsImV4cCI6MjA4OTUxNDU2OH0.riGzQlfEPmo9SVK9Rs_fl33DnC5RR5qd2OUhgk4Twvs" // Mets ta clé ici
 
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Using supabaseClient from supabaseClient.js
 
     // INSERTION
     document.getElementById("hsForm").addEventListener("submit", async (e) => {
@@ -236,8 +237,8 @@
         const agent = "NomAgent"; 
         const statut = "hors_service";
 
-        const { error } = await supabase
-            .from("hors_service")
+        const { error } = await supabaseClient
+            .from("dai_hors_service")
             .insert([{ site, zone, boucle, point, adresse, date_hs, motif, agent, statut }]);
 
         const msg = document.getElementById("message");
@@ -253,8 +254,8 @@
 
     // AFFICHAGE
     async function loadHS() {
-        const { data } = await supabase
-            .from("hors_service")
+        const { data } = await supabaseClient
+            .from("dai_hors_service")
             .select("*")
             .eq("statut", "hors_service")
             .order("date_hs", { ascending: false });
@@ -282,8 +283,8 @@
     async function remiseService(id) {
         const date_rs = new Date().toISOString();
 
-        await supabase
-            .from("hors_service")
+        await supabaseClient
+            .from("dai_hors_service")
             .update({ date_rs, statut: "remis_en_service" })
             .eq("id", id);
 

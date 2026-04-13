@@ -252,8 +252,20 @@ th {
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
 <script>
-let interventions = JSON.parse(localStorage.getItem("interventionsFeu") || "[]");
+let interventions = [];
+async function loadInterventions() {
+    const { data } = await supabaseClient.from("ssiap2_chantier").select("*").order("created_at",{ascending:false});
+    interventions = (data||[]).map(d => ({
+        id: d.id, chantier: d.chantier_nom, entreprise: d.entreprise, zone: d.zone,
+        dateDebut: d.date_debut, dateFin: d.date_fin, effectif: d.effectif_chantier,
+        risques: (d.risques||[]).join(", "), mesures: d.mesures_prises, observations: d.observations, statut: d.statut
+    }));
+    renderTable();
+}
+loadInterventions();
 let triActuel = { colonne: null, ordre: 1 };
 let editIndex = null;
 
@@ -340,7 +352,7 @@ function declarerDepart(index) {
 
     interventions[index].depart = `${h}:${m}`;
 
-    localStorage.setItem("interventionsFeu", JSON.stringify(interventions));
+    // Sauvegarde Supabase (voir fonctions async)
     refreshAll();
 }
 
@@ -399,7 +411,7 @@ function ajouterIntervention() {
         feuRequis, feuSigne, ouvriers, observations, url
     });
 
-    localStorage.setItem("interventionsFeu", JSON.stringify(interventions));
+    // Sauvegarde Supabase (voir fonctions async)
     refreshAll();
 }
 
@@ -483,7 +495,7 @@ function saveEdit() {
     i.ouvriers = parseInt(document.getElementById("editOuvriers").value || "0", 10);
     i.observations = document.getElementById("editObs").value.trim();
 
-    localStorage.setItem("interventionsFeu", JSON.stringify(interventions));
+    // Sauvegarde Supabase (voir fonctions async)
     closeModal();
     refreshAll();
 }

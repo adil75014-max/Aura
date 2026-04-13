@@ -4,248 +4,102 @@
 <meta charset="UTF-8">
 <title>Intervention Sanitaire Syope</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- 🎨 Design global -->
 <link rel="stylesheet" href="global.css">
-
 <style>
-/* 🎨 Styles spécifiques */
-
-h1 {
-    color: var(--accent);
-    text-align: center;
-    margin-bottom: 25px;
-}
-
-h3 {
-    color: var(--accent);
-    margin-top: 25px;
-}
-
-.info {
-    margin-bottom: 10px;
-}
-
-/* Inputs */
-input, textarea {
-    width: 100%;
-    padding: 12px;
-    margin-top: 6px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--bg2);
-    color: var(--text);
-    font-size: 1rem;
-}
-
-textarea {
-    height: 140px;
-    resize: none;
-}
-
-/* Boutons */
-button {
-    margin-top: 20px;
-    padding: 14px;
-    background: var(--accent);
-    border: none;
-    border-radius: 10px;
-    color: black;
-    cursor: pointer;
-    width: 100%;
-    font-size: 1.1rem;
-    font-weight: 700;
-    transition: 0.25s;
-}
-
-button:hover {
-    opacity: 0.9;
-}
-
-/* Cards */
-.card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    padding: 20px;
-    border-radius: 14px;
-    margin-bottom: 25px;
-    box-shadow: var(--shadow);
-}
+h1 { color:var(--accent); text-align:center; margin-bottom:25px; }
+h3 { color:var(--accent); margin-top:25px; }
+.info { margin-bottom:10px; }
+input, textarea { width:100%; padding:12px; margin-top:6px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:1rem; }
+textarea { height:140px; resize:none; }
+button { margin-top:20px; padding:14px; background:var(--accent); border:none; border-radius:10px; color:black; cursor:pointer; width:100%; font-size:1.1rem; font-weight:700; transition:0.25s; }
+button:hover { opacity:0.9; }
+button:disabled { opacity:0.4; cursor:not-allowed; }
+.card { background:var(--card); border:1px solid var(--border); padding:20px; border-radius:14px; margin-bottom:25px; box-shadow:var(--shadow); }
 </style>
 </head>
-
 <body>
-
 <h1>Intervention Sanitaire Syope</h1>
 
-<!-- Infos agent -->
 <div class="card">
     <div class="info">👤 Équipier : <span id="equipierAffiche"></span></div>
     <div class="info">🎖 Statut : <span id="statut"></span></div>
-    <div class="info">🕒 Heure d'arrivée sur les lieux (début) : <span id="heureDebut"></span></div>
+    <div class="info">🕒 Heure d'arrivée : <span id="heureDebut"></span></div>
 </div>
 
-<!-- Formulaire -->
 <div class="card">
-
     <h3>Intervention / Agent</h3>
-
-    <label>Motif d'intervention</label>
-    <input type="text" id="motif">
-
-    <label>Nature réelle</label>
-    <input type="text" id="nature">
-
-    <label>Agent (intervenant)</label>
-    <input type="text" id="agent">
+    <label>Motif d'intervention</label><input type="text" id="motif">
+    <label>Nature réelle</label><input type="text" id="nature">
+    <label>Agent (intervenant)</label><input type="text" id="agent">
 
     <h3>Circonstantiel</h3>
-
-    <label>Lieu d'intervention</label>
-    <input type="text" id="lieu">
-
-    <label>Localisation</label>
-    <input type="text" id="localisation">
-
-    <label>Sous localisation</label>
-    <input type="text" id="sousLocalisation">
-
-    <label>Circonstances</label>
-    <textarea id="circonstances"></textarea>
+    <label>Lieu d'intervention</label><input type="text" id="lieu">
+    <label>Localisation</label><input type="text" id="localisation">
+    <label>Sous localisation</label><input type="text" id="sousLocalisation">
+    <label>Circonstances</label><textarea id="circonstances"></textarea>
 
     <h3>Identité</h3>
-
-    <label>Prénom</label>
-    <input type="text" id="prenom">
-
-    <label>Nom</label>
-    <input type="text" id="nomPatient">
-
-    <label>Âge</label>
-    <input type="text" id="age">
-
+    <label>Prénom</label><input type="text" id="prenom">
+    <label>Nom</label><input type="text" id="nomPatient">
+    <label>Âge</label><input type="text" id="age">
     <label>Sexe</label>
-    <input type="text" id="sexe">
-
-    <label>Date de naissance</label>
-    <input type="text" id="naissance">
-
-    <label>Nationalité</label>
-    <input type="text" id="nationalite">
-
-    <label>Téléphone</label>
-    <input type="text" id="telephone">
-
-    <label>Effet personnel</label>
-    <input type="text" id="effet">
-
-    <label>Localisation</label>
-    <input type="text" id="loc2">
-
-    <label>Sous localisation</label>
-    <input type="text" id="sousLoc2">
+    <select id="sexe"><option value="homme">Homme</option><option value="femme">Femme</option><option value="inconnu">Inconnu</option></select>
 
     <h3>Devenir</h3>
-
-    <label>Devenir du patient</label>
-    <input type="text" id="devenir">
-
-    <label>Transmission initiale</label>
-    <input type="text" id="transmission">
-
-    <label>Heure d'arrivée sur les lieux</label>
-    <input type="time" id="heureArrivee">
+    <label>Devenir du patient</label><input type="text" id="devenir">
+    <label>Transmission initiale</label><input type="text" id="transmission">
+    <label>Heure d'arrivée sur les lieux</label><input type="time" id="heureArrivee">
 
     <button id="save">💾 Enregistrer</button>
     <button onclick="window.print()">📄 Exporter en PDF</button>
-    <button onclick="location.href='accueil.html'">🏠 Retour à l’accueil</button>
-
+    <button onclick="location.href='index.html'">🏠 Retour à l'accueil</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
 <script>
-/* ============================================================
-   RÉCUPÉRATION AUTOMATIQUE DE L'ÉQUIPIER
-============================================================ */
-const equipierChoisi = localStorage.getItem("equipierSelectionne") || "";
-
-document.getElementById("agent").value = equipierChoisi;
-document.getElementById("equipierAffiche").textContent = equipierChoisi;
+const equipier = localStorage.getItem("equipierSelectionne") || localStorage.getItem("nom") || "";
+document.getElementById("agent").value = equipier;
+document.getElementById("equipierAffiche").textContent = equipier;
+document.getElementById("statut").textContent = localStorage.getItem("statut");
+document.getElementById("heureDebut").textContent = new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
 
 document.getElementById("agent").addEventListener("input", () => {
-    document.getElementById("equipierAffiche").textContent =
-        document.getElementById("agent").value;
+    document.getElementById("equipierAffiche").textContent = document.getElementById("agent").value;
 });
 
-/* ============================================================
-   STATUT
-============================================================ */
-document.getElementById("statut").textContent = localStorage.getItem("statut");
+document.getElementById("save").addEventListener("click", async () => {
+    const btn = document.getElementById("save");
+    btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
+    try {
+        const now = new Date();
+        const heureArr = document.getElementById("heureArrivee").value;
+        let heureArrTs = null;
+        if (heureArr) { const [h,m] = heureArr.split(":"); heureArrTs = new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m).toISOString(); }
 
-/* ============================================================
-   HEURE DE DÉBUT
-============================================================ */
-function setHeureDebut(val) {
-    document.getElementById("heureDebut").textContent = val;
-    document.getElementById("heureArrivee").value = val;
-}
-
-/* ============================================================
-   ENREGISTREMENT
-============================================================ */
-function enregistrerRapport() {
-
-    const rapports = JSON.parse(localStorage.getItem("rapports")) || [];
-
-    const rapport = {
-        type: "Intervention sanitaire Syope",
-        agent: document.getElementById("agent").value,
-        statut: document.getElementById("statut").textContent,
-        heureArrivee: document.getElementById("heureArrivee").value,
-
-        motif: document.getElementById("motif").value,
-        nature: document.getElementById("nature").value,
-
-        lieu: document.getElementById("lieu").value,
-        localisation: document.getElementById("localisation").value,
-        sousLocalisation: document.getElementById("sousLocalisation").value,
-        circonstances: document.getElementById("circonstances").value,
-
-        prenom: document.getElementById("prenom").value,
-        nomPatient: document.getElementById("nomPatient").value,
-        age: document.getElementById("age").value,
-        sexe: document.getElementById("sexe").value,
-        naissance: document.getElementById("naissance").value,
-        nationalite: document.getElementById("nationalite").value,
-        telephone: document.getElementById("telephone").value,
-        effet: document.getElementById("effet").value,
-        loc2: document.getElementById("loc2").value,
-        sousLoc2: document.getElementById("sousLoc2").value,
-
-        devenir: document.getElementById("devenir").value,
-        transmission: document.getElementById("transmission").value,
-
-        date: new Date().toLocaleDateString()
-    };
-
-    rapports.push(rapport);
-    localStorage.setItem("rapports", JSON.stringify(rapports));
-
-    alert("Intervention SYOPE enregistrée !");
-}
-
-/* ============================================================
-   BOUTON ENREGISTRER
-============================================================ */
-document.getElementById("save").addEventListener("click", () => {
-    enregistrerRapport();
+        const { error } = await supabaseClient.from("interventions_syope").insert({
+            type_intervention: document.getElementById("motif").value,
+            localisation: document.getElementById("localisation").value || document.getElementById("lieu").value,
+            victime_genre: document.getElementById("sexe").value,
+            victime_age_estime: parseInt(document.getElementById("age").value) || null,
+            bilan: document.getElementById("circonstances").value,
+            suite_donnee: document.getElementById("devenir").value,
+            heure_arrivee: heureArrTs,
+            gestes_effectues: [document.getElementById("transmission").value].filter(Boolean),
+            smur_appele: false,
+            sapeurs_pompiers: false,
+            hospitalisation: false
+        });
+        if (error) throw error;
+        showToast("✅ Intervention SYOPE enregistrée !");
+        setTimeout(() => location.href="index.html", 1200);
+    } catch(e) {
+        showToast("❌ "+e.message, true);
+        btn.disabled = false; btn.textContent = "💾 Enregistrer";
+    }
 });
 </script>
-
-<!-- 🔐 Sécurité -->
-<script src="js/security.js"></script>
-
-<!-- 🎨 Thème global -->
+<script src="security.js"></script>
 <script src="global.js"></script>
-
 </body>
 </html>

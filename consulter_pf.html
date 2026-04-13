@@ -147,16 +147,13 @@ tr:hover {
     <tbody id="tablePermis"></tbody>
 </table>
 
-<script type="module">
+<script>
 /* ============================================================
    SUPABASE
 ============================================================ */
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
+// Config loaded from supabaseClient.js
 
-const supabase = createClient(
-    "SUPABASE_URL",
-    "SUPABASE_KEY"
-);
+// Using supabaseClient from supabaseClient.js
 
 /* ============================================================
    CHARGEMENT DES PERMIS FEU
@@ -166,7 +163,7 @@ async function chargerPermisFeu() {
     const dateFiltre = document.getElementById("filtreDate").value;
     const entrepriseFiltre = document.getElementById("filtreEntreprise").value;
 
-    let query = supabase.from("permis_feu").select("*").order("date", { ascending:false });
+    let query = supabaseClient.from("permis_feu").select("*").order("date", { ascending:false });
 
     if (dateFiltre) query = query.eq("date", dateFiltre);
     if (entrepriseFiltre !== "all") query = query.eq("entreprise", entrepriseFiltre);
@@ -219,7 +216,7 @@ function ouvrirPermis(id) {
    CHARGEMENT ENTREPRISES UNIQUES
 ============================================================ */
 async function chargerEntreprises() {
-    const { data } = await supabase.from("permis_feu").select("entreprise");
+    const { data } = await supabaseClientClient.from("permis_feu").select("entreprise");
 
     const select = document.getElementById("filtreEntreprise");
     const uniques = [...new Set(data.map(e => e.entreprise))];

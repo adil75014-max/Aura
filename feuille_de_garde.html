@@ -79,10 +79,11 @@
 </style>
 
 <!-- Supabase -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
 <script>
-const supabase = supabase.createClient(
-    "https://YOUR_PROJECT.supabase.co",
+// const supabase = supabase.createClient(
+    "https://hwqlajdytnxavqigmzio.supabase.co",
     "YOUR_PUBLIC_ANON_KEY"
 );
 const GARDE_ID = "00000000-0000-0000-0000-000000000001";
@@ -95,7 +96,7 @@ async function saveFeuilleDeGarde() {
         chef_poste: document.querySelector('input[name="chef_poste_nom"]').value,
         data_json: collectAllFields()
     };
-    const { error } = await supabase
+    const { error } = await supabaseClient
         .from("feuille_de_garde")
         .update(data)
         .eq("id", GARDE_ID);
@@ -111,7 +112,7 @@ function collectAllFields() {
 }
 
 async function loadFeuilleDeGarde() {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
         .from("feuille_de_garde")
         .select("*")
         .eq("id", GARDE_ID)

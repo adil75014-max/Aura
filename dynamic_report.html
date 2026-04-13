@@ -136,7 +136,9 @@ textarea {
 
 <div id="formContainer" class="panel"></div>
 
-<button class="btn-primary" onclick="saveReport()">💾 Enregistrer le rapport</button><script>
+<button class="btn-primary" onclick="saveReport()">💾 Enregistrer le rapport</button><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
+<script>
 /* ------------------ Récupération du modèle ------------------ */
 const urlParams = new URLSearchParams(window.location.search);
 const formId = urlParams.get("form");
@@ -312,21 +314,22 @@ function saveReport() {
         if (el) data[f.id] = el.value;
     });
 
-    const rapports = JSON.parse(localStorage.getItem("rapports") || "[]");
-
-    rapports.push({
-        id: "RAP_" + Date.now(),
-        title: model.title,
-        site: model.site,
-        date: new Date().toLocaleDateString(),
-        time: new Date().toLocaleTimeString(),
-        data
-    });
-
-    localStorage.setItem("rapports", JSON.stringify(rapports));
-
-    alert("Rapport enregistré !");
-    history.back();
+    try {
+        const { error } = await supabaseClient.from("rapports").insert({
+            type: model.title || "dynamique",
+            titre: model.title + " — " + new Date().toLocaleDateString("fr-FR"),
+            description: JSON.stringify(data),
+            localisation: model.site || "",
+            statut: "ouvert",
+            priorite: "normale",
+            meta: { source: "dynamic", agent_nom: localStorage.getItem("nom"), form_data: data, model_title: model.title, model_site: model.site }
+        });
+        if (error) throw error;
+        showToast("✅ Rapport enregistré !");
+        setTimeout(() => history.back(), 1200);
+    } catch(e) {
+        showToast("❌ " + e.message, true);
+    }
 }
 </script>
 

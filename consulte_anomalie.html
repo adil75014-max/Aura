@@ -234,10 +234,10 @@
     <button class="btn" onclick="leverAnomalie()">✔ Lever l’anomalie</button>
 </div>
 
-<script type="module">
-import { createClient } from "https://esm.sh/@supabase/supabase-js";
+<script>
+// ESM import replaced by UMD supabaseClient.js
 
-const supabase = createClient("SUPABASE_URL", "SUPABASE_KEY");
+// Using supabaseClient from supabaseClient.js
 let anomalieCourante = null;
 
 /* Gestion affichage filtres */
@@ -255,7 +255,7 @@ function construireRequeteBase() {
     const type = document.getElementById("typeFiltre").value;
     const catFiltre = document.getElementById("filtreCategorie").value;
 
-    let query = supabase.from("rapports_bruts").select("*").order("date", { ascending:false });
+    let query = supabaseClient.from("rapports").select("*").order("date", { ascending:false });
 
     if (type === "jour") {
         const d = document.getElementById("filtreDate").value;
@@ -330,7 +330,7 @@ function afficherAnomalies(anomalies) {
 
 /* Détail */
 window.ouvrirDetail = async function(id) {
-    const { data, error } = await supabase.from("rapports_bruts").select("*").eq("id", id).single();
+    const { data, error } = await supabaseClient.from("rapports").select("*").eq("id", id).single();
 
     if (error) {
         alert("Erreur Supabase : " + error.message);
@@ -367,8 +367,8 @@ window.leverAnomalie = async function () {
 
     const today = new Date().toISOString().split("T")[0];
 
-    const { error } = await supabase
-        .from("rapports_bruts")
+    const { error } = await supabaseClient
+        .from("rapports")
         .update({
             date_levee: today,
             action_realisee: "Anomalie levée"

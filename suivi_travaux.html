@@ -261,16 +261,14 @@
 
     <div id="listePlans"></div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
 
 <script>
 /* ----------------------------------------------------------
    🔵 CONNEXION SUPABASE
 ---------------------------------------------------------- */
-const supabaseClient = supabase.createClient(
-    "https://xfhkvopenjhegfwptxag.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmaGt2b3BlbmpoZWdmd3B0eGFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI2MTIyMTIsImV4cCI6MjA4ODE4ODIxMn0.KekREteKN3qEkiJyNSxnYIAX6rABVJWrxlEiq8ISEdY"
-);
+// supabaseClient loaded from supabaseClient.js
 
 /* ----------------------------------------------------------
    🔵 MODE (TRAVAUX / STOCKAGE / PLANS)
@@ -310,7 +308,7 @@ async function ajouterTravail() {
 
     if (!titre) return alert("Merci d’indiquer un titre.");
 
-    const { error } = await supabaseClient.from("travaux").insert({
+    const { error } = await supabaseClient.from("suivi_travaux").insert({
         titre,
         description,
         statut,
@@ -333,7 +331,7 @@ async function ajouterTravail() {
 ---------------------------------------------------------- */
 async function chargerTravaux() {
     const { data, error } = await supabaseClient
-        .from("travaux")
+        .from("suivi_travaux")
         .select("*")
         .order("date", { ascending: false });
 
@@ -369,7 +367,7 @@ async function chargerTravaux() {
 ---------------------------------------------------------- */
 async function changerStatut(id, statut) {
     const { error } = await supabaseClient
-        .from("travaux")
+        .from("suivi_travaux")
         .update({ statut })
         .eq("id", id);
 
@@ -381,7 +379,7 @@ async function changerStatut(id, statut) {
 ---------------------------------------------------------- */
 async function archiverTravail(id) {
     const { data, error } = await supabaseClient
-        .from("travaux")
+        .from("suivi_travaux")
         .select("*")
         .eq("id", id)
         .single();
@@ -389,7 +387,7 @@ async function archiverTravail(id) {
     if (error) return console.error(error);
 
     const { error: insertError } = await supabaseClient
-        .from("archivestravaux")
+        .from("suivi_travaux")
         .insert({
             titre: data.titre,
             description: data.description,
@@ -400,7 +398,7 @@ async function archiverTravail(id) {
 
     if (insertError) return console.error(insertError);
 
-    await supabaseClient.from("travaux").delete().eq("id", id);
+    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
 
     chargerTravaux();
 }
@@ -410,7 +408,7 @@ async function archiverTravail(id) {
 ---------------------------------------------------------- */
 async function chargerArchives() {
     const { data, error } = await supabaseClient
-        .from("archivestravaux")
+        .from("suivi_travaux")
         .select("*")
         .order("date_archive", { ascending: false });
 
@@ -441,21 +439,21 @@ async function chargerArchives() {
 ---------------------------------------------------------- */
 async function restaurer(id) {
     const { data, error } = await supabaseClient
-        .from("archivestravaux")
+        .from("suivi_travaux")
         .select("*")
         .eq("id", id)
         .single();
 
     if (error) return console.error(error);
 
-    await supabaseClient.from("travaux").insert({
+    await supabaseClient.from("suivi_travaux").insert({
         titre: data.titre,
         description: data.description,
         statut: data.statut,
         date: data.date
     });
 
-    await supabaseClient.from("archivestravaux").delete().eq("id", id);
+    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
 
     chargerArchives();
 }
@@ -464,7 +462,7 @@ async function restaurer(id) {
    🔵 ARCHIVES — SUPPRIMER
 ---------------------------------------------------------- */
 async function supprimer(id) {
-    await supabaseClient.from("archivestravaux").delete().eq("id", id);
+    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
     chargerArchives();
 }
 </script>
@@ -487,7 +485,7 @@ async function ajouterZone() {
     reader.onload = async function(e) {
         const base64 = e.target.result;
 
-        const { error } = await supabaseClient.from("zonesstockage").insert({
+        const { error } = await supabaseClient.from("suivi_travaux").insert({
             nom,
             description,
             debut,
@@ -517,7 +515,7 @@ async function ajouterZone() {
 ---------------------------------------------------------- */
 async function chargerZones() {
     const { data, error } = await supabaseClient
-        .from("zonesstockage")
+        .from("suivi_travaux")
         .select("*")
         .order("debut", { ascending: false });
 
@@ -563,7 +561,7 @@ async function chargerZones() {
    🟧 ZONES — SUPPRESSION
 ---------------------------------------------------------- */
 async function supprimerZone(id) {
-    await supabaseClient.from("zonesstockage").delete().eq("id", id);
+    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
     chargerZones();
 }
 
@@ -579,7 +577,7 @@ async function ajouterPlan() {
     reader.onload = async function(e) {
         const base64 = e.target.result;
 
-        const { error } = await supabaseClient.from("site de plans").insert({
+        const { error } = await supabaseClient.from("suivi_travaux").insert({
             nom: file.name,
             type: file.type,
             data: base64,
@@ -603,7 +601,7 @@ async function ajouterPlan() {
 ---------------------------------------------------------- */
 async function chargerPlans() {
     const { data, error } = await supabaseClient
-        .from("site de plans")
+        .from("suivi_travaux")
         .select("*")
         .order("date", { ascending: false });
 
@@ -636,7 +634,7 @@ async function chargerPlans() {
    🟪 PLANS — SUPPRESSION
 ---------------------------------------------------------- */
 async function supprimerPlan(id) {
-    await supabaseClient.from("site de plans").delete().eq("id", id);
+    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
     chargerPlans();
 }
 
@@ -644,8 +642,8 @@ async function supprimerPlan(id) {
    📊 STATISTIQUES — depuis Supabase
 ---------------------------------------------------------- */
 async function chargerStats() {
-    const { data: travaux } = await supabaseClient.from("travaux").select("*");
-    const { data: archives } = await supabaseClient.from("archivestravaux").select("*");
+    const { data: travaux } = await supabaseClient.from("suivi_travaux").select("*");
+    const { data: archives } = await supabaseClient.from("suivi_travaux").select("*");
 
     document.getElementById("resume").innerHTML =
         `Travaux actifs : <b>${travaux.length}</b><br>Archivés : <b>${archives.length}</b>`;

@@ -254,11 +254,23 @@ requireLogin();
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
 <script>
 // ============================
 // Données
 // ============================
-let plans = JSON.parse(localStorage.getItem("plansPrevention") || "[]");
+let plans = [];
+async function loadPlans() {
+    const { data } = await supabaseClient.from("plan_prevention").select("*").order("created_at",{ascending:false});
+    plans = (data || []).map(p => ({
+        id: p.id, entreprise: p.entreprise, responsable: p.responsable,
+        dateDebut: p.date_debut, dateFin: p.date_fin, travaux: p.travaux_desc,
+        risques: (p.risques||[]).join(", "), mesures: p.mesures, statut: p.statut
+    }));
+    afficherPlans();
+}
+loadPlans();
 let triActuel = { colonne: null, ordre: 1 };
 let editIndex = null;
 let lastCriticalCount = 0;
@@ -407,7 +419,7 @@ function importerPDF() {
         observations
     });
 
-    localStorage.setItem("plansPrevention", JSON.stringify(plans));
+    // Plans gérés via Supabase
 
     afficherPlans();
     remplirFiltres();
@@ -512,7 +524,7 @@ function saveEdit() {
     plans[editIndex].visite = document.getElementById("editVisite").value;
     plans[editIndex].observations = document.getElementById("editObs").value.trim();
 
-    localStorage.setItem("plansPrevention", JSON.stringify(plans));
+    // Plans gérés via Supabase
 
     closeModal();
     afficherPlans();

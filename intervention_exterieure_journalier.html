@@ -78,6 +78,8 @@ input {
 }
 </style>
 </head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
 
 <body>
 
@@ -122,13 +124,25 @@ document.getElementById("dateDuJour").textContent = today;
 /* ============================================================
    CHARGER LES RAPPORTS DU JOUR
 ============================================================ */
-function chargerRapports() {
-    const rapports = JSON.parse(localStorage.getItem("rapports")) || [];
-
-    const journaliers = rapports.filter(r =>
-        r.date === today &&
-        r.type === "Intervention Entreprise Extérieure"
-    );
+async function chargerRapports() {
+    const todayISO = new Date().toISOString().split("T")[0];
+    const { data, error } = await supabaseClient
+        .from("interventions_exterieures")
+        .select("*")
+        .gte("created_at", todayISO + "T00:00:00")
+        .lte("created_at", todayISO + "T23:59:59")
+        .order("created_at", { ascending: false });
+    
+    if (error) { console.error(error); return; }
+    
+    const journaliers = (data || []).map(r => ({
+        entreprise: r.entreprise || "—",
+        agent: r.responsable || "—",
+        localisation: r.zone || "—",
+        heureDebut: r.heure_arrivee ? new Date(r.heure_arrivee).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : "—",
+        heureFin: r.heure_depart ? new Date(r.heure_depart).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : null,
+        epi: r.type_travaux || "—"
+    }));
 
     afficher(journaliers);
     updateCounters(journaliers);
@@ -208,18 +222,26 @@ function updateCounters(liste) {
 /* ============================================================
    RECHERCHE RAPIDE
 ============================================================ */
-document.getElementById("search").addEventListener("input", function () {
+document.getElementById("search").addEventListener("input", async function () {
     const q = this.value.toLowerCase();
-    const rapports = JSON.parse(localStorage.getItem("rapports")) || [];
-
-    const journaliers = rapports.filter(r =>
-        r.date === today &&
-        r.type === "Intervention Entreprise Extérieure" &&
-        (
-            (r.entreprise && r.entreprise.toLowerCase().includes(q)) ||
-            (r.agent && r.agent.toLowerCase().includes(q)) ||
-            (r.localisation && r.localisation.toLowerCase().includes(q))
-        )
+    const todayISO = new Date().toISOString().split("T")[0];
+    const { data } = await supabaseClient
+        .from("interventions_exterieures")
+        .select("*")
+        .gte("created_at", todayISO + "T00:00:00")
+        .lte("created_at", todayISO + "T23:59:59");
+    
+    const journaliers = (data || []).map(r => ({
+        entreprise: r.entreprise || "—",
+        agent: r.responsable || "—",
+        localisation: r.zone || "—",
+        heureDebut: r.heure_arrivee ? new Date(r.heure_arrivee).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : "—",
+        heureFin: r.heure_depart ? new Date(r.heure_depart).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : null,
+        epi: r.type_travaux || "—"
+    })).filter(r =>
+        r.entreprise.toLowerCase().includes(q) ||
+        r.agent.toLowerCase().includes(q) ||
+        r.localisation.toLowerCase().includes(q)
     );
 
     afficher(journaliers);

@@ -280,15 +280,15 @@ function switchTab(id, btn) {
 </script>
 
 </body>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
 <script type="module">
 
 /* ============================================================
    CONFIG SUPABASE
 ============================================================ */
-const SUPABASE_URL = "https://giragifrxvsmcljvrwyh.supabase.co";
-const SUPABASE_KEY = "sb_publishable_P6Ci6iKMss4PNCKklWYIOw_IqWt-JF6";
-const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cWxhamR5dG54YXZxaWdtemlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzg1NjgsImV4cCI6MjA4OTUxNDU2OH0.riGzQlfEPmo9SVK9Rs_fl33DnC5RR5qd2OUhgk4Twvs"
+const client = supabaseClient;
 
 /* ============================================================
    ROLE SUPERVISEUR
@@ -689,7 +689,7 @@ async function saveReport() {
         createdLabel: now.toLocaleString("fr-FR"),
         createdBy: user.username
     });
-    saveReports(list);
+    // saveReports handled via Supabase
 
     msg.textContent = "Vérification enregistrée ✔";
     msg.style.color = "#4da3ff";

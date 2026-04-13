@@ -445,7 +445,9 @@ Inspection complète du lieu de travail et des locaux contigus.
   </div>
 
   <!-- SCRIPTS -->
-  <script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
+<script>
     /* HORODATAGE */
     document.getElementById("horodatage").textContent =
       new Date().toLocaleString("fr-FR", {
@@ -604,8 +606,17 @@ Inspection complète du lieu de travail et des locaux contigus.
     });
 
     /* ENREGISTREMENT */
-    document.getElementById("btn-enregistrer").addEventListener("click", () => {
-      alert("Permis feu enregistré — prêt pour génération PDF non modifiable.");
+    document.getElementById("btn-enregistrer").addEventListener("click", async () => {
+      try {
+        const { error } = await supabaseClient.from("permis_feu").insert({
+            lieu: document.getElementById("lieu") ? document.getElementById("lieu").value : "",
+            description: document.getElementById("description") ? document.getElementById("description").value : "",
+            entreprise: document.getElementById("entreprise") ? document.getElementById("entreprise").value : "",
+            statut: "actif"
+        });
+        if (error) throw error;
+        showToast("✅ Permis feu enregistré sur Supabase !");
+      } catch(e) { showToast("❌ " + e.message, true); }
     });
   </script>
   

@@ -150,6 +150,21 @@
 
         <button id="loginBtn" onclick="login()">Se connecter</button>
 
+        <!-- Bouton biométrique -->
+        <button id="bioBtn" onclick="loginWithBiometrics()" style="
+            margin-top: 10px;
+            width: 86%;
+            padding: 10px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 8px;
+            color: #ffd27f;
+            cursor: pointer;
+            font-size: 0.85rem;
+        ">
+            🔒 Se connecter avec empreinte digitale
+        </button>
+
         <div class="badge-hint">Ou présentez votre badge NFC compatible Aura Sentinelle.</div>
 
         <div class="error" id="errorMsg"></div>
@@ -187,7 +202,6 @@ async function login() {
             body: form.toString()
         });
 
-        // 🔥 DEBUG : lire la réponse brute
         const raw = await res.text();
         console.log("RAW RESPONSE:", raw);
 
@@ -204,14 +218,55 @@ async function login() {
             return;
         }
 
+        // Stockage session
         localStorage.setItem("nom", data.user.nom);
         localStorage.setItem("role", data.user.role);
+
+        // Stockage biométrique
+        localStorage.setItem("bio_username", username);
+        localStorage.setItem("bio_password", password);
 
         window.location.href = "index.html";
 
     } catch (err) {
         console.error("FETCH ERROR:", err);
         errorMsg.textContent = "Erreur réseau.";
+        errorMsg.style.display = "block";
+    }
+}
+
+async function loginWithBiometrics() {
+    const errorMsg = document.getElementById("errorMsg");
+    errorMsg.style.display = "none";
+
+    const username = localStorage.getItem("bio_username");
+    const password = localStorage.getItem("bio_password");
+
+    if (!username || !password) {
+        errorMsg.textContent = "Aucune connexion biométrique enregistrée. Connectez-vous une première fois avec votre mot de passe.";
+        errorMsg.style.display = "block";
+        return;
+    }
+
+    try {
+        // Déclenche la biométrie (simplifiée)
+        await navigator.credentials.get({
+            publicKey: {
+                challenge: new Uint8Array(32),
+                timeout: 60000,
+                userVerification: "required"
+            }
+        });
+
+        // On relance le login normal automatiquement
+        document.getElementById("username").value = username;
+        document.getElementById("password").value = password;
+
+        login();
+
+    } catch (err) {
+        console.error("BIOMETRIC ERROR:", err);
+        errorMsg.textContent = "Authentification biométrique annulée ou indisponible.";
         errorMsg.style.display = "block";
     }
 }

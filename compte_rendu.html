@@ -4,645 +4,88 @@
 <meta charset="UTF-8">
 <title>Compte rendu incendie / technique / travaux</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- Typo premium -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-
-<style>
-/* ============================= */
-/*        STYLE GLOBAL SOMBRE    */
-/* ============================= */
-
-body {
-    background:#0d0f14;
-    color:#e8ecf7;
-    font-family:"Inter", system-ui, Arial;
-    margin:0;
-    padding:40px 20px;
-    display:flex;
-    justify-content:center;
-}
-
-.container {
-    width:100%;
-    max-width:900px;
-    margin:auto;
-}
-
-/* Titre */
-.titre-principal {
-    text-align:center;
-    color:#4da3ff;
-    font-size:2rem;
-    margin-bottom:35px;
-    letter-spacing:0.5px;
-    text-shadow:0 0 8px rgba(77,163,255,0.4);
-}
-
-/* ============================= */
-/*        GROUPES PRINCIPAUX     */
-/* ============================= */
-
-.groupe {
-    margin-bottom:28px;
-    border-radius:18px;
-    overflow:hidden;
-    backdrop-filter:blur(14px);
-    border:1px solid rgba(255,255,255,0.18); /* Bordure visible */
-    background:rgba(255,255,255,0.06); /* Glass identique à ton index */
-    box-shadow:0 6px 18px rgba(0,0,0,0.45);
-    transition:0.3s ease;
-}
-
-.groupe:hover {
-    transform:scale(1.01);
-}
-
-/* Couleurs par groupe */
-.groupe[data-color="rouge"] .groupe-header {
-    background:rgba(255,80,80,0.18);
-    border-left:5px solid #ff6b6b;
-}
-
-.groupe[data-color="bleu"] .groupe-header {
-    background:rgba(111,179,255,0.18);
-    border-left:5px solid #6fb3ff;
-}
-
-.groupe[data-color="or"] .groupe-header {
-    background:rgba(247,215,116,0.18);
-    border-left:5px solid #f7d774;
-}
-
-.groupe[data-color="gris"] .groupe-header {
-    background:rgba(200,200,200,0.15);
-    border-left:5px solid #cfd3da;
-}
-
-/* Header groupe */
-.groupe-header {
-    padding:18px;
-    font-size:1.25rem;
-    font-weight:700;
-    cursor:pointer;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
-.groupe-header::after {
-    content:"▼";
-    font-size:1rem;
-    opacity:0.7;
-    transition:0.3s;
-}
-
-.groupe-header.active::after {
-    transform:rotate(-180deg);
-}
-
-/* Contenu groupe */
-.groupe-content {
-    display:none;
-    padding:22px;
-    animation:fadeIn 0.3s ease;
-}
-
-/* ============================= */
-/*        SECTIONS INTERNES      */
-/* ============================= */
-
-.section {
-    background:rgba(255,255,255,0.08);
-    border:1px solid rgba(255,255,255,0.18);
-    border-radius:14px;
-    margin-bottom:20px;
-    overflow:hidden;
-    transition:0.3s ease;
-}
-
-.section:hover {
-    transform:scale(1.01);
-}
-
-.section-header {
-    padding:16px;
-    font-size:1.05rem;
-    font-weight:600;
-    background:rgba(255,255,255,0.12);
-    cursor:pointer;
-    display:flex;
-    justify-content:space-between;
-}
-
-.section-header::after {
-    content:"▼";
-    font-size:0.9rem;
-    opacity:0.7;
-    transition:0.3s;
-}
-
-.section-header.active::after {
-    transform:rotate(-180deg);
-}
-
-.section-content {
-    padding:18px;
-    display:none;
-    animation:fadeIn 0.3s ease;
-}
-
-/* ============================= */
-/*        INPUTS PREMIUM         */
-/* ============================= */
-
-label {
-    font-size:1rem;
-    opacity:0.9;
-    font-weight:600;
-    margin-bottom:6px;
-    display:block;
-}
-
-input[type="text"],
-input[type="date"],
-textarea {
-    width:100%;
-    padding:14px;
-    margin-top:6px;
-    margin-bottom:18px;
-    border-radius:12px;
-    border:1px solid rgba(255,255,255,0.25);
-    background:rgba(255,255,255,0.08);
-    color:white;
-    font-size:1rem;
-    transition:0.25s;
-}
-
-textarea {
-    height:110px;
-}
-
-input:focus,
-textarea:focus {
-    border-color:#4da3ff;
-    box-shadow:0 0 10px rgba(77,163,255,0.5);
-    outline:none;
-}
-
-/* Radio & checkbox */
-input[type="radio"],
-input[type="checkbox"] {
-    transform:scale(1.25);
-    margin-right:8px;
-}
-
-/* ============================= */
-/*        BOUTONS PREMIUM        */
-/* ============================= */
-
-button {
-    width:100%;
-    padding:16px;
-    border-radius:14px;
-    border:none;
-    background:linear-gradient(135deg, #7ab8ff, #4d9dff);
-    color:#0a0f1c;
-    font-weight:700;
-    font-size:1.1rem;
-    cursor:pointer;
-    margin-top:22px;
-    box-shadow:0 6px 18px rgba(122,184,255,0.4);
-    transition:0.25s ease;
-}
-
-button:hover {
-    transform:translateY(-3px);
-    box-shadow:0 8px 22px rgba(122,184,255,0.6);
-}
-
-/* ============================= */
-/*        RESPONSIVE MOBILE      */
-/* ============================= */
-
-@media (max-width: 600px) {
-
-    body {
-        padding:20px 10px;
-    }
-
-    .container {
-        max-width:100%;
-    }
-
-    .titre-principal {
-        font-size:1.6rem;
-        margin-bottom:25px;
-    }
-
-    .groupe-header {
-        font-size:1.1rem;
-        padding:14px;
-    }
-
-    .section-header {
-        font-size:1rem;
-        padding:12px;
-    }
-
-    input[type="text"],
-    input[type="date"],
-    textarea {
-        font-size:0.95rem;
-        padding:12px;
-    }
-
-    button {
-        font-size:1rem;
-        padding:14px;
-    }
-}
-
-/* ============================= */
-/*        ANIMATIONS             */
-/* ============================= */
-
-@keyframes fadeIn {
-    from { opacity:0; transform:translateY(-5px); }
-    to { opacity:1; transform:translateY(0); }
-}
-</style>
-</head>
-
-<body>
-
-<div class="container">
-    <h1 class="titre-principal">🧯 Compte rendu incendie / technique / travaux</h1>
-
-    <!-- ========================================================= -->
-    <!-- 📋 GROUPE 1 — INFORMATIONS GÉNÉRALES -->
-    <!-- ========================================================= -->
-    <div class="groupe" data-color="gris">
-        <div class="groupe-header" onclick="toggleGroupe(this)">
-            📋 Informations générales
-        </div>
-        <div class="groupe-content">
-
-            <label>Date :</label>
-            <input type="date" id="date">
-
-            <label>Service :</label><br>
-            <input type="radio" name="service" value="Jour" checked> Jour (7h30-19h30)
-            <input type="radio" name="service" value="Nuit"> Nuit (19h30-7h30)
-
-            <label>Nom du chef d’équipe :</label>
-            <input type="text" id="chef">
-
-            <label>Site :</label>
-            <input type="text" value="Le Bon Marché // SEGEP RG // Bâtiment 3" disabled>
-
-        </div>
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- 🔥 GROUPE 2 — INCENDIE -->
-    <!-- ========================================================= -->
-    <div class="groupe" data-color="rouge">
-        <div class="groupe-header" onclick="toggleGroupe(this)">
-            🔥 Incendie
-        </div>
-        <div class="groupe-content"><!-- Fuite d’eau -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Fuite d’eau</div>
-                <div class="section-content">
-                    <input type="radio" name="fuite" value="NON" checked> NON
-                    <input type="radio" name="fuite" value="OUI"> OUI
-                    <textarea id="fuite_details"></textarea>
-
-                    <label>Service technique prévenu par :</label><br>
-                    <input type="checkbox" value="Mail"> Mail
-                    <input type="checkbox" value="Radio"> Radio
-                    <input type="checkbox" value="Téléphone"> Téléphone
-                    <input type="checkbox" value="Mission One"> Mission One
-
-                    <label>Nom de l’interlocuteur :</label>
-                    <input type="text" id="fuite_interlocuteur">
-
-                    <label>Main courante effectuée ?</label><br>
-                    <input type="radio" name="mc_fuite" value="OUI"> OUI
-                    <input type="radio" name="mc_fuite" value="NON" checked> NON
-                </div>
-            </div>
-
-            <!-- Fonctionnement moteurs -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Fonctionnement moteurs (désenfumage, clim…)</div>
-                <div class="section-content">
-                    <input type="radio" name="moteurs" value="NON" checked> NON
-                    <input type="radio" name="moteurs" value="OUI"> OUI
-                    <textarea id="moteurs_details"></textarea>
-
-                    <label>Service technique prévenu par :</label><br>
-                    <input type="checkbox" value="Mail"> Mail
-                    <input type="checkbox" value="Radio"> Radio
-                    <input type="checkbox" value="Téléphone"> Téléphone
-                    <input type="checkbox" value="Mission One"> Mission One
-
-                    <label>Nom de l’interlocuteur :</label>
-                    <input type="text" id="moteurs_interlocuteur">
-
-                    <label>Main courante effectuée ?</label><br>
-                    <input type="radio" name="mc_moteurs" value="OUI"> OUI
-                    <input type="radio" name="mc_moteurs" value="NON" checked> NON
-                </div>
-            </div>
-
-            <!-- Coupure EDF -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Coupure EDF / Anomalies électriques</div>
-                <div class="section-content">
-                    <input type="radio" name="edf" value="NON" checked> NON
-                    <input type="radio" name="edf" value="OUI"> OUI
-                    <textarea id="edf_details"></textarea>
-
-                    <label>Anomalies au retour à la normale :</label>
-                    <textarea id="edf_retour"></textarea>
-
-                    <label>Service technique prévenu par :</label><br>
-                    <input type="checkbox" value="Mail"> Mail
-                    <input type="checkbox" value="Radio"> Radio
-                    <input type="checkbox" value="Téléphone"> Téléphone
-                    <input type="checkbox" value="Mission One"> Mission One
-
-                    <label>Nom de l’interlocuteur :</label>
-                    <input type="text" id="edf_interlocuteur">
-
-                    <label>Main courante effectuée ?</label><br>
-                    <input type="radio" name="mc_edf" value="OUI"> OUI
-                    <input type="radio" name="mc_edf" value="NON" checked> NON
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- 🛠 GROUPE 3 — TECHNIQUE -->
-    <!-- ========================================================= -->
-    <div class="groupe" data-color="bleu">
-        <div class="groupe-header" onclick="toggleGroupe(this)">
-            🛠 Technique
-        </div>
-        <div class="groupe-content">
-
-            <!-- Éclairage bâtiments -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Éclairage bâtiments</div>
-                <div class="section-content">
-                    <input type="radio" name="eclairage" value="NON" checked> NON
-                    <input type="radio" name="eclairage" value="OUI"> OUI
-                    <textarea id="eclairage_details"></textarea>
-
-                    <label>Service technique prévenu par :</label><br>
-                    <input type="checkbox" value="Mail"> Mail
-                    <input type="checkbox" value="Radio"> Radio
-                    <input type="checkbox" value="Téléphone"> Téléphone
-                    <input type="checkbox" value="Mission One"> Mission One
-
-                    <label>Nom de l’interlocuteur :</label>
-                    <input type="text" id="eclairage_interlocuteur">
-
-                    <label>Main courante effectuée ?</label><br>
-                    <input type="radio" name="mc_eclairage" value="OUI"> OUI
-                    <input type="radio" name="mc_eclairage" value="NON" checked> NON
-                </div>
-            </div>
-
-            <!-- Ascenseur -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Panne / Désincarcération ascenseur</div>
-                <div class="section-content">
-                    <input type="radio" name="ascenseur" value="NON" checked> NON
-                    <input type="radio" name="ascenseur" value="OUI"> OUI
-                    <textarea id="ascenseur_details"></textarea>
-
-                    <label>Service technique prévenu par :</label><br>
-                    <input type="checkbox" value="Mail"> Mail
-                    <input type="checkbox" value="Radio"> Radio
-                    <input type="checkbox" value="Téléphone"> Téléphone
-                    <input type="checkbox" value="Mission One"> Mission One
-
-                    <label>Nom de l’interlocuteur :</label>
-                    <input type="text" id="ascenseur_interlocuteur">
-
-                    <label>Main courante effectuée ?</label><br>
-                    <input type="radio" name="mc_ascenseur" value="OUI"> OUI
-                    <input type="radio" name="mc_ascenseur" value="NON" checked> NON
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- 🏗 GROUPE 4 — TRAVAUX -->
-    <!-- ========================================================= -->
-    <div class="groupe" data-color="or">
-        <div class="groupe-header" onclick="toggleGroupe(this)">
-            🏗 Travaux
-        </div>
-        <div class="groupe-content">
-
-            <!-- Ouvertures / Fermetures -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Ouvertures / Fermetures locaux</div>
-                <div class="section-content">
-                    <input type="radio" name="ouverture" value="NON" checked> NON
-                    <input type="radio" name="ouverture" value="OUI"> OUI
-                    <textarea id="ouverture_details"></textarea>
-
-                    <label>Service technique prévenu par :</label><br>
-                    <input type="checkbox" value="Mail"> Mail
-                    <input type="checkbox" value="Radio"> Radio
-                    <input type="checkbox" value="Téléphone"> Téléphone
-                    <input type="checkbox" value="Mission One"> Mission One
-
-                    <label>Nom de l’interlocuteur :</label>
-                    <input type="text" id="ouverture_interlocuteur">
-
-                    <label>Main courante effectuée ?</label><br>
-                    <input type="radio" name="mc_ouverture" value="OUI"> OUI
-                    <input type="radio" name="mc_ouverture" value="NON" checked> NON
-                </div>
-            </div>
-
-            <!-- Effectifs nuit -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Effectifs nuit</div>
-                <div class="section-content">
-                    <label>Effectif théorique :</label>
-                    <input type="text" id="effectif_theorique">
-
-                    <label>Effectif réel présent :</label>
-                    <input type="text" id="effectif_reel">
-
-                    <label>Issues de secours ouvertes :</label>
-                    <textarea id="issues_secours"></textarea>
-                </div>
-            </div>
-
-            <!-- Travaux voirie -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Travaux sur voirie</div>
-                <div class="section-content">
-                    <input type="radio" name="voirie" value="NON" checked> NON
-                    <input type="radio" name="voirie" value="OUI"> OUI
-                    <textarea id="voirie_details"></textarea>
-
-                    <label>Service technique prévenu par :</label><br>
-                    <input type="checkbox" value="Mail"> Mail
-                    <input type="checkbox" value="Radio"> Radio
-                    <input type="checkbox" value="Téléphone"> Téléphone
-                    <input type="checkbox" value="Mission One"> Mission One
-
-                    <label>Nom de l’interlocuteur :</label>
-                    <input type="text" id="voirie_interlocuteur">
-
-                    <label>Main courante effectuée ?</label><br>
-                    <input type="radio" name="mc_voirie" value="OUI"> OUI
-                    <input type="radio" name="mc_voirie" value="NON" checked> NON
-                </div>
-            </div>
-
-            <!-- Rive Droite -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Rive Droite – Anomalies</div>
-                <div class="section-content">
-                    <input type="radio" name="rd_anomalies" value="NON" checked> NON
-                    <input type="radio" name="rd_anomalies" value="OUI"> OUI
-                    <textarea id="rd_details"></textarea>
-
-                    <label>Service technique prévenu par :</label><br>
-                    <input type="checkbox" value="Mail"> Mail
-                    <input type="checkbox" value="Radio"> Radio
-                    <input type="checkbox" value="Téléphone"> Téléphone
-                    <input type="checkbox" value="Mission One"> Mission One
-
-                    <label>Nom de l’interlocuteur :</label>
-                    <input type="text" id="rd_interlocuteur">
-
-                    <label>Main courante effectuée ?</label><br>
-                    <input type="radio" name="mc_rd" value="OUI"> OUI
-                    <input type="radio" name="mc_rd" value="NON" checked> NON
-                </div>
-            </div>
-
-            <!-- Bagneux -->
-            <div class="section">
-                <div class="section-header" onclick="toggleSection(this)">Bagneux – Anomalies</div>
-                <div class="section-content">
-                    <input type="radio" name="bg_anomalies" value="NON" checked> NON
-                    <input type="radio" name="bg_anomalies" value="OUI"> OUI
-                    <textarea id="bg_details"></textarea>
-
-                    <label>Service technique prévenu par :</label><br>
-                    <input type="checkbox" value="Mail"> Mail
-                    <input type="checkbox" value="Radio"> Radio
-                    <input type="checkbox" value="Téléphone"> Téléphone
-                    <input type="checkbox" value="Mission One"> Mission One
-
-                    <label>Nom de l’interlocuteur :</label>
-                    <input type="text" id="bg_interlocuteur">
-
-                    <label>Main courante effectuée ?</label><br>
-                    <input type="radio" name="mc_bg" value="OUI"> OUI
-                    <input type="radio" name="mc_bg" value="NON" checked> NON
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ================= BOUTONS GLOBAUX ================= -->
-    <button onclick="exportPDF()">📄 Exporter en PDF</button>
-    <button onclick="envoyerMail()">📧 Envoyer par mail</button>
-
-</div> <!-- fin .container -->
-
-<!-- Librairies PDF -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{--bg:#06080d;--panel:rgba(12,16,28,.85);--glass:rgba(255,255,255,.03);--bdr:rgba(255,255,255,.06);--bdr2:rgba(255,255,255,.1);--focus:rgba(212,175,55,.35);--tx:#b8bfcc;--txd:rgba(255,255,255,.3);--txb:#eef1f6;--gold:#d4af37;--goldg:rgba(212,175,55,.15);--fire:#ef4444;--firebg:rgba(239,68,68,.08);--firebd:rgba(239,68,68,.18);--tech:#3b82f6;--techbg:rgba(59,130,246,.08);--techbd:rgba(59,130,246,.18);--work:#f59e0b;--workbg:rgba(245,158,11,.08);--workbd:rgba(245,158,11,.18);--infobg:rgba(107,114,128,.08);--infobd:rgba(107,114,128,.18);--green:#34d399;--r:14px}
+*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;top:-300px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(212,175,55,.04),transparent 60%);pointer-events:none;z-index:0}
+.container{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:32px 20px 80px}
+.page-header{display:flex;align-items:center;gap:16px;margin-bottom:10px}.header-icon{width:54px;height:54px;border-radius:var(--r);background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(245,158,11,.08));border:1px solid rgba(239,68,68,.2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0}
+.header-text h1{font-size:1.45rem;font-weight:700;color:var(--txb);letter-spacing:-.02em;line-height:1.2}.header-text p{font-size:.75rem;color:var(--txd);margin-top:3px;letter-spacing:.04em}
+.page-nav{display:flex;align-items:center;gap:8px;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--bdr)}
+.nav-back{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;background:var(--glass);border:1px solid var(--bdr);color:var(--txd);font-size:.78rem;font-weight:500;cursor:pointer;text-decoration:none;transition:.25s;font-family:'DM Sans',sans-serif}.nav-back:hover{background:var(--goldg);border-color:var(--focus);color:var(--gold)}
+.nav-status{margin-left:auto;display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--txd);background:var(--glass);border:1px solid var(--bdr);padding:5px 10px;border-radius:7px}.nav-status .dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pd 2s ease-in-out infinite}@keyframes pd{0%,100%{opacity:1;box-shadow:0 0 4px var(--green)}50%{opacity:.4;box-shadow:none}}
+.groupe{margin-bottom:16px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--panel);backdrop-filter:blur(16px);overflow:hidden;transition:border-color .3s}.groupe.open{border-color:var(--bdr2)}
+.groupe-header{padding:18px 20px;font-size:.95rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:12px;color:var(--txb);transition:background .25s;user-select:none}.groupe-header:hover{background:rgba(255,255,255,.02)}
+.gi{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.gc{margin-left:auto;width:24px;height:24px;border-radius:6px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;transition:transform .35s cubic-bezier(.4,0,.2,1),background .25s;flex-shrink:0}.gc svg{width:12px;height:12px;fill:none;stroke:var(--txd);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.groupe.open .gc{transform:rotate(180deg);background:rgba(255,255,255,.08)}
+.groupe[data-color="info"] .gi{background:var(--infobg);border:1px solid var(--infobd)}.groupe[data-color="fire"] .gi{background:var(--firebg);border:1px solid var(--firebd)}.groupe[data-color="tech"] .gi{background:var(--techbg);border:1px solid var(--techbd)}.groupe[data-color="work"] .gi{background:var(--workbg);border:1px solid var(--workbd)}
+.groupe[data-color="fire"].open{border-color:var(--firebd)}.groupe[data-color="tech"].open{border-color:var(--techbd)}.groupe[data-color="work"].open{border-color:var(--workbd)}
+.groupe-content{max-height:0;overflow:hidden;transition:max-height .5s cubic-bezier(.4,0,.2,1),padding .3s;padding:0 20px}.groupe.open .groupe-content{max-height:8000px;padding:4px 20px 24px}
+.section{border-radius:12px;border:1px solid var(--bdr);background:rgba(255,255,255,.015);margin-bottom:12px;overflow:hidden;transition:border-color .25s}.section.open{border-color:var(--bdr2)}
+.section-header{padding:14px 16px;font-size:.85rem;font-weight:500;color:var(--tx);cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .2s,color .2s;user-select:none}.section-header:hover{background:rgba(255,255,255,.02);color:var(--txb)}
+.sc{margin-left:auto;transition:transform .3s;color:var(--txd);font-size:.7rem}.section.open .sc{transform:rotate(180deg)}
+.section-content{max-height:0;overflow:hidden;transition:max-height .4s cubic-bezier(.4,0,.2,1),padding .3s;padding:0 16px}.section.open .section-content{max-height:2000px;padding:4px 16px 20px}
+label{display:block;font-size:.72rem;font-weight:600;color:var(--txd);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:16px}label:first-child{margin-top:0}
+input[type="text"],input[type="date"],textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--bdr);background:rgba(255,255,255,.04);color:var(--txb);font-family:'DM Sans',sans-serif;font-size:.88rem;transition:.25s;outline:none;margin-bottom:4px}textarea{min-height:90px;resize:vertical;line-height:1.6}
+input[type="text"]:focus,input[type="date"]:focus,textarea:focus{border-color:var(--focus);background:rgba(212,175,55,.03);box-shadow:0 0 0 3px rgba(212,175,55,.06)}input[type="text"]:disabled{opacity:.4;cursor:not-allowed}
+.cg{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;margin-bottom:4px}.cg input[type="radio"],.cg input[type="checkbox"]{display:none}
+.cg label{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid var(--bdr);background:var(--glass);font-size:.8rem;font-weight:500;color:var(--tx);cursor:pointer;transition:.25s;text-transform:none;letter-spacing:0;margin:0}.cg label:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
+.cg label .dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.2);transition:.25s;flex-shrink:0}
+.cg label .cb{width:14px;height:14px;border-radius:4px;border:2px solid rgba(255,255,255,.2);transition:.25s;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.55rem;color:transparent}
+.cg input[type="radio"]:checked+label{background:var(--goldg);border-color:var(--focus);color:var(--gold)}.cg input[type="radio"]:checked+label .dot{border-color:var(--gold);background:var(--gold);box-shadow:inset 0 0 0 3px var(--bg)}
+.cg input[type="checkbox"]:checked+label{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.25);color:var(--tech)}.cg input[type="checkbox"]:checked+label .cb{border-color:var(--tech);background:var(--tech);color:#fff}
+.cl{display:block;font-size:.72rem;font-weight:600;color:var(--txd);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:16px}
+.actions-row{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap}.btn{flex:1;min-width:200px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:600;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent);opacity:0;transition:opacity .3s}.btn:hover::after{opacity:1}
+.btn-pdf{background:linear-gradient(135deg,var(--gold),#c9a22e);color:#0a0a0a;box-shadow:0 4px 20px rgba(212,175,55,.2)}.btn-pdf:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(212,175,55,.35)}
+.btn-mail{background:var(--glass);border:1px solid var(--bdr);color:var(--tx)}.btn-mail:hover{background:rgba(59,130,246,.08);border-color:var(--techbd);color:var(--tech);transform:translateY(-2px)}
+@media(max-width:600px){.container{padding:16px 12px 60px}.page-header{flex-wrap:wrap;gap:12px}.groupe-header{padding:14px 16px;font-size:.88rem}.gi{width:30px;height:30px;font-size:.9rem}.section-header{font-size:.82rem;padding:12px 14px}.actions-row{flex-direction:column}.btn{min-width:100%}.cg{gap:6px}.cg label{padding:6px 10px;font-size:.75rem}}
+</style>
+</head>
+<body>
+<div class="container">
+<header class="page-header"><div class="header-icon">🧯</div><div class="header-text"><h1>Compte rendu</h1><p>Incendie · Technique · Travaux</p></div></header>
+<nav class="page-nav"><a class="nav-back" href="index.html">← Retour menu</a><div class="nav-status"><div class="dot"></div> Brouillon</div></nav>
 
+<div class="groupe open" data-color="info"><div class="groupe-header" onclick="tg(this)"><div class="gi">📋</div>Informations générales<div class="gc"><svg viewBox="0 0 12 8"><polyline points="1,1 6,6 11,1"/></svg></div></div><div class="groupe-content">
+<label>Date</label><input type="date" id="date">
+<label>Service</label><div class="cg"><input type="radio" name="service" id="sj" value="Jour" checked><label for="sj"><span class="dot"></span> Jour (7h30–19h30)</label><input type="radio" name="service" id="sn" value="Nuit"><label for="sn"><span class="dot"></span> Nuit (19h30–7h30)</label></div>
+<label>Chef d'équipe</label><input type="text" id="chef" placeholder="Nom du chef d'équipe">
+<label>Site</label><input type="text" value="Le Bon Marché · SEGEP RG · Bâtiment 3" disabled>
+</div></div>
+
+<div class="groupe" data-color="fire"><div class="groupe-header" onclick="tg(this)"><div class="gi">🔥</div>Incendie<div class="gc"><svg viewBox="0 0 12 8"><polyline points="1,1 6,6 11,1"/></svg></div></div><div class="groupe-content">
+<div class="section"><div class="section-header" onclick="ts(this)">💧 Fuite d'eau<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="fuite" id="fn" value="NON" checked><label for="fn"><span class="dot"></span> NON</label><input type="radio" name="fuite" id="fo" value="OUI"><label for="fo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="fuite_details" placeholder="Décrire la fuite…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="fm"><label for="fm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="fr"><label for="fr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="ft"><label for="ft"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="f1"><label for="f1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="fuite_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_fuite" id="mfo" value="OUI"><label for="mfo"><span class="dot"></span> OUI</label><input type="radio" name="mc_fuite" id="mfn" value="NON" checked><label for="mfn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">⚙️ Fonctionnement moteurs<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="moteurs" id="mn" value="NON" checked><label for="mn"><span class="dot"></span> NON</label><input type="radio" name="moteurs" id="mo" value="OUI"><label for="mo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="moteurs_details" placeholder="Dysfonctionnement…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="mm"><label for="mm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="mr"><label for="mr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="mt"><label for="mt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="m1"><label for="m1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="moteurs_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_moteurs" id="mmo" value="OUI"><label for="mmo"><span class="dot"></span> OUI</label><input type="radio" name="mc_moteurs" id="mmn" value="NON" checked><label for="mmn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">⚡ Coupure EDF / Anomalies électriques<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="edf" id="en" value="NON" checked><label for="en"><span class="dot"></span> NON</label><input type="radio" name="edf" id="eo" value="OUI"><label for="eo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="edf_details" placeholder="Anomalie électrique…"></textarea><label>Anomalies au retour à la normale</label><textarea id="edf_retour" placeholder="Décrire…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="em"><label for="em"><span class="cb">✓</span> Mail</label><input type="checkbox" id="er"><label for="er"><span class="cb">✓</span> Radio</label><input type="checkbox" id="et2"><label for="et2"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="e1"><label for="e1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="edf_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_edf" id="meo" value="OUI"><label for="meo"><span class="dot"></span> OUI</label><input type="radio" name="mc_edf" id="men" value="NON" checked><label for="men"><span class="dot"></span> NON</label></div></div></div>
+</div></div>
+
+<div class="groupe" data-color="tech"><div class="groupe-header" onclick="tg(this)"><div class="gi">🛠</div>Technique<div class="gc"><svg viewBox="0 0 12 8"><polyline points="1,1 6,6 11,1"/></svg></div></div><div class="groupe-content">
+<div class="section"><div class="section-header" onclick="ts(this)">💡 Éclairage bâtiments<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="eclairage" id="xn" value="NON" checked><label for="xn"><span class="dot"></span> NON</label><input type="radio" name="eclairage" id="xo" value="OUI"><label for="xo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="eclairage_details" placeholder="Problème d'éclairage…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="xm"><label for="xm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="xr"><label for="xr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="xt"><label for="xt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="x1"><label for="x1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="eclairage_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_eclairage" id="mxo" value="OUI"><label for="mxo"><span class="dot"></span> OUI</label><input type="radio" name="mc_eclairage" id="mxn" value="NON" checked><label for="mxn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🛗 Panne / Désincarcération ascenseur<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="ascenseur" id="an" value="NON" checked><label for="an"><span class="dot"></span> NON</label><input type="radio" name="ascenseur" id="ao" value="OUI"><label for="ao"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="ascenseur_details" placeholder="Décrire la panne…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="am"><label for="am"><span class="cb">✓</span> Mail</label><input type="checkbox" id="ar"><label for="ar"><span class="cb">✓</span> Radio</label><input type="checkbox" id="at2"><label for="at2"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="a1"><label for="a1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="ascenseur_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_ascenseur" id="mao" value="OUI"><label for="mao"><span class="dot"></span> OUI</label><input type="radio" name="mc_ascenseur" id="man" value="NON" checked><label for="man"><span class="dot"></span> NON</label></div></div></div>
+</div></div>
+
+<div class="groupe" data-color="work"><div class="groupe-header" onclick="tg(this)"><div class="gi">🏗</div>Travaux<div class="gc"><svg viewBox="0 0 12 8"><polyline points="1,1 6,6 11,1"/></svg></div></div><div class="groupe-content">
+<div class="section"><div class="section-header" onclick="ts(this)">🚪 Ouvertures / Fermetures locaux<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="ouverture" id="on2" value="NON" checked><label for="on2"><span class="dot"></span> NON</label><input type="radio" name="ouverture" id="oo" value="OUI"><label for="oo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="ouverture_details" placeholder="Ouvertures/fermetures…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="om"><label for="om"><span class="cb">✓</span> Mail</label><input type="checkbox" id="or2"><label for="or2"><span class="cb">✓</span> Radio</label><input type="checkbox" id="ot"><label for="ot"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="o1"><label for="o1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="ouverture_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_ouverture" id="mouo" value="OUI"><label for="mouo"><span class="dot"></span> OUI</label><input type="radio" name="mc_ouverture" id="moun" value="NON" checked><label for="moun"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🌙 Effectifs nuit<span class="sc">▾</span></div><div class="section-content"><label>Effectif théorique</label><input type="text" id="effectif_theorique" placeholder="Ex : 4 agents"><label>Effectif réel</label><input type="text" id="effectif_reel" placeholder="Ex : 3 agents"><label>Issues de secours ouvertes</label><textarea id="issues_secours" placeholder="Lister les issues…"></textarea></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🚧 Travaux sur voirie<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="voirie" id="vn" value="NON" checked><label for="vn"><span class="dot"></span> NON</label><input type="radio" name="voirie" id="vo" value="OUI"><label for="vo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="voirie_details" placeholder="Travaux voirie…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="vm"><label for="vm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="vr"><label for="vr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="vt"><label for="vt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="v1"><label for="v1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="voirie_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_voirie" id="mvo" value="OUI"><label for="mvo"><span class="dot"></span> OUI</label><input type="radio" name="mc_voirie" id="mvn" value="NON" checked><label for="mvn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🏬 Rive Droite – Anomalies<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="rd" id="rn" value="NON" checked><label for="rn"><span class="dot"></span> NON</label><input type="radio" name="rd" id="ro" value="OUI"><label for="ro"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="rd_details" placeholder="Anomalies RD…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="rm"><label for="rm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="rr"><label for="rr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="rt"><label for="rt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="r1"><label for="r1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="rd_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_rd" id="mro" value="OUI"><label for="mro"><span class="dot"></span> OUI</label><input type="radio" name="mc_rd" id="mrn" value="NON" checked><label for="mrn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🏭 Bagneux – Anomalies<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="bg" id="bn" value="NON" checked><label for="bn"><span class="dot"></span> NON</label><input type="radio" name="bg" id="bo" value="OUI"><label for="bo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="bg_details" placeholder="Anomalies Bagneux…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="bm"><label for="bm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="br"><label for="br"><span class="cb">✓</span> Radio</label><input type="checkbox" id="bt"><label for="bt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="b1"><label for="b1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="bg_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_bg" id="mbo" value="OUI"><label for="mbo"><span class="dot"></span> OUI</label><input type="radio" name="mc_bg" id="mbn" value="NON" checked><label for="mbn"><span class="dot"></span> NON</label></div></div></div>
+</div></div>
+
+<div class="actions-row"><button class="btn btn-pdf" onclick="exportPDF()">📄 Exporter en PDF</button><button class="btn btn-mail" onclick="envoyerMail()">📧 Envoyer par mail</button></div>
+</div>
 <script>
-function toggleGroupe(header) {
-    const allGroups = document.querySelectorAll(".groupe-content");
-    const allHeaders = document.querySelectorAll(".groupe-header");
-    const content = header.nextElementSibling;
-
-    allGroups.forEach(g => g.style.display = "none");
-    allHeaders.forEach(h => h.classList.remove("active"));
-
-    content.style.display = "block";
-    header.classList.add("active");
-}
-
-function toggleSection(header) {
-    const content = header.nextElementSibling;
-    if (content.style.display === "block") {
-        content.style.display = "none";
-        header.classList.remove("active");
-    } else {
-        content.style.display = "block";
-        header.classList.add("active");
-    }
-}
-
-async function exportPDF() {
-    const element = document.querySelector(".container");
-    const canvas = await html2canvas(element, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
-
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF("p", "mm", "a4");
-
-    const imgWidth = 210;
-    const imgHeight = canvas.height * imgWidth / canvas.width;
-
-    pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-    pdf.save("Compterenduincendietechniquetravaux.pdf");
-}
-
-async function envoyerMail() {
-    alert("Génération du PDF… puis ouverture de votre application mail.");
-
-    const element = document.querySelector(".container");
-    const canvas = await html2canvas(element, { scale: 2 });
-    const imgData = canvas.toDataURL("image/png");
-
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF("p", "mm", "a4");
-
-    const imgWidth = 210;
-    const imgHeight = canvas.height * imgWidth / canvas.width;
-
-    pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
-
-    const pdfBlob = pdf.output("blob");
-    const pdfURL = URL.createObjectURL(pdfBlob);
-
-    window.location.href =
-        `mailto:?subject=Compte rendu incendie / technique / travaux` +
-        `&body=Veuillez trouver ci-joint le rapport.` +
-        `&attachment=${pdfURL}`;
-}
-
-// Ouvrir par défaut le premier groupe
-window.addEventListener("load", () => {
-    const firstHeader = document.querySelector(".groupe-header");
-    if (firstHeader) toggleGroupe(firstHeader);
-});
+function tg(h){const g=h.closest('.groupe'),w=g.classList.contains('open');document.querySelectorAll('.groupe').forEach(x=>x.classList.remove('open'));if(!w)g.classList.add('open');}
+function ts(h){h.closest('.section').classList.toggle('open');}
+async function exportPDF(){document.querySelectorAll('.groupe').forEach(g=>g.classList.add('open'));document.querySelectorAll('.section').forEach(s=>s.classList.add('open'));await new Promise(r=>setTimeout(r,400));const el=document.querySelector('.container'),c=await html2canvas(el,{scale:2,backgroundColor:'#06080d'}),img=c.toDataURL('image/png'),{jsPDF}=window.jspdf,pdf=new jsPDF('p','mm','a4'),w=210,h=c.height*w/c.width;let y=0;while(y<h){if(y>0)pdf.addPage();pdf.addImage(img,'PNG',0,-y,w,h);y+=295;}pdf.save('compte_rendu_'+new Date().toISOString().split('T')[0]+'.pdf');}
+async function envoyerMail(){await exportPDF();window.location.href='mailto:?subject=Compte rendu incendie / technique / travaux&body=Veuillez trouver ci-joint le compte rendu.';}
+document.getElementById('date').valueAsDate=new Date();
 </script>
-
-<script src="js/security.js"></script>
+<script src="security.js"></script><script src="global.js"></script>
 </body>
 </html>

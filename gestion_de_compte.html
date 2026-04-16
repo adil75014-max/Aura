@@ -426,36 +426,57 @@ let pageCourante = 1;
 const TAILLE_PAGE = 8;
 
 /* ============================================================
-   LOGS
+   LOGS → table audit_log
 ============================================================ */
 async function ajouterLog(action, details) {
-    await client.from("logs").insert([{ action, details }]);
-    chargerLogs();
+    try {
+        const agentNom = localStorage.getItem("nom") || "admin";
+        await client.from("audit_log").insert([{
+            action,
+            details,
+            agent_nom: agentNom
+        }]);
+        chargerLogs();
+    } catch (e) {
+        console.warn("Log non enregistré :", e);
+    }
 }
 
 async function chargerLogs() {
-    const { data, error } = await client
-        .from("logs")
-        .select("*")
-        .order("created_at", { ascending:false })
-        .limit(30);
+    try {
+        const { data, error } = await client
+            .from("audit_log")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(50);
 
-    if (error) return console.error("Erreur logs:", error);
+        if (error) throw error;
 
-    const logList = document.getElementById("logList");
-    logList.innerHTML = "";
+        const logList = document.getElementById("logList");
+        logList.innerHTML = "";
 
-    data.forEach(log => {
-        const d = new Date(log.created_at);
-        const dateStr = d.toLocaleString("fr-FR", { hour12:false });
+        if (!data || data.length === 0) {
+            logList.innerHTML = '<div class="log-item"><div style="opacity:0.5">Aucun log pour le moment.</div></div>';
+            return;
+        }
 
-        logList.innerHTML += `
-            <div class="log-item">
-                <div><span class="log-action">${log.action}</span> — ${log.details}</div>
-                <div class="log-date">${dateStr}</div>
-            </div>
-        `;
-    });
+        data.forEach(log => {
+            const d = new Date(log.created_at);
+            const dateStr = d.toLocaleString("fr-FR", { hour12: false });
+            const agent = log.agent_nom ? `<strong>[${log.agent_nom}]</strong> ` : "";
+
+            logList.innerHTML += `
+                <div class="log-item">
+                    <div>${agent}<span class="log-action">${log.action}</span> — ${log.details || ""}</div>
+                    <div class="log-date">${dateStr}</div>
+                </div>
+            `;
+        });
+    } catch (e) {
+        console.warn("Erreur chargement logs :", e);
+        const logList = document.getElementById("logList");
+        if (logList) logList.innerHTML = '<div class="log-item" style="color:#ff9ba8">Erreur chargement logs</div>';
+    }
 }
 
 /* ============================================================
@@ -575,33 +596,61 @@ function toggleNFC(id) {
 async function lancerNFC(id) {
     const status = document.getElementById("nfcStatus-" + id);
 
-    if (!("NDEFReader" in window)) {
-        status.textContent = "NFC non supporté sur cet appareil.";
-        return;
+    if ("NDEFReader" in window) {
+        // Mode NFC natif (Chrome Android uniquement)
+        try {
+            const ndef = new NDEFReader();
+            await ndef.scan();
+            status.textContent = "📡 Approchez un badge NFC…";
+
+            ndef.onreading = async event => {
+                const uid = event.serialNumber;
+                status.textContent = "Badge détecté : " + uid + " — Enregistrement…";
+                await associerBadge(id, uid);
+            };
+        } catch (err) {
+            status.textContent = "Erreur NFC : " + err.message;
+        }
+    } else {
+        // Fallback : saisie manuelle de l'UID
+        status.innerHTML = `
+            <span>NFC non disponible sur cet appareil. Saisie manuelle :</span>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <input type="text" id="manualUID-${id}" placeholder="UID du badge (ex: 04:a2:b3:c4:d5:e6)"
+                       style="flex:1; padding:8px; border-radius:6px; border:1px solid var(--border);
+                              background:var(--bg2); color:var(--text);">
+                <button onclick="saisirBadgeManuel('${id}')"
+                        style="padding:8px 12px; border-radius:6px; background:var(--accent);
+                               color:#000; border:none; cursor:pointer; font-weight:600;">
+                    ✅ Valider
+                </button>
+            </div>
+        `;
     }
+}
 
+async function saisirBadgeManuel(id) {
+    const input = document.getElementById("manualUID-" + id);
+    const uid = input ? input.value.trim() : "";
+    if (!uid) { alert("Veuillez saisir l'UID du badge."); return; }
+    await associerBadge(id, uid);
+}
+
+async function associerBadge(id, uid) {
     try {
-        const ndef = new NDEFReader();
-        await ndef.scan();
+        const { error } = await client
+            .from("users")
+            .update({ badgeuid: uid })
+            .eq("id", id);
 
-        status.textContent = "Approchez un badge…";
+        if (error) throw error;
 
-        ndef.onreading = async event => {
-            const uid = event.serialNumber;
-            status.textContent = "Badge détecté : " + uid;
-
-            await fetch("https://hwqlajdytnxavqigmzio.supabase.co/functions/v1/dynamic-endpoint", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ user_id: id, nfc_uid: uid })
-            });
-
-            await ajouterLog("Badge associé", `Compte ID ${id}, UID ${uid}`);
-            chargerComptes();
-        };
-
-    } catch (err) {
-        status.textContent = "Erreur NFC : " + err;
+        await ajouterLog("Badge NFC associé", `Compte ID: ${id}, UID: ${uid}`);
+        setStatus("✅ Badge " + uid + " associé avec succès.");
+        chargerComptes();
+    } catch (e) {
+        console.error(e);
+        setStatus("❌ Erreur association badge : " + (e.message || e), true);
     }
 }
 
@@ -743,16 +792,30 @@ async function resetPassword(id) {
 async function supprimerBadge(id) {
     if (!confirm("Supprimer le badge ?")) return;
 
-    client.from("users").update({ badgeuid: null }).eq("id", id)
+    const { error } = await client.from("users").update({ badgeuid: null }).eq("id", id);
+
+    if (error) {
+        setStatus("❌ Erreur suppression badge : " + error.message, true);
+        return;
+    }
+
     await ajouterLog("Suppression badge", `ID: ${id}`);
+    setStatus("Badge supprimé.");
     chargerComptes();
 }
 
 /* ============================================================
    LANCEMENT
 ============================================================ */
-chargerComptes();
-chargerLogs();
+/* ============================================================
+   LANCEMENT — chargement indépendant (l'un ne bloque pas l'autre)
+============================================================ */
+(async function init() {
+    // Charger les comptes en priorité
+    await chargerComptes();
+    // Puis les logs (non bloquant)
+    chargerLogs();
+})();
 </script>
 
 </body>

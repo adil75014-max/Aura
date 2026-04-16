@@ -136,9 +136,10 @@ tr:hover {
 <table>
     <thead>
         <tr>
+            <th>Numéro</th>
             <th>Date</th>
             <th>Entreprise</th>
-            <th>Zone</th>
+            <th>Lieu</th>
             <th>Agent</th>
             <th>Statut</th>
             <th>Voir</th>
@@ -185,17 +186,16 @@ async function chargerPermisFeu() {
     const dateFiltre = document.getElementById("filtreDate").value;
     const entrepriseFiltre = document.getElementById("filtreEntreprise").value;
 
-    // On embarque le profil de l'auteur via la FK auteur_id -> profiles
     let query = supabaseClient
         .from("permis_feu")
         .select("*, profiles(nom, prenom)")
-        .order("date_debut", { ascending: false, nullsFirst: false });
+        .order("created_at", { ascending: false });
 
-    // Filtre par jour : date_debut est un timestamptz, donc on borne la journée
+    // Filtre par jour sur created_at (plus fiable que date_debut qui peut être null)
     if (dateFiltre) {
         const debut = `${dateFiltre}T00:00:00`;
         const fin   = `${dateFiltre}T23:59:59.999`;
-        query = query.gte("date_debut", debut).lte("date_debut", fin);
+        query = query.gte("created_at", debut).lte("created_at", fin);
     }
 
     if (entrepriseFiltre !== "all") {
@@ -220,7 +220,7 @@ function afficherPermis(permis) {
     tbody.innerHTML = "";
 
     if (permis.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#999;">Aucun permis feu trouvé.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#999;">Aucun permis feu trouvé.</td></tr>`;
         return;
     }
 
@@ -228,11 +228,23 @@ function afficherPermis(permis) {
         const clos = estClos(p.statut);
         const tr = document.createElement("tr");
 
+        // Date : date_debut si remplie, sinon created_at
+        const dateAffichee = formatDate(p.date_debut || p.created_at);
+
+        // Agent : profiles FK, puis agent_nom, puis meta.agent_nom
+        let agent = nomAgent(p.profiles);
+        if (agent === "—" && p.agent_nom) agent = p.agent_nom;
+        if (agent === "—" && p.meta && p.meta.agent_nom) agent = p.meta.agent_nom;
+
+        // Lieu
+        const lieu = p.lieu || (p.meta ? [p.meta.magasin, p.meta.etage, p.meta.zone_canton].filter(Boolean).join(" — ") : "") || "—";
+
         tr.innerHTML = `
-            <td>${formatDate(p.date_debut)}</td>
+            <td>${p.numero || "—"}</td>
+            <td>${dateAffichee}</td>
             <td>${p.entreprise || "—"}</td>
-            <td>${p.lieu || "—"}</td>
-            <td>${nomAgent(p.profiles)}</td>
+            <td>${lieu}</td>
+            <td>${agent}</td>
             <td class="${clos ? 'status-closed' : 'status-open'}">
                 ${clos ? "Clos" : "Ouvert"}
             </td>

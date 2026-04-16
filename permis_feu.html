@@ -191,7 +191,7 @@ requireLogin();
   <!-- HEADER -->
   <div class="card">
     <h1>🔥 Permis Feu — Le Bon Marché</h1>
-    <p id="permis-id">ID : PF-2026-00127</p>
+    <p>ID : <span id="permis-id">Génération…</span></p>
 
     <!-- QR CODE -->
     <canvas id="qr-code" style="width:120px; height:120px; margin-top:10px;"></canvas>
@@ -448,21 +448,35 @@ Inspection complète du lieu de travail et des locaux contigus.
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="supabaseClient.js"></script>
 <script>
+    // Fallback showToast
+    if (typeof showToast !== "function") {
+        window.showToast = function(msg, isError) { alert(msg); };
+    }
+
+    /* ============================================================
+       NUMÉRO DE PERMIS UNIQUE (PF-YYYYMMDD-HHMMSS)
+    ============================================================ */
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const PERMIS_NUMERO = `PF-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+    document.getElementById("permis-id").textContent = PERMIS_NUMERO;
+
     /* HORODATAGE */
     document.getElementById("horodatage").textContent =
-      new Date().toLocaleString("fr-FR", {
-        dateStyle: "full",
-        timeStyle: "medium"
-      });
+      now.toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "medium" });
 
-    /* QR CODE */
+    /* QR CODE — pointe vers la page de consultation avec le numéro */
+    const qrUrl = window.location.origin + "/consulter_pf.html#" + PERMIS_NUMERO;
     const qr = new QRious({
       element: document.getElementById("qr-code"),
       size: 120,
-      value: "https://ton-domaine/permis-feu/PF-2026-00127"
+      value: qrUrl
     });
 
-    /* SIGNATURES */
+    /* ============================================================
+       SIGNATURES (canvas tactile + souris)
+    ============================================================ */
     function initSignatureCanvas(canvasId, clearBtnId) {
       const canvas = document.getElementById(canvasId);
       const ctx = canvas.getContext("2d");
@@ -485,48 +499,16 @@ Inspection complète du lieu de travail et des locaux contigus.
         return { x, y };
       }
 
-      canvas.addEventListener("mousedown", (e) => {
-        drawing = true;
-        const { x, y } = getPos(e);
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-      });
-
-      canvas.addEventListener("mousemove", (e) => {
-        if (!drawing) return;
-        const { x, y } = getPos(e);
-        ctx.lineTo(x, y);
-        ctx.strokeStyle = "#111827";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      });
-
+      canvas.addEventListener("mousedown", (e) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+      canvas.addEventListener("mousemove", (e) => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle="#111827"; ctx.lineWidth=2; ctx.stroke(); });
       canvas.addEventListener("mouseup", () => drawing = false);
       canvas.addEventListener("mouseleave", () => drawing = false);
 
-      canvas.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        drawing = true;
-        const { x, y } = getPos(e);
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-      }, { passive: false });
-
-      canvas.addEventListener("touchmove", (e) => {
-        e.preventDefault();
-        if (!drawing) return;
-        const { x, y } = getPos(e);
-        ctx.lineTo(x, y);
-        ctx.strokeStyle = "#111827";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }, { passive: false });
-
+      canvas.addEventListener("touchstart", (e) => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
+      canvas.addEventListener("touchmove", (e) => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle="#111827"; ctx.lineWidth=2; ctx.stroke(); }, { passive: false });
       canvas.addEventListener("touchend", () => drawing = false);
 
-      document.getElementById(clearBtnId).addEventListener("click", () => {
-        resizeCanvas();
-      });
+      document.getElementById(clearBtnId).addEventListener("click", () => resizeCanvas());
 
       return () => canvas.toDataURL("image/png");
     }
@@ -534,92 +516,162 @@ Inspection complète du lieu de travail et des locaux contigus.
     const getSignDelivreur = initSignatureCanvas("signature-delivreur", "clear-sign-delivreur");
     const getSignIntervenant = initSignatureCanvas("signature-intervenant", "clear-sign-intervenant");
 
-    /* HEURES DE PASSAGE */
+    /* ============================================================
+       HEURES DE PASSAGE
+    ============================================================ */
+    const passages = [];
     const listePassages = document.getElementById("liste-passages");
+
     document.getElementById("btn-ajout-passage").addEventListener("click", () => {
-      const now = new Date();
-      const heure = now.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      const h = new Date().toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+      passages.push(h);
       const div = document.createElement("div");
       div.className = "passage-item";
-      div.textContent = `${heure} — Passage effectué`;
+      div.textContent = `${h} — Passage effectué`;
       listePassages.appendChild(div);
     });
 
-    /* POSITION DYNAMIQUE URGENCE */
+    /* ============================================================
+       POSITION DYNAMIQUE URGENCE
+    ============================================================ */
     function updateUrgencePosition() {
-      const magasin = document.getElementById("magasin").value || "(magasin ?)";
-      const etage = document.getElementById("etage").value || "(étage ?)";
-      const zone = document.getElementById("zone-canton").value || "(zone ?)";
-
-      document.getElementById("urgence-location").textContent =
-        `${magasin} — ${etage} — ${zone}`;
+      const m = document.getElementById("magasin").value || "(magasin ?)";
+      const e = document.getElementById("etage").value || "(étage ?)";
+      const z = document.getElementById("zone-canton").value || "(zone ?)";
+      document.getElementById("urgence-location").textContent = `${m} — ${e} — ${z}`;
     }
-
     document.getElementById("magasin").addEventListener("input", updateUrgencePosition);
     document.getElementById("etage").addEventListener("input", updateUrgencePosition);
     document.getElementById("zone-canton").addEventListener("input", updateUrgencePosition);
 
-    /* URGENCE FEU */
+    /* URGENCES */
     document.getElementById("btn-urgence-feu").addEventListener("click", () => {
       alert("🔥 URGENCE INCENDIE — Le PC Sécurité est notifié.");
     });
-
-    /* URGENCE SECOURS À VICTIME */
     document.getElementById("btn-urgence-svv").addEventListener("click", () => {
       alert("🚑 URGENCE — Secours à victime. Le PC Sécurité est notifié.");
     });
 
-    /* PROLONGATION DU PERMIS FEU */
+    /* ============================================================
+       PROLONGATION
+    ============================================================ */
     let historiqueProlongations = [];
 
     document.getElementById("btn-prolonger").addEventListener("click", () => {
-      const nouvelleDate = document.getElementById("prolong-date").value;
-      const nouvelHoraire = document.getElementById("prolong-horaire").value;
-
-      if (!nouvelleDate || !nouvelHoraire) {
-        alert("Merci de renseigner la nouvelle date et le nouvel horaire.");
-        return;
-      }
-
-      const ancienneDate = document.getElementById("date-permis").value;
-      const ancienHoraire = document.getElementById("horaires").value;
+      const nd = document.getElementById("prolong-date").value;
+      const nh = document.getElementById("prolong-horaire").value;
+      if (!nd || !nh) { alert("Renseigner la nouvelle date et le nouvel horaire."); return; }
 
       historiqueProlongations.push({
-        date: ancienneDate,
-        horaire: ancienHoraire,
+        ancienne_date: document.getElementById("date-permis").value,
+        ancien_horaire: document.getElementById("horaires").value,
         horodatage: new Date().toLocaleString("fr-FR")
       });
 
-      historiqueProlongations.sort((a, b) =>
-        new Date(b.horodatage) - new Date(a.horodatage)
-      );
-
-      document.getElementById("date-permis").value = nouvelleDate;
-      document.getElementById("horaires").value = nouvelHoraire;
+      document.getElementById("date-permis").value = nd;
+      document.getElementById("horaires").value = nh;
 
       const list = document.getElementById("historique-list");
       list.innerHTML = historiqueProlongations
-        .map(p => `• ${p.date} (${p.horaire}) — prolongé le ${p.horodatage}`)
+        .map(p => `• ${p.ancienne_date} (${p.ancien_horaire}) — prolongé le ${p.horodatage}`)
         .join("<br>");
 
       alert("Permis prolongé avec succès.");
     });
 
-    /* ENREGISTREMENT */
+    /* ============================================================
+       ENREGISTREMENT COMPLET DANS SUPABASE
+    ============================================================ */
     document.getElementById("btn-enregistrer").addEventListener("click", async () => {
+      const btn = document.getElementById("btn-enregistrer");
+      btn.disabled = true;
+      btn.textContent = "⏳ Enregistrement…";
+
       try {
+        // Entreprise sélectionnée par radio
+        const entRadio = document.querySelector('input[name="ent-concernee"]:checked');
+        const entrepriseConcernee = entRadio ? entRadio.value : "";
+
+        // Entreprise extérieure
+        const extRaisonSociale = document.getElementById("ext-raison-sociale").value.trim();
+        const extRepresentant = document.getElementById("ext-representant").value.trim();
+
+        // Localisation
+        const magasin = document.getElementById("magasin").value.trim();
+        const etage = document.getElementById("etage").value.trim();
+        const zoneCanton = document.getElementById("zone-canton").value.trim();
+        const lieu = [magasin, etage, zoneCanton].filter(Boolean).join(" — ");
+
+        // Dates
+        const datePermis = document.getElementById("date-permis").value;
+        const horaires = document.getElementById("horaires").value.trim();
+
+        // Travaux
+        const operation = document.getElementById("operation").value.trim();
+        const risques = document.getElementById("risques").value.trim();
+        const mesures = document.getElementById("mesures").value.trim();
+        const moyens = document.getElementById("moyens").value.trim();
+
+        // Ordre de travail
+        const odtPar = document.getElementById("odt-par").value.trim();
+        const odtNom = document.getElementById("odt-nom").value.trim();
+        const odtFonction = document.getElementById("odt-fonction").value.trim();
+
+        // Signatures (base64)
+        const signDelivreur = getSignDelivreur();
+        const signIntervenant = getSignIntervenant();
+        const prisConnaissance = document.getElementById("mention-pris-connaissance").checked;
+
+        // Description synthétique
+        const description = [
+          operation ? "Opération : " + operation : "",
+          risques ? "Risques : " + risques : "",
+          mesures ? "Mesures : " + mesures : "",
+          moyens ? "Moyens : " + moyens : ""
+        ].filter(Boolean).join("\n");
+
         const { error } = await supabaseClient.from("permis_feu").insert({
-            lieu: document.getElementById("lieu") ? document.getElementById("lieu").value : "",
-            description: document.getElementById("description") ? document.getElementById("description").value : "",
-            entreprise: document.getElementById("entreprise") ? document.getElementById("entreprise").value : "",
-            statut: "actif"
+          numero:      PERMIS_NUMERO,
+          entreprise:  extRaisonSociale || entrepriseConcernee,
+          lieu:        lieu || null,
+          description: description || null,
+          date_debut:  datePermis ? datePermis + "T00:00:00" : new Date().toISOString(),
+          statut:      "actif",
+          agent_nom:   localStorage.getItem("nom") || null,
+          meta: {
+            numero: PERMIS_NUMERO,
+            entreprise_concernee: entrepriseConcernee,
+            ext_raison_sociale: extRaisonSociale,
+            ext_representant: extRepresentant,
+            odt_par: odtPar,
+            odt_nom: odtNom,
+            odt_fonction: odtFonction,
+            magasin, etage, zone_canton: zoneCanton,
+            horaires,
+            operation, risques, mesures, moyens,
+            signature_delivreur: signDelivreur,
+            signature_intervenant: signIntervenant,
+            pris_connaissance: prisConnaissance,
+            passages: passages,
+            prolongations: historiqueProlongations
+          }
         });
+
         if (error) throw error;
-        showToast("✅ Permis feu enregistré sur Supabase !");
-      } catch(e) { showToast("❌ " + e.message, true); }
+
+        showToast("✅ Permis feu " + PERMIS_NUMERO + " enregistré !");
+        btn.textContent = "✅ Enregistré";
+
+        setTimeout(() => location.href = "consulter_pf.html", 1500);
+      } catch (e) {
+        console.error(e);
+        showToast("❌ " + (e.message || e), true);
+        btn.disabled = false;
+        btn.textContent = "✔️ Enregistrer le permis feu";
+      }
     });
   </script>
-  
-</script src="js/security.js"></script>
+<script src="js/security.js"></script>
+<script src="global.js"></script>
 </body>
 </html>

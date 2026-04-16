@@ -62,14 +62,70 @@ textarea { min-height:120px; resize:vertical; }
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="supabaseClient.js"></script>
 <script>
+/* Source de vérité unique : code -> libellé lisible.
+   Couvre interventions, vérifications et rondes. */
+const TYPES = {
+    // Interventions
+    incendie:                       "Détection incendie",
+    odeur:                          "Odeur suspecte",
+    desincarceration:               "Désincarcération ASC/MC/Escalator/Toilette",
+    fuite:                          "Fuite d'eau",
+    alarme:                         "Alarme technique",
+    coupure:                        "Coupure électrique",
+    animalier:                      "Sauvetage animalier",
+    // Vérifications
+    verif_j1_baie_ssi:              "J1 Baie SSI",
+    verif_j2_materiel_pc:           "J2 Matériel PC",
+    verif_j3_materiel_secours:      "J3 Matériel de secours",
+    verif_j4_epi:                   "J4 EPI",
+    verif_j5_interphonie_asc_mc:    "J5 Interphonie ASC/MC",
+    verif_extincteurs_ria_baes:     "Extincteur / RIA / BAES",
+    verif_sprinkler:                "Sprinkler",
+    verif_surpresseur:              "Surpresseur",
+    verif_colonne_seche:            "Colonne sèche",
+    verif_desenfumage_naturel:      "Désenfumage naturel",
+    verif_baie_accessible:          "Baie accessible",
+    verif_eas:                      "EAS",
+    verif_salle_gaz:                "Salle automatique à gaz",
+    verif_essai_annuel_technicien:  "Essai annuel Technicien",
+    verif_essai_triennal_bureau:    "Essai triennal Bureau de contrôle",
+    // Rondes
+    verif_popup:                    "Vérification Pop up",
+    verifreceptiontravaux:          "Réception Travaux"
+};
+
+/* Inverse libellé -> code (généré automatiquement) */
+const LABEL_TO_CODE = Object.fromEntries(
+    Object.entries(TYPES).map(([code, label]) => [label, code])
+);
+
 function getTypeCode(label) {
-    const map = {"Détection incendie":"incendie","Odeur suspecte":"odeur","Désincarcération":"desincarceration","Fuite d'eau":"fuite","Alarme technique":"alarme","Coupure électrique":"coupure","Sauvetage animalier":"animalier","Vérification Pop-up":"verif_popup","Réception Travaux":"verifreceptiontravaux"};
-    return map[label] || label || "autre";
+    return LABEL_TO_CODE[label] || label || "autre";
+}
+
+function getTypeLabel(code) {
+    return TYPES[code] || code || "—";
+}
+
+/* Récupère le type depuis (1) l'URL ?type=..., (2) le localStorage, sinon null */
+function resolveIntervention() {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("type");
+    if (code) {
+        const label = getTypeLabel(code);
+        // On stocke aussi dans localStorage pour cohérence avec le reste de l'app
+        localStorage.setItem("selectedIntervention", label);
+        return { code, label };
+    }
+    const fallback = localStorage.getItem("selectedIntervention");
+    if (fallback) return { code: getTypeCode(fallback), label: fallback };
+    return { code: null, label: null };
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    const intervention = localStorage.getItem("selectedIntervention");
-    document.getElementById("reportType").textContent = intervention || "—";
+    const { code, label } = resolveIntervention();
+    document.getElementById("reportType").textContent = label || "—";
+
     const now = new Date();
     document.getElementById("reportDate").textContent = now.toLocaleDateString("fr-FR");
     document.getElementById("reportTime").textContent = now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
@@ -78,7 +134,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("reportSite").addEventListener("change", () => {
         const s = document.getElementById("reportSite").value;
         if (!s) return;
-        document.getElementById("reportId").textContent = s+"-"+getTypeCode(intervention).toUpperCase().slice(0,3)+"-"+Date.now().toString().slice(-6);
+        const codeForId = (code || "autre").toUpperCase().slice(0,3);
+        document.getElementById("reportId").textContent = s+"-"+codeForId+"-"+Date.now().toString().slice(-6);
     });
 });
 
@@ -86,8 +143,7 @@ async function saveReport() {
     const btn = document.getElementById("btnSave");
     btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
     try {
-        const intervention = localStorage.getItem("selectedIntervention");
-        const typeCode = getTypeCode(intervention);
+        const { code: typeCode, label: intervention } = resolveIntervention();
         const site = document.getElementById("reportSite").value;
         const description = [
             "Informations générales:\n"+document.getElementById("infoGenerales").value,
@@ -96,7 +152,7 @@ async function saveReport() {
         ].join("\n\n");
 
         const { error } = await supabaseClient.from("rapports").insert({
-            type: typeCode,
+            type: typeCode || "autre",
             titre: (intervention||"Rapport")+" — "+site,
             description: description,
             localisation: site || "Non précisé",

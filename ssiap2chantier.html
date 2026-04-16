@@ -193,6 +193,7 @@ th {
         </select>
 
         <button onclick="exportExcel()">Exporter Excel</button>
+        <button onclick="effacerJournee()" style="background:#ef4444; color:white;">🗑 Effacer la journée</button>
     </div>
 
     <input type="text" id="searchInput" placeholder="🔍 Recherche..." style="margin-bottom:15px; width:100%;">
@@ -257,13 +258,33 @@ th {
 <script>
 let interventions = [];
 async function loadInterventions() {
-    const { data } = await supabaseClient.from("ssiap2_chantier").select("*").order("created_at",{ascending:false});
-    interventions = (data||[]).map(d => ({
-        id: d.id, chantier: d.chantier_nom, entreprise: d.entreprise, zone: d.zone,
-        dateDebut: d.date_debut, dateFin: d.date_fin, effectif: d.effectif_chantier,
-        risques: (d.risques||[]).join(", "), mesures: d.mesures_prises, observations: d.observations, statut: d.statut
+    const { data, error } = await supabaseClient
+        .from("ssiap2_chantier")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error("Erreur chargement :", error);
+        alert("Erreur Supabase : " + error.message);
+        return;
+    }
+
+    interventions = (data || []).map(d => ({
+        id:           d.id,
+        societe:      d.societe || d.entreprise || "",
+        zone:         d.zone || "",
+        dateFin:      d.date_fin || "",
+        arrivee:      d.arrivee || "",
+        depart:       d.depart || null,
+        feuRequis:    d.feu_requis || "Non",
+        feuSigne:     d.feu_signe || "Non",
+        ouvriers:     d.ouvriers || 0,
+        observations: d.observations || "",
+        url:          d.pdf_url || "",
+        pdfPath:      d.pdf_path || null
     }));
-    renderTable();
+
+    refreshAll();
 }
 loadInterventions();
 let triActuel = { colonne: null, ordre: 1 };
@@ -345,14 +366,25 @@ function afficherInterventions() {
 }
 
 /* BOUTON SORTIE */
-function declarerDepart(index) {
+async function declarerDepart(index) {
     const now = new Date();
     const h = now.getHours().toString().padStart(2, "0");
     const m = now.getMinutes().toString().padStart(2, "0");
+    const heure = `${h}:${m}`;
 
-    interventions[index].depart = `${h}:${m}`;
+    const inter = interventions[index];
 
-    // Sauvegarde Supabase (voir fonctions async)
+    const { error } = await supabaseClient
+        .from("ssiap2_chantier")
+        .update({ depart: heure })
+        .eq("id", inter.id);
+
+    if (error) {
+        alert("❌ Erreur sortie : " + error.message);
+        return;
+    }
+
+    interventions[index].depart = heure;
     refreshAll();
 }
 
@@ -388,7 +420,7 @@ function remplirFiltres() {
 }
 
 /* AJOUT */
-function ajouterIntervention() {
+async function ajouterIntervention() {
     const fileInput = document.getElementById("pdfInput");
     const societe = document.getElementById("inputSociete").value.trim();
     const zone = document.getElementById("inputZone").value.trim();
@@ -396,23 +428,72 @@ function ajouterIntervention() {
     const arrivee = document.getElementById("inputArrivee").value;
     const feuRequis = document.getElementById("inputFeuRequis").value;
     const feuSigne = document.getElementById("inputFeuSigne").value;
-    const ouvriers = parseInt(document.getElementById("inputOuvriers").value || "0");
+    const ouvriers = parseInt(document.getElementById("inputOuvriers").value || "0", 10);
     const observations = document.getElementById("inputObs").value.trim();
 
-    if (!societe || !zone || !dateFin || !arrivee) 
-        return alert("Société, zone, date et heure d’arrivée obligatoires.");
+    if (!societe || !zone || !dateFin || !arrivee)
+        return alert("Société, zone, date et heure d'arrivée obligatoires.");
 
-    let url = "";
-    if (fileInput.files.length) url = URL.createObjectURL(fileInput.files[0]);
+    const btn = document.querySelector('button[onclick="ajouterIntervention()"]');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "⏳ Enregistrement…";
 
-    interventions.push({
-        societe, zone, dateFin, arrivee,
-        depart: null,
-        feuRequis, feuSigne, ouvriers, observations, url
-    });
+    try {
+        let pdfUrl = null;
+        let pdfPath = null;
 
-    // Sauvegarde Supabase (voir fonctions async)
-    refreshAll();
+        // 1) Upload du PDF si fourni
+        if (fileInput.files.length) {
+            const file = fileInput.files[0];
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+            pdfPath = `${Date.now()}_${safeName}`;
+
+            const { error: upErr } = await supabaseClient
+                .storage
+                .from("ssiap2-chantier")
+                .upload(pdfPath, file, { contentType: "application/pdf", upsert: false });
+
+            if (upErr) throw upErr;
+
+            pdfUrl = supabaseClient.storage.from("ssiap2-chantier").getPublicUrl(pdfPath).data.publicUrl;
+        }
+
+        // 2) Insert dans la table
+        const { error: insErr } = await supabaseClient
+            .from("ssiap2_chantier")
+            .insert({
+                societe, zone,
+                date_fin: dateFin,
+                arrivee, depart: null,
+                feu_requis: feuRequis, feu_signe: feuSigne,
+                ouvriers, observations,
+                pdf_url: pdfUrl, pdf_path: pdfPath,
+                statut: "en_cours"
+            });
+
+        if (insErr) throw insErr;
+
+        // 3) Reset du formulaire
+        fileInput.value = "";
+        document.getElementById("inputSociete").value = "";
+        document.getElementById("inputZone").value = "";
+        document.getElementById("inputDate").value = "";
+        document.getElementById("inputArrivee").value = "";
+        document.getElementById("inputFeuRequis").value = "Non";
+        document.getElementById("inputFeuSigne").value = "Non";
+        document.getElementById("inputOuvriers").value = "0";
+        document.getElementById("inputObs").value = "";
+
+        // 4) Recharge la liste depuis Supabase
+        await loadInterventions();
+    } catch (e) {
+        console.error(e);
+        alert("❌ Erreur : " + (e.message || e));
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+    }
 }
 
 /* DASHBOARD */
@@ -422,20 +503,14 @@ function updateDashboard() {
 
     interventions.forEach(i => {
         const fin = new Date(i.dateFin);
-        if (fin < now) return;
+        if (isNaN(fin) || fin < now) return; // intervention terminée -> ignorée
 
         actifs++;
         if (i.feuRequis === "Oui") feuRequis++;
 
-        if (i.arrivee) {
-            const start = new Date(`${i.dateFin}T${i.arrivee}`);
-            const end = i.depart 
-                ? new Date(`${i.dateFin}T${i.depart}`)
-                : null;
-
-            if (now >= start && (!end || now <= end)) {
-                ouvriersPresent += Number(i.ouvriers || 0);
-            }
+        // Présent = arrivée saisie ET pas encore reparti
+        if (i.arrivee && !i.depart) {
+            ouvriersPresent += Number(i.ouvriers || 0);
         }
     });
 
@@ -484,18 +559,39 @@ function closeModal() {
     document.getElementById("modalEdit").style.display = "none";
 }
 
-function saveEdit() {
+async function saveEdit() {
     if (editIndex === null) return;
 
     const i = interventions[editIndex];
 
-    i.arrivee = document.getElementById("editArrivee").value;
-    i.feuRequis = document.getElementById("editFeuRequis").value;
-    i.feuSigne = document.getElementById("editFeuSigne").value;
-    i.ouvriers = parseInt(document.getElementById("editOuvriers").value || "0", 10);
-    i.observations = document.getElementById("editObs").value.trim();
+    const newArrivee   = document.getElementById("editArrivee").value;
+    const newFeuRequis = document.getElementById("editFeuRequis").value;
+    const newFeuSigne  = document.getElementById("editFeuSigne").value;
+    const newOuvriers  = parseInt(document.getElementById("editOuvriers").value || "0", 10);
+    const newObs       = document.getElementById("editObs").value.trim();
 
-    // Sauvegarde Supabase (voir fonctions async)
+    const { error } = await supabaseClient
+        .from("ssiap2_chantier")
+        .update({
+            arrivee:    newArrivee,
+            feu_requis: newFeuRequis,
+            feu_signe:  newFeuSigne,
+            ouvriers:   newOuvriers,
+            observations: newObs
+        })
+        .eq("id", i.id);
+
+    if (error) {
+        alert("❌ Erreur sauvegarde : " + error.message);
+        return;
+    }
+
+    i.arrivee = newArrivee;
+    i.feuRequis = newFeuRequis;
+    i.feuSigne = newFeuSigne;
+    i.ouvriers = newOuvriers;
+    i.observations = newObs;
+
     closeModal();
     refreshAll();
 }
@@ -547,6 +643,59 @@ function exportExcel() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+}
+
+/* EFFACER LA JOURNÉE
+   Supprime toutes les interventions de la table + les PDFs associés dans Storage.
+   À utiliser en fin de vacation, APRÈS avoir exporté l'Excel. */
+async function effacerJournee() {
+    if (!interventions.length) {
+        alert("Rien à effacer.");
+        return;
+    }
+
+    const confirmation = confirm(
+        `⚠️ Effacer ${interventions.length} intervention(s) ?\n\n` +
+        `Cette action est définitive : les fiches et les PDFs associés seront supprimés.\n` +
+        `Pense à exporter l'Excel avant de valider.`
+    );
+    if (!confirmation) return;
+
+    // Double confirmation pour éviter les fausses manips
+    const safety = prompt('Tape "EFFACER" pour confirmer définitivement :');
+    if (safety !== "EFFACER") {
+        alert("Suppression annulée.");
+        return;
+    }
+
+    try {
+        // 1) Suppression des PDFs dans Storage (s'il y en a)
+        const paths = interventions.map(i => i.pdfPath).filter(Boolean);
+        if (paths.length) {
+            const { error: stErr } = await supabaseClient
+                .storage
+                .from("ssiap2-chantier")
+                .remove(paths);
+            if (stErr) console.warn("Erreur suppression PDFs (on continue) :", stErr);
+        }
+
+        // 2) Suppression de toutes les lignes de la table
+        // (on cible toutes les lignes via une condition toujours vraie sur l'id)
+        const { error: delErr } = await supabaseClient
+            .from("ssiap2_chantier")
+            .delete()
+            .not("id", "is", null);
+
+        if (delErr) throw delErr;
+
+        // 3) Reset local
+        interventions = [];
+        refreshAll();
+        alert("✅ Journée effacée.");
+    } catch (e) {
+        console.error(e);
+        alert("❌ Erreur lors de la suppression : " + (e.message || e));
+    }
 }
 
 /* INIT */

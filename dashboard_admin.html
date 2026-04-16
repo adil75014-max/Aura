@@ -385,7 +385,7 @@ async function loadAllData() {
     setLoading(true);
     try {
         // 1) Load profiles for name resolution
-        const { data: profiles, error: pErr } = await supabaseClientClient
+        const { data: profiles, error: pErr } = await supabaseClient
             .from("profiles")
             .select('id, nom, prenom');
 
@@ -397,7 +397,7 @@ async function loadAllData() {
         });
 
         // Also load from legacy "users" table for fallback
-        const { data: users } = await supabaseClientClient
+        const { data: users } = await supabaseClient
             .from("users")
             .select('id, nom');
         (users || []).forEach(u => {
@@ -407,7 +407,7 @@ async function loadAllData() {
         });
 
         // 2) Load rapports
-        const { data: rapports, error: rErr } = await supabaseClientClient
+        const { data: rapports, error: rErr } = await supabaseClient
             .from("rapports")
             .select('*')
             .order('created_at', { ascending: false });
@@ -415,7 +415,7 @@ async function loadAllData() {
         if (rErr) throw rErr;
 
         // 3) Load rondes
-        const { data: rondes, error: roErr } = await supabaseClientClient
+        const { data: rondes, error: roErr } = await supabaseClient
             .from("rondes")
             .select('*')
             .order('created_at', { ascending: false });
@@ -423,7 +423,7 @@ async function loadAllData() {
         if (roErr) throw roErr;
 
         // 4) Load verifications
-        const { data: verifs, error: vErr } = await supabaseClientClient
+        const { data: verifs, error: vErr } = await supabaseClient
             .from("verifications")
             .select('*')
             .order('created_at', { ascending: false });

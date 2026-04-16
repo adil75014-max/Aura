@@ -147,6 +147,9 @@ tr:hover {
     <tbody id="tablePermis"></tbody>
 </table>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
+
 <script>
 /* ============================================================
    SUPABASE
@@ -156,6 +159,25 @@ tr:hover {
 // Using supabaseClient from supabaseClient.js
 
 /* ============================================================
+   HELPERS
+============================================================ */
+function formatDate(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString().slice(0,5);
+}
+
+function nomAgent(profil) {
+    if (!profil) return "—";
+    return [profil.prenom, profil.nom].filter(Boolean).join(" ") || "—";
+}
+
+function estClos(statut) {
+    if (!statut) return false;
+    return statut.toLowerCase().includes("clos");
+}
+
+/* ============================================================
    CHARGEMENT DES PERMIS FEU
 ============================================================ */
 async function chargerPermisFeu() {
@@ -163,10 +185,22 @@ async function chargerPermisFeu() {
     const dateFiltre = document.getElementById("filtreDate").value;
     const entrepriseFiltre = document.getElementById("filtreEntreprise").value;
 
-    let query = supabaseClient.from("permis_feu").select("*").order("date", { ascending:false });
+    // On embarque le profil de l'auteur via la FK auteur_id -> profiles
+    let query = supabaseClient
+        .from("permis_feu")
+        .select("*, profiles(nom, prenom)")
+        .order("date_debut", { ascending: false, nullsFirst: false });
 
-    if (dateFiltre) query = query.eq("date", dateFiltre);
-    if (entrepriseFiltre !== "all") query = query.eq("entreprise", entrepriseFiltre);
+    // Filtre par jour : date_debut est un timestamptz, donc on borne la journée
+    if (dateFiltre) {
+        const debut = `${dateFiltre}T00:00:00`;
+        const fin   = `${dateFiltre}T23:59:59.999`;
+        query = query.gte("date_debut", debut).lte("date_debut", fin);
+    }
+
+    if (entrepriseFiltre !== "all") {
+        query = query.eq("entreprise", entrepriseFiltre);
+    }
 
     const { data, error } = await query;
 
@@ -175,7 +209,7 @@ async function chargerPermisFeu() {
         return;
     }
 
-    afficherPermis(data);
+    afficherPermis(data || []);
 }
 
 /* ============================================================
@@ -185,16 +219,22 @@ function afficherPermis(permis) {
     const tbody = document.getElementById("tablePermis");
     tbody.innerHTML = "";
 
+    if (permis.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#999;">Aucun permis feu trouvé.</td></tr>`;
+        return;
+    }
+
     permis.forEach(p => {
+        const clos = estClos(p.statut);
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
-            <td>${p.date}</td>
-            <td>${p.entreprise}</td>
-            <td>${p.zone}</td>
-            <td>${p.agent}</td>
-            <td class="${p.cloture ? 'status-closed' : 'status-open'}">
-                ${p.cloture ? "Clos" : "Ouvert"}
+            <td>${formatDate(p.date_debut)}</td>
+            <td>${p.entreprise || "—"}</td>
+            <td>${p.lieu || "—"}</td>
+            <td>${nomAgent(p.profiles)}</td>
+            <td class="${clos ? 'status-closed' : 'status-open'}">
+                ${clos ? "Clos" : "Ouvert"}
             </td>
             <td>
                 <button class="btn" onclick="ouvrirPermis('${p.id}')">Ouvrir</button>
@@ -216,10 +256,14 @@ function ouvrirPermis(id) {
    CHARGEMENT ENTREPRISES UNIQUES
 ============================================================ */
 async function chargerEntreprises() {
-    const { data } = await supabaseClientClient.from("permis_feu").select("entreprise");
+    const { data, error } = await supabaseClient
+        .from("permis_feu")
+        .select("entreprise");
+
+    if (error || !data) return;
 
     const select = document.getElementById("filtreEntreprise");
-    const uniques = [...new Set(data.map(e => e.entreprise))];
+    const uniques = [...new Set(data.map(e => e.entreprise).filter(Boolean))].sort();
 
     uniques.forEach(ent => {
         const opt = document.createElement("option");

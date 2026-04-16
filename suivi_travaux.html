@@ -183,6 +183,11 @@
 
         <h2 style="margin-top:25px;">Travaux en cours</h2>
 
+        <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+            <button class="btn" onclick="exporterCSV()">📥 Exporter CSV</button>
+            <button class="btn" style="background:#ef4444;" onclick="effacerJournee()">🗑 Effacer la journée</button>
+        </div>
+
         <table id="tableTravaux">
             <thead>
                 <tr>
@@ -299,6 +304,29 @@ function showTab(id) {
 }
 
 /* ----------------------------------------------------------
+   🔵 HELPERS
+---------------------------------------------------------- */
+const BUCKET = "suivi-travaux";
+
+async function uploadFile(file) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${Date.now()}_${safeName}`;
+    const { error } = await supabaseClient.storage.from(BUCKET).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false
+    });
+    if (error) throw error;
+    const url = supabaseClient.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+    return { url, path };
+}
+
+async function deleteFile(path) {
+    if (!path) return;
+    const { error } = await supabaseClient.storage.from(BUCKET).remove([path]);
+    if (error) console.warn("Erreur suppression fichier (on continue) :", error);
+}
+
+/* ----------------------------------------------------------
    🔵 TRAVAUX — AJOUT
 ---------------------------------------------------------- */
 async function ajouterTravail() {
@@ -306,18 +334,19 @@ async function ajouterTravail() {
     const description = document.getElementById("travailDesc").value.trim();
     const statut = document.getElementById("travailStatut").value;
 
-    if (!titre) return alert("Merci d’indiquer un titre.");
+    if (!titre) return alert("Merci d'indiquer un titre.");
 
     const { error } = await supabaseClient.from("suivi_travaux").insert({
+        kind: "travail",
         titre,
         description,
         statut,
-        date: new Date().toISOString()
+        archive: false
     });
 
     if (error) {
         console.error(error);
-        return alert("Erreur Supabase lors de l'ajout.");
+        return alert("Erreur Supabase lors de l'ajout : " + error.message);
     }
 
     document.getElementById("travailTitre").value = "";
@@ -327,25 +356,26 @@ async function ajouterTravail() {
 }
 
 /* ----------------------------------------------------------
-   🔵 TRAVAUX — CHARGEMENT
+   🔵 TRAVAUX — CHARGEMENT (non archivés)
 ---------------------------------------------------------- */
 async function chargerTravaux() {
     const { data, error } = await supabaseClient
         .from("suivi_travaux")
         .select("*")
-        .order("date", { ascending: false });
+        .eq("kind", "travail")
+        .eq("archive", false)
+        .order("created_at", { ascending: false });
 
     if (error) return console.error(error);
 
     const tbody = document.querySelector("#tableTravaux tbody");
     tbody.innerHTML = "";
 
-    data.forEach(t => {
+    (data || []).forEach(t => {
         const row = document.createElement("tr");
-
         row.innerHTML = `
-            <td>${t.titre}</td>
-            <td>${t.description}</td>
+            <td>${t.titre || ""}</td>
+            <td>${t.description || ""}</td>
             <td>
                 <select onchange="changerStatut('${t.id}', this.value)">
                     <option value="en-cours" ${t.statut === "en-cours" ? "selected" : ""}>En cours</option>
@@ -357,7 +387,6 @@ async function chargerTravaux() {
                 <button class="btn" onclick="archiverTravail('${t.id}')">📦 Archiver</button>
             </td>
         `;
-
         tbody.appendChild(row);
     });
 }
@@ -370,36 +399,22 @@ async function changerStatut(id, statut) {
         .from("suivi_travaux")
         .update({ statut })
         .eq("id", id);
-
     if (error) console.error(error);
 }
 
 /* ----------------------------------------------------------
-   🔵 TRAVAUX — ARCHIVER
+   🔵 TRAVAUX — ARCHIVER (flag, pas de duplication)
 ---------------------------------------------------------- */
 async function archiverTravail(id) {
-    const { data, error } = await supabaseClient
+    const { error } = await supabaseClient
         .from("suivi_travaux")
-        .select("*")
-        .eq("id", id)
-        .single();
+        .update({ archive: true, date_archive: new Date().toISOString() })
+        .eq("id", id);
 
-    if (error) return console.error(error);
-
-    const { error: insertError } = await supabaseClient
-        .from("suivi_travaux")
-        .insert({
-            titre: data.titre,
-            description: data.description,
-            statut: data.statut,
-            date: data.date,
-            date_archive: new Date().toISOString()
-        });
-
-    if (insertError) return console.error(insertError);
-
-    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
-
+    if (error) {
+        console.error(error);
+        return alert("Erreur archivage : " + error.message);
+    }
     chargerTravaux();
 }
 
@@ -410,6 +425,8 @@ async function chargerArchives() {
     const { data, error } = await supabaseClient
         .from("suivi_travaux")
         .select("*")
+        .eq("kind", "travail")
+        .eq("archive", true)
         .order("date_archive", { ascending: false });
 
     if (error) return console.error(error);
@@ -417,44 +434,31 @@ async function chargerArchives() {
     const tbody = document.querySelector("#tableArchives tbody");
     tbody.innerHTML = "";
 
-    data.forEach(a => {
+    (data || []).forEach(a => {
         const row = document.createElement("tr");
-
         row.innerHTML = `
-            <td>${a.titre}</td>
-            <td>${a.description}</td>
-            <td>${new Date(a.date_archive).toLocaleDateString("fr-FR")}</td>
+            <td>${a.titre || ""}</td>
+            <td>${a.description || ""}</td>
+            <td>${a.date_archive ? new Date(a.date_archive).toLocaleDateString("fr-FR") : "-"}</td>
             <td>
                 <button class="btn" onclick="restaurer('${a.id}')">↩ Restaurer</button>
                 <button class="btn" onclick="supprimer('${a.id}')">🗑 Supprimer</button>
             </td>
         `;
-
         tbody.appendChild(row);
     });
 }
 
 /* ----------------------------------------------------------
-   🔵 ARCHIVES — RESTAURER
+   🔵 ARCHIVES — RESTAURER (désarchivage)
 ---------------------------------------------------------- */
 async function restaurer(id) {
-    const { data, error } = await supabaseClient
+    const { error } = await supabaseClient
         .from("suivi_travaux")
-        .select("*")
-        .eq("id", id)
-        .single();
+        .update({ archive: false, date_archive: null })
+        .eq("id", id);
 
     if (error) return console.error(error);
-
-    await supabaseClient.from("suivi_travaux").insert({
-        titre: data.titre,
-        description: data.description,
-        statut: data.statut,
-        date: data.date
-    });
-
-    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
-
     chargerArchives();
 }
 
@@ -462,13 +466,13 @@ async function restaurer(id) {
    🔵 ARCHIVES — SUPPRIMER
 ---------------------------------------------------------- */
 async function supprimer(id) {
+    if (!confirm("Supprimer définitivement cet archivage ?")) return;
     await supabaseClient.from("suivi_travaux").delete().eq("id", id);
     chargerArchives();
 }
-</script>
-<script>
+
 /* ----------------------------------------------------------
-   🟧 ZONES — AJOUT (upload fichier + base64)
+   🟧 ZONES — AJOUT (upload Storage)
 ---------------------------------------------------------- */
 async function ajouterZone() {
     const nom = zoneNom.value.trim();
@@ -477,26 +481,27 @@ async function ajouterZone() {
     const fin = zoneFin.value;
     const file = zonePlan.files[0];
 
-    if (!nom) return alert("Merci d’indiquer un nom de zone.");
-    if (!file) return alert("Merci de sélectionner un fichier pour la zone.");
+    if (!nom) return alert("Merci d'indiquer un nom de zone.");
 
-    const reader = new FileReader();
-
-    reader.onload = async function(e) {
-        const base64 = e.target.result;
+    try {
+        let fileInfo = { url: null, path: null, mime: null };
+        if (file) {
+            const up = await uploadFile(file);
+            fileInfo = { url: up.url, path: up.path, mime: file.type };
+        }
 
         const { error } = await supabaseClient.from("suivi_travaux").insert({
+            kind: "zone",
             nom,
             description,
-            debut,
-            fin,
-            plan: base64
+            date_debut: debut || null,
+            date_fin: fin || null,
+            file_url: fileInfo.url,
+            file_path: fileInfo.path,
+            mime_type: fileInfo.mime
         });
 
-        if (error) {
-            console.error(error);
-            return alert("Erreur Supabase lors de l'ajout de la zone.");
-        }
+        if (error) throw error;
 
         zoneNom.value = "";
         zoneDesc.value = "";
@@ -505,54 +510,47 @@ async function ajouterZone() {
         zonePlan.value = "";
 
         chargerZones();
-    };
-
-    reader.readAsDataURL(file);
+    } catch (e) {
+        console.error(e);
+        alert("Erreur Supabase lors de l'ajout de la zone : " + (e.message || e));
+    }
 }
 
 /* ----------------------------------------------------------
-   🟧 ZONES — CHARGEMENT (miniature + agrandissement)
+   🟧 ZONES — CHARGEMENT
 ---------------------------------------------------------- */
 async function chargerZones() {
     const { data, error } = await supabaseClient
         .from("suivi_travaux")
         .select("*")
-        .order("debut", { ascending: false });
+        .eq("kind", "zone")
+        .order("date_debut", { ascending: false, nullsFirst: false });
 
     if (error) return console.error(error);
 
     const tbody = document.querySelector("#tableZones tbody");
     tbody.innerHTML = "";
 
-    data.forEach(z => {
+    (data || []).forEach(z => {
         let affichagePlan = "-";
-
-        if (z.plan) {
-            if (z.plan.startsWith("data:image")) {
-                affichagePlan = `
-                    <img src="${z.plan}" style="width:80px;border-radius:6px;cursor:pointer"
-                         onclick="window.open('${z.plan}', '_blank')">
-                    <br>
-                    <button class="btn" onclick="window.open('${z.plan}', '_blank')">🖼 Agrandir</button>
-                `;
-            } else {
-                affichagePlan = `
-                    <button class="btn" onclick="window.open('${z.plan}', '_blank')">📄 Ouvrir PDF</button>
-                `;
-            }
+        if (z.file_url) {
+            const isImage = (z.mime_type || "").startsWith("image/");
+            affichagePlan = isImage
+                ? `<img src="${z.file_url}" style="width:80px;border-radius:6px;cursor:pointer"
+                       onclick="window.open('${z.file_url}', '_blank')">
+                   <br><button class="btn" onclick="window.open('${z.file_url}', '_blank')">🖼 Agrandir</button>`
+                : `<button class="btn" onclick="window.open('${z.file_url}', '_blank')">📄 Ouvrir</button>`;
         }
 
         const row = document.createElement("tr");
-
         row.innerHTML = `
-            <td>${z.nom}</td>
-            <td>${z.description}</td>
-            <td>${z.debut || "-"}</td>
-            <td>${z.fin || "-"}</td>
+            <td>${z.nom || ""}</td>
+            <td>${z.description || ""}</td>
+            <td>${z.date_debut || "-"}</td>
+            <td>${z.date_fin || "-"}</td>
             <td>${affichagePlan}</td>
-            <td><button class="btn" onclick="supprimerZone('${z.id}')">🗑</button></td>
+            <td><button class="btn" onclick="supprimerZone('${z.id}', '${z.file_path || ""}')">🗑</button></td>
         `;
-
         tbody.appendChild(row);
     });
 }
@@ -560,40 +558,37 @@ async function chargerZones() {
 /* ----------------------------------------------------------
    🟧 ZONES — SUPPRESSION
 ---------------------------------------------------------- */
-async function supprimerZone(id) {
+async function supprimerZone(id, path) {
+    if (!confirm("Supprimer cette zone ?")) return;
+    await deleteFile(path);
     await supabaseClient.from("suivi_travaux").delete().eq("id", id);
     chargerZones();
 }
 
 /* ----------------------------------------------------------
-   🟪 PLANS — AJOUT (upload base64)
+   🟪 PLANS — AJOUT
 ---------------------------------------------------------- */
 async function ajouterPlan() {
     const file = planFile.files[0];
     if (!file) return alert("Merci de sélectionner un fichier.");
 
-    const reader = new FileReader();
-
-    reader.onload = async function(e) {
-        const base64 = e.target.result;
-
+    try {
+        const up = await uploadFile(file);
         const { error } = await supabaseClient.from("suivi_travaux").insert({
+            kind: "plan",
             nom: file.name,
-            type: file.type,
-            data: base64,
-            date: new Date().toISOString()
+            mime_type: file.type,
+            file_url: up.url,
+            file_path: up.path
         });
 
-        if (error) {
-            console.error(error);
-            return alert("Erreur Supabase lors de l'ajout du plan.");
-        }
-
+        if (error) throw error;
         planFile.value = "";
         chargerPlans();
-    };
-
-    reader.readAsDataURL(file);
+    } catch (e) {
+        console.error(e);
+        alert("Erreur Supabase lors de l'ajout du plan : " + (e.message || e));
+    }
 }
 
 /* ----------------------------------------------------------
@@ -603,29 +598,28 @@ async function chargerPlans() {
     const { data, error } = await supabaseClient
         .from("suivi_travaux")
         .select("*")
-        .order("date", { ascending: false });
+        .eq("kind", "plan")
+        .order("created_at", { ascending: false });
 
     if (error) return console.error(error);
 
     const container = document.getElementById("listePlans");
     container.innerHTML = "";
 
-    data.forEach(p => {
+    (data || []).forEach(p => {
         const div = document.createElement("div");
         div.style.marginBottom = "15px";
 
-        const isImage = p.type.startsWith("image/");
-
+        const isImage = (p.mime_type || "").startsWith("image/");
         div.innerHTML = `
-            <p><b>${p.nom}</b></p>
+            <p><b>${p.nom || ""}</b></p>
             ${isImage
-                ? `<img src="${p.data}" style="max-width:100%;border-radius:10px;">`
-                : `<button class="btn" onclick="window.open('${p.data}', '_blank')">📄 Ouvrir PDF</button>`
+                ? `<img src="${p.file_url}" style="max-width:100%;border-radius:10px;">`
+                : `<button class="btn" onclick="window.open('${p.file_url}', '_blank')">📄 Ouvrir</button>`
             }
             <br>
-            <button class="btn" onclick="supprimerPlan('${p.id}')">🗑 Supprimer</button>
+            <button class="btn" onclick="supprimerPlan('${p.id}', '${p.file_path || ""}')">🗑 Supprimer</button>
         `;
-
         container.appendChild(div);
     });
 }
@@ -633,24 +627,32 @@ async function chargerPlans() {
 /* ----------------------------------------------------------
    🟪 PLANS — SUPPRESSION
 ---------------------------------------------------------- */
-async function supprimerPlan(id) {
+async function supprimerPlan(id, path) {
+    if (!confirm("Supprimer ce plan ?")) return;
+    await deleteFile(path);
     await supabaseClient.from("suivi_travaux").delete().eq("id", id);
     chargerPlans();
 }
 
 /* ----------------------------------------------------------
-   📊 STATISTIQUES — depuis Supabase
+   📊 STATISTIQUES
 ---------------------------------------------------------- */
 async function chargerStats() {
-    const { data: travaux } = await supabaseClient.from("suivi_travaux").select("*");
-    const { data: archives } = await supabaseClient.from("suivi_travaux").select("*");
+    const { data: actifs } = await supabaseClient
+        .from("suivi_travaux").select("*")
+        .eq("kind", "travail").eq("archive", false);
+    const { data: archives } = await supabaseClient
+        .from("suivi_travaux").select("*")
+        .eq("kind", "travail").eq("archive", true);
+
+    const A = actifs || [], B = archives || [];
 
     document.getElementById("resume").innerHTML =
-        `Travaux actifs : <b>${travaux.length}</b><br>Archivés : <b>${archives.length}</b>`;
+        `Travaux actifs : <b>${A.length}</b><br>Archivés : <b>${B.length}</b>`;
 
-    const enCours = travaux.filter(t => t.statut === "en-cours").length;
-    const attente = travaux.filter(t => t.statut === "attente").length;
-    const termine = travaux.filter(t => t.statut === "termine").length;
+    const enCours = A.filter(t => t.statut === "en-cours").length;
+    const attente = A.filter(t => t.statut === "attente").length;
+    const termine = A.filter(t => t.statut === "termine").length;
 
     document.getElementById("statut").innerHTML = `
         En cours : <b>${enCours}</b><br>
@@ -659,8 +661,9 @@ async function chargerStats() {
     `;
 
     const mois = {};
-    travaux.forEach(t => {
-        const m = new Date(t.date).getMonth();
+    A.forEach(t => {
+        if (!t.created_at) return;
+        const m = new Date(t.created_at).getMonth();
         mois[m] = (mois[m] || 0) + 1;
     });
 
@@ -669,8 +672,77 @@ async function chargerStats() {
         const bar = "█".repeat(mois[i] || 0);
         graph += `${i+1} : ${bar}\n`;
     }
-
     document.getElementById("graph").textContent = graph;
+}
+
+/* ----------------------------------------------------------
+   📥 EXPORT CSV (travaux non archivés du jour)
+---------------------------------------------------------- */
+async function exporterCSV() {
+    const { data, error } = await supabaseClient
+        .from("suivi_travaux")
+        .select("*")
+        .eq("kind", "travail")
+        .eq("archive", false)
+        .order("created_at", { ascending: false });
+
+    if (error) return alert("Erreur export : " + error.message);
+    if (!data || !data.length) return alert("Aucun travail à exporter.");
+
+    const headers = ["Titre", "Description", "Statut", "Créé le"];
+    const rows = data.map(t => [
+        t.titre || "",
+        (t.description || "").replace(/(\r\n|\n|\r)/gm, " "),
+        t.statut || "",
+        t.created_at ? new Date(t.created_at).toLocaleString("fr-FR") : ""
+    ]);
+
+    let csv = "\uFEFF" + headers.join(";") + "\n";
+    rows.forEach(r => {
+        csv += r.map(v => `"${(v || "").toString().replace(/"/g, '""')}"`).join(";") + "\n";
+    });
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `travaux_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/* ----------------------------------------------------------
+   🗑 EFFACER LA JOURNÉE
+   Supprime TOUS les travaux (actifs + archivés) après confirmation.
+   Ne touche pas aux zones de stockage ni aux plans.
+---------------------------------------------------------- */
+async function effacerJournee() {
+    const { data, error } = await supabaseClient
+        .from("suivi_travaux")
+        .select("id")
+        .eq("kind", "travail");
+
+    if (error) return alert("Erreur : " + error.message);
+    const n = (data || []).length;
+    if (!n) return alert("Aucun travail à effacer.");
+
+    if (!confirm(`⚠️ Effacer ${n} travail(s) (actifs + archivés) ?\n\n` +
+                 `Action définitive. Pense à exporter le CSV avant.`)) return;
+
+    const safety = prompt('Tape "EFFACER" pour confirmer définitivement :');
+    if (safety !== "EFFACER") return alert("Suppression annulée.");
+
+    const { error: delErr } = await supabaseClient
+        .from("suivi_travaux")
+        .delete()
+        .eq("kind", "travail");
+
+    if (delErr) return alert("Erreur suppression : " + delErr.message);
+
+    chargerTravaux();
+    alert("✅ Journée effacée.");
 }
 
 /* ----------------------------------------------------------

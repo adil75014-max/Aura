@@ -262,13 +262,31 @@ requireLogin();
 // ============================
 let plans = [];
 async function loadPlans() {
-    const { data } = await supabaseClient.from("plan_prevention").select("*").order("created_at",{ascending:false});
+    const { data, error } = await supabaseClient
+        .from("plan_prevention")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        console.error("Erreur chargement plans :", error);
+        alert("Erreur Supabase : " + error.message);
+        return;
+    }
+
     plans = (data || []).map(p => ({
-        id: p.id, entreprise: p.entreprise, responsable: p.responsable,
-        dateDebut: p.date_debut, dateFin: p.date_fin, travaux: p.travaux_desc,
-        risques: (p.risques||[]).join(", "), mesures: p.mesures, statut: p.statut
+        id:            p.id,
+        nom:           p.nom_pdf || "Sans nom",
+        entreprise:    p.entreprise || "",
+        zone:          p.zone || "",
+        dateValidite:  p.date_validite || "",
+        url:           p.pdf_url || "#",
+        pdfPath:       p.pdf_path || null,
+        visite:        p.visite || "Non",
+        observations:  p.observations || ""
     }));
+
     afficherPlans();
+    remplirFiltres();
 }
 loadPlans();
 let triActuel = { colonne: null, ordre: 1 };
@@ -393,7 +411,7 @@ function remplirFiltres() {
 // ============================
 // Import PDF
 // ============================
-function importerPDF() {
+async function importerPDF() {
     const fileInput = document.getElementById("pdfInput");
     const entreprise = document.getElementById("inputEntreprise").value.trim();
     const zone = document.getElementById("inputZone").value.trim();
@@ -407,29 +425,66 @@ function importerPDF() {
     if (!dateValidite) return alert("Saisis une date de validité");
 
     const file = fileInput.files[0];
-    const url = URL.createObjectURL(file);
+    const btn = document.querySelector('button[onclick="importerPDF()"]');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "⏳ Import en cours…";
 
-    plans.push({
-        nom: file.name,
-        entreprise,
-        zone,
-        dateValidite,
-        url,
-        visite,
-        observations
-    });
+    try {
+        // 1) Upload du PDF dans le bucket Storage
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+        const path = `${Date.now()}_${safeName}`;
 
-    // Plans gérés via Supabase
+        const { error: upErr } = await supabaseClient
+            .storage
+            .from("plans-prevention")
+            .upload(path, file, { contentType: "application/pdf", upsert: false });
 
-    afficherPlans();
-    remplirFiltres();
+        if (upErr) throw upErr;
 
-    fileInput.value = "";
-    document.getElementById("inputEntreprise").value = "";
-    document.getElementById("inputZone").value = "";
-    document.getElementById("inputDate").value = "";
-    document.getElementById("inputVisite").value = "Non";
-    document.getElementById("inputObs").value = "";
+        // 2) Récupération de l'URL publique
+        const { data: pub } = supabaseClient
+            .storage
+            .from("plans-prevention")
+            .getPublicUrl(path);
+
+        const pdfUrl = pub.publicUrl;
+
+        // 3) Insertion dans la table
+        const { error: insErr } = await supabaseClient
+            .from("plan_prevention")
+            .insert({
+                nom_pdf:       file.name,
+                entreprise:    entreprise,
+                zone:          zone,
+                date_validite: dateValidite,
+                visite:        visite,
+                observations:  observations,
+                pdf_url:       pdfUrl,
+                pdf_path:      path,
+                statut:        "actif"
+            });
+
+        if (insErr) throw insErr;
+
+        // 4) Reset du formulaire
+        fileInput.value = "";
+        document.getElementById("inputEntreprise").value = "";
+        document.getElementById("inputZone").value = "";
+        document.getElementById("inputDate").value = "";
+        document.getElementById("inputVisite").value = "Non";
+        document.getElementById("inputObs").value = "";
+
+        // 5) Rechargement de la liste depuis Supabase
+        await loadPlans();
+        alert("✅ Plan de prévention importé.");
+    } catch (e) {
+        console.error(e);
+        alert("❌ Erreur : " + (e.message || e));
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+    }
 }
 
 // ============================
@@ -518,13 +573,26 @@ function closeModal() {
     editIndex = null;
 }
 
-function saveEdit() {
+async function saveEdit() {
     if (editIndex === null) return;
 
-    plans[editIndex].visite = document.getElementById("editVisite").value;
-    plans[editIndex].observations = document.getElementById("editObs").value.trim();
+    const plan = plans[editIndex];
+    const newVisite = document.getElementById("editVisite").value;
+    const newObs    = document.getElementById("editObs").value.trim();
 
-    // Plans gérés via Supabase
+    const { error } = await supabaseClient
+        .from("plan_prevention")
+        .update({ visite: newVisite, observations: newObs })
+        .eq("id", plan.id);
+
+    if (error) {
+        alert("❌ Erreur sauvegarde : " + error.message);
+        return;
+    }
+
+    // Met à jour la copie locale puis ferme la modale
+    plans[editIndex].visite = newVisite;
+    plans[editIndex].observations = newObs;
 
     closeModal();
     afficherPlans();

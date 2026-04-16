@@ -273,21 +273,31 @@
                     <td>${item.adresse}</td>
                     <td>${new Date(item.date_hs).toLocaleString()}</td>
                     <td>${item.motif}</td>
-                    <td><span class="btn-rs" onclick="remiseService('${item.id}')">OK</span></td>
+                    <td><span class="btn-rs" onclick="remiseService('${item.id}')">Remettre en service</span></td>
                 </tr>
             `;
         });
     }
 
-    // REMISE EN SERVICE
+    // REMISE EN SERVICE -> suppression de la ligne dans Supabase
     async function remiseService(id) {
-        const date_rs = new Date().toISOString();
+        if (!confirm("Confirmer la remise en service ? La ligne sera supprimée.")) {
+            return;
+        }
 
-        await supabaseClient
+        const { error } = await supabaseClient
             .from("dai_hors_service")
-            .update({ date_rs, statut: "remis_en_service" })
+            .delete()
             .eq("id", id);
 
+        const msg = document.getElementById("message");
+
+        if (error) {
+            msg.innerHTML = `<div class="error">Erreur suppression : ${error.message}</div>`;
+            return;
+        }
+
+        msg.innerHTML = `<div class="success">DAI remise en service (ligne supprimée).</div>`;
         loadHS();
     }
 

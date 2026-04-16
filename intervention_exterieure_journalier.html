@@ -115,6 +115,11 @@ requireLogin();
 
 <h2>🌙 20h → 8h</h2>
 <div id="nightShift"></div><script>
+// Fallback showToast si global.js pas encore chargé
+if (typeof showToast !== "function") {
+    window.showToast = function(msg, isError) { alert(msg); };
+}
+
 /* ============================================================
    DATE DU JOUR
 ============================================================ */
@@ -122,8 +127,38 @@ const today = new Date().toLocaleDateString("fr-FR");
 document.getElementById("dateDuJour").textContent = today;
 
 /* ============================================================
-   CHARGER LES RAPPORTS DU JOUR
+   HELPERS
 ============================================================ */
+function fmtHeure(iso) {
+    if (!iso) return null;
+    return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+
+function escapeHtml(s) {
+    const d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+}
+
+function mapRow(r) {
+    return {
+        id:           r.id,
+        entreprise:   r.entreprise || "—",
+        responsable:  r.responsable || "—",
+        telephone:    r.telephone || "",
+        zone:         r.zone || "—",
+        typeTravaux:  r.type_travaux || "—",
+        heureDebut:   fmtHeure(r.heure_arrivee),
+        heureFin:     fmtHeure(r.heure_depart),
+        statut:       r.statut || "—"
+    };
+}
+
+/* ============================================================
+   CHARGER LES INTERVENTIONS DU JOUR
+============================================================ */
+let listeJour = [];
+
 async function chargerRapports() {
     const todayISO = new Date().toISOString().split("T")[0];
     const { data, error } = await supabaseClient
@@ -132,24 +167,16 @@ async function chargerRapports() {
         .gte("created_at", todayISO + "T00:00:00")
         .lte("created_at", todayISO + "T23:59:59")
         .order("created_at", { ascending: false });
-    
-    if (error) { console.error(error); return; }
-    
-    const journaliers = (data || []).map(r => ({
-        entreprise: r.entreprise || "—",
-        agent: r.responsable || "—",
-        localisation: r.zone || "—",
-        heureDebut: r.heure_arrivee ? new Date(r.heure_arrivee).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : "—",
-        heureFin: r.heure_depart ? new Date(r.heure_depart).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : null,
-        epi: r.type_travaux || "—"
-    }));
 
-    afficher(journaliers);
-    updateCounters(journaliers);
+    if (error) { showToast("❌ " + error.message, true); return; }
+
+    listeJour = (data || []).map(mapRow);
+    afficher(listeJour);
+    updateCounters(listeJour);
 }
 
 /* ============================================================
-   AFFICHAGE DES RAPPORTS PAR TRANCHE HORAIRE
+   AFFICHAGE PAR TRANCHE HORAIRE
 ============================================================ */
 function afficher(liste) {
     const day = document.getElementById("dayShift");
@@ -159,7 +186,7 @@ function afficher(liste) {
     night.innerHTML = "";
 
     if (liste.length === 0) {
-        day.innerHTML = "<p>Aucune intervention en cours aujourd’hui.</p>";
+        day.innerHTML = "<p>Aucune intervention en cours aujourd'hui.</p>";
         night.innerHTML = "";
         return;
     }
@@ -168,84 +195,121 @@ function afficher(liste) {
         const div = document.createElement("div");
         div.className = "rapport";
 
+        const enCours = !r.heureFin;
+        const tel = r.telephone
+            ? `<p><strong>Téléphone :</strong> ${escapeHtml(r.telephone)}</p>` : "";
+
+        const sortieBlock = enCours
+            ? `
+                <label style="display:block; margin-top:10px;">Heure de départ :</label>
+                <input type="time" id="depart_${r.id}" style="width:100%; padding:8px; border-radius:6px;
+                       background:var(--bg2); color:var(--text); border:1px solid var(--border); margin-top:4px;">
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button onclick="cloturer('${r.id}')"
+                            style="flex:1; padding:10px; background:var(--accent); color:#000;
+                                   border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                        ✅ Clôturer
+                    </button>
+                    <button onclick="supprimer('${r.id}')"
+                            style="flex:1; padding:10px; background:#ef4444; color:white;
+                                   border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                        🗑 Supprimer
+                    </button>
+                </div>`
+            : `
+                <p style="color:#4ade80; font-weight:600; margin-top:10px;">✓ Terminée</p>
+                <button onclick="supprimer('${r.id}')"
+                        style="width:100%; padding:10px; background:#ef4444; color:white;
+                               border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                    🗑 Supprimer
+                </button>`;
+
         div.innerHTML = `
-            <p><strong>Entreprise :</strong> ${r.entreprise}</p>
-            <p><strong>Agent :</strong> ${r.agent}</p>
-            <p><strong>Localisation :</strong> ${r.localisation}</p>
-            <p><strong>Heure début :</strong> ${r.heureDebut}</p>
-            <p><strong>Heure fin :</strong> ${r.heureFin || "—"}</p>
-            <p><strong>Contrôle EPI :</strong> ${r.epi}</p>
+            <p><strong>Entreprise :</strong> ${escapeHtml(r.entreprise)}</p>
+            <p><strong>Type de travaux :</strong> ${escapeHtml(r.typeTravaux)}</p>
+            <p><strong>Responsable :</strong> ${escapeHtml(r.responsable)}</p>
+            ${tel}
+            <p><strong>Zone :</strong> ${escapeHtml(r.zone)}</p>
+            <p><strong>Heure d'arrivée :</strong> ${r.heureDebut || "—"}</p>
+            <p><strong>Heure de départ :</strong> ${r.heureFin || "—"}</p>
+            ${sortieBlock}
         `;
 
+        // Tranche selon l'heure d'arrivée
         const heure = r.heureDebut;
-        if (!heure) {
-            day.appendChild(div);
-            return;
-        }
-
+        if (!heure) { day.appendChild(div); return; }
         const h = parseInt(heure.split(":")[0]);
-
-        if (h >= 8 && h < 20) {
-            day.appendChild(div);
-        } else {
-            night.appendChild(div);
-        }
+        if (h >= 8 && h < 20) day.appendChild(div);
+        else night.appendChild(div);
     });
 }
 
 /* ============================================================
-   COMPTEURS AUTOMATIQUES
+   COMPTEURS
 ============================================================ */
 function updateCounters(liste) {
-    let total = liste.length;
-    let day = 0;
-    let night = 0;
-
+    let total = liste.length, day = 0, night = 0;
     liste.forEach(r => {
         const heure = r.heureDebut;
-        if (!heure) {
-            day++;
-            return;
-        }
-
+        if (!heure) { day++; return; }
         const h = parseInt(heure.split(":")[0]);
-
-        if (h >= 8 && h < 20) day++;
-        else night++;
+        if (h >= 8 && h < 20) day++; else night++;
     });
-
     document.getElementById("countTotal").textContent = total;
     document.getElementById("countDay").textContent = day;
     document.getElementById("countNight").textContent = night;
 }
 
 /* ============================================================
-   RECHERCHE RAPIDE
+   CLÔTURER UNE INTERVENTION
 ============================================================ */
-document.getElementById("search").addEventListener("input", async function () {
-    const q = this.value.toLowerCase();
-    const todayISO = new Date().toISOString().split("T")[0];
-    const { data } = await supabaseClient
-        .from("interventions_exterieures")
-        .select("*")
-        .gte("created_at", todayISO + "T00:00:00")
-        .lte("created_at", todayISO + "T23:59:59");
-    
-    const journaliers = (data || []).map(r => ({
-        entreprise: r.entreprise || "—",
-        agent: r.responsable || "—",
-        localisation: r.zone || "—",
-        heureDebut: r.heure_arrivee ? new Date(r.heure_arrivee).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : "—",
-        heureFin: r.heure_depart ? new Date(r.heure_depart).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}) : null,
-        epi: r.type_travaux || "—"
-    })).filter(r =>
-        r.entreprise.toLowerCase().includes(q) ||
-        r.agent.toLowerCase().includes(q) ||
-        r.localisation.toLowerCase().includes(q)
-    );
+async function cloturer(id) {
+    const heure = document.getElementById("depart_" + id).value;
+    if (!heure) { alert("Veuillez entrer une heure de départ."); return; }
 
-    afficher(journaliers);
-    updateCounters(journaliers);
+    const now = new Date();
+    const [h, m] = heure.split(":");
+    const ts = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).toISOString();
+
+    const { error } = await supabaseClient
+        .from("interventions_exterieures")
+        .update({ heure_depart: ts, statut: "termine" })
+        .eq("id", id);
+
+    if (error) { showToast("❌ " + error.message, true); return; }
+    showToast("✅ Intervention clôturée");
+    chargerRapports();
+}
+
+/* ============================================================
+   SUPPRIMER UNE INTERVENTION
+============================================================ */
+async function supprimer(id) {
+    if (!confirm("Supprimer définitivement cette intervention ?")) return;
+
+    const { error } = await supabaseClient
+        .from("interventions_exterieures")
+        .delete()
+        .eq("id", id);
+
+    if (error) { showToast("❌ " + error.message, true); return; }
+    showToast("🗑 Intervention supprimée");
+    chargerRapports();
+}
+
+/* ============================================================
+   RECHERCHE LOCALE (pas de re-fetch)
+============================================================ */
+document.getElementById("search").addEventListener("input", function () {
+    const q = this.value.toLowerCase();
+    const filtered = listeJour.filter(r =>
+        r.entreprise.toLowerCase().includes(q) ||
+        r.responsable.toLowerCase().includes(q) ||
+        r.zone.toLowerCase().includes(q) ||
+        r.typeTravaux.toLowerCase().includes(q)
+    );
+    afficher(filtered);
+    updateCounters(filtered);
 });
 
 /* ============================================================
@@ -253,12 +317,7 @@ document.getElementById("search").addEventListener("input", async function () {
 ============================================================ */
 chargerRapports();
 
-/* ============================================================
-   BOUTON MENU
-============================================================ */
-function goMenu() {
-    window.location.href = "index.html";
-}
+function goMenu() { window.location.href = "index.html"; }
 </script>
 
 <!-- 🔐 Sécurité -->

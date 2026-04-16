@@ -71,6 +71,10 @@ button:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
 
     <h3>Heure d'entrée</h3><input type="time" id="heureEntree">
     <h3>Heure de sortie</h3><input type="time" id="heureSortie">
+    <p style="font-size:0.85rem; opacity:0.7; margin-top:4px;">
+        💡 Laisser l'heure de sortie vide pour créer un rapport « ouvert »
+        à clôturer plus tard depuis la page « Rapports ouverts ».
+    </p>
     <h3>Observations (optionnel)</h3><textarea id="observations" placeholder="Notes supplémentaires…"></textarea>
 
     <button id="save">💾 Enregistrer</button>
@@ -101,16 +105,23 @@ document.getElementById("save").addEventListener("click", async () => {
     try {
         const type = document.getElementById("typeEntree").value;
         let entreprise = "";
+        let nomPersonne = "";
         let motif = "";
+        let nbPersonnes = null;
+        let nbColis = null;
 
         if (type === "personnel" || type === "societe") {
             entreprise = document.getElementById("societe").value;
             if (entreprise === "Autre") entreprise = document.getElementById("autreSociete").value || "Non précisé";
-            motif = "personnel/société";
+            motif = type === "personnel" ? "personnel" : "société";
+            nomPersonne = entreprise;
+            nbPersonnes = parseInt(document.getElementById("nbPersonnes").value || "0", 10) || null;
         } else {
             entreprise = document.getElementById("livraisonSociete").value;
             if (entreprise === "Autre") entreprise = document.getElementById("livraisonAutre").value || "Non précisé";
             motif = "livraison";
+            nomPersonne = entreprise;
+            nbColis = parseInt(document.getElementById("nbColis").value || "0", 10) || null;
         }
 
         const heureEntree = document.getElementById("heureEntree").value;
@@ -120,17 +131,26 @@ document.getElementById("save").addEventListener("click", async () => {
         if (heureEntree) { const [h,m] = heureEntree.split(":"); heureEntreeTs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).toISOString(); }
         if (heureSortie) { const [h,m] = heureSortie.split(":"); heureSortieTs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).toISOString(); }
 
+        // Validation : on doit au moins avoir l'heure d'entrée
+        if (!heureEntreeTs) {
+            throw new Error("L'heure d'entrée est obligatoire.");
+        }
+
         const { error } = await supabaseClient.from("rapports_entree_sortie").insert({
             type_mouvement: "entree",
-            nom_personne: entreprise,
-            entreprise: entreprise,
-            motif: motif,
-            badge_numero: null,
-            zone: null,
-            heure_entree: heureEntreeTs,
-            heure_sortie: heureSortieTs,
-            statut: heureSortie ? "cloture" : "ouvert",
-            observations: document.getElementById("observations").value
+            type_entree:    type,
+            nom_personne:   nomPersonne,
+            entreprise:     entreprise,
+            motif:          motif,
+            nb_personnes:   nbPersonnes,
+            nb_colis:       nbColis,
+            badge_numero:   null,
+            zone:           null,
+            heure_entree:   heureEntreeTs,
+            heure_sortie:   heureSortieTs,
+            statut:         heureSortieTs ? "cloture" : "ouvert",
+            observations:   document.getElementById("observations").value,
+            agent_nom:      localStorage.getItem("nom") || null
         });
         if (error) throw error;
         showToast("✅ Rapport entrée/sortie enregistré !");

@@ -197,6 +197,56 @@ a:hover { text-decoration: underline; }
     color: #6b7280;
     font-size: 1.1rem;
 }
+
+/* Bouton Ouvrir */
+.btn-view {
+    background: rgba(77,163,255,0.15);
+    border: 1px solid rgba(77,163,255,0.4);
+    color: #4da3ff;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: 0.2s;
+}
+.btn-view:hover { background: #4da3ff; color: #000; }
+
+/* Modale rapport */
+.modal-overlay {
+    display: none;
+    position: fixed; top:0; left:0; right:0; bottom:0;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(6px);
+    z-index: 9999;
+    justify-content: center; align-items: center;
+    padding: 20px;
+}
+.modal-overlay.active { display: flex; }
+.modal-box {
+    background: #1a1f2e;
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 14px;
+    padding: 25px;
+    max-width: 720px;
+    width: 100%;
+    max-height: 85vh;
+    overflow-y: auto;
+    color: white;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+.modal-box h2 { color: #4da3ff; margin-bottom: 18px; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:10px; }
+.modal-box h3 { color:#7ab8ff; margin:18px 0 8px; font-size:1rem; }
+.modal-box .field { margin-bottom: 10px; }
+.modal-box .field-label { color: #7ab8ff; font-weight: 600; font-size: 0.85rem; display:block; margin-bottom:2px; }
+.modal-box .field-value { color: white; white-space: pre-wrap; word-break: break-word; line-height:1.5; }
+.modal-actions { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
+.modal-close, .modal-print {
+    padding: 8px 16px; border-radius: 8px; cursor: pointer; border:1px solid; font-weight:600;
+}
+.modal-close { background: rgba(239,68,68,0.2); border-color:#ef4444; color: #ef4444; }
+.modal-close:hover { background: #ef4444; color: white; }
+.modal-print { background: rgba(122,184,255,0.2); border-color:#7ab8ff; color: #7ab8ff; }
+.modal-print:hover { background: #7ab8ff; color: #000; }
 </style>
 </head>
 
@@ -329,6 +379,7 @@ a:hover { text-decoration: underline; }
             <th>Lieu / Détail</th>
             <th>Statut</th>
             <th>Priorité</th>
+            <th>Action</th>
         </tr>
     </thead>
     <tbody id="tableBody"></tbody>
@@ -435,7 +486,7 @@ async function loadAllData() {
 
         (rapports || []).forEach(r => {
             const dt = new Date(r.created_at);
-            const agent = resolveAgent(r.auteur_id);
+            const agent = resolveAgent(r.auteur_id, r.meta);
             allData.push({
                 source: 'rapports',
                 date: dt.toISOString().split('T')[0],
@@ -447,13 +498,16 @@ async function loadAllData() {
                 resume: r.titre || r.description || '—',
                 statut: r.statut || '—',
                 priorite: r.priorite || 'normale',
-                id: r.id
+                id: r.id,
+                description: r.description || '',
+                meta: r.meta || {},
+                raw: r
             });
         });
 
         (rondes || []).forEach(r => {
             const dt = new Date(r.debut_at || r.created_at);
-            const agent = resolveAgent(r.agent_id);
+            const agent = resolveAgent(r.agent_id, r.meta);
             allData.push({
                 source: 'rondes',
                 date: dt.toISOString().split('T')[0],
@@ -465,13 +519,16 @@ async function loadAllData() {
                 resume: 'Ronde ' + (r.type || ''),
                 statut: r.statut || '—',
                 priorite: r.statut === 'anomalie' ? 'haute' : 'normale',
-                id: r.id
+                id: r.id,
+                description: r.observations || '',
+                meta: r.meta || {},
+                raw: r
             });
         });
 
         (verifs || []).forEach(v => {
             const dt = new Date(v.created_at);
-            const agent = resolveAgent(v.agent_id);
+            const agent = resolveAgent(v.agent_id, v.meta);
             allData.push({
                 source: 'verifications',
                 date: dt.toISOString().split('T')[0],
@@ -483,7 +540,10 @@ async function loadAllData() {
                 resume: 'Vérif. ' + (v.type || '') + ' → ' + (v.resultat || ''),
                 statut: v.resultat || '—',
                 priorite: v.resultat === 'non_conforme' || v.resultat === 'anomalie' ? 'haute' : 'normale',
-                id: v.id
+                id: v.id,
+                description: v.commentaire || '',
+                meta: v.meta || {},
+                raw: v
             });
         });
 
@@ -507,11 +567,22 @@ async function loadAllData() {
     }
 }
 
-function resolveAgent(id) {
-    if (!id) return '—';
-    const p = profilesMap[id];
-    if (!p) return id.slice(0, 8) + '…';
-    return [p.prenom, p.nom].filter(Boolean).join(' ') || '—';
+function resolveAgent(id, metaFallback) {
+    // 1) Essai via profiles/users si on a un id
+    if (id) {
+        const p = profilesMap[id];
+        if (p) {
+            const nom = [p.prenom, p.nom].filter(Boolean).join(' ').trim();
+            if (nom) return nom;
+        }
+    }
+    // 2) Fallback : meta.agent_nom (rempli par report.html)
+    if (metaFallback && metaFallback.agent_nom) {
+        return metaFallback.agent_nom;
+    }
+    // 3) Dernier recours : début de l'id ou tiret
+    if (id) return id.slice(0, 8) + '…';
+    return '—';
 }
 
 /* ==========================================================
@@ -640,6 +711,7 @@ function renderTable(data) {
             <td title="${escapeHtml(r.resume)}">${truncate(r.lieu, 30)}</td>
             <td><span class="badge ${sClass}">${r.statut}</span></td>
             <td><span class="badge ${pClass}">${r.priorite}</span></td>
+            <td><button class="btn-view" onclick="openReport('${r.source}','${r.id}')">👁 Ouvrir</button></td>
         `;
         tbody.appendChild(tr);
     });
@@ -665,12 +737,36 @@ function exportCSV() {
         return;
     }
 
-    const headers = ['Date', 'Heure', 'Source', 'Type', 'Agent', 'Lieu', 'Résumé', 'Statut', 'Priorité'];
-    const rows = filteredData.map(r =>
-        [r.date, r.heure, r.source, r.type, r.agent, r.lieu, r.resume, r.statut, r.priorite]
-            .map(v => '"' + String(v).replace(/"/g, '""') + '"')
-            .join(';')
-    );
+    // Récupère toutes les clés meta présentes dans la sélection pour faire des colonnes
+    const metaKeys = new Set();
+    filteredData.forEach(r => {
+        if (r.meta && typeof r.meta === 'object') {
+            Object.keys(r.meta).forEach(k => metaKeys.add(k));
+        }
+    });
+    const metaCols = [...metaKeys].sort();
+
+    const headers = [
+        'Date', 'Heure', 'Source', 'Type', 'Agent', 'Lieu', 'Résumé',
+        'Description', 'Statut', 'Priorité', 'ID',
+        ...metaCols.map(k => 'meta.' + k)
+    ];
+
+    const rows = filteredData.map(r => {
+        const base = [
+            r.date, r.heure, r.source, r.type, r.agent, r.lieu, r.resume,
+            r.description || '', r.statut, r.priorite, r.id
+        ];
+        const metaVals = metaCols.map(k => {
+            const v = (r.meta || {})[k];
+            if (v === null || v === undefined) return '';
+            if (typeof v === 'object') return JSON.stringify(v);
+            return String(v);
+        });
+        return [...base, ...metaVals]
+            .map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""').replace(/\r?\n/g, ' ¶ ') + '"')
+            .join(';');
+    });
 
     const csv = '\uFEFF' + headers.join(';') + '\n' + rows.join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -682,7 +778,7 @@ function exportCSV() {
     a.click();
     URL.revokeObjectURL(url);
 
-    showToast(`✅ ${filteredData.length} lignes exportées`);
+    showToast(`✅ ${filteredData.length} lignes exportées (avec description + meta)`);
 }
 
 /* ==========================================================
@@ -704,59 +800,92 @@ async function genererPDFUltra(rapportsFiltrés, titre) {
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF('p', 'mm', 'a4');
 
-    // Header
-    pdf.setFillColor(30, 60, 120);
-    pdf.rect(0, 0, 210, 40, 'F');
-    pdf.setFontSize(20);
-    pdf.setTextColor(255, 255, 255);
-    pdf.text(titre, 10, 25);
-
-    pdf.setDrawColor(77, 163, 255);
-    pdf.line(10, 50, 200, 50);
-
-    pdf.setFontSize(11);
-    pdf.setTextColor(0, 0, 0);
+    // Helpers
+    const PAGE_W = 210, PAGE_H = 297, MARGIN = 10, BOTTOM = 280;
     let y = 60;
 
-    if (rapportsFiltrés.length === 0) {
-        pdf.text('Aucun rapport dans cette plage horaire.', 10, y);
-        return pdf;
-    }
-
-    rapportsFiltrés.forEach(r => {
-        pdf.setFontSize(12);
-        pdf.setTextColor(0, 102, 204);
-        pdf.text(`• [${r.source.toUpperCase()}] ${r.type.toUpperCase()}`, 10, y);
-        y += 6;
-
-        pdf.setFontSize(10);
-        pdf.setTextColor(0, 0, 0);
-
-        const bloc = [
-            `Date : ${r.date}  |  Heure : ${r.heure}`,
-            `Agent : ${r.agent}`,
-            `Lieu : ${r.lieu}`,
-            `Résumé : ${r.resume}`,
-            `Statut : ${r.statut}  |  Priorité : ${r.priorite}`,
-        ];
-
-        bloc.forEach(line => {
-            pdf.text(line, 15, y);
-            y += 6;
-        });
-
-        y += 4;
-
-        if (y > 260) {
+    function ensureSpace(needed) {
+        if (y + needed > BOTTOM) {
+            pdf.setFontSize(9);
+            pdf.setTextColor(120);
+            pdf.text('LBM Sécurité – SEGEP RG – Bâtiment 3', MARGIN, 290);
             pdf.addPage();
             y = 20;
         }
+    }
+    function writeWrapped(text, x, fontSize, color, indent = 0) {
+        pdf.setFontSize(fontSize);
+        pdf.setTextColor(color[0], color[1], color[2]);
+        const lines = pdf.splitTextToSize(String(text), PAGE_W - x - MARGIN - indent);
+        lines.forEach(l => {
+            ensureSpace(fontSize * 0.5 + 1);
+            pdf.text(l, x + indent, y);
+            y += fontSize * 0.5 + 1;
+        });
+    }
+
+    // Header
+    pdf.setFillColor(30, 60, 120);
+    pdf.rect(0, 0, PAGE_W, 40, 'F');
+    pdf.setFontSize(20);
+    pdf.setTextColor(255, 255, 255);
+    pdf.text(titre, MARGIN, 25);
+
+    pdf.setDrawColor(77, 163, 255);
+    pdf.line(MARGIN, 50, 200, 50);
+
+    if (rapportsFiltrés.length === 0) {
+        pdf.setFontSize(11);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Aucun rapport dans cette plage horaire.', MARGIN, 60);
+        pdf.setFontSize(9);
+        pdf.setTextColor(120);
+        pdf.text('LBM Sécurité – SEGEP RG – Bâtiment 3', MARGIN, 290);
+        return pdf;
+    }
+
+    rapportsFiltrés.forEach((r, idx) => {
+        ensureSpace(20);
+        // Titre du bloc
+        writeWrapped(`• [${r.source.toUpperCase()}] ${(r.type || '').toUpperCase()}`, MARGIN, 12, [0, 102, 204]);
+        y += 1;
+
+        // Infos clés
+        writeWrapped(`Date : ${r.date}   |   Heure : ${r.heure}`, MARGIN, 10, [0, 0, 0], 5);
+        writeWrapped(`Agent : ${r.agent}`, MARGIN, 10, [0, 0, 0], 5);
+        writeWrapped(`Lieu : ${r.lieu}`, MARGIN, 10, [0, 0, 0], 5);
+        writeWrapped(`Statut : ${r.statut}   |   Priorité : ${r.priorite}`, MARGIN, 10, [0, 0, 0], 5);
+
+        // Description complète
+        if (r.description && r.description.trim()) {
+            y += 2;
+            writeWrapped('Description :', MARGIN, 10, [80, 80, 80], 5);
+            writeWrapped(r.description, MARGIN, 10, [40, 40, 40], 8);
+        }
+
+        // Meta dépliée
+        if (r.meta && Object.keys(r.meta).length) {
+            y += 2;
+            writeWrapped('Détails complémentaires :', MARGIN, 10, [80, 80, 80], 5);
+            Object.entries(r.meta).forEach(([k, v]) => {
+                if (v === null || v === undefined || v === '') return;
+                const val = typeof v === 'object' ? JSON.stringify(v) : String(v);
+                writeWrapped(`- ${k} : ${val}`, MARGIN, 9, [40, 40, 40], 8);
+            });
+        }
+
+        // Séparateur entre rapports
+        y += 4;
+        ensureSpace(2);
+        pdf.setDrawColor(220, 220, 220);
+        pdf.line(MARGIN, y, 200, y);
+        y += 5;
     });
 
-    // Footer
+    // Footer dernière page
     pdf.setFontSize(9);
     pdf.setTextColor(120);
-    pdf.text('LBM Sécurité – SEGEP RG – Bâtiment 3', 10, 290);
+    pdf.text('LBM Sécurité – SEGEP RG – Bâtiment 3', MARGIN, 290);
 
     return pdf;
 }
@@ -779,6 +908,84 @@ async function envoyerRapportsPDF(type) {
         `&body=${encodeURIComponent('Veuillez trouver ci-joint les rapports.\n\nTotal : ' + rapportsFiltrés.length + ' enregistrement(s).')}`;
 
     showToast(`📧 PDF généré (${rapportsFiltrés.length} rapports)`);
+}
+
+/* ==========================================================
+   OPEN REPORT — modale détail
+   ========================================================== */
+function openReport(source, id) {
+    const r = allData.find(x => x.source === source && String(x.id) === String(id));
+    if (!r) {
+        showToast('Rapport introuvable', true);
+        return;
+    }
+
+    const sourceLabels = { rapports: '📋 Rapport', rondes: '🔄 Ronde', verifications: '🔍 Vérification' };
+
+    let metaHtml = '';
+    if (r.meta && Object.keys(r.meta).length) {
+        metaHtml = '<h3>Détails complémentaires</h3>';
+        Object.entries(r.meta).forEach(([k, v]) => {
+            if (v === null || v === undefined || v === '') return;
+            const val = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
+            metaHtml += `
+                <div class="field">
+                    <span class="field-label">${escapeHtml(k)}</span>
+                    <div class="field-value">${escapeHtml(val)}</div>
+                </div>`;
+        });
+    }
+
+    const descHtml = r.description && r.description.trim()
+        ? `<h3>Description</h3>
+           <div class="field"><div class="field-value">${escapeHtml(r.description)}</div></div>`
+        : '';
+
+    const html = `
+        <h2>${sourceLabels[r.source] || r.source} — ${escapeHtml(r.type || '')}</h2>
+
+        <div class="field"><span class="field-label">Date / Heure</span>
+             <div class="field-value">${r.date} à ${r.heure}</div></div>
+
+        <div class="field"><span class="field-label">Agent</span>
+             <div class="field-value">${escapeHtml(r.agent)}</div></div>
+
+        <div class="field"><span class="field-label">Lieu</span>
+             <div class="field-value">${escapeHtml(r.lieu)}</div></div>
+
+        <div class="field"><span class="field-label">Résumé</span>
+             <div class="field-value">${escapeHtml(r.resume)}</div></div>
+
+        <div class="field"><span class="field-label">Statut / Priorité</span>
+             <div class="field-value">${escapeHtml(r.statut)} — ${escapeHtml(r.priorite)}</div></div>
+
+        <div class="field"><span class="field-label">ID</span>
+             <div class="field-value" style="font-family:monospace;font-size:0.85rem;opacity:0.7">${r.id}</div></div>
+
+        ${descHtml}
+        ${metaHtml}
+
+        <div class="modal-actions">
+            <button class="modal-print" onclick="printSingleReport('${source}','${id}')">📄 Exporter ce rapport en PDF</button>
+            <button class="modal-close" onclick="closeReport()">Fermer</button>
+        </div>
+    `;
+
+    document.getElementById('modalContent').innerHTML = html;
+    document.getElementById('modalOverlay').classList.add('active');
+}
+
+function closeReport() {
+    document.getElementById('modalOverlay').classList.remove('active');
+}
+
+async function printSingleReport(source, id) {
+    const r = allData.find(x => x.source === source && String(x.id) === String(id));
+    if (!r) return;
+    const titre = `Rapport ${r.type || ''} — ${r.date}`;
+    const pdf = await genererPDFUltra([r], titre);
+    pdf.save(titre.replace(/[^a-zA-Z0-9àâéèêëïôùûüç\s]/g, '') + '.pdf');
+    showToast('📄 PDF du rapport téléchargé');
 }
 
 /* ==========================================================
@@ -810,6 +1017,11 @@ document.addEventListener('DOMContentLoaded', () => {
     setupRealtime();
 });
 </script>
+
+<!-- MODALE DÉTAIL RAPPORT -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeReport()">
+    <div class="modal-box" id="modalContent"></div>
+</div>
 
 <!-- 🔐 Sécurité -->
 <script src="js/security.js"></script>

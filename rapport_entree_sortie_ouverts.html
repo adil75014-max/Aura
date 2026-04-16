@@ -33,6 +33,14 @@ button:hover { opacity:0.9; }
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="supabaseClient.js"></script>
 <script>
+// Fallback showToast si global.js n'est pas encore chargé
+if (typeof showToast !== "function") {
+    window.showToast = function(msg, isError) {
+        if (isError) console.error(msg); else console.log(msg);
+        alert(msg);
+    };
+}
+
 let rapportsData = [];
 
 async function chargerRapports() {
@@ -48,6 +56,12 @@ async function chargerRapports() {
     updateCounters(rapportsData);
 }
 
+function escapeHtml(s) {
+    const d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+}
+
 function afficher(liste) {
     const div = document.getElementById("liste");
     div.innerHTML = "";
@@ -57,13 +71,38 @@ function afficher(liste) {
         const el = document.createElement("div");
         el.className = "rapport";
         const dt = r.heure_entree ? new Date(r.heure_entree).toLocaleString("fr-FR") : "—";
+
+        // Détail nb personnes / colis selon le type
+        let detail = "";
+        if (r.motif === "livraison" && r.nb_colis) {
+            detail = `<p><strong>Colis / palettes :</strong> ${r.nb_colis}</p>`;
+        } else if (r.nb_personnes) {
+            detail = `<p><strong>Nombre de personnes :</strong> ${r.nb_personnes}</p>`;
+        }
+
+        const obs = r.observations
+            ? `<p><strong>Observations :</strong> ${escapeHtml(r.observations)}</p>`
+            : "";
+
+        const agent = r.agent_nom
+            ? `<p style="opacity:0.7;font-size:0.9rem;"><strong>Saisi par :</strong> ${escapeHtml(r.agent_nom)}</p>`
+            : "";
+
         el.innerHTML = `
-            <p><strong>Entreprise :</strong> ${r.entreprise || r.nom_personne || "—"}</p>
-            <p><strong>Motif :</strong> ${r.motif || "—"}</p>
+            <p><strong>Type :</strong> ${escapeHtml(r.type_entree || r.motif || "—")}</p>
+            <p><strong>Entreprise / Société :</strong> ${escapeHtml(r.entreprise || r.nom_personne || "—")}</p>
+            ${detail}
             <p><strong>Heure d'entrée :</strong> ${dt}</p>
+            ${obs}
+            ${agent}
+
             <label>Heure de sortie :</label>
             <input type="time" id="sortie_${r.id}">
-            <button onclick="cloturer('${r.id}')">Clôturer</button>
+
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button onclick="cloturer('${r.id}')">✅ Clôturer</button>
+                <button onclick="supprimer('${r.id}')" style="background:#ef4444; color:white;">🗑 Supprimer</button>
+            </div>
         `;
         div.appendChild(el);
     });
@@ -71,8 +110,12 @@ function afficher(liste) {
 
 function updateCounters(liste) {
     document.getElementById("countTotal").textContent = liste.length;
-    document.getElementById("countPersonnel").textContent = liste.filter(r => r.motif && r.motif.includes("personnel")).length;
-    document.getElementById("countLivraison").textContent = liste.filter(r => r.motif && r.motif.includes("livraison")).length;
+    document.getElementById("countPersonnel").textContent = liste.filter(r =>
+        r.motif && (r.motif.includes("personnel") || r.motif.includes("société"))
+    ).length;
+    document.getElementById("countLivraison").textContent = liste.filter(r =>
+        r.motif && r.motif.includes("livraison")
+    ).length;
 }
 
 async function cloturer(id) {
@@ -93,12 +136,26 @@ async function cloturer(id) {
     chargerRapports();
 }
 
+async function supprimer(id) {
+    if (!confirm("Supprimer définitivement ce rapport ouvert ?")) return;
+
+    const { error } = await supabaseClient
+        .from("rapports_entree_sortie")
+        .delete()
+        .eq("id", id);
+
+    if (error) { showToast("❌ "+error.message, true); return; }
+    showToast("🗑 Rapport supprimé.");
+    chargerRapports();
+}
+
 document.getElementById("search").addEventListener("input", function() {
     const q = this.value.toLowerCase();
     const filtered = rapportsData.filter(r =>
         (r.entreprise && r.entreprise.toLowerCase().includes(q)) ||
         (r.nom_personne && r.nom_personne.toLowerCase().includes(q)) ||
-        (r.motif && r.motif.toLowerCase().includes(q))
+        (r.motif && r.motif.toLowerCase().includes(q)) ||
+        (r.agent_nom && r.agent_nom.toLowerCase().includes(q))
     );
     afficher(filtered);
     updateCounters(filtered);

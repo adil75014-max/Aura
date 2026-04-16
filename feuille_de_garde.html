@@ -82,53 +82,140 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="supabaseClient.js"></script>
 <script>
-// const supabase = supabase.createClient(
-    "https://hwqlajdytnxavqigmzio.supabase.co",
-    "YOUR_PUBLIC_ANON_KEY"
-);
-const GARDE_ID = "00000000-0000-0000-0000-000000000001";
+/* ============================================================
+   FEUILLE DE GARDE — fonctionne avec 1 ligne par jour (upsert).
+   Sauvegarde auto avec debounce 600 ms après la dernière frappe.
+   ============================================================ */
 
-async function saveFeuilleDeGarde() {
-    const data = {
-        date_garde: document.querySelector('input[name="date"]').value,
-        effectif: document.querySelector('input[name="effectif"]').value,
-        responsable_bm: document.querySelector('input[name="resp_bm_nom"]').value,
-        chef_poste: document.querySelector('input[name="chef_poste_nom"]').value,
-        data_json: collectAllFields()
+// Helper showToast en fallback (si global.js pas encore chargé)
+if (typeof showToast !== "function") {
+    window.showToast = function(msg, isError) {
+        if (isError) console.error(msg); else console.log(msg);
     };
-    const { error } = await supabaseClient
-        .from("feuille_de_garde")
-        .update(data)
-        .eq("id", GARDE_ID);
-    if (error) console.error(error);
+}
+
+// Date du jour au format ISO (YYYY-MM-DD) — utilisée comme clé d'upsert
+function todayISO() {
+    return new Date().toISOString().split("T")[0];
+}
+
+// Date au format français pour affichage initial
+function todayFR() {
+    return new Date().toLocaleDateString("fr-FR");
+}
+
+let saveTimer = null;
+let savingFlag = false;
+let currentDateISO = todayISO();
+
+function setStatus(text, color) {
+    const el = document.getElementById("saveStatus");
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = color || "#cfe8ff";
 }
 
 function collectAllFields() {
     const fields = {};
-    document.querySelectorAll("input, textarea").forEach(el => {
+    document.querySelectorAll("input[name], textarea[name]").forEach(el => {
         if (el.name) fields[el.name] = el.value;
     });
     return fields;
 }
 
+async function saveFeuilleDeGarde() {
+    if (savingFlag) return;
+    savingFlag = true;
+    setStatus("⏳ Enregistrement…", "#ffd166");
+
+    try {
+        const data = {
+            date_jour:      currentDateISO,
+            date_garde:     document.querySelector('input[name="date"]').value || todayFR(),
+            effectif:       document.querySelector('input[name="effectif"]').value || null,
+            responsable_bm: document.querySelector('input[name="resp_bm_nom"]').value || null,
+            chef_poste:     document.querySelector('input[name="chef_poste_nom"]').value || null,
+            data_json:      collectAllFields(),
+            updated_at:     new Date().toISOString()
+        };
+
+        // upsert sur date_jour : crée la ligne si elle n'existe pas, sinon update
+        const { error } = await supabaseClient
+            .from("feuille_de_garde")
+            .upsert(data, { onConflict: "date_jour" });
+
+        if (error) throw error;
+        setStatus("✅ Enregistré (" + new Date().toLocaleTimeString("fr-FR") + ")", "#4ade80");
+    } catch (e) {
+        console.error(e);
+        setStatus("❌ Erreur : " + e.message, "#ef4444");
+    } finally {
+        savingFlag = false;
+    }
+}
+
+// Debounce : on attend 600 ms de silence avant d'appeler saveFeuilleDeGarde
+function scheduleSave() {
+    setStatus("✏️ Modification en cours…", "#cfe8ff");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveFeuilleDeGarde, 600);
+}
+
 async function loadFeuilleDeGarde() {
-    const { data, error } = await supabaseClient
-        .from("feuille_de_garde")
-        .select("*")
-        .eq("id", GARDE_ID)
-        .single();
-    if (error || !data) return;
-    const json = data.data_json || {};
-    Object.entries(json).forEach(([name, value]) => {
-        const el = document.querySelector(`[name="${name}"]`);
-        if (el) el.value = value;
-    });
+    setStatus("⏳ Chargement…", "#cfe8ff");
+    try {
+        const { data, error } = await supabaseClient
+            .from("feuille_de_garde")
+            .select("*")
+            .eq("date_jour", currentDateISO)
+            .maybeSingle();
+
+        if (error && error.code !== "PGRST116") throw error;
+
+        if (!data) {
+            // Pré-remplir la date du jour si nouveau
+            const dateInput = document.querySelector('input[name="date"]');
+            if (dateInput && !dateInput.value) dateInput.value = todayFR();
+            setStatus("Nouvelle feuille du jour", "#cfe8ff");
+            return;
+        }
+
+        const json = data.data_json || {};
+        Object.entries(json).forEach(([name, value]) => {
+            const el = document.querySelector(`[name="${name}"]`);
+            if (el) el.value = value;
+        });
+
+        const dt = data.updated_at ? new Date(data.updated_at).toLocaleTimeString("fr-FR") : "—";
+        setStatus("✅ Feuille du jour chargée (dernière modif " + dt + ")", "#4ade80");
+    } catch (e) {
+        console.error(e);
+        setStatus("❌ Erreur chargement : " + e.message, "#ef4444");
+    }
+}
+
+async function nouvelleJournee() {
+    if (!confirm("Démarrer une feuille vierge pour aujourd'hui ?\n\nCela écrasera toute saisie déjà faite pour le jour courant.")) return;
+    document.querySelectorAll("input[name], textarea[name]").forEach(el => el.value = "");
+    document.querySelector('input[name="date"]').value = todayFR();
+    await saveFeuilleDeGarde();
+    showToast("✅ Nouvelle feuille démarrée");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     loadFeuilleDeGarde();
-    document.addEventListener("input", () => {
-        saveFeuilleDeGarde();
+
+    // Auto-save sur input + change
+    document.addEventListener("input", scheduleSave);
+    document.addEventListener("change", scheduleSave);
+
+    // Sauvegarde forcée avant fermeture pour ne rien perdre
+    window.addEventListener("beforeunload", () => {
+        if (saveTimer) {
+            clearTimeout(saveTimer);
+            // best-effort synchrone : on déclenche, sans attendre
+            saveFeuilleDeGarde();
+        }
     });
 });
 </script>
@@ -137,6 +224,51 @@ document.addEventListener("DOMContentLoaded", () => {
 <body>
 
 <h1 style="text-align:center; margin-bottom:25px;">📋 Feuille de garde</h1>
+
+<!-- Barre d'outils -->
+<div class="section" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+    <button class="tb-btn" onclick="location.href='index.html'">⟵ Menu</button>
+
+    <div id="saveStatus" style="font-size:13px; color:#cfe8ff; flex:1; text-align:center; min-width:200px;">
+        Initialisation…
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="tb-btn" onclick="saveFeuilleDeGarde()">💾 Sauvegarder</button>
+        <button class="tb-btn" onclick="window.print()">🖨 Imprimer</button>
+        <button class="tb-btn tb-btn-danger" onclick="nouvelleJournee()">🗑 Nouvelle journée</button>
+    </div>
+</div>
+
+<style>
+.tb-btn {
+    background: rgba(77,208,225,0.25);
+    border: 1px solid #4DD0E1;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: 0.2s;
+}
+.tb-btn:hover { background: #4DD0E1; color: #0A1A2F; }
+.tb-btn-danger { border-color: #ef4444; background: rgba(239,68,68,0.2); }
+.tb-btn-danger:hover { background: #ef4444; color: white; }
+
+@media print {
+    .tb-btn, #saveStatus, button { display: none !important; }
+    body { background: white !important; color: black !important; padding: 0 !important; }
+    .section { background: white !important; box-shadow: none !important; border: 1px solid #ccc; backdrop-filter: none !important; }
+    h1, h2, h3, label, td, th { color: black !important; }
+    input, textarea {
+        background: white !important; color: black !important;
+        border: 1px solid #ccc !important; backdrop-filter: none !important;
+    }
+    th { background: #f0f0f0 !important; }
+    td { background: white !important; }
+}
+</style>
 
 <!-- Informations générales -->
 <div class="section">

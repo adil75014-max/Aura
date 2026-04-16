@@ -22,9 +22,27 @@ button:hover { opacity:0.9; }
 
 <div id="compteurs" class="rapport">
     <h3 style="color:var(--accent);margin-top:0;">Compteurs des rapports ouverts</h3>
-    <p>Total : <span id="countTotal">0</span></p>
-    <p>Personnel / Société : <span id="countPersonnel">0</span></p>
-    <p>Livraison : <span id="countLivraison">0</span></p>
+
+    <div style="display:flex; gap:15px; flex-wrap:wrap; margin-bottom:10px;">
+        <div style="flex:1; min-width:140px; text-align:center; background:rgba(77,163,255,0.15); border:1px solid rgba(77,163,255,0.4); border-radius:10px; padding:12px;">
+            <div style="font-size:2rem; font-weight:700; color:var(--accent);" id="countPersonnesSite">0</div>
+            <div style="font-size:0.85rem; opacity:0.8;">👥 Personnes sur site</div>
+        </div>
+        <div style="flex:1; min-width:140px; text-align:center; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:1.4rem; font-weight:700;" id="countTotal">0</div>
+            <div style="font-size:0.85rem; opacity:0.8;">Rapports ouverts</div>
+        </div>
+        <div style="flex:1; min-width:140px; text-align:center; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:1.4rem; font-weight:700;" id="countPersonnel">0</div>
+            <div style="font-size:0.85rem; opacity:0.8;">Personnel / Société</div>
+        </div>
+        <div style="flex:1; min-width:140px; text-align:center; background:rgba(255,255,255,0.06); border:1px solid var(--border); border-radius:10px; padding:12px;">
+            <div style="font-size:1.4rem; font-weight:700;" id="countLivraison">0</div>
+            <div style="font-size:0.85rem; opacity:0.8;">Livraisons</div>
+        </div>
+    </div>
+
+    <div style="font-size:0.8rem; opacity:0.6; text-align:right;" id="lastUpdate">—</div>
 </div>
 
 <input type="text" id="search" placeholder="Rechercher (société, agent, date)…">
@@ -110,12 +128,26 @@ function afficher(liste) {
 
 function updateCounters(liste) {
     document.getElementById("countTotal").textContent = liste.length;
+
     document.getElementById("countPersonnel").textContent = liste.filter(r =>
         r.motif && (r.motif.includes("personnel") || r.motif.includes("société"))
     ).length;
+
     document.getElementById("countLivraison").textContent = liste.filter(r =>
         r.motif && r.motif.includes("livraison")
     ).length;
+
+    // Personnes sur site = somme de nb_personnes des rapports ouverts (hors livraisons)
+    let personnes = 0;
+    liste.forEach(r => {
+        if (r.motif && r.motif.includes("livraison")) return;
+        const n = Number(r.nb_personnes || 0);
+        personnes += n > 0 ? n : 1; // au minimum 1 personne par rapport si pas renseigné
+    });
+    document.getElementById("countPersonnesSite").textContent = personnes;
+
+    document.getElementById("lastUpdate").textContent =
+        "Mis à jour : " + new Date().toLocaleTimeString("fr-FR");
 }
 
 async function cloturer(id) {
@@ -161,7 +193,25 @@ document.getElementById("search").addEventListener("input", function() {
     updateCounters(filtered);
 });
 
+/* ============================================
+   TEMPS RÉEL : rechargement automatique
+   quand un rapport est créé, modifié ou supprimé
+   ============================================ */
+function setupRealtime() {
+    supabaseClient
+        .channel("entree-sortie-live")
+        .on("postgres_changes", {
+            event: "*",
+            schema: "public",
+            table: "rapports_entree_sortie"
+        }, () => {
+            chargerRapports();
+        })
+        .subscribe();
+}
+
 chargerRapports();
+setupRealtime();
 </script>
 <script src="security.js"></script>
 <script src="global.js"></script>

@@ -325,8 +325,9 @@ function afficherInterventions() {
     const search = document.getElementById("searchInput").value.toLowerCase();
 
     interventions.forEach((i, index) => {
-        const fin = new Date(i.dateFin);
-        if (fin < now) return;
+        // Comparer avec la fin de journée (23:59:59) pour ne pas masquer les interventions du jour
+        const fin = i.dateFin ? new Date(i.dateFin + "T23:59:59") : null;
+        if (fin && fin < now) return;
 
         if (fSoc && i.societe !== fSoc) return;
         if (fZone && i.zone !== fZone) return;
@@ -452,7 +453,7 @@ async function ajouterIntervention() {
             const { error: upErr } = await supabaseClient
                 .storage
                 .from("ssiap2-chantier")
-                .upload(pdfPath, file, { contentType: "application/pdf", upsert: false });
+                .upload(pdfPath, file, { contentType: file.type || "application/pdf", upsert: false });
 
             if (upErr) throw upErr;
 
@@ -502,8 +503,8 @@ function updateDashboard() {
     let actifs = 0, feuRequis = 0, ouvriersPresent = 0;
 
     interventions.forEach(i => {
-        const fin = new Date(i.dateFin);
-        if (isNaN(fin) || fin < now) return; // intervention terminée -> ignorée
+        const fin = i.dateFin ? new Date(i.dateFin + "T23:59:59") : null;
+        if (fin && (isNaN(fin) || fin < now)) return;
 
         actifs++;
         if (i.feuRequis === "Oui") feuRequis++;
@@ -529,7 +530,7 @@ function updateAlertes() {
     let count = 0;
 
     interventions.forEach(i => {
-        const diff = (new Date(i.dateFin) - now) / (1000 * 3600 * 24);
+        const diff = (new Date(i.dateFin + "T23:59:59") - now) / (1000 * 3600 * 24);
 
         if ((i.feuRequis === "Oui" && i.feuSigne === "Non") ||
             (diff <= 1 && diff >= 0 && i.ouvriers > 0)) {

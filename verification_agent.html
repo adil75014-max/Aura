@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Vérification en cours</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
+
+.header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.back-btn{background:rgba(77,163,255,0.12);border:1px solid rgba(77,163,255,0.3);color:#4da3ff;padding:8px 14px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';transition:.2s}
+.back-btn:hover{background:#4da3ff;color:#0b0e17}
+.header h1{font-size:1.3rem;color:#4da3ff;flex:1;letter-spacing:-.5px}
+
+.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;margin-bottom:16px}
+.card h2{font-size:1.05rem;color:#4da3ff;margin-bottom:12px}
+
+/* PROGRESS */
+.progress-bg{background:rgba(255,255,255,0.08);border-radius:99px;height:12px;overflow:hidden;margin:8px 0 4px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#4da3ff,#00c878);border-radius:99px;transition:width .4s}
+.progress-text{text-align:right;font-size:.8rem;color:#6b7a99}
+
+/* CHECKPOINT */
+.checkpoint{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:16px;margin-bottom:10px;transition:.2s}
+.checkpoint.done-ok{border-color:rgba(0,200,120,0.3);background:rgba(0,200,120,0.04)}
+.checkpoint.done-ko{border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.04)}
+.checkpoint.done-na{border-color:rgba(107,122,153,0.3);background:rgba(107,122,153,0.04)}
+
+.cp-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cp-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;background:rgba(77,163,255,0.15);color:#4da3ff}
+.checkpoint.done-ok .cp-num{background:rgba(0,200,120,0.2);color:#00c878}
+.checkpoint.done-ko .cp-num{background:rgba(239,68,68,0.2);color:#f87171}
+.cp-label{font-weight:600;font-size:.95rem}
+.cp-zone{font-size:.8rem;color:#6b7a99}
+
+/* RESULT BUTTONS */
+.result-row{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap}
+.r-btn{flex:1;min-width:80px;padding:10px;border-radius:10px;text-align:center;cursor:pointer;font:600 .85rem 'DM Sans';border:2px solid transparent;transition:.2s}
+.r-ok{background:rgba(0,200,120,0.08);color:#00c878;border-color:rgba(0,200,120,0.15)}
+.r-ok.active{background:rgba(0,200,120,0.25);border-color:#00c878}
+.r-ko{background:rgba(239,68,68,0.08);color:#f87171;border-color:rgba(239,68,68,0.15)}
+.r-ko.active{background:rgba(239,68,68,0.25);border-color:#ef4444}
+.r-na{background:rgba(107,122,153,0.08);color:#8899bb;border-color:rgba(107,122,153,0.15)}
+.r-na.active{background:rgba(107,122,153,0.25);border-color:#8899bb}
+.r-btn:hover{transform:translateY(-1px)}
+
+.cp-comment{width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#e0e4ef;font:.85rem 'DM Sans';margin-top:6px;resize:none;height:40px}
+.cp-time{font-size:.75rem;color:#6b7a99;margin-top:4px}
+
+.btn{padding:12px 16px;border:none;border-radius:10px;font:600 .95rem 'DM Sans';cursor:pointer;width:100%;transition:.2s;margin-top:10px}
+.btn-primary{background:linear-gradient(135deg,#4da3ff,#2b7de9);color:#fff}
+.btn-success{background:linear-gradient(135deg,#00c878,#00a060);color:#fff}
+.btn-secondary{background:rgba(255,255,255,0.08);color:#8899bb;border:1px solid rgba(255,255,255,0.12)}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <button class="back-btn" onclick="location.href='verifications_admin.html'">⟵</button>
+    <h1 id="verifTitle">Vérification</h1>
+</div>
+
+<div class="card">
+    <div class="progress-bg"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
+    <div class="progress-text" id="progressText">0 / 0</div>
+</div>
+
+<div id="checkpointsList"></div>
+
+<div class="card">
+    <label style="color:#8899bb;font-size:.85rem">Commentaire général</label>
+    <textarea id="commentaireGeneral" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#e0e4ef;font:.9rem 'DM Sans';min-height:60px;resize:vertical" placeholder="Observations générales…"></textarea>
+</div>
+
+<div class="card">
+    <button class="btn btn-success" onclick="terminerVerification()">✅ Terminer la vérification</button>
+    <button class="btn btn-primary" onclick="exportPDF()" style="margin-top:8px">📄 Exporter PDF</button>
+    <button class="btn btn-secondary" onclick="sauvegarder()">💾 Sauvegarder (sans terminer)</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
+<script>
+if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
+
+let verifId = null;
+let verifData = null;
+
+/* ============================================================
+   CHARGEMENT
+============================================================ */
+async function charger() {
+    const params = new URLSearchParams(location.search);
+    verifId = params.get("id");
+    if (!verifId) { document.getElementById("checkpointsList").innerHTML='<div style="text-align:center;padding:30px;color:#6b7a99">Aucun ID de vérification. Lancez depuis la page admin.</div>'; return; }
+
+    const { data, error } = await supabaseClient
+        .from("verifications")
+        .select("*")
+        .eq("id", verifId)
+        .single();
+
+    if (error || !data) { alert("Vérification introuvable."); return; }
+
+    verifData = data;
+    document.getElementById("verifTitle").textContent = data.type || "Vérification";
+    if (data.commentaire) document.getElementById("commentaireGeneral").value = data.commentaire;
+    renderCheckpoints();
+    majProgression();
+}
+
+/* ============================================================
+   AFFICHAGE
+============================================================ */
+function renderCheckpoints() {
+    const div = document.getElementById("checkpointsList");
+    const cps = (verifData.meta && verifData.meta.checkpoints) || [];
+
+    if (cps.length === 0) {
+        div.innerHTML = '<div style="text-align:center;padding:20px;color:#6b7a99">Aucun point de contrôle.</div>';
+        return;
+    }
+
+    div.innerHTML = cps.map((cp, i) => {
+        const r = cp.resultat;
+        const cls = r === "conforme" ? "done-ok" : (r === "non_conforme" ? "done-ko" : (r === "na" ? "done-na" : ""));
+        const time = cp.horodatage ? `<div class="cp-time">Validé : ${cp.horodatage}</div>` : "";
+
+        return `
+        <div class="checkpoint ${cls}">
+            <div class="cp-top">
+                <div class="cp-num">${i + 1}</div>
+                <div>
+                    <div class="cp-label">${cp.label}</div>
+                    <div class="cp-zone">${cp.zone || ""}</div>
+                </div>
+            </div>
+            <div class="result-row">
+                <div class="r-btn r-ok ${r==='conforme'?'active':''}" onclick="setResultat(${i},'conforme')">✅ Conforme</div>
+                <div class="r-btn r-ko ${r==='non_conforme'?'active':''}" onclick="setResultat(${i},'non_conforme')">❌ Non conforme</div>
+                <div class="r-btn r-na ${r==='na'?'active':''}" onclick="setResultat(${i},'na')">➖ N/A</div>
+            </div>
+            <textarea class="cp-comment" placeholder="Commentaire…" oninput="setComment(${i},this.value)">${cp.commentaire||""}</textarea>
+            ${time}
+        </div>`;
+    }).join("");
+}
+
+function majProgression() {
+    const cps = (verifData.meta && verifData.meta.checkpoints) || [];
+    const total = cps.length;
+    const done = cps.filter(c => c.resultat).length;
+    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+    document.getElementById("progressBar").style.width = pct + "%";
+    document.getElementById("progressText").textContent = `${done} / ${total} — ${pct}%`;
+}
+
+/* ============================================================
+   ACTIONS
+============================================================ */
+async function setResultat(index, resultat) {
+    verifData.meta.checkpoints[index].resultat = resultat;
+    verifData.meta.checkpoints[index].horodatage = new Date().toLocaleString("fr-FR");
+    if (navigator.vibrate) navigator.vibrate(50);
+    renderCheckpoints();
+    majProgression();
+    await sauvegarder();
+}
+
+function setComment(index, val) {
+    verifData.meta.checkpoints[index].commentaire = val;
+    // Debounce save
+    clearTimeout(window._saveTimer);
+    window._saveTimer = setTimeout(sauvegarder, 800);
+}
+
+async function sauvegarder() {
+    if (!verifId || !verifData) return;
+    const commentaire = document.getElementById("commentaireGeneral").value.trim();
+    await supabaseClient.from("verifications").update({
+        meta: verifData.meta,
+        commentaire: commentaire
+    }).eq("id", verifId);
+}
+
+async function terminerVerification() {
+    const cps = verifData.meta.checkpoints || [];
+    const nonTraite = cps.filter(c => !c.resultat).length;
+
+    if (nonTraite > 0 && !confirm(`${nonTraite} point(s) non vérifiés. Terminer quand même ?`)) return;
+
+    const ko = cps.filter(c => c.resultat === "non_conforme").length;
+    const resultat = ko > 0 ? "non_conforme" : "conforme";
+    const commentaire = document.getElementById("commentaireGeneral").value.trim();
+
+    await supabaseClient.from("verifications").update({
+        resultat,
+        commentaire,
+        meta: verifData.meta
+    }).eq("id", verifId);
+
+    showToast("✅ Vérification terminée — " + (ko > 0 ? ko + " non-conformité(s)" : "tout conforme"));
+    setTimeout(() => location.href = "verifications_admin.html", 1200);
+}
+
+/* ============================================================
+   PDF
+============================================================ */
+async function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF("p", "mm", "a4");
+    const M = 12, PW = 186, BOT = 280;
+    let y = 20;
+
+    function ensureSpace(n) { if (y + n > BOT) { pdf.setFontSize(7); pdf.setTextColor(140); pdf.text("LBM Sécurité", M, 290); pdf.addPage(); y = 15; } }
+
+    // Header
+    pdf.setFillColor(15, 20, 35);
+    pdf.rect(0, 0, 210, 35, "F");
+    pdf.setFontSize(16); pdf.setTextColor(77, 163, 255);
+    pdf.text("Vérification — " + (verifData.type || ""), M, 22);
+    pdf.setFontSize(9); pdf.setTextColor(180);
+    pdf.text(new Date().toLocaleString("fr-FR") + " — " + (verifData.agent_nom || localStorage.getItem("nom") || ""), M, 30);
+    y = 42;
+
+    const cps = verifData.meta.checkpoints || [];
+    const ok = cps.filter(c => c.resultat === "conforme").length;
+    const ko = cps.filter(c => c.resultat === "non_conforme").length;
+
+    pdf.setFontSize(10); pdf.setTextColor(0);
+    pdf.text(`Résultat : ${ok} conforme(s), ${ko} non-conforme(s) sur ${cps.length} points`, M, y); y += 8;
+
+    cps.forEach((cp, i) => {
+        ensureSpace(20);
+        const icon = cp.resultat === "conforme" ? "OK" : (cp.resultat === "non_conforme" ? "KO" : (cp.resultat === "na" ? "N/A" : "—"));
+        const color = cp.resultat === "conforme" ? [0, 150, 80] : (cp.resultat === "non_conforme" ? [200, 50, 50] : [100, 100, 100]);
+
+        pdf.setFontSize(10); pdf.setTextColor(0);
+        pdf.text(`${i + 1}. ${cp.label}`, M, y); y += 5;
+
+        pdf.setFontSize(9); pdf.setTextColor(...color);
+        pdf.text(`→ ${icon}${cp.horodatage ? " (" + cp.horodatage + ")" : ""}`, M + 5, y); y += 5;
+
+        if (cp.commentaire) {
+            pdf.setTextColor(80);
+            const lines = pdf.splitTextToSize(cp.commentaire, PW - 10);
+            lines.forEach(l => { ensureSpace(5); pdf.text(l, M + 8, y); y += 4.5; });
+        }
+
+        if (cp.zone) { pdf.setFontSize(8); pdf.setTextColor(130); pdf.text("Zone : " + cp.zone, M + 5, y); y += 4; }
+        y += 3;
+    });
+
+    const comment = document.getElementById("commentaireGeneral").value.trim();
+    if (comment) {
+        ensureSpace(15);
+        pdf.setFontSize(10); pdf.setTextColor(0);
+        pdf.text("Commentaire général :", M, y); y += 5;
+        pdf.setFontSize(9); pdf.setTextColor(60);
+        pdf.splitTextToSize(comment, PW).forEach(l => { ensureSpace(5); pdf.text(l, M + 4, y); y += 4.5; });
+    }
+
+    pdf.setFontSize(7); pdf.setTextColor(140);
+    pdf.text("LBM Sécurité — SEGEP RG", M, 290);
+
+    pdf.save(`Verification_${(verifData.type||"").replace(/[^a-zA-Z0-9]/g,"_")}_${new Date().toISOString().split("T")[0]}.pdf`);
+    showToast("📄 PDF exporté");
+}
+
+charger();
+</script>
+<script src="js/security.js"></script>
+<script src="global.js"></script>
+</body>
+</html>

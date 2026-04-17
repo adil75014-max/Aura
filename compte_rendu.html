@@ -85,74 +85,267 @@ function ts(h){h.closest('.section').classList.toggle('open');}
 async function exportPDF(){
     const {jsPDF}=window.jspdf;
     const pdf=new jsPDF('p','mm','a4');
-    const M=12, PW=210-2*M, PH=297, BOT=282;
-    let y=0;
+    const M=15, PW=180, BOT=275;
+    let y=0, pageNum=0;
 
-    // Helpers
-    function ensureSpace(need){if(y+need>BOT){footer();pdf.addPage();y=15;}}
-    function footer(){pdf.setFontSize(7);pdf.setTextColor(140);pdf.text('LBM Sécurité — Compte rendu '+new Date().toLocaleDateString('fr-FR'),M,290);pdf.text('Page '+pdf.internal.getNumberOfPages(),200,290,{align:'right'});}
-    function title(txt,r,g,b){ensureSpace(14);pdf.setFillColor(r,g,b);pdf.roundedRect(M,y,PW,10,3,3,'F');pdf.setFontSize(12);pdf.setTextColor(255);pdf.text(txt,M+5,y+7);y+=14;}
-    function subtitle(txt){ensureSpace(10);pdf.setFontSize(10);pdf.setTextColor(60,100,180);pdf.text(txt,M,y);y+=6;}
-    function fieldLabel(lbl){ensureSpace(8);pdf.setFontSize(8);pdf.setTextColor(120);pdf.text(lbl,M+2,y);y+=4;}
-    function fieldValue(val){if(!val||val.trim()==='')return;pdf.setFontSize(10);pdf.setTextColor(30);const lines=pdf.splitTextToSize(val,PW-6);lines.forEach(l=>{ensureSpace(5);pdf.text(l,M+4,y);y+=5;});y+=1;}
-    function radioVal(name){const el=document.querySelector(`input[name="${name}"]:checked`);return el?el.value:'—';}
-    function checkVals(ids){return ids.filter(id=>{const el=document.getElementById(id);return el&&el.checked;}).map(id=>{const el=document.getElementById(id);return el.nextElementSibling?el.nextElementSibling.textContent.trim():id;}).join(', ')||'Aucun';}
+    /* ── HELPERS ── */
+    function newPage(){
+        if(pageNum>0) pdf.addPage();
+        pageNum++;
+        y=15;
+        // Filet haut discret
+        pdf.setDrawColor(200,200,200);
+        pdf.setLineWidth(0.3);
+        pdf.line(M,12,M+PW,12);
+    }
+    function ensureSpace(n){if(y+n>BOT){footer();newPage();}}
+    function footer(){
+        pdf.setDrawColor(180);pdf.setLineWidth(0.2);pdf.line(M,283,M+PW,283);
+        pdf.setFontSize(7);pdf.setTextColor(140);
+        pdf.text('Le Bon Marche \u00b7 SEGEP RG \u00b7 Batiment 3  |  Document confidentiel',M,288);
+        pdf.text('Page '+pageNum,M+PW,288,{align:'right'});
+    }
+    function radioVal(name){const el=document.querySelector('input[name="'+name+'"]:checked');return el?el.value:'\u2014';}
+    function checkVals(ids){return ids.filter(id=>{const el=document.getElementById(id);return el&&el.checked}).map(id=>{const el=document.getElementById(id);const lb=el.nextElementSibling;return lb?lb.textContent.replace(/[✓]/g,'').trim():id}).join(', ')||'Aucun';}
     function inputVal(id){const el=document.getElementById(id);return el?el.value.trim():'';}
-    function writeSection(sectionTitle,radioName,detailsId,checkIds,interlocuteurId,mcName){
-        subtitle(sectionTitle);
-        fieldLabel('Événement');fieldValue(radioVal(radioName));
-        const det=inputVal(detailsId);if(det){fieldLabel('Détails');fieldValue(det);}
-        if(checkIds&&checkIds.length){fieldLabel('Prévenu par');fieldValue(checkVals(checkIds));}
-        const inter=inputVal(interlocuteurId);if(inter){fieldLabel('Interlocuteur');fieldValue(inter);}
-        if(mcName){fieldLabel('Main courante');fieldValue(radioVal(mcName));}
-        y+=3;
+
+    /* ── SECTION HEADER (bandeau coloré) ── */
+    function sectionBanner(txt,r,g,b){
+        ensureSpace(16);
+        pdf.setFillColor(r,g,b);
+        pdf.roundedRect(M,y,PW,11,2,2,'F');
+        pdf.setFontSize(13);pdf.setTextColor(255);
+        pdf.text(txt,M+6,y+8);
+        y+=15;
     }
 
-    // ========== HEADER ==========
-    pdf.setFillColor(10,14,24);pdf.rect(0,0,210,38,'F');
-    pdf.setFontSize(18);pdf.setTextColor(212,175,55);pdf.text('Compte rendu',M,20);
-    pdf.setFontSize(10);pdf.setTextColor(180);pdf.text('Incendie / Technique / Travaux — LBM Sécurité',M,28);
-    y=45;
+    /* ── SOUS-SECTION AVEC TABLEAU ── */
+    function writeEvent(label, radioName, detailsId, checkIds, interlocuteurId, mcName, extraId){
+        const evt = radioVal(radioName);
+        const details = inputVal(detailsId);
+        const prevenu = checkVals(checkIds);
+        const inter = inputVal(interlocuteurId);
+        const mc = mcName ? radioVal(mcName) : '';
+        const extra = extraId ? inputVal(extraId) : '';
 
-    // ========== INFORMATIONS ==========
-    title('📋 Informations générales',40,50,75);
-    fieldLabel('Date');fieldValue(inputVal('date'));
-    fieldLabel('Agent');fieldValue(inputVal('agent'));
-    fieldLabel('Vacation');fieldValue(radioVal('vacation'));
-    fieldLabel('Observations générales');fieldValue(inputVal('obs_generales'));
-    y+=4;
+        // N'afficher que si "OUI" ou si des détails sont renseignés
+        const hasContent = evt==='OUI' || details || inter || extra;
 
-    // ========== INCENDIE ==========
-    title('🔥 Incendie',200,50,50);
-    writeSection('Déclenchement alarme incendie','alarme','alarme_details',['alm','alr','alt','al1'],'alarme_interlocuteur','mc_alarme');
-    writeSection('Déclenchement ponctuel','ponctuel','ponctuel_details',['pm','pr','pt','p1'],'ponctuel_interlocuteur','mc_ponctuel');
-    writeSection('Mise hors service DAI','dai','dai_details',['dm','dr','dt','d1'],'dai_interlocuteur','mc_dai');
+        ensureSpace(hasContent ? 40 : 12);
 
-    // ========== TECHNIQUE ==========
-    title('🛠 Technique',50,100,200);
-    writeSection('Éclairage bâtiments','eclairage','eclairage_details',['xm','xr','xt','x1'],'eclairage_interlocuteur','mc_eclairage');
-    writeSection('Panne / Désincarcération ascenseur','ascenseur','ascenseur_details',['am','ar','at2','a1'],'ascenseur_interlocuteur','mc_ascenseur');
+        // Ligne de sous-titre
+        pdf.setFontSize(10);
+        pdf.setTextColor(40,60,100);
+        pdf.setFont(undefined,'bold');
+        pdf.text(label, M, y);
 
-    // ========== TRAVAUX ==========
-    title('🏗 Travaux',200,140,20);
-    writeSection('Ouvertures / Fermetures locaux','ouverture','ouverture_details',['om','or2','ot','o1'],'ouverture_interlocuteur','mc_ouverture');
+        // Pastille statut à droite
+        if(evt==='OUI'){
+            pdf.setFillColor(255,230,230);pdf.setDrawColor(220,60,60);
+            pdf.roundedRect(M+PW-22,y-4,20,6,2,2,'FD');
+            pdf.setFontSize(7);pdf.setTextColor(200,40,40);
+            pdf.text('OUI',M+PW-17,y-0.5);
+        } else {
+            pdf.setFillColor(230,245,230);pdf.setDrawColor(60,160,60);
+            pdf.roundedRect(M+PW-22,y-4,20,6,2,2,'FD');
+            pdf.setFontSize(7);pdf.setTextColor(40,130,40);
+            pdf.text('NON',M+PW-17,y-0.5);
+        }
+        y+=3;
+        pdf.setFont(undefined,'normal');
 
-    subtitle('🌙 Effectifs nuit');
-    fieldLabel('Effectif théorique');fieldValue(inputVal('effectif_theorique'));
-    fieldLabel('Effectif réel');fieldValue(inputVal('effectif_reel'));
-    fieldLabel('Issues de secours ouvertes');fieldValue(inputVal('issues_secours'));
-    y+=3;
+        if(!hasContent){y+=4;return;}
 
-    writeSection('Travaux sur voirie','voirie','voirie_details',['vm','vr','vt','v1'],'voirie_interlocuteur','mc_voirie');
-    writeSection('Rive Droite – Anomalies','rd','rd_details',['rm','rr','rt','r1'],'rd_interlocuteur','mc_rd');
-    writeSection('Bagneux – Anomalies','bg','bg_details',['bm','br','bt','b1'],'bg_interlocuteur','mc_bg');
+        // Tableau détaillé
+        const rows=[];
+        if(details) rows.push(['Details',details]);
+        if(extra) rows.push(['Retour a la normale',extra]);
+        if(prevenu!=='Aucun') rows.push(['Prevenu par',prevenu]);
+        if(inter) rows.push(['Interlocuteur',inter]);
+        if(mc) rows.push(['Main courante',mc]);
+
+        if(rows.length){
+            const colW1=38, colW2=PW-colW1;
+            const startY=y;
+
+            rows.forEach(([lbl,val])=>{
+                ensureSpace(12);
+                const lines=pdf.splitTextToSize(String(val),colW2-6);
+                const rowH=Math.max(7,lines.length*4.5+3);
+
+                // Fond alterné
+                pdf.setFillColor(248,249,252);
+                pdf.rect(M,y,PW,rowH,'F');
+                pdf.setDrawColor(220);pdf.setLineWidth(0.15);
+                pdf.rect(M,y,PW,rowH,'S');
+                pdf.line(M+colW1,y,M+colW1,y+rowH);
+
+                // Label
+                pdf.setFontSize(8);pdf.setTextColor(100);
+                pdf.text(lbl,M+3,y+5);
+
+                // Valeur
+                pdf.setFontSize(9);pdf.setTextColor(30);
+                let ly=y+5;
+                lines.forEach(l=>{pdf.text(l,M+colW1+3,ly);ly+=4.5;});
+
+                y+=rowH;
+            });
+        }
+        y+=5;
+    }
+
+    /* ══════════════════════════════════════════════
+       PAGE 1 — EN-TÊTE PROFESSIONNEL
+    ══════════════════════════════════════════════ */
+    newPage();
+
+    // Bandeau header
+    pdf.setFillColor(15,25,50);
+    pdf.rect(0,0,210,52,'F');
+    // Filet doré
+    pdf.setFillColor(200,170,50);
+    pdf.rect(0,52,210,1.5,'F');
+
+    pdf.setFontSize(22);pdf.setTextColor(255);
+    pdf.text('COMPTE RENDU',M,25);
+
+    pdf.setFontSize(11);pdf.setTextColor(200,170,50);
+    pdf.text('Incendie  |  Technique  |  Travaux',M,34);
+
+    pdf.setFontSize(9);pdf.setTextColor(180);
+    pdf.text('Le Bon Marche  \u00b7  SEGEP RG  \u00b7  Batiment 3',M,44);
+
+    y=62;
+
+    /* ── CARTOUCHE INFORMATIONS ── */
+    // Cadre
+    pdf.setFillColor(245,247,252);
+    pdf.setDrawColor(200);pdf.setLineWidth(0.3);
+    pdf.roundedRect(M,y,PW,30,3,3,'FD');
+
+    const dateVal = inputVal('date') || new Date().toLocaleDateString('fr-FR');
+    const serviceVal = radioVal('service');
+    const chefVal = inputVal('chef') || '\u2014';
+
+    pdf.setFontSize(9);pdf.setTextColor(100);
+    pdf.text('Date',M+6,y+8);pdf.text('Service',M+65,y+8);pdf.text('Chef d\'equipe',M+120,y+8);
+
+    pdf.setFontSize(11);pdf.setTextColor(20);pdf.setFont(undefined,'bold');
+    pdf.text(dateVal,M+6,y+16);
+    pdf.text(serviceVal==='Jour'?'Jour (7h30 \u2013 19h30)':'Nuit (19h30 \u2013 7h30)',M+65,y+16);
+    pdf.text(chefVal,M+120,y+16);
+    pdf.setFont(undefined,'normal');
+
+    // Ligne en bas du cartouche
+    pdf.setFontSize(8);pdf.setTextColor(130);
+    pdf.text('Genere le '+new Date().toLocaleString('fr-FR'),M+6,y+26);
+
+    y+=38;
+
+    /* ── SYNTHÈSE RAPIDE ── */
+    ensureSpace(20);
+    pdf.setFontSize(10);pdf.setTextColor(40,60,100);pdf.setFont(undefined,'bold');
+    pdf.text('SYNTHESE',M,y);y+=6;
+    pdf.setFont(undefined,'normal');
+
+    const sections=[
+        {lbl:'Fuite d\'eau',name:'fuite'},
+        {lbl:'Moteurs',name:'moteurs'},
+        {lbl:'Coupure EDF',name:'edf'},
+        {lbl:'Eclairage',name:'eclairage'},
+        {lbl:'Ascenseur',name:'ascenseur'},
+        {lbl:'Ouvertures',name:'ouverture'},
+        {lbl:'Voirie',name:'voirie'},
+        {lbl:'Rive Droite',name:'rd'},
+        {lbl:'Bagneux',name:'bg'}
+    ];
+
+    // Grille 3 colonnes
+    const colW=PW/3;
+    sections.forEach((s,i)=>{
+        const col=i%3;
+        const row=Math.floor(i/3);
+        if(col===0 && i>0) ensureSpace(8);
+        const x=M+col*colW;
+        const sy=y+row*8;
+
+        const val=radioVal(s.name);
+        pdf.setFontSize(8);pdf.setTextColor(80);
+        pdf.text(s.lbl,x,sy);
+
+        if(val==='OUI'){
+            pdf.setFillColor(255,220,220);pdf.setDrawColor(200,60,60);
+            pdf.roundedRect(x+colW-22,sy-3.5,16,5,1.5,1.5,'FD');
+            pdf.setFontSize(6.5);pdf.setTextColor(180,30,30);
+            pdf.text('OUI',x+colW-19,sy-0.5);
+        } else {
+            pdf.setFillColor(220,245,220);pdf.setDrawColor(60,160,60);
+            pdf.roundedRect(x+colW-22,sy-3.5,16,5,1.5,1.5,'FD');
+            pdf.setFontSize(6.5);pdf.setTextColor(30,120,30);
+            pdf.text('RAS',x+colW-19,sy-0.5);
+        }
+    });
+    y+=Math.ceil(sections.length/3)*8+8;
+
+    /* ══════════════════════════════════════════════
+       SECTION INCENDIE
+    ══════════════════════════════════════════════ */
+    sectionBanner('INCENDIE',180,50,50);
+    writeEvent('Fuite d\'eau','fuite','fuite_details',['fm','fr','ft','f1'],'fuite_interlocuteur','mc_fuite');
+    writeEvent('Fonctionnement moteurs','moteurs','moteurs_details',['mm','mr','mt','m1'],'moteurs_interlocuteur','mc_moteurs');
+    writeEvent('Coupure EDF / Anomalies electriques','edf','edf_details',['em','er','et2','e1'],'edf_interlocuteur','mc_edf','edf_retour');
+
+    /* ══════════════════════════════════════════════
+       SECTION TECHNIQUE
+    ══════════════════════════════════════════════ */
+    sectionBanner('TECHNIQUE',50,100,180);
+    writeEvent('Eclairage batiments','eclairage','eclairage_details',['xm','xr','xt','x1'],'eclairage_interlocuteur','mc_eclairage');
+    writeEvent('Panne / Desincarceration ascenseur','ascenseur','ascenseur_details',['am','ar','at2','a1'],'ascenseur_interlocuteur','mc_ascenseur');
+
+    /* ══════════════════════════════════════════════
+       SECTION TRAVAUX
+    ══════════════════════════════════════════════ */
+    sectionBanner('TRAVAUX',190,140,20);
+    writeEvent('Ouvertures / Fermetures locaux','ouverture','ouverture_details',['om','or2','ot','o1'],'ouverture_interlocuteur','mc_ouverture');
+
+    // Effectifs nuit (section spéciale)
+    const effTh=inputVal('effectif_theorique');
+    const effRe=inputVal('effectif_reel');
+    const issuesVal=inputVal('issues_secours');
+    if(effTh||effRe||issuesVal){
+        ensureSpace(30);
+        pdf.setFontSize(10);pdf.setTextColor(40,60,100);pdf.setFont(undefined,'bold');
+        pdf.text('Effectifs nuit',M,y);y+=6;pdf.setFont(undefined,'normal');
+
+        pdf.setFillColor(248,249,252);pdf.roundedRect(M,y,PW,18,2,2,'F');
+        pdf.setDrawColor(220);pdf.roundedRect(M,y,PW,18,2,2,'S');
+
+        pdf.setFontSize(8);pdf.setTextColor(100);
+        pdf.text('Theorique',M+6,y+6);pdf.text('Reel',M+65,y+6);
+
+        pdf.setFontSize(10);pdf.setTextColor(20);
+        pdf.text(effTh||'\u2014',M+6,y+13);pdf.text(effRe||'\u2014',M+65,y+13);
+        y+=22;
+
+        if(issuesVal){
+            pdf.setFontSize(8);pdf.setTextColor(100);pdf.text('Issues de secours ouvertes :',M,y);y+=5;
+            pdf.setFontSize(9);pdf.setTextColor(30);
+            pdf.splitTextToSize(issuesVal,PW-4).forEach(l=>{ensureSpace(5);pdf.text(l,M+4,y);y+=4.5;});
+            y+=4;
+        }
+    }
+
+    writeEvent('Travaux sur voirie','voirie','voirie_details',['vm','vr','vt','v1'],'voirie_interlocuteur','mc_voirie');
+    writeEvent('Rive Droite \u2013 Anomalies','rd','rd_details',['rm','rr','rt','r1'],'rd_interlocuteur','mc_rd');
+    writeEvent('Bagneux \u2013 Anomalies','bg','bg_details',['bm','br','bt','b1'],'bg_interlocuteur','mc_bg');
 
     // Footer dernière page
     footer();
 
-    pdf.save('compte_rendu_'+new Date().toISOString().split('T')[0]+'.pdf');
+    pdf.save('Compte_Rendu_LBM_'+new Date().toISOString().split('T')[0]+'.pdf');
 }
-async function envoyerMail(){await exportPDF();window.location.href='mailto:?subject=Compte rendu incendie / technique / travaux&body=Veuillez trouver ci-joint le compte rendu.';}
+async function envoyerMail(){await exportPDF();window.location.href='mailto:?subject=Compte rendu — Le Bon Marché Sécurité&body=Veuillez trouver ci-joint le compte rendu de la vacation.\n\nCordialement,\nService Sécurité Incendie';}
 document.getElementById('date').valueAsDate=new Date();
 </script>
 <script src="security.js"></script><script src="global.js"></script>

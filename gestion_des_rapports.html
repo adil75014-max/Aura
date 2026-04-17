@@ -649,175 +649,140 @@ function clearBuilder() {
     renderFields();
 }
 
-/* ---------- Modèles ---------- */
-/* (inchangé, ton système fonctionne parfaitement) */
 
-function saveModel() {
-    if (fields.length === 0) return alert("Ajoute des champs avant d’enregistrer.");
+/* ---------- Modèles → Supabase ---------- */
+
+async function saveModel() {
+    if (fields.length === 0) return alert("Ajoute des champs avant d'enregistrer.");
 
     const title = document.getElementById("modelTitle").value.trim() || "Modèle sans titre";
-    const site = document.getElementById("modelSite").value.trim() || "—";
+    const site = document.getElementById("modelSite").value.trim() || "";
 
-    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+    const { error } = await supabaseClient.from("rapport_modeles").insert({
+        titre: title,
+        site: site || null,
+        fields: fields
+    });
 
-    const model = {
-        id: "FORM_" + Date.now(),
-        title,
-        site,
-        fields
-    };
+    if (error) {
+        showToast("❌ Erreur : " + error.message, true);
+        return;
+    }
 
-    models.push(model);
-    localStorage.setItem("customForms", JSON.stringify(models));
-
-    alert("Modèle enregistré.");
+    showToast("✅ Modèle « " + title + " » enregistré !");
     loadModels();
 }
 
-/* ---------- Liste des modèles ---------- */
-/* (inchangé) */
-
-function loadModels() {
+async function loadModels() {
     const container = document.getElementById("modelList");
-    container.innerHTML = "";
+    container.innerHTML = "<p style='opacity:0.5'>Chargement…</p>";
 
-    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+    const { data, error } = await supabaseClient
+        .from("rapport_modeles")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-    if (models.length === 0) {
+    if (error) {
+        container.innerHTML = "<p style='color:#f87171'>Erreur : " + error.message + "</p>";
+        return;
+    }
+
+    if (!data || data.length === 0) {
         container.innerHTML = "<p style='opacity:0.7;font-size:0.85rem;'>Aucun modèle enregistré.</p>";
         return;
     }
 
-    models.slice().reverse().forEach(m => {
+    container.innerHTML = "";
+    data.forEach(m => {
+        const nbFields = (m.fields || []).length;
         const card = document.createElement("div");
         card.className = "report-card";
-
         card.innerHTML = `
-            <h3>${m.title}</h3>
+            <h3>${m.titre}</h3>
             <div style="font-size:0.8rem;opacity:0.9;">
-                <strong>ID :</strong> ${m.id}<br>
-                <strong>Site :</strong> ${m.site}<br>
-                <strong>Champs :</strong> ${m.fields.length}
+                <strong>Site :</strong> ${m.site || "—"}<br>
+                <strong>Champs :</strong> ${nbFields}<br>
+                <strong>Créé le :</strong> ${new Date(m.created_at).toLocaleDateString("fr-FR")}
             </div>
             <div class="report-actions">
-                <button class="btn" onclick="loadModelIntoBuilder('${m.id}')">🛠 Charger dans le builder</button>
-                <button class="btn btn-danger" onclick="deleteModel('${m.id}')">🗑 Supprimer</button>
+                <button class="btn btn-primary" onclick="lancerModele('${m.id}')">▶ Lancer</button>
+                <button class="btn" onclick="chargerDansBuilder('${m.id}')">🛠 Charger</button>
+                <button class="btn btn-danger" onclick="supprimerModele('${m.id}')">🗑</button>
             </div>
         `;
-
         container.appendChild(card);
     });
 }
 
-function loadModelIntoBuilder(id) {
-    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
-    const m = models.find(x => x.id === id);
-    if (!m) return;
-
-    document.getElementById("modelTitle").value = m.title;
-    document.getElementById("modelSite").value = m.site;
-    fields = m.fields || [];
+async function chargerDansBuilder(id) {
+    const { data } = await supabaseClient.from("rapport_modeles").select("*").eq("id", id).single();
+    if (!data) { alert("Modèle introuvable."); return; }
+    document.getElementById("modelTitle").value = data.titre || "";
+    document.getElementById("modelSite").value = data.site || "";
+    fields = data.fields || [];
     renderFields();
+    showToast("🛠 Modèle chargé dans le builder");
 }
 
-function deleteModel(id) {
+async function supprimerModele(id) {
     if (!confirm("Supprimer ce modèle ?")) return;
-    let models = JSON.parse(localStorage.getItem("customForms") || "[]");
-    models = models.filter(m => m.id !== id);
-    localStorage.setItem("customForms", JSON.stringify(models));
+    await supabaseClient.from("rapport_modeles").delete().eq("id", id);
     loadModels();
 }
 
-/* ---------- Utiliser comme intervention ---------- */
-/* (inchangé) */
+function lancerModele(id) {
+    location.href = "rapport_dynamique.html?modele=" + id;
+}
 
-function useAsIntervention() {
+async function useAsIntervention() {
     if (fields.length === 0) return alert("Ajoute des champs avant.");
-
-    const title = document.getElementById("modelTitle").value.trim() || "Intervention personnalisée";
-    const site = document.getElementById("modelSite").value.trim() || "—";
-
-    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
-
-    const model = {
-        id: "FORM_" + Date.now(),
-        title,
-        site,
-        fields
-    };
-
-    models.push(model);
-    localStorage.setItem("customForms", JSON.stringify(models));
-
-    alert("Modèle enregistré comme intervention.\nIl sera visible dans la page interventions.");
-    loadModels();
+    await saveModel();
 }
-
-/* ---------- Remplacer une intervention existante ---------- */
-/* (inchangé) */
 
 function openReplaceMenu() {
     const menu = document.getElementById("replaceMenu");
-    menu.style.display = "block";
-    loadInterventionsForReplace();
+    menu.style.display = menu.style.display === "none" ? "block" : "none";
+    if (menu.style.display === "block") loadInterventionsForReplace();
 }
 
-function loadInterventionsForReplace() {
+async function loadInterventionsForReplace() {
     const container = document.getElementById("interventionList");
-    container.innerHTML = "";
-
+    container.innerHTML = "<p style='opacity:0.5'>Chargement…</p>";
     const rapports = await loadRapportsFromSupabase();
-
     if (rapports.length === 0) {
-        container.innerHTML = "<p style='opacity:0.7;font-size:0.85rem;'>Aucune intervention existante.</p>";
+        container.innerHTML = "<p style='opacity:0.7;font-size:0.85rem;'>Aucune intervention.</p>";
         return;
     }
-
-    rapports.slice().reverse().forEach(r => {
+    container.innerHTML = "";
+    rapports.forEach(r => {
         const card = document.createElement("div");
         card.className = "report-card";
-
         card.innerHTML = `
-            <h3>${r.title || r.type || 'Intervention'}</h3>
+            <h3>${r.titre || r.type || 'Intervention'}</h3>
             <div style="font-size:0.8rem;opacity:0.9;">
-                <strong>ID :</strong> ${r.id || '—'}<br>
-                <strong>Date :</strong> ${r.date || '—'}<br>
-                <strong>Agent :</strong> ${r.agent || '—'}
+                <strong>Date :</strong> ${r.date || '—'} — <strong>Agent :</strong> ${r.agent || '—'}
             </div>
             <div class="report-actions">
-                <button class="btn" onclick="replaceIntervention('${r.id}')">🔄 Remplacer par ce modèle</button>
+                <button class="btn" onclick="replaceIntervention('${r.id}')">🔄 Remplacer</button>
             </div>
         `;
-
         container.appendChild(card);
     });
 }
 
-function replaceIntervention(id) {
-    if (!id) return alert("Intervention sans ID, remplacement impossible.");
-
-    if (fields.length === 0) return alert("Ajoute des champs avant de remplacer.");
-
-    let rapports = await loadRapportsFromSupabase();
-    const index = rapports.findIndex(r => r.id === id);
-    if (index === -1) return alert("Intervention introuvable.");
-
+async function replaceIntervention(id) {
+    if (fields.length === 0) return alert("Ajoute des champs avant.");
     const title = document.getElementById("modelTitle").value.trim() || "Intervention personnalisée";
-    const site = document.getElementById("modelSite").value.trim() || "—";
+    const site = document.getElementById("modelSite").value.trim() || "";
 
-    const newRapport = {
-        id,
-        title,
-        site,
-        date: new Date().toLocaleDateString(),
-        timeStart: new Date().toLocaleTimeString(),
-        fields
-    };
+    const { error } = await supabaseClient.from("rapports").update({
+        titre: title, localisation: site,
+        meta: { form_fields: fields, source: "builder", agent_nom: localStorage.getItem("nom") || null }
+    }).eq("id", id);
 
-    rapports[index] = newRapport;
-    // Rapports gérés via Supabase
-
-    alert("Intervention remplacée par ce modèle.");
+    if (error) { showToast("❌ " + error.message, true); return; }
+    showToast("✅ Intervention remplacée.");
+    document.getElementById("replaceMenu").style.display = "none";
 }
 
 /* ---------- Init ---------- */

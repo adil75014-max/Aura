@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Rapport — Formulaire dynamique</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+<style>
+body{display:flex;justify-content:center;padding:20px}
+.page{width:100%;max-width:720px}
+h1{text-align:center;color:var(--accent);margin-bottom:20px;font-size:1.5rem}
+.menu-return{margin-bottom:16px}
+.menu-return button{background:var(--bg2);border:1px solid var(--border);padding:8px 16px;border-radius:10px;color:var(--accent);cursor:pointer;transition:.25s}
+.menu-return button:hover{background:var(--accent);color:#000}
+.card{background:var(--card);border:1px solid var(--border);padding:18px;border-radius:14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card h2{color:var(--accent);margin-bottom:10px;font-size:1.1rem}
+.field-group{margin-bottom:14px}
+.field-group label{font-weight:600;display:block;margin-bottom:4px;font-size:.9rem;color:var(--accent)}
+.field-group input,.field-group textarea,.field-group select{width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:.95rem}
+.field-group textarea{min-height:80px;resize:vertical}
+.field-group .checkbox-row,.field-group .radio-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.field-group .checkbox-row label,.field-group .radio-row label{font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer}
+.separator{border-top:1px solid var(--border);margin:16px 0}
+.section-title{font-size:1.1rem;font-weight:700;color:var(--accent);margin:18px 0 8px;border-left:3px solid var(--accent);padding-left:10px}
+.subtitle-text{font-size:.95rem;font-weight:600;color:var(--text);margin:12px 0 6px;opacity:.8}
+.info-text{font-size:.85rem;color:var(--text);opacity:.7;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:8px}
+.btn{margin-top:12px;padding:14px;background:linear-gradient(135deg,#7ab8ff,#4d9dff);border:none;border-radius:10px;color:#0a0f1c;cursor:pointer;width:100%;font-size:1rem;font-weight:700;transition:.25s}
+.btn:hover{transform:translateY(-2px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--bg2);color:var(--accent);border:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="page">
+    <h1 id="pageTitle">Rapport</h1>
+    <div class="menu-return"><button onclick="location.href='index.html'">⟵ Menu</button></div>
+
+    <div class="card">
+        <p><strong>Agent :</strong> <span id="agentNom"></span></p>
+        <p><strong>Date :</strong> <span id="dateJour"></span></p>
+    </div>
+
+    <div id="formContainer"></div>
+
+    <div class="card">
+        <button class="btn" id="btnSave" onclick="enregistrer()">💾 Enregistrer le rapport</button>
+        <button class="btn btn-secondary" onclick="window.print()" style="margin-top:8px">🖨 Imprimer</button>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
+<script>
+if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
+
+document.getElementById("agentNom").textContent = localStorage.getItem("nom") || "—";
+document.getElementById("dateJour").textContent = new Date().toLocaleDateString("fr-FR");
+
+let modele = null;
+let modeleId = null;
+
+/* ============================================================
+   CHARGEMENT DU MODÈLE
+============================================================ */
+async function chargerModele() {
+    const params = new URLSearchParams(location.search);
+    modeleId = params.get("modele");
+
+    if (!modeleId) {
+        document.getElementById("formContainer").innerHTML =
+            '<div class="card"><p style="text-align:center;opacity:.7">Aucun modèle spécifié. Lancez depuis la page de gestion des rapports.</p></div>';
+        return;
+    }
+
+    const { data, error } = await supabaseClient
+        .from("rapport_modeles")
+        .select("*")
+        .eq("id", modeleId)
+        .single();
+
+    if (error || !data) {
+        document.getElementById("formContainer").innerHTML =
+            '<div class="card"><p style="color:#f87171">Modèle introuvable.</p></div>';
+        return;
+    }
+
+    modele = data;
+    document.getElementById("pageTitle").textContent = data.titre || "Rapport";
+    renderForm(data.fields || []);
+}
+
+/* ============================================================
+   RENDU DU FORMULAIRE DYNAMIQUE
+============================================================ */
+function renderForm(fields) {
+    const container = document.getElementById("formContainer");
+    container.innerHTML = "";
+
+    if (fields.length === 0) {
+        container.innerHTML = '<div class="card"><p style="opacity:.7">Ce modèle ne contient aucun champ.</p></div>';
+        return;
+    }
+
+    let currentCard = null;
+
+    function ensureCard() {
+        if (!currentCard) {
+            currentCard = document.createElement("div");
+            currentCard.className = "card";
+            container.appendChild(currentCard);
+        }
+        return currentCard;
+    }
+
+    fields.forEach(f => {
+        const type = f.type;
+
+        // Section = nouveau card
+        if (type === "section") {
+            currentCard = null;
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `<h2>${f.label || "Section"}</h2>`;
+            container.appendChild(card);
+            currentCard = card;
+            return;
+        }
+
+        const card = ensureCard();
+
+        if (type === "title") {
+            card.innerHTML += `<div class="section-title">${f.label || ""}</div>`;
+            return;
+        }
+        if (type === "subtitle") {
+            card.innerHTML += `<div class="subtitle-text">${f.label || ""}</div>`;
+            return;
+        }
+        if (type === "separator") {
+            card.innerHTML += `<div class="separator"></div>`;
+            return;
+        }
+        if (type === "info") {
+            card.innerHTML += `<div class="info-text">${f.label || ""}</div>`;
+            return;
+        }
+
+        const div = document.createElement("div");
+        div.className = "field-group";
+
+        const label = f.label || f.id;
+
+        if (type === "text" || type === "number" || type === "date" || type === "time" || type === "location") {
+            const inputType = type === "location" ? "text" : type;
+            const placeholder = type === "location" ? "Adresse / localisation" : (f.placeholder || "");
+            div.innerHTML = `
+                <label>${label}</label>
+                <input type="${inputType}" data-field-id="${f.id}" placeholder="${placeholder}">
+            `;
+        }
+        else if (type === "textarea") {
+            div.innerHTML = `
+                <label>${label}</label>
+                <textarea data-field-id="${f.id}" placeholder="${f.placeholder || ""}"></textarea>
+            `;
+        }
+        else if (type === "select") {
+            const options = (f.options || "Option A,Option B").split(",").map(o => o.trim());
+            div.innerHTML = `
+                <label>${label}</label>
+                <select data-field-id="${f.id}">
+                    <option value="">— Choisir —</option>
+                    ${options.map(o => `<option value="${o}">${o}</option>`).join("")}
+                </select>
+            `;
+        }
+        else if (type === "checkbox") {
+            const options = (f.options || "Option A,Option B").split(",").map(o => o.trim());
+            div.innerHTML = `
+                <label>${label}</label>
+                <div class="checkbox-row">
+                    ${options.map((o,i) => `<label><input type="checkbox" data-field-id="${f.id}" value="${o}"> ${o}</label>`).join("")}
+                </div>
+            `;
+        }
+        else if (type === "radio") {
+            const options = (f.options || "Oui,Non").split(",").map(o => o.trim());
+            div.innerHTML = `
+                <label>${label}</label>
+                <div class="radio-row">
+                    ${options.map((o,i) => `<label><input type="radio" name="${f.id}" data-field-id="${f.id}" value="${o}"> ${o}</label>`).join("")}
+                </div>
+            `;
+        }
+        else if (type === "photo") {
+            div.innerHTML = `
+                <label>📷 ${label}</label>
+                <input type="file" data-field-id="${f.id}" accept="image/*" capture="camera">
+            `;
+        }
+        else if (type === "equipier") {
+            div.innerHTML = `
+                <label>👤 ${label}</label>
+                <input type="text" data-field-id="${f.id}" placeholder="Nom de l'équipier">
+            `;
+        }
+        else if (type === "siteSelector") {
+            div.innerHTML = `
+                <label>🏢 ${label}</label>
+                <select data-field-id="${f.id}">
+                    <option value="">— Site —</option>
+                    <option value="Le Bon Marché">Le Bon Marché</option>
+                    <option value="Grande Épicerie RG">Grande Épicerie Rive Gauche</option>
+                    <option value="Grande Épicerie RD">Grande Épicerie Rive Droite</option>
+                    <option value="Moët Hennessy">Moët Hennessy</option>
+                    <option value="Magasin 3">Magasin 3 – 115 Rue du Bac</option>
+                    <option value="Bagneux">Bagneux</option>
+                </select>
+            `;
+        }
+        else if (type === "qrcode") {
+            div.innerHTML = `<label>📡 ${label}</label><p style="opacity:.6;font-size:.85rem">QR code généré automatiquement à l'enregistrement.</p>`;
+        }
+        else {
+            div.innerHTML = `<label>${label}</label><input type="text" data-field-id="${f.id}">`;
+        }
+
+        card.appendChild(div);
+    });
+}
+
+/* ============================================================
+   COLLECTE DES DONNÉES
+============================================================ */
+function collectFormData() {
+    const result = {};
+
+    // Inputs simples (text, number, date, time, select, file)
+    document.querySelectorAll("[data-field-id]").forEach(el => {
+        const fid = el.dataset.fieldId;
+
+        if (el.type === "checkbox") {
+            if (!result[fid]) result[fid] = [];
+            if (el.checked) result[fid].push(el.value);
+        }
+        else if (el.type === "radio") {
+            if (el.checked) result[fid] = el.value;
+        }
+        else if (el.type === "file") {
+            // On ne sauvegarde pas le fichier en base (trop lourd), juste le nom
+            result[fid] = el.files.length ? el.files[0].name : null;
+        }
+        else {
+            result[fid] = el.value;
+        }
+    });
+
+    return result;
+}
+
+/* ============================================================
+   ENREGISTREMENT
+============================================================ */
+async function enregistrer() {
+    const btn = document.getElementById("btnSave");
+    btn.disabled = true; btn.textContent = "⏳ Enregistrement…";
+
+    try {
+        const formData = collectFormData();
+        const titre = modele ? modele.titre : "Rapport";
+        const site = modele ? (modele.site || "") : "";
+
+        // Construire une description lisible
+        const desc = Object.entries(formData)
+            .filter(([k, v]) => v && (!Array.isArray(v) || v.length))
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+            .join("\n");
+
+        const { error } = await supabaseClient.from("rapports").insert({
+            type: "formulaire_custom",
+            titre: titre,
+            description: desc,
+            localisation: site || null,
+            statut: "ouvert",
+            priorite: "normale",
+            meta: {
+                modele_id: modeleId,
+                modele_titre: titre,
+                form_data: formData,
+                agent_nom: localStorage.getItem("nom") || null,
+                source: "rapport_dynamique"
+            }
+        });
+
+        if (error) throw error;
+
+        showToast("✅ Rapport enregistré !");
+        btn.textContent = "✅ Enregistré";
+        setTimeout(() => location.href = "index.html", 1200);
+    } catch (e) {
+        showToast("❌ " + (e.message || e), true);
+        btn.disabled = false;
+        btn.textContent = "💾 Enregistrer le rapport";
+    }
+}
+
+chargerModele();
+</script>
+<script src="js/security.js"></script>
+<script src="global.js"></script>
+</body>
+</html>

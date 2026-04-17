@@ -114,12 +114,34 @@ tr:hover {
     transform:translateY(-2px);
     box-shadow:0 6px 18px rgba(122,184,255,0.6);
 }
+
+/* MODALE DÉTAIL */
+.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);display:none;justify-content:center;align-items:center;padding:16px;z-index:999}
+.modal-bg.active{display:flex}
+.modal-box{background:#141824;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:24px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;color:white}
+.modal-box h2{color:#4da3ff;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:10px}
+.modal-box h3{color:#7ab8ff;margin:16px 0 6px;font-size:.95rem}
+.detail-field{margin-bottom:10px}
+.detail-label{color:#7ab8ff;font-weight:600;font-size:.85rem;display:block;margin-bottom:2px}
+.detail-value{color:#e0e4ef;white-space:pre-wrap;word-break:break-word;line-height:1.5}
+.modal-actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
+.btn-close{padding:10px 16px;border-radius:8px;cursor:pointer;border:1px solid #ef4444;background:rgba(239,68,68,0.15);color:#ef4444;font-weight:600}
+.btn-close:hover{background:#ef4444;color:white}
+.btn-cloturer{padding:10px 16px;border-radius:8px;cursor:pointer;border:1px solid #4dff88;background:rgba(0,200,100,0.1);color:#4dff88;font-weight:600}
+.btn-cloturer:hover{background:#00c878;color:white}
+.btn-print{padding:10px 16px;border-radius:8px;cursor:pointer;border:1px solid #7ab8ff;background:rgba(122,184,255,0.1);color:#7ab8ff;font-weight:600}
+.btn-print:hover{background:#7ab8ff;color:#000}
+.signature-img{max-width:100%;border:1px solid rgba(255,255,255,0.1);border-radius:8px;margin-top:4px;background:#f9fafb}
 </style>
 </head>
 
 <body>
 
 <h1>Permis Feu — Consultation</h1>
+
+<div style="margin-bottom:20px">
+    <button class="btn" onclick="location.href='index.html'" style="width:auto;padding:8px 16px">⟵ Menu</button>
+</div>
 
 <div class="card">
     <label>Date</label>
@@ -216,6 +238,7 @@ async function chargerPermisFeu() {
    AFFICHAGE TABLEAU
 ============================================================ */
 function afficherPermis(permis) {
+    permisCache = permis; // stocker pour la modale
     const tbody = document.getElementById("tablePermis");
     tbody.innerHTML = "";
 
@@ -258,10 +281,131 @@ function afficherPermis(permis) {
 }
 
 /* ============================================================
-   OUVERTURE PERMIS FEU
+   OUVERTURE PERMIS FEU — modale détail
 ============================================================ */
+let permisCache = []; // stocke les données pour la modale
+
 function ouvrirPermis(id) {
-    location.href = `permis_feu_detail.html?id=${id}`;
+    const p = permisCache.find(x => x.id === id);
+    if (!p) { alert("Permis introuvable."); return; }
+
+    const m = p.meta || {};
+    const clos = estClos(p.statut);
+
+    function esc(s) { if (!s) return "—"; const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
+    function field(label, val) { return val && val !== "—" ? `<div class="detail-field"><span class="detail-label">${label}</span><div class="detail-value">${esc(val)}</div></div>` : ""; }
+
+    let html = `<h2>🔥 Permis Feu — ${esc(p.numero || "Sans numéro")}</h2>`;
+
+    // Infos générales
+    html += field("Statut", clos ? "✅ Clôturé" : "🔴 Ouvert / Actif");
+    html += field("Date", formatDate(p.date_debut || p.created_at));
+
+    // Agent
+    let agent = nomAgent(p.profiles);
+    if (agent === "—" && p.agent_nom) agent = p.agent_nom;
+    if (agent === "—" && m.agent_nom) agent = m.agent_nom;
+    html += field("Agent", agent);
+
+    // Ordre de travail
+    if (m.odt_par || m.odt_nom || m.odt_fonction) {
+        html += `<h3>Ordre de travail</h3>`;
+        html += field("Donné par", m.odt_par);
+        html += field("Nom", m.odt_nom);
+        html += field("Fonction", m.odt_fonction);
+    }
+
+    // Entreprises
+    html += `<h3>Entreprise</h3>`;
+    html += field("Entreprise concernée", m.entreprise_concernee || p.entreprise);
+    html += field("Entreprise extérieure", m.ext_raison_sociale);
+    html += field("Représentant", m.ext_representant);
+
+    // Localisation
+    html += `<h3>Localisation</h3>`;
+    const lieu = p.lieu || [m.magasin, m.etage, m.zone_canton].filter(Boolean).join(" — ");
+    html += field("Lieu", lieu);
+    html += field("Magasin", m.magasin);
+    html += field("Étage", m.etage);
+    html += field("Zone / Canton", m.zone_canton);
+    html += field("Horaires", m.horaires);
+
+    // Travaux
+    if (m.operation || m.risques || m.mesures || m.moyens) {
+        html += `<h3>Travaux</h3>`;
+        html += field("Opération", m.operation);
+        html += field("Risques identifiés", m.risques);
+        html += field("Mesures de prévention", m.mesures);
+        html += field("Moyens d'intervention", m.moyens);
+    }
+
+    // Description (fallback)
+    if (!m.operation && p.description) {
+        html += `<h3>Description</h3>`;
+        html += field("", p.description);
+    }
+
+    // Signatures
+    if (m.signature_delivreur || m.signature_intervenant) {
+        html += `<h3>Signatures</h3>`;
+        if (m.signature_delivreur) {
+            html += `<div class="detail-field"><span class="detail-label">Signature délivreur</span>
+                     <img src="${m.signature_delivreur}" class="signature-img" alt="Signature délivreur"></div>`;
+        }
+        if (m.signature_intervenant) {
+            html += `<div class="detail-field"><span class="detail-label">Signature intervenant</span>
+                     <img src="${m.signature_intervenant}" class="signature-img" alt="Signature intervenant"></div>`;
+        }
+        if (m.pris_connaissance) {
+            html += `<div class="detail-field" style="color:#4dff88;font-weight:600;">✅ Mention « PRIS CONNAISSANCE » cochée</div>`;
+        }
+    }
+
+    // Passages
+    if (m.passages && m.passages.length) {
+        html += `<h3>Heures de passage</h3>`;
+        html += `<div class="detail-value">` + m.passages.map(h => `• ${h}`).join("<br>") + `</div>`;
+    }
+
+    // Prolongations
+    if (m.prolongations && m.prolongations.length) {
+        html += `<h3>Prolongations</h3>`;
+        m.prolongations.forEach(pr => {
+            html += `<div class="detail-value">• ${esc(pr.ancienne_date || pr.date)} (${esc(pr.ancien_horaire || pr.horaire)}) — prolongé le ${esc(pr.horodatage)}</div>`;
+        });
+    }
+
+    // Boutons
+    const cloturerBtn = clos ? "" : `<button class="btn-cloturer" onclick="cloturerPermis('${p.id}')">✅ Clôturer ce permis</button>`;
+    html += `
+        <div class="modal-actions">
+            ${cloturerBtn}
+            <button class="btn-print" onclick="window.print()">🖨 Imprimer</button>
+            <button class="btn-close" onclick="fermerPermis()">Fermer</button>
+        </div>
+    `;
+
+    document.getElementById("modalPermisContent").innerHTML = html;
+    document.getElementById("modalPermis").classList.add("active");
+}
+
+function fermerPermis() {
+    document.getElementById("modalPermis").classList.remove("active");
+}
+
+async function cloturerPermis(id) {
+    if (!confirm("Clôturer définitivement ce permis feu ?")) return;
+
+    const { error } = await supabaseClient
+        .from("permis_feu")
+        .update({ statut: "cloture" })
+        .eq("id", id);
+
+    if (error) { alert("❌ Erreur : " + error.message); return; }
+
+    alert("✅ Permis clôturé.");
+    fermerPermis();
+    chargerPermisFeu();
 }
 
 /* ============================================================
@@ -288,6 +432,11 @@ async function chargerEntreprises() {
 chargerEntreprises();
 chargerPermisFeu();
 </script>
+
+<!-- MODALE DÉTAIL PERMIS FEU -->
+<div class="modal-bg" id="modalPermis" onclick="if(event.target===this)fermerPermis()">
+    <div class="modal-box" id="modalPermisContent"></div>
+</div>
 
 </body>
 </html>

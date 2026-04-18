@@ -194,7 +194,8 @@ requireLogin();
     <p>ID : <span id="permis-id">Génération…</span></p>
 
     <!-- QR CODE -->
-    <canvas id="qr-code" style="width:120px; height:120px; margin-top:10px;"></canvas>
+    <canvas id="qr-code" style="width:160px; height:160px; margin-top:10px; border-radius:8px;"></canvas>
+    <p style="font-size:0.8rem; color:#6b7280; margin-top:4px;">Scannez ce QR code pour consulter le permis feu</p>
   </div><!-- ORDRE DE TRAVAIL -->
   <div class="card">
     <h2>Ordre de travail</h2>
@@ -466,12 +467,15 @@ Inspection complète du lieu de travail et des locaux contigus.
     document.getElementById("horodatage").textContent =
       now.toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "medium" });
 
-    /* QR CODE — pointe vers la page de consultation avec le numéro */
-    const qrUrl = window.location.origin + "/consulter_pf.html#" + PERMIS_NUMERO;
+    /* QR CODE — unique par permis, scannable pour consulter le document */
+    const qrBaseUrl = window.location.href.replace(/[^/]*$/, '') + 'consulter_pf.html?pf=' + encodeURIComponent(PERMIS_NUMERO);
     const qr = new QRious({
       element: document.getElementById("qr-code"),
-      size: 120,
-      value: qrUrl
+      size: 160,
+      value: qrBaseUrl,
+      foreground: '#1d4ed8',
+      background: '#ffffff',
+      level: 'M'
     });
 
     /* ============================================================
@@ -481,16 +485,50 @@ Inspection complète du lieu de travail et des locaux contigus.
       const canvas = document.getElementById(canvasId);
       const ctx = canvas.getContext("2d");
       let drawing = false;
+      let hasContent = false;
+      let savedDataUrl = null;
 
-      function resizeCanvas() {
+      function clearCanvas() {
         const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width;
+        canvas.width = Math.floor(rect.width);
         canvas.height = 150;
         ctx.fillStyle = "#f9fafb";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
+        hasContent = false;
+        savedDataUrl = null;
       }
-      resizeCanvas();
-      window.addEventListener("resize", resizeCanvas);
+
+      function safeResize() {
+        const rect = canvas.getBoundingClientRect();
+        const newW = Math.floor(rect.width);
+        if (newW === canvas.width && canvas.height === 150) return; // Rien n'a changé
+
+        // Sauvegarder le dessin avant resize
+        if (hasContent) {
+          try { savedDataUrl = canvas.toDataURL(); } catch(e) {}
+        }
+
+        canvas.width = newW;
+        canvas.height = 150;
+        ctx.fillStyle = "#f9fafb";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Restaurer le dessin
+        if (savedDataUrl) {
+          const img = new Image();
+          img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          img.src = savedDataUrl;
+        }
+      }
+
+      clearCanvas();
+
+      // Debounce le resize (500ms) pour ignorer les micro-resizes du scroll mobile
+      let resizeTimer = null;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(safeResize, 500);
+      });
 
       function getPos(e) {
         const rect = canvas.getBoundingClientRect();
@@ -499,16 +537,16 @@ Inspection complète du lieu de travail et des locaux contigus.
         return { x, y };
       }
 
-      canvas.addEventListener("mousedown", (e) => { drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+      canvas.addEventListener("mousedown", (e) => { drawing = true; hasContent = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
       canvas.addEventListener("mousemove", (e) => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle="#111827"; ctx.lineWidth=2; ctx.stroke(); });
       canvas.addEventListener("mouseup", () => drawing = false);
       canvas.addEventListener("mouseleave", () => drawing = false);
 
-      canvas.addEventListener("touchstart", (e) => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
+      canvas.addEventListener("touchstart", (e) => { e.preventDefault(); drawing = true; hasContent = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
       canvas.addEventListener("touchmove", (e) => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle="#111827"; ctx.lineWidth=2; ctx.stroke(); }, { passive: false });
       canvas.addEventListener("touchend", () => drawing = false);
 
-      document.getElementById(clearBtnId).addEventListener("click", () => resizeCanvas());
+      document.getElementById(clearBtnId).addEventListener("click", clearCanvas);
 
       return () => canvas.toDataURL("image/png");
     }
@@ -640,6 +678,7 @@ Inspection complète du lieu de travail et des locaux contigus.
           agent_nom:   localStorage.getItem("nom") || null,
           meta: {
             numero: PERMIS_NUMERO,
+            qr_url: qrBaseUrl,
             entreprise_concernee: entrepriseConcernee,
             ext_raison_sociale: extRaisonSociale,
             ext_representant: extRepresentant,

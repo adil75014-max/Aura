@@ -3,440 +3,252 @@
 <head>
 <meta charset="UTF-8">
 <title>Permis Feu — Consultation</title>
-
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
-/* PAGE SOMBRE */
-body {
-    background:#0d0f14;
-    color:white;
-    font-family:system-ui, Arial;
-    padding:20px;
-    margin:0;
-}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
 
-/* TITRE */
-h1 {
-    text-align:center;
-    color:#4da3ff;
-    margin-bottom:25px;
-    font-size:1.8rem;
-    letter-spacing:0.5px;
-}
+.header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.back-btn{background:rgba(239,100,50,0.12);border:1px solid rgba(239,100,50,0.3);color:#ef6432;padding:8px 14px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';transition:.2s}
+.back-btn:hover{background:#ef6432;color:#fff}
+.header h1{font-size:1.4rem;color:#ef6432;flex:1;letter-spacing:-.5px}
 
-/* CARD */
-.card {
-    background:rgba(255,255,255,0.06);
-    border:1px solid rgba(255,255,255,0.15);
-    padding:20px;
-    border-radius:14px;
-    margin-bottom:25px;
-    box-shadow:0 4px 12px rgba(0,0,0,0.35);
-}
+.filters{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.filter-group{flex:1;min-width:140px}
+.filter-group label{display:block;font-size:.8rem;font-weight:600;color:#8899bb;margin-bottom:4px}
+.filter-group input,.filter-group select{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:.9rem 'DM Sans'}
+.filter-group input:focus,.filter-group select:focus{outline:none;border-color:#ef6432;box-shadow:0 0 0 3px rgba(239,100,50,0.15)}
+.btn-search{padding:10px 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#ef6432,#d44a1a);color:#fff;font:600 .9rem 'DM Sans';cursor:pointer;height:42px;white-space:nowrap}
+.btn-search:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(239,100,50,0.3)}
 
-/* LABELS */
-label {
-    display:block;
-    margin-bottom:6px;
-    color:#7ab8ff;
-    font-size:1.1rem;
-}
+.stats{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.stat{flex:1;min-width:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;text-align:center}
+.stat-num{font-size:1.6rem;font-weight:700;color:#ef6432}
+.stat-label{font-size:.75rem;color:#6b7a99;margin-top:2px}
 
-/* INPUTS SOMBRES PREMIUM */
-input, select {
-    width:100%;
-    padding:12px;
-    border-radius:10px;
-    border:1px solid rgba(255,255,255,0.35);
-    background:rgba(255,255,255,0.12);
-    color:white;
-    margin-bottom:15px;
-    font-size:1rem;
-    transition:0.25s;
-}
+.permits-list{display:flex;flex-direction:column;gap:10px}
+.permit-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;transition:.2s;cursor:pointer}
+.permit-card:hover{border-color:rgba(239,100,50,0.3);background:rgba(239,100,50,0.04)}
+.permit-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+.permit-icon.open{background:rgba(239,100,50,0.12);border:1px solid rgba(239,100,50,0.25)}
+.permit-icon.closed{background:rgba(0,200,120,0.12);border:1px solid rgba(0,200,120,0.25)}
+.permit-info{flex:1;min-width:0}
+.permit-info .permit-num{font-weight:700;font-size:.95rem;color:#e0e4ef}
+.permit-info .permit-meta{font-size:.8rem;color:#6b7a99;margin-top:3px;display:flex;flex-wrap:wrap;gap:8px}
+.pill{padding:4px 12px;border-radius:999px;font-size:.75rem;font-weight:600}
+.pill-open{background:rgba(239,100,50,0.15);color:#ef6432}
+.pill-closed{background:rgba(0,200,120,0.15);color:#00c878}
+.empty{text-align:center;padding:40px;color:#4a5578;font-size:.95rem}
 
-input:focus, select:focus {
-    border-color:#4da3ff;
-    box-shadow:0 0 8px rgba(77,163,255,0.5);
-    outline:none;
-}
-
-/* TABLEAU SOMBRE PREMIUM */
-table {
-    width:100%;
-    border-collapse:collapse;
-    margin-top:20px;
-    background:rgba(255,255,255,0.05);
-    border-radius:12px;
-    overflow:hidden;
-    border:1px solid rgba(255,255,255,0.12);
-}
-
-th, td {
-    padding:14px;
-    border-bottom:1px solid rgba(255,255,255,0.12);
-    text-align:left;
-    color:white;
-}
-
-th {
-    background:rgba(255,255,255,0.12);
-    color:#7ab8ff;
-}
-
-tr:hover {
-    background:rgba(255,255,255,0.08);
-}
-
-/* STATUTS */
-.status-open {
-    color:#ff6b6b;
-    font-weight:700;
-}
-
-.status-closed {
-    color:#4dff88;
-    font-weight:700;
-}
-
-/* BOUTON PREMIUM SOMBRE */
-.btn {
-    padding:10px 16px;
-    background:linear-gradient(135deg, #7ab8ff, #4d9dff);
-    border:none;
-    border-radius:8px;
-    color:#0a0f1c;
-    cursor:pointer;
-    font-weight:700;
-    transition:0.25s;
-}
-
-.btn:hover {
-    transform:translateY(-2px);
-    box-shadow:0 6px 18px rgba(122,184,255,0.6);
-}
-
-/* MODALE DÉTAIL */
-.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);display:none;justify-content:center;align-items:center;padding:16px;z-index:999}
+.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:none;justify-content:center;align-items:flex-start;padding:20px;z-index:999;overflow-y:auto}
 .modal-bg.active{display:flex}
-.modal-box{background:#141824;border:1px solid rgba(255,255,255,0.12);border-radius:16px;padding:24px;width:100%;max-width:700px;max-height:90vh;overflow-y:auto;color:white}
-.modal-box h2{color:#4da3ff;margin-bottom:16px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:10px}
-.modal-box h3{color:#7ab8ff;margin:16px 0 6px;font-size:.95rem}
-.detail-field{margin-bottom:10px}
-.detail-label{color:#7ab8ff;font-weight:600;font-size:.85rem;display:block;margin-bottom:2px}
-.detail-value{color:#e0e4ef;white-space:pre-wrap;word-break:break-word;line-height:1.5}
-.modal-actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap}
-.btn-close{padding:10px 16px;border-radius:8px;cursor:pointer;border:1px solid #ef4444;background:rgba(239,68,68,0.15);color:#ef4444;font-weight:600}
-.btn-close:hover{background:#ef4444;color:white}
-.btn-cloturer{padding:10px 16px;border-radius:8px;cursor:pointer;border:1px solid #4dff88;background:rgba(0,200,100,0.1);color:#4dff88;font-weight:600}
-.btn-cloturer:hover{background:#00c878;color:white}
-.btn-print{padding:10px 16px;border-radius:8px;cursor:pointer;border:1px solid #7ab8ff;background:rgba(122,184,255,0.1);color:#7ab8ff;font-weight:600}
-.btn-print:hover{background:#7ab8ff;color:#000}
-.signature-img{max-width:100%;border:1px solid rgba(255,255,255,0.1);border-radius:8px;margin-top:4px;background:#f9fafb}
+.modal-box{background:#131824;border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:28px;width:100%;max-width:720px;margin:20px auto;color:white}
+.modal-box h2{color:#ef6432;margin-bottom:18px;font-size:1.3rem;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:12px}
+.modal-box h3{color:#ff9966;margin:20px 0 8px;font-size:.95rem;letter-spacing:.3px}
+.detail-row{display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap}
+.detail-field{flex:1;min-width:200px;margin-bottom:10px}
+.detail-label{color:#8899bb;font-weight:600;font-size:.8rem;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.detail-value{color:#e0e4ef;white-space:pre-wrap;word-break:break-word;line-height:1.5;font-size:.95rem}
+.qr-block{text-align:center;margin:16px 0;padding:16px;background:white;border-radius:12px;display:inline-block}
+.signature-block img{max-width:280px;width:100%;border:1px solid rgba(255,255,255,0.1);border-radius:10px;background:#f9fafb}
+.passage-list{display:flex;flex-wrap:wrap;gap:6px}
+.passage-tag{padding:4px 10px;border-radius:8px;background:rgba(239,100,50,0.1);color:#ef6432;font-size:.85rem;font-weight:600}
+.modal-actions{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
+.modal-actions button{padding:10px 18px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';border:1px solid;transition:.2s}
+.btn-close{border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#8899bb}
+.btn-close:hover{background:rgba(255,255,255,0.12);color:#fff}
+.btn-cloturer{border-color:#00c878;background:rgba(0,200,120,0.1);color:#00c878}
+.btn-cloturer:hover{background:#00c878;color:#fff}
+.btn-pdf{border-color:#ef6432;background:rgba(239,100,50,0.1);color:#ef6432}
+.btn-pdf:hover{background:#ef6432;color:#fff}
+@media(max-width:500px){.permit-card{flex-direction:column;align-items:flex-start}.detail-row{flex-direction:column}}
 </style>
 </head>
-
 <body>
 
-<h1>Permis Feu — Consultation</h1>
-
-<div style="margin-bottom:20px">
-    <button class="btn" onclick="location.href='index.html'" style="width:auto;padding:8px 16px">⟵ Menu</button>
+<div class="header">
+    <button class="back-btn" onclick="location.href='index.html'">⟵</button>
+    <h1>🔥 Permis Feu</h1>
 </div>
 
-<div class="card">
-    <label>Date</label>
-    <input type="date" id="filtreDate">
-
-    <label>Entreprise</label>
-    <select id="filtreEntreprise">
-        <option value="all">Toutes</option>
-    </select>
-
-    <button class="btn" onclick="chargerPermisFeu()">🔍 Rechercher</button>
+<div class="stats">
+    <div class="stat"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-num" id="statOuvert" style="color:#ef6432">0</div><div class="stat-label">Ouverts</div></div>
+    <div class="stat"><div class="stat-num" id="statClos" style="color:#00c878">0</div><div class="stat-label">Clôturés</div></div>
 </div>
 
-<table>
-    <thead>
-        <tr>
-            <th>Numéro</th>
-            <th>Date</th>
-            <th>Entreprise</th>
-            <th>Lieu</th>
-            <th>Agent</th>
-            <th>Statut</th>
-            <th>Voir</th>
-        </tr>
-    </thead>
-    <tbody id="tablePermis"></tbody>
-</table>
+<div class="filters">
+    <div class="filter-group"><label>Date</label><input type="date" id="filtreDate"></div>
+    <div class="filter-group"><label>Entreprise</label><select id="filtreEntreprise"><option value="all">Toutes</option></select></div>
+    <button class="btn-search" onclick="chargerPermisFeu()">🔍 Rechercher</button>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="supabaseClient.js"></script>
+<div class="permits-list" id="permitsList"><div class="empty">Chargement…</div></div>
 
-<script>
-/* ============================================================
-   SUPABASE
-============================================================ */
-// Config loaded from supabaseClient.js
-
-// Using supabaseClient from supabaseClient.js
-
-/* ============================================================
-   HELPERS
-============================================================ */
-function formatDate(iso) {
-    if (!iso) return "—";
-    const d = new Date(iso);
-    return d.toLocaleDateString() + " " + d.toLocaleTimeString().slice(0,5);
-}
-
-function nomAgent(profil) {
-    if (!profil) return "—";
-    return [profil.prenom, profil.nom].filter(Boolean).join(" ") || "—";
-}
-
-function estClos(statut) {
-    if (!statut) return false;
-    return statut.toLowerCase().includes("clos");
-}
-
-/* ============================================================
-   CHARGEMENT DES PERMIS FEU
-============================================================ */
-async function chargerPermisFeu() {
-
-    const dateFiltre = document.getElementById("filtreDate").value;
-    const entrepriseFiltre = document.getElementById("filtreEntreprise").value;
-
-    let query = supabaseClient
-        .from("permis_feu")
-        .select("*, profiles(nom, prenom)")
-        .order("created_at", { ascending: false });
-
-    // Filtre par jour sur created_at (plus fiable que date_debut qui peut être null)
-    if (dateFiltre) {
-        const debut = `${dateFiltre}T00:00:00`;
-        const fin   = `${dateFiltre}T23:59:59.999`;
-        query = query.gte("created_at", debut).lte("created_at", fin);
-    }
-
-    if (entrepriseFiltre !== "all") {
-        query = query.eq("entreprise", entrepriseFiltre);
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-        alert("Erreur Supabase : " + error.message);
-        return;
-    }
-
-    afficherPermis(data || []);
-}
-
-/* ============================================================
-   AFFICHAGE TABLEAU
-============================================================ */
-function afficherPermis(permis) {
-    permisCache = permis; // stocker pour la modale
-    const tbody = document.getElementById("tablePermis");
-    tbody.innerHTML = "";
-
-    if (permis.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#999;">Aucun permis feu trouvé.</td></tr>`;
-        return;
-    }
-
-    permis.forEach(p => {
-        const clos = estClos(p.statut);
-        const tr = document.createElement("tr");
-
-        // Date : date_debut si remplie, sinon created_at
-        const dateAffichee = formatDate(p.date_debut || p.created_at);
-
-        // Agent : profiles FK, puis agent_nom, puis meta.agent_nom
-        let agent = nomAgent(p.profiles);
-        if (agent === "—" && p.agent_nom) agent = p.agent_nom;
-        if (agent === "—" && p.meta && p.meta.agent_nom) agent = p.meta.agent_nom;
-
-        // Lieu
-        const lieu = p.lieu || (p.meta ? [p.meta.magasin, p.meta.etage, p.meta.zone_canton].filter(Boolean).join(" — ") : "") || "—";
-
-        tr.innerHTML = `
-            <td>${p.numero || "—"}</td>
-            <td>${dateAffichee}</td>
-            <td>${p.entreprise || "—"}</td>
-            <td>${lieu}</td>
-            <td>${agent}</td>
-            <td class="${clos ? 'status-closed' : 'status-open'}">
-                ${clos ? "Clos" : "Ouvert"}
-            </td>
-            <td>
-                <button class="btn" onclick="ouvrirPermis('${p.id}')">Ouvrir</button>
-            </td>
-        `;
-
-        tbody.appendChild(tr);
-    });
-}
-
-/* ============================================================
-   OUVERTURE PERMIS FEU — modale détail
-============================================================ */
-let permisCache = []; // stocke les données pour la modale
-
-function ouvrirPermis(id) {
-    const p = permisCache.find(x => x.id === id);
-    if (!p) { alert("Permis introuvable."); return; }
-
-    const m = p.meta || {};
-    const clos = estClos(p.statut);
-
-    function esc(s) { if (!s) return "—"; const d=document.createElement("div"); d.textContent=s; return d.innerHTML; }
-    function field(label, val) { return val && val !== "—" ? `<div class="detail-field"><span class="detail-label">${label}</span><div class="detail-value">${esc(val)}</div></div>` : ""; }
-
-    let html = `<h2>🔥 Permis Feu — ${esc(p.numero || "Sans numéro")}</h2>`;
-
-    // Infos générales
-    html += field("Statut", clos ? "✅ Clôturé" : "🔴 Ouvert / Actif");
-    html += field("Date", formatDate(p.date_debut || p.created_at));
-
-    // Agent
-    let agent = nomAgent(p.profiles);
-    if (agent === "—" && p.agent_nom) agent = p.agent_nom;
-    if (agent === "—" && m.agent_nom) agent = m.agent_nom;
-    html += field("Agent", agent);
-
-    // Ordre de travail
-    if (m.odt_par || m.odt_nom || m.odt_fonction) {
-        html += `<h3>Ordre de travail</h3>`;
-        html += field("Donné par", m.odt_par);
-        html += field("Nom", m.odt_nom);
-        html += field("Fonction", m.odt_fonction);
-    }
-
-    // Entreprises
-    html += `<h3>Entreprise</h3>`;
-    html += field("Entreprise concernée", m.entreprise_concernee || p.entreprise);
-    html += field("Entreprise extérieure", m.ext_raison_sociale);
-    html += field("Représentant", m.ext_representant);
-
-    // Localisation
-    html += `<h3>Localisation</h3>`;
-    const lieu = p.lieu || [m.magasin, m.etage, m.zone_canton].filter(Boolean).join(" — ");
-    html += field("Lieu", lieu);
-    html += field("Magasin", m.magasin);
-    html += field("Étage", m.etage);
-    html += field("Zone / Canton", m.zone_canton);
-    html += field("Horaires", m.horaires);
-
-    // Travaux
-    if (m.operation || m.risques || m.mesures || m.moyens) {
-        html += `<h3>Travaux</h3>`;
-        html += field("Opération", m.operation);
-        html += field("Risques identifiés", m.risques);
-        html += field("Mesures de prévention", m.mesures);
-        html += field("Moyens d'intervention", m.moyens);
-    }
-
-    // Description (fallback)
-    if (!m.operation && p.description) {
-        html += `<h3>Description</h3>`;
-        html += field("", p.description);
-    }
-
-    // Signatures
-    if (m.signature_delivreur || m.signature_intervenant) {
-        html += `<h3>Signatures</h3>`;
-        if (m.signature_delivreur) {
-            html += `<div class="detail-field"><span class="detail-label">Signature délivreur</span>
-                     <img src="${m.signature_delivreur}" class="signature-img" alt="Signature délivreur"></div>`;
-        }
-        if (m.signature_intervenant) {
-            html += `<div class="detail-field"><span class="detail-label">Signature intervenant</span>
-                     <img src="${m.signature_intervenant}" class="signature-img" alt="Signature intervenant"></div>`;
-        }
-        if (m.pris_connaissance) {
-            html += `<div class="detail-field" style="color:#4dff88;font-weight:600;">✅ Mention « PRIS CONNAISSANCE » cochée</div>`;
-        }
-    }
-
-    // Passages
-    if (m.passages && m.passages.length) {
-        html += `<h3>Heures de passage</h3>`;
-        html += `<div class="detail-value">` + m.passages.map(h => `• ${h}`).join("<br>") + `</div>`;
-    }
-
-    // Prolongations
-    if (m.prolongations && m.prolongations.length) {
-        html += `<h3>Prolongations</h3>`;
-        m.prolongations.forEach(pr => {
-            html += `<div class="detail-value">• ${esc(pr.ancienne_date || pr.date)} (${esc(pr.ancien_horaire || pr.horaire)}) — prolongé le ${esc(pr.horodatage)}</div>`;
-        });
-    }
-
-    // Boutons
-    const cloturerBtn = clos ? "" : `<button class="btn-cloturer" onclick="cloturerPermis('${p.id}')">✅ Clôturer ce permis</button>`;
-    html += `
-        <div class="modal-actions">
-            ${cloturerBtn}
-            <button class="btn-print" onclick="window.print()">🖨 Imprimer</button>
-            <button class="btn-close" onclick="fermerPermis()">Fermer</button>
-        </div>
-    `;
-
-    document.getElementById("modalPermisContent").innerHTML = html;
-    document.getElementById("modalPermis").classList.add("active");
-}
-
-function fermerPermis() {
-    document.getElementById("modalPermis").classList.remove("active");
-}
-
-async function cloturerPermis(id) {
-    if (!confirm("Clôturer définitivement ce permis feu ?")) return;
-
-    const { error } = await supabaseClient
-        .from("permis_feu")
-        .update({ statut: "cloture" })
-        .eq("id", id);
-
-    if (error) { alert("❌ Erreur : " + error.message); return; }
-
-    alert("✅ Permis clôturé.");
-    fermerPermis();
-    chargerPermisFeu();
-}
-
-/* ============================================================
-   CHARGEMENT ENTREPRISES UNIQUES
-============================================================ */
-async function chargerEntreprises() {
-    const { data, error } = await supabaseClient
-        .from("permis_feu")
-        .select("entreprise");
-
-    if (error || !data) return;
-
-    const select = document.getElementById("filtreEntreprise");
-    const uniques = [...new Set(data.map(e => e.entreprise).filter(Boolean))].sort();
-
-    uniques.forEach(ent => {
-        const opt = document.createElement("option");
-        opt.value = ent;
-        opt.textContent = ent;
-        select.appendChild(opt);
-    });
-}
-
-chargerEntreprises();
-chargerPermisFeu();
-</script>
-
-<!-- MODALE DÉTAIL PERMIS FEU -->
 <div class="modal-bg" id="modalPermis" onclick="if(event.target===this)fermerPermis()">
     <div class="modal-box" id="modalPermisContent"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
+<script>
+if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
+
+let permisCache = [];
+
+function fmtDate(iso){if(!iso)return"\u2014";const d=new Date(iso);return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR").slice(0,5);}
+function agentName(p){if(p.profiles){const n=[p.profiles.prenom,p.profiles.nom].filter(Boolean).join(" ");if(n)return n;}return p.agent_nom||(p.meta&&p.meta.agent_nom)||"\u2014";}
+function isClos(s){return s&&s.toLowerCase().includes("clos");}
+function esc(s){if(!s)return"\u2014";const d=document.createElement("div");d.textContent=s;return d.innerHTML;}
+
+async function chargerPermisFeu(){
+    const dateF=document.getElementById("filtreDate").value;
+    const entF=document.getElementById("filtreEntreprise").value;
+    let q=supabaseClient.from("permis_feu").select("*, profiles(nom, prenom)").order("created_at",{ascending:false});
+    if(dateF){q=q.gte("created_at",dateF+"T00:00:00").lte("created_at",dateF+"T23:59:59.999");}
+    if(entF!=="all")q=q.eq("entreprise",entF);
+    const{data,error}=await q;
+    if(error){showToast("\u274c "+error.message,true);return;}
+    permisCache=data||[];
+    renderList(permisCache);
+    document.getElementById("statTotal").textContent=permisCache.length;
+    document.getElementById("statOuvert").textContent=permisCache.filter(p=>!isClos(p.statut)).length;
+    document.getElementById("statClos").textContent=permisCache.filter(p=>isClos(p.statut)).length;
+
+    const urlNum=new URLSearchParams(location.search).get("pf");
+    if(urlNum){const match=permisCache.find(p=>p.numero===urlNum);if(match)ouvrirPermis(match.id);}
+}
+
+function renderList(list){
+    const div=document.getElementById("permitsList");
+    if(!list.length){div.innerHTML='<div class="empty">Aucun permis feu trouv\u00e9.</div>';return;}
+    div.innerHTML=list.map(p=>{
+        const clos=isClos(p.statut);
+        const agent=agentName(p);
+        const lieu=p.lieu||(p.meta?[p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" \u2014 "):"")||"\u2014";
+        const date=fmtDate(p.date_debut||p.created_at);
+        return `<div class="permit-card" onclick="ouvrirPermis('${p.id}')">
+            <div class="permit-icon ${clos?'closed':'open'}">${clos?'\u2705':'\ud83d\udd25'}</div>
+            <div class="permit-info">
+                <div class="permit-num">${p.numero||"Sans num\u00e9ro"}</div>
+                <div class="permit-meta">
+                    <span>\ud83d\udcc5 ${date}</span>
+                    <span>\ud83c\udfe2 ${esc(p.entreprise||"\u2014")}</span>
+                    <span>\ud83d\udccd ${esc(lieu).substring(0,30)}</span>
+                    <span>\ud83d\udc64 ${esc(agent)}</span>
+                </div>
+            </div>
+            <span class="pill ${clos?'pill-closed':'pill-open'}">${clos?"Cl\u00f4tur\u00e9":"Ouvert"}</span>
+        </div>`;
+    }).join("");
+}
+
+function ouvrirPermis(id){
+    const p=permisCache.find(x=>x.id===id);
+    if(!p){showToast("Permis introuvable.",true);return;}
+    const m=p.meta||{};const clos=isClos(p.statut);const agent=agentName(p);
+    const lieu=p.lieu||[m.magasin,m.etage,m.zone_canton].filter(Boolean).join(" \u2014 ")||"\u2014";
+
+    function field(lbl,val){return(val&&val!=="\u2014")?`<div class="detail-field"><span class="detail-label">${lbl}</span><div class="detail-value">${esc(val)}</div></div>`:"";}
+
+    const qrId="qr-"+p.id.slice(0,8);
+    let html=`<h2>\ud83d\udd25 ${esc(p.numero||"Permis Feu")}</h2>`;
+
+    html+=`<div class="detail-row">${field("Statut",clos?"\u2705 Cl\u00f4tur\u00e9":"\ud83d\udd34 Ouvert")}${field("Date",fmtDate(p.date_debut||p.created_at))}${field("Agent",agent)}</div>`;
+
+    html+=`<div style="text-align:center;margin:16px 0"><div class="qr-block"><canvas id="${qrId}"></canvas><div style="color:#333;font-size:.75rem;margin-top:6px">${esc(p.numero)}</div></div></div>`;
+
+    if(m.odt_par||m.odt_nom||m.odt_fonction){html+=`<h3>Ordre de travail</h3><div class="detail-row">${field("Donn\u00e9 par",m.odt_par)}${field("Nom",m.odt_nom)}${field("Fonction",m.odt_fonction)}</div>`;}
+
+    html+=`<h3>Entreprise</h3><div class="detail-row">${field("Concern\u00e9e",m.entreprise_concernee||p.entreprise)}${field("Ext\u00e9rieure",m.ext_raison_sociale)}${field("Repr\u00e9sentant",m.ext_representant)}</div>`;
+
+    html+=`<h3>Localisation</h3><div class="detail-row">${field("Lieu",lieu)}${field("Horaires",m.horaires)}</div>`;
+
+    if(m.operation||m.risques||m.mesures||m.moyens){html+=`<h3>Travaux</h3>${field("Op\u00e9ration",m.operation)}${field("Risques",m.risques)}${field("Mesures",m.mesures)}${field("Moyens",m.moyens)}`;}
+    if(!m.operation&&p.description){html+=`<h3>Description</h3>${field("",p.description)}`;}
+
+    if(m.signature_delivreur||m.signature_intervenant){
+        html+=`<h3>Signatures</h3><div class="detail-row">`;
+        if(m.signature_delivreur)html+=`<div class="detail-field signature-block"><span class="detail-label">D\u00e9livreur</span><img src="${m.signature_delivreur}" alt="Signature"></div>`;
+        if(m.signature_intervenant)html+=`<div class="detail-field signature-block"><span class="detail-label">Intervenant</span><img src="${m.signature_intervenant}" alt="Signature"></div>`;
+        html+=`</div>`;
+        if(m.pris_connaissance)html+=`<div style="color:#00c878;font-weight:600;margin-top:4px">\u2705 PRIS CONNAISSANCE</div>`;
+    }
+
+    if(m.passages&&m.passages.length){html+=`<h3>Heures de passage</h3><div class="passage-list">${m.passages.map(h=>`<span class="passage-tag">\ud83d\udd50 ${h}</span>`).join("")}</div>`;}
+
+    if(m.prolongations&&m.prolongations.length){html+=`<h3>Prolongations</h3>`;m.prolongations.forEach(pr=>{html+=`<div class="detail-value" style="margin-bottom:4px">\ud83d\udd04 ${esc(pr.ancienne_date||pr.date)} (${esc(pr.ancien_horaire||pr.horaire)}) \u2192 ${esc(pr.horodatage)}</div>`;});}
+
+    const cloBtn=clos?"":`<button class="btn-cloturer" onclick="cloturerPermis('${p.id}')">\u2705 Cl\u00f4turer</button>`;
+    html+=`<div class="modal-actions">${cloBtn}<button class="btn-pdf" onclick="exportPDF('${p.id}')">\ud83d\udcc4 PDF</button><button class="btn-close" onclick="fermerPermis()">Fermer</button></div>`;
+
+    document.getElementById("modalPermisContent").innerHTML=html;
+    document.getElementById("modalPermis").classList.add("active");
+
+    setTimeout(()=>{const c=document.getElementById(qrId);if(c)new QRious({element:c,size:140,value:location.origin+location.pathname+'?pf='+encodeURIComponent(p.numero),foreground:'#1d4ed8',background:'#ffffff',level:'M'});},100);
+}
+
+function fermerPermis(){document.getElementById("modalPermis").classList.remove("active");}
+
+async function cloturerPermis(id){
+    if(!confirm("Cl\u00f4turer d\u00e9finitivement ce permis feu ?"))return;
+    const{error}=await supabaseClient.from("permis_feu").update({statut:"cloture"}).eq("id",id);
+    if(error){showToast("\u274c "+error.message,true);return;}
+    showToast("\u2705 Permis cl\u00f4tur\u00e9.");fermerPermis();chargerPermisFeu();
+}
+
+async function exportPDF(id){
+    const p=permisCache.find(x=>x.id===id);if(!p)return;
+    const m=p.meta||{};const clos=isClos(p.statut);const agent=agentName(p);
+    const lieu=p.lieu||[m.magasin,m.etage,m.zone_canton].filter(Boolean).join(" - ")||"";
+
+    const{jsPDF}=window.jspdf;const pdf=new jsPDF('p','mm','a4');
+    const M=15,PW=180,BOT=275;let y=0,pg=0;
+    function np(){if(pg>0)pdf.addPage();pg++;y=18;}
+    function ft(){pdf.setDrawColor(180);pdf.setLineWidth(.2);pdf.line(M,283,M+PW,283);pdf.setFontSize(7);pdf.setTextColor(140);pdf.text('Le Bon Marche - SEGEP RG - Document confidentiel',M,288);pdf.text('Page '+pg,M+PW,288,{align:'right'});}
+    function es(n){if(y+n>BOT){ft();np();}}
+    function row(lbl,val){if(!val)return;es(8);pdf.setFontSize(8);pdf.setTextColor(100);pdf.text(lbl,M+2,y);pdf.setFontSize(10);pdf.setTextColor(30);const lines=pdf.splitTextToSize(String(val),PW-42);lines.forEach((l,i)=>{if(i>0)es(5);pdf.text(l,M+40,y);y+=5;});if(lines.length<=1)y+=1;}
+    function sec(txt){es(12);pdf.setFontSize(11);pdf.setTextColor(200,100,30);pdf.setFont(undefined,'bold');pdf.text(txt,M,y);y+=7;pdf.setFont(undefined,'normal');}
+
+    np();
+    pdf.setFillColor(15,25,50);pdf.rect(0,0,210,48,'F');
+    pdf.setFillColor(200,170,50);pdf.rect(0,48,210,1.5,'F');
+    pdf.setFontSize(18);pdf.setTextColor(255);pdf.text('PERMIS FEU',M,22);
+    pdf.setFontSize(12);pdf.setTextColor(200,170,50);pdf.text(p.numero||'Sans numero',M,32);
+    pdf.setFontSize(8);pdf.setTextColor(160);pdf.text('Le Bon Marche - SEGEP RG - Batiment 3',M,42);
+    y=58;
+
+    es(24);pdf.setFillColor(245,247,252);pdf.setDrawColor(200);pdf.roundedRect(M,y,PW,20,3,3,'FD');
+    pdf.setFontSize(8);pdf.setTextColor(100);pdf.text('Statut',M+6,y+7);pdf.text('Date',M+45,y+7);pdf.text('Agent',M+100,y+7);
+    pdf.setFontSize(10);pdf.setTextColor(20);pdf.setFont(undefined,'bold');
+    pdf.text(clos?'Cloture':'Ouvert',M+6,y+15);pdf.text(fmtDate(p.date_debut||p.created_at),M+45,y+15);pdf.text(agent,M+100,y+15);
+    pdf.setFont(undefined,'normal');y+=28;
+
+    if(m.odt_par||m.odt_nom){sec('Ordre de travail');row('Donne par',m.odt_par);row('Nom',m.odt_nom);row('Fonction',m.odt_fonction);}
+    sec('Entreprise');row('Concernee',m.entreprise_concernee||p.entreprise);row('Exterieure',m.ext_raison_sociale);row('Representant',m.ext_representant);
+    sec('Localisation');row('Lieu',lieu);row('Horaires',m.horaires);
+    if(m.operation||m.risques){sec('Travaux');row('Operation',m.operation);row('Risques',m.risques);row('Mesures',m.mesures);row('Moyens',m.moyens);}
+    if(!m.operation&&p.description){sec('Description');row('',p.description);}
+    if(m.passages&&m.passages.length){sec('Passages');row('Heures',m.passages.join(', '));}
+    if(m.prolongations&&m.prolongations.length){sec('Prolongations');m.prolongations.forEach(pr=>{row('',`${pr.ancienne_date||pr.date} (${pr.ancien_horaire||pr.horaire}) - ${pr.horodatage}`);});}
+
+    ft();
+    pdf.save('Permis_Feu_'+(p.numero||'').replace(/[^a-zA-Z0-9-]/g,'_')+'.pdf');
+    showToast('\ud83d\udcc4 PDF export\u00e9');
+}
+
+async function chargerEntreprises(){
+    const{data}=await supabaseClient.from("permis_feu").select("entreprise");if(!data)return;
+    const sel=document.getElementById("filtreEntreprise");
+    [...new Set(data.map(e=>e.entreprise).filter(Boolean))].sort().forEach(ent=>{const opt=document.createElement("option");opt.value=ent;opt.textContent=ent;sel.appendChild(opt);});
+}
+
+chargerEntreprises();chargerPermisFeu();
+</script>
+<script src="js/security.js"></script>
+<script src="global.js"></script>
 </body>
 </html>

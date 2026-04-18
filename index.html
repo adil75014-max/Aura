@@ -1588,17 +1588,29 @@ function generateSidebar() {
         });
 
         header.addEventListener("click", () => {
-            const open = parseFloat(list.style.maxHeight) > 0;
+            const open = list.classList.contains("is-open");
             if (open) {
-                list.style.maxHeight = "0px";
+                /* Collapse : on repasse à une hauteur fixe pour pouvoir animer vers 0 */
+                list.style.maxHeight = list.scrollHeight + "px";
                 list.style.overflow = "hidden";
+                /* next frame → lance l'animation vers 0 */
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => { list.style.maxHeight = "0px"; });
+                });
+                list.classList.remove("is-open");
             } else {
-                /* +12px de marge pour éviter le clipping du dernier item
-                   (scrollHeight arrondit à l'inférieur + items wrappés sur 2 lignes) */
-                list.style.maxHeight = (list.scrollHeight + 12) + "px";
-                /* Au terme de l'animation, on libère le clipping pour
-                   parer à tout calcul imprécis du navigateur */
-                setTimeout(() => { if (parseFloat(list.style.maxHeight) > 0) list.style.overflow = "visible"; }, 300);
+                /* Expand : anime vers la hauteur pleine… */
+                list.style.overflow = "hidden";
+                list.style.maxHeight = list.scrollHeight + "px";
+                list.classList.add("is-open");
+                /* …puis on supprime la contrainte pour qu'aucun item ne puisse
+                   être clippé par un arrondi pixel (bug Chrome desktop) */
+                setTimeout(() => {
+                    if (list.classList.contains("is-open")) {
+                        list.style.maxHeight = "none";
+                        list.style.overflow = "visible";
+                    }
+                }, 280);
             }
             document.getElementById(`chevron-${index}`).textContent = open ? "▾" : "▴";
         });

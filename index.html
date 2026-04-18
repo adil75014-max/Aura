@@ -113,7 +113,7 @@
             overflow-y: auto;
             transform: translateX(-270px);
             transition: transform 0.3s ease;
-            padding-bottom: 40px;
+            padding-bottom: 140px;
             box-shadow: var(--shadow);
             z-index: 9999;
         }
@@ -1433,21 +1433,21 @@ const MENU = [
         category: "Vérifications", icon: "🔍",
         visibleFor: ["admin","superviseur","stationnaire","agent"],
         items: [
-            { icon: "🧯", label: "J1 Baie SSI", link: "verification_agent.html?type=verif_j1_baie_ssi" },
-            { icon: "🖥", label: "J2 Matériel PC", link: "verification_agent.html?type=verif_j2_materiel_pc" },
-            { icon: "🚨", label: "J3 Matériel de secours", link: "verification_agent.html?type=verif_j3_materiel_secours" },
-            { icon: "🦺", label: "J4 EPI", link: "verification_agent.html?type=verif_j4_epi" },
-            { icon: "🛗", label: "J5 Interphonie ASC/MC", link: "verification_agent.html?type=verif_j5_interphonie_asc_mc" },
-            { icon: "🔥", label: "Extincteur / RIA / BAES", link: "verification_agent.html?type=verif_extincteurs_ria_baes" },
-            { icon: "💦", label: "Sprinkler", link: "verification_agent.html?type=verif_sprinkler" },
-            { icon: "⚙️", label: "Surpresseur", link: "verification_agent.html?type=verif_surpresseur" },
-            { icon: "🧱", label: "Colonne sèche", link: "verification_agent.html?type=verif_colonne_seche" },
-            { icon: "🌬", label: "Désenfumage naturel", link: "verification_agent.html?type=verif_desenfumage_naturel" },
-            { icon: "📦", label: "Baie accessible", link: "verification_agent.html?type=verif_baie_accessible" },
-            { icon: "🚨", label: "EAS", link: "verification_agent.html?type=verif_eas" },
-            { icon: "🧯", label: "Salle automatique à gaz", link: "verification_agent.html?type=verif_salle_gaz" },
-            { icon: "🧰", label: "Essai annuel Technicien", link: "verification_agent.html?type=verif_essai_annuel_technicien" },
-            { icon: "📋", label: "Essai triennal Bureau de contrôle", link: "verification_agent.html?type=verif_essai_triennal_bureau" }
+            { icon: "🧯", label: "J1 Baie SSI", link: "report.html?type=verif_j1_baie_ssi" },
+            { icon: "🖥", label: "J2 Matériel PC", link: "report.html?type=verif_j2_materiel_pc" },
+            { icon: "🚨", label: "J3 Matériel de secours", link: "report.html?type=verif_j3_materiel_secours" },
+            { icon: "🦺", label: "J4 EPI", link: "report.html?type=verif_j4_epi" },
+            { icon: "🛗", label: "J5 Interphonie ASC/MC", link: "report.html?type=verif_j5_interphonie_asc_mc" },
+            { icon: "🔥", label: "Extincteur / RIA / BAES", link: "report.html?type=verif_extincteurs_ria_baes" },
+            { icon: "💦", label: "Sprinkler", link: "report.html?type=verif_sprinkler" },
+            { icon: "⚙️", label: "Surpresseur", link: "report.html?type=verif_surpresseur" },
+            { icon: "🧱", label: "Colonne sèche", link: "report.html?type=verif_colonne_seche" },
+            { icon: "🌬", label: "Désenfumage naturel", link: "report.html?type=verif_desenfumage_naturel" },
+            { icon: "📦", label: "Baie accessible", link: "report.html?type=verif_baie_accessible" },
+            { icon: "🚨", label: "EAS", link: "report.html?type=verif_eas" },
+            { icon: "🧯", label: "Salle automatique à gaz", link: "report.html?type=verif_salle_gaz" },
+            { icon: "🧰", label: "Essai annuel Technicien", link: "report.html?type=verif_essai_annuel_technicien" },
+            { icon: "📋", label: "Essai triennal Bureau de contrôle", link: "report.html?type=verif_essai_triennal_bureau" }
         ]
     },
     {
@@ -1555,7 +1555,16 @@ function generateSidebar() {
     const container = document.getElementById("sidebarContent");
     container.innerHTML = "";
 
+    /* Rôle courant — filtre les sections selon visibleFor */
+    const userRole = (localStorage.getItem("role") || "agent").toLowerCase();
+
     MENU.forEach((section, index) => {
+        /* Restriction d'accès par rôle : on ignore la section si l'utilisateur
+           n'en fait pas partie (ex : Administration & IA → admin + superviseur seulement) */
+        if (Array.isArray(section.visibleFor) && !section.visibleFor.includes(userRole)) {
+            return;
+        }
+
         const wrapper = document.createElement("div");
 
         const header = document.createElement("div");
@@ -1580,7 +1589,17 @@ function generateSidebar() {
 
         header.addEventListener("click", () => {
             const open = parseFloat(list.style.maxHeight) > 0;
-            list.style.maxHeight = open ? "0px" : list.scrollHeight + "px";
+            if (open) {
+                list.style.maxHeight = "0px";
+                list.style.overflow = "hidden";
+            } else {
+                /* +12px de marge pour éviter le clipping du dernier item
+                   (scrollHeight arrondit à l'inférieur + items wrappés sur 2 lignes) */
+                list.style.maxHeight = (list.scrollHeight + 12) + "px";
+                /* Au terme de l'animation, on libère le clipping pour
+                   parer à tout calcul imprécis du navigateur */
+                setTimeout(() => { if (parseFloat(list.style.maxHeight) > 0) list.style.overflow = "visible"; }, 300);
+            }
             document.getElementById(`chevron-${index}`).textContent = open ? "▾" : "▴";
         });
 
@@ -2304,6 +2323,14 @@ document.addEventListener("DOMContentLoaded", () => {
     bloc.innerHTML = "🛰️ Mode Supervision";
     bloc.onclick = openSupervision;
     sidebar.appendChild(bloc);
+
+    /* Bouton Centre d'appel (console dispatch / softphone SIP) */
+    const blocDispatch = document.createElement("div");
+    blocDispatch.className = "menu-item";
+    blocDispatch.style.marginTop = "4px";
+    blocDispatch.innerHTML = "📞 Centre d'appel";
+    blocDispatch.onclick = () => { window.location.href = "console-dispach.html"; };
+    sidebar.appendChild(blocDispatch);
 
     /* Theme */
     const saved = localStorage.getItem("theme");

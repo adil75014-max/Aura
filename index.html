@@ -663,6 +663,96 @@
         .co-launch-btn.ronde { border-left: 2px solid #3b82f666; }
         .co-launch-btn.ronde:hover { border-left-color: #3b82f6; }
 
+        /* Bandeau URGENCES PERMIS FEU - apparition visible */
+        #co-urgences-panel {
+            grid-column: 1 / -1;
+            background: #0a0d14;
+            border-top: 1px solid #1a2840;
+            border-bottom: 1px solid #1a2840;
+            display: none;
+        }
+        #co-urgences-panel.active {
+            display: block;
+            animation: urgenceFlash 1.2s ease-in-out infinite;
+        }
+        @keyframes urgenceFlash {
+            0%, 100% { box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.6); background: #1a0808; }
+            50%      { box-shadow: inset 0 0 0 2px rgba(239, 68, 68, 0.9); background: #2a0a0a; }
+        }
+        #co-urgences-panel .co-panel-header {
+            background: linear-gradient(90deg, #7f1d1d, #991b1b);
+            color: #fff;
+            font-weight: 800;
+            letter-spacing: 0.1em;
+            animation: urgenceHeader 0.8s ease-in-out infinite alternate;
+        }
+        @keyframes urgenceHeader {
+            from { background: linear-gradient(90deg, #7f1d1d, #991b1b); }
+            to   { background: linear-gradient(90deg, #dc2626, #ef4444); }
+        }
+        #co-urgences-body {
+            padding: 10px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+        .co-urgence-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid;
+            background: #0a0d14;
+        }
+        .co-urgence-card.feu {
+            border-color: #ef4444;
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.15), rgba(239, 68, 68, 0.05));
+        }
+        .co-urgence-card.svv {
+            border-color: #3b82f6;
+            background: linear-gradient(90deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.05));
+        }
+        .co-urgence-icon {
+            font-size: 1.8rem;
+            flex-shrink: 0;
+        }
+        .co-urgence-info { flex: 1; min-width: 0; }
+        .co-urgence-title {
+            font-weight: 700;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            color: #fca5a5;
+        }
+        .co-urgence-card.svv .co-urgence-title { color: #93c5fd; }
+        .co-urgence-meta {
+            font-size: 0.72rem;
+            color: #94a3b8;
+            margin-top: 3px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .co-urgence-actions { display: flex; gap: 6px; flex-shrink: 0; }
+        .co-urgence-btn {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid;
+            background: transparent;
+            color: inherit;
+            font: 600 0.72rem 'Courier New', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .co-urgence-btn-ack { border-color: #22c55e; color: #22c55e; }
+        .co-urgence-btn-ack:hover { background: #22c55e; color: #000; }
+        .co-urgence-btn-view { border-color: #475569; color: #94a3b8; }
+        .co-urgence-btn-view:hover { background: #1a2840; color: #e2e8f0; }
+
         /* Log panel */
         #co-log-panel .co-panel-header {
             flex-shrink: 0;
@@ -1324,6 +1414,15 @@
                 </div>
 
             </div>
+        </div>
+
+        <!-- ROW 1.5 : Urgences Permis Feu (visible uniquement si urgences actives) -->
+        <div id="co-urgences-panel">
+            <div class="co-panel-header">
+                <span>🚨 URGENCES PERMIS FEU EN COURS</span>
+                <span class="co-panel-badge" id="badge-urgences">0</span>
+            </div>
+            <div id="co-urgences-body"></div>
         </div>
 
         <!-- ROW 2 : Journal des événements -->
@@ -2002,63 +2101,104 @@ function coRefreshAll() {
 
 /* ── FEUILLE DE GARDE ─────────────────────────── */
 async function loadFeuilleDeGardeForCO() {
+    /* On lit la feuille du JOUR (même logique que feuille_de_garde.html),
+       pas un UUID fixe — sinon on charge une vieille ligne de test */
+    const todayISO = new Date().toISOString().slice(0, 10);
+
     const { data, error } = await supabaseFg
         .from("feuille_de_garde")
         .select("*")
-        .eq("id", GARDE_ID)
-        .single();
+        .eq("date_jour", todayISO)
+        .maybeSingle();
 
     if (error || !data) {
-        coLog.unshift({ time: coNow(), type: 'SYS', msg: 'Feuille de garde indisponible', agent: '' });
+        coLog.unshift({ time: coNow(), type: 'SYS', msg: 'Feuille de garde du jour indisponible', agent: '' });
         renderLog();
+        document.getElementById("co-agents-list").innerHTML =
+            `<div class="co-empty"><span class="co-empty-icon">👤</span>Aucune feuille de garde saisie aujourd'hui</div>`;
+        document.getElementById("badge-effectif").textContent = "0";
         return;
     }
 
-    /* Mettre à jour l'encart info */
-    document.getElementById("gd-date").textContent  = data.date_garde  || "—";
-    document.getElementById("gd-chef").textContent  = data.chef_poste  || "—";
+    /* Mettre à jour l'encart info (colonnes directes de la table) */
+    document.getElementById("gd-date").textContent  = data.date_garde     || "—";
+    document.getElementById("gd-chef").textContent  = data.chef_poste     || "—";
     document.getElementById("gd-resp").textContent  = data.responsable_bm || "—";
-    document.getElementById("gd-eff").textContent   = data.effectif    || "—";
+    document.getElementById("gd-eff").textContent   = data.effectif       || "—";
 
-    /* Construire la liste d'agents */
+    /* ═══ EXTRACTION DES AGENTS depuis data_json ═══
+       Structure de la feuille :
+         resp_bm_nom, chef_poste_nom, chef_torann_nom, chef_equipe_nom,
+         agent1_nom … agent4_nom (extensible)
+       On parcourt toutes les clés se terminant par "_nom" pour capter
+       aussi d'éventuels agents ajoutés plus tard (agent5_nom, renfort_nom, …) */
+    const json = data.data_json || {};
     const rawAgents = [];
 
-    /* On tente plusieurs champs possibles pour les noms d'agents */
-    const agentFields = ['agents', 'agent_list', 'personnel', 'noms_agents'];
-    for (const field of agentFields) {
-        if (data[field]) {
-            try {
-                const parsed = typeof data[field] === 'string' ? JSON.parse(data[field]) : data[field];
-                if (Array.isArray(parsed)) parsed.forEach(a => rawAgents.push(a));
-            } catch {}
+    /* Mapping des rôles à partir du préfixe de la clé */
+    const roleMap = {
+        resp_bm:       'Responsable BM',
+        chef_poste:    'Chef de poste',
+        chef_torann:   'Chef Torann',
+        chef_equipe:   'Chef d\'équipe',
+        agent:         'Agent',
+        stat:          'Stationnaire',
+        pause:         'Agent (pause)'
+    };
+
+    const seen = new Set();
+    Object.keys(json).forEach(key => {
+        if (!key.endsWith('_nom')) return;
+        const nom = (json[key] || '').trim();
+        if (!nom) return;
+        /* Dédoublonnage : un même agent peut apparaître dans plusieurs champs
+           (stationnement + pause par exemple) — on garde la 1re occurrence */
+        if (seen.has(nom.toLowerCase())) return;
+        seen.add(nom.toLowerCase());
+
+        /* Déduction du rôle à partir du préfixe de la clé */
+        let role = 'Agent';
+        for (const prefix in roleMap) {
+            if (key.startsWith(prefix)) { role = roleMap[prefix]; break; }
         }
-    }
+        /* Cas particulier : les stationnaires (stat_8_10_nom, etc.) sont juste "Stationnaire" */
+        if (key.startsWith('stat_')) role = 'Stationnaire';
+        if (key.startsWith('pause_')) role = 'Agent';
 
-    /* Fallback : utiliser les champs nominatifs connus */
-    const knownPersons = [];
-    if (data.chef_poste)     knownPersons.push({ nom: data.chef_poste,     role: 'Chef de poste' });
-    if (data.responsable_bm) knownPersons.push({ nom: data.responsable_bm, role: 'Resp. BM' });
+        /* Récupère aussi le radio associé si présent (agent1_radio, etc.) */
+        const radioKey = key.replace('_nom', '_radio');
+        const radio = (json[radioKey] || '').trim();
 
-    /* Si aucun agent trouvé, reconstruire depuis effectif */
-    if (rawAgents.length === 0) {
-        knownPersons.forEach(p => {
-            if (p.nom && p.nom !== "—") rawAgents.push(p);
-        });
-    }
+        rawAgents.push({ nom, role, radio });
+    });
 
-    /* Fusionner avec l'état local (préserver les statuts) */
+    /* Ajouter aussi chef_poste et responsable_bm s'ils ne sont pas déjà présents
+       (au cas où ils seraient stockés uniquement dans les colonnes directes) */
+    const addIfMissing = (nom, role) => {
+        if (!nom || nom === '—') return;
+        if (seen.has(nom.toLowerCase())) return;
+        seen.add(nom.toLowerCase());
+        rawAgents.push({ nom: nom.trim(), role, radio: '' });
+    };
+    addIfMissing(data.chef_poste,     'Chef de poste');
+    addIfMissing(data.responsable_bm, 'Responsable BM');
+
+    /* Fusionner avec l'état local (préserver les statuts en cours) */
+    const previousAgents = coAgents;
     coAgents = rawAgents.map(a => {
-        const nom  = typeof a === 'string' ? a : (a.nom || a.name || JSON.stringify(a));
-        const role = typeof a === 'object' ? (a.role || a.fonction || '') : '';
-        const existing = coAgents.find(ex => ex.nom === nom);
-        return existing ? { ...existing } : { id: nom, nom, role, statut: 'libre' };
+        const existing = previousAgents.find(ex => ex.nom === a.nom);
+        return existing
+            ? { ...existing, role: a.role, radio: a.radio }
+            : { id: a.nom, nom: a.nom, role: a.role, radio: a.radio, statut: 'libre' };
     });
 
     if (coAgents.length === 0) {
         document.getElementById("co-agents-list").innerHTML =
-            `<div class="co-empty"><span class="co-empty-icon">👤</span>Aucun agent dans la feuille de garde</div>`;
+            `<div class="co-empty"><span class="co-empty-icon">👤</span>Aucun agent dans la feuille de garde du jour</div>`;
     } else {
         renderAgents();
+        coLog.unshift({ time: coNow(), type: 'SYS', msg: `${coAgents.length} agents chargés depuis la feuille de garde`, agent: '' });
+        renderLog();
     }
 
     document.getElementById("badge-effectif").textContent = coAgents.length;
@@ -2336,12 +2476,18 @@ document.addEventListener("DOMContentLoaded", () => {
     bloc.onclick = openSupervision;
     sidebar.appendChild(bloc);
 
-    /* Bouton Centre d'appel (console dispatch / softphone SIP) */
-    const blocDispatch = document.createElement("div");
+    /* Bouton Centre d'appel (console dispatch / softphone SIP)
+       Utilise un vrai <a> pour éviter tout blocage silencieux de window.location
+       et permettre l'ouverture en nouvel onglet (Ctrl+click / clic molette) */
+    const blocDispatch = document.createElement("a");
     blocDispatch.className = "menu-item";
     blocDispatch.style.marginTop = "4px";
+    blocDispatch.style.textDecoration = "none";
+    blocDispatch.href = "consoledispatch.html";
     blocDispatch.innerHTML = "📞 Centre d'appel";
-    blocDispatch.onclick = () => { window.location.href = "consoledispatch.html"; };
+    blocDispatch.addEventListener("click", (e) => {
+        console.log("[CentreAppel] clic → redirection vers", blocDispatch.href);
+    });
     sidebar.appendChild(blocDispatch);
 
     /* Theme */
@@ -2376,24 +2522,247 @@ const supabaseFg = supabase.createClient(
 
 const GARDE_ID = "00000000-0000-0000-0000-000000000001";
 
-/* Realtime — feuille de garde → met à jour l'encart info sans recharger les agents */
+/* Realtime — feuille de garde → met à jour l'encart info ET la liste d'agents */
 supabaseFg
     .channel("feuille_de_garde_realtime")
     .on("postgres_changes",
-        { event: "UPDATE", schema: "public", table: "feuille_de_garde" },
+        { event: "*", schema: "public", table: "feuille_de_garde" },
         (payload) => {
-            const d = payload.new;
-            document.getElementById("gd-date").textContent  = d.date_garde       || "—";
-            document.getElementById("gd-chef").textContent  = d.chef_poste       || "—";
-            document.getElementById("gd-resp").textContent  = d.responsable_bm   || "—";
-            document.getElementById("gd-eff").textContent   = d.effectif         || "—";
+            const d = payload.new || payload.old || {};
+            /* Mise à jour de l'encart info si les éléments existent (modale supervision ouverte) */
+            const gdDate = document.getElementById("gd-date");
+            if (gdDate) {
+                gdDate.textContent = d.date_garde || "—";
+                document.getElementById("gd-chef").textContent  = d.chef_poste     || "—";
+                document.getElementById("gd-resp").textContent  = d.responsable_bm || "—";
+                document.getElementById("gd-eff").textContent   = d.effectif       || "—";
+            }
+            /* Rechargement complet des agents si la supervision est ouverte */
+            const supScreen = document.getElementById("supervisionScreen");
+            if (supScreen && supScreen.style.display === "flex" && typeof loadFeuilleDeGardeForCO === "function") {
+                loadFeuilleDeGardeForCO();
+            }
             if (typeof coLog !== 'undefined') {
                 coLog.unshift({ time: coNow(), type: 'SYS', msg: 'Feuille de garde mise à jour', agent: '' });
-                renderLog();
+                if (typeof renderLog === "function") renderLog();
             }
         }
     )
     .subscribe();
+
+/* ══════════════════════════════════════════════════════
+   URGENCES PERMIS FEU — Listener Realtime Supabase
+   Déclenche sur la page toute urgence remontée par un
+   intervenant depuis consulter_pf.html (accès QR code)
+══════════════════════════════════════════════════════ */
+let urgencesActives = []; // liste locale des urgences non acquittées
+
+async function loadUrgencesActives() {
+    try {
+        const { data, error } = await supabaseFg
+            .from("alertes_urgence")
+            .select("*")
+            .eq("statut", "active")
+            .order("declared_at", { ascending: false });
+        if (error) {
+            /* Table absente (code 42P01) → on ne tombe pas en erreur, on attend juste */
+            if (error.code === "42P01") {
+                console.info("[Urgences] Table alertes_urgence absente — en attente de création.");
+                return;
+            }
+            throw error;
+        }
+        urgencesActives = data || [];
+        renderUrgencesPanel();
+        /* Synchroniser avec le système existant (card + alarme sonore) */
+        syncUrgenceCardWithActives();
+    } catch (e) {
+        console.error("[Urgences] Erreur chargement :", e);
+    }
+}
+
+function renderUrgencesPanel() {
+    const panel = document.getElementById("co-urgences-panel");
+    const body  = document.getElementById("co-urgences-body");
+    const badge = document.getElementById("badge-urgences");
+    if (!panel || !body) return;
+
+    if (urgencesActives.length === 0) {
+        panel.classList.remove("active");
+        body.innerHTML = "";
+        badge.textContent = "0";
+        return;
+    }
+
+    panel.classList.add("active");
+    badge.textContent = urgencesActives.length;
+
+    body.innerHTML = urgencesActives.map(u => {
+        const typeLabel = u.type_urgence === 'feu' ? 'URGENCE INCENDIE' : 'URGENCE SECOURS À VICTIME';
+        const typeIcon  = u.type_urgence === 'feu' ? '🔥' : '🚑';
+        const typeCls   = u.type_urgence === 'feu' ? 'feu' : 'svv';
+        const when = u.declared_at ? new Date(u.declared_at).toLocaleTimeString("fr-FR") : "—";
+        const lieu = u.lieu || "Localisation inconnue";
+        const permis = u.permis_numero ? `Permis ${u.permis_numero}` : "";
+        const agent  = u.agent_nom ? `par ${u.agent_nom}` : "";
+
+        return `<div class="co-urgence-card ${typeCls}">
+            <div class="co-urgence-icon">${typeIcon}</div>
+            <div class="co-urgence-info">
+                <div class="co-urgence-title">${typeLabel}</div>
+                <div class="co-urgence-meta">
+                    <span>⏱ ${when}</span>
+                    <span>📍 ${escapeHtml(lieu)}</span>
+                    ${permis ? `<span>📋 ${escapeHtml(permis)}</span>` : ""}
+                    ${agent  ? `<span>👤 ${escapeHtml(agent)}</span>` : ""}
+                </div>
+            </div>
+            <div class="co-urgence-actions">
+                <button class="co-urgence-btn co-urgence-btn-view" onclick="dispatchUrgence('${u.id}')">📡 Dispatcher</button>
+                <button class="co-urgence-btn co-urgence-btn-ack"  onclick="acquitterUrgence('${u.id}')">✅ Acquitter</button>
+            </div>
+        </div>`;
+    }).join("");
+}
+
+function escapeHtml(s) {
+    if (!s) return "";
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+}
+
+/* Synchronise avec le système permisFeuUrgence existant (card rouge + alarme) */
+function syncUrgenceCardWithActives() {
+    const hasFeu = urgencesActives.some(u => u.type_urgence === 'feu');
+    const hasSvv = urgencesActives.some(u => u.type_urgence === 'svv');
+    if (hasFeu)      localStorage.setItem("permisFeuUrgence", "feu");
+    else if (hasSvv) localStorage.setItem("permisFeuUrgence", "svv");
+    else             localStorage.removeItem("permisFeuUrgence");
+    if (typeof checkUrgence === "function") checkUrgence();
+}
+
+/* Acquitter une urgence = marquer traitée dans Supabase + retirer localement */
+async function acquitterUrgence(id) {
+    if (!confirm("Acquitter cette urgence ?\n\nL'alarme s'arrêtera et l'urgence sera marquée comme traitée.")) return;
+    try {
+        const { error } = await supabaseFg.from("alertes_urgence").update({
+            statut: "traitee",
+            traitee_at: new Date().toISOString(),
+            traitee_par: localStorage.getItem("nom") || null
+        }).eq("id", id);
+        if (error) throw error;
+        urgencesActives = urgencesActives.filter(u => u.id !== id);
+        renderUrgencesPanel();
+        syncUrgenceCardWithActives();
+        if (typeof coLog !== 'undefined') {
+            coLog.unshift({ time: coNow(), type: 'URG', msg: `Urgence acquittée`, agent: localStorage.getItem("nom") || '' });
+            if (typeof renderLog === "function") renderLog();
+        }
+        showToast("✅ Urgence acquittée");
+    } catch (e) {
+        showToast("❌ Erreur : " + e.message);
+    }
+}
+
+/* Dispatcher une urgence = ouvrir le modal mission pré-rempli avec le type + lieu */
+function dispatchUrgence(id) {
+    const u = urgencesActives.find(x => x.id === id);
+    if (!u) return;
+    const supScreen = document.getElementById("supervisionScreen");
+    if (!supScreen || supScreen.style.display !== "flex") {
+        if (typeof openSupervision === "function") openSupervision();
+    }
+    if (typeof openMissionModal === "function") {
+        openMissionModal('intervention');
+        setTimeout(() => {
+            const sel = document.getElementById("modal-type-select");
+            const note = document.getElementById("modal-note");
+            if (sel) {
+                const targetLabel = u.type_urgence === 'feu' ? "🔥 Détection incendie" : "🧑‍⚕️ Intervention sanitaire Syope";
+                for (const opt of sel.options) {
+                    if (opt.value === targetLabel) { opt.selected = true; break; }
+                }
+            }
+            if (note) {
+                const lieu = u.lieu ? ` — Lieu : ${u.lieu}` : "";
+                const pf   = u.permis_numero ? ` (Permis ${u.permis_numero})` : "";
+                note.value = `URGENCE DÉCLENCHÉE DEPUIS PERMIS FEU${pf}${lieu}`;
+            }
+        }, 150);
+    }
+}
+
+/* Chargement initial + listener temps réel */
+loadUrgencesActives();
+setInterval(loadUrgencesActives, 30000); // polling filet de sécurité toutes les 30s
+
+supabaseFg
+    .channel("alertes_urgence_realtime")
+    .on("postgres_changes",
+        { event: "*", schema: "public", table: "alertes_urgence" },
+        (payload) => {
+            const event = payload.eventType;
+            const row = payload.new || payload.old;
+            if (event === "INSERT" && row.statut === "active") {
+                /* Nouvelle urgence → on l'ajoute en tête et on déclenche immédiatement */
+                urgencesActives.unshift(row);
+                renderUrgencesPanel();
+                syncUrgenceCardWithActives();
+
+                /* Notification sonore + visuelle + log */
+                const label = row.type_urgence === 'feu' ? "🔥 URGENCE INCENDIE" : "🚑 URGENCE SECOURS À VICTIME";
+                const lieu  = row.lieu ? ` — ${row.lieu}` : "";
+                if (typeof pushNotification === "function") {
+                    pushNotification(`${label}${lieu}`);
+                }
+                if (typeof coLog !== 'undefined') {
+                    coLog.unshift({
+                        time: coNow(),
+                        type: 'URG',
+                        msg: `${label}${lieu}${row.permis_numero ? ' (Permis ' + row.permis_numero + ')' : ''}`,
+                        agent: row.agent_nom || 'Intervenant'
+                    });
+                    if (typeof renderLog === "function") renderLog();
+                }
+
+                /* Vibration mobile si dispo */
+                if (navigator.vibrate) navigator.vibrate([400, 200, 400, 200, 400]);
+
+            } else if (event === "UPDATE") {
+                /* Urgence modifiée (acquittée par un autre poste) → on resync */
+                loadUrgencesActives();
+            } else if (event === "DELETE") {
+                urgencesActives = urgencesActives.filter(u => u.id !== row.id);
+                renderUrgencesPanel();
+                syncUrgenceCardWithActives();
+            }
+        }
+    )
+    .subscribe();
+
+/* Brancher le bouton stop alarme existant pour qu'il acquitte TOUTES les urgences actives */
+document.addEventListener("DOMContentLoaded", () => {
+    const btnStop = document.getElementById("btn-stop-alarme");
+    if (btnStop) {
+        btnStop.addEventListener("click", async () => {
+            if (!confirm("Arrêter l'alarme et acquitter toutes les urgences en cours ?")) return;
+            for (const u of urgencesActives.slice()) {
+                try {
+                    await supabaseFg.from("alertes_urgence").update({
+                        statut: "traitee",
+                        traitee_at: new Date().toISOString(),
+                        traitee_par: localStorage.getItem("nom") || null
+                    }).eq("id", u.id);
+                } catch(e) { console.error(e); }
+            }
+            urgencesActives = [];
+            renderUrgencesPanel();
+            syncUrgenceCardWithActives();
+            showToast("✅ Alarmes arrêtées");
+        });
+    }
+});
 </script>
 
 </body>

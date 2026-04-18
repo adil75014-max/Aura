@@ -64,6 +64,18 @@ body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif
 .btn-cloturer:hover{background:#00c878;color:#fff}
 .btn-pdf{border-color:#ef6432;background:rgba(239,100,50,0.1);color:#ef6432}
 .btn-pdf:hover{background:#ef6432;color:#fff}
+
+/* URGENCES */
+.urgence-block{margin:20px 0 16px;padding:14px;border-radius:14px;background:rgba(255,60,30,0.08);border:1px solid rgba(255,60,30,0.25)}
+.urgence-block h3{color:#ff4d2e !important;margin:0 0 10px !important;font-size:.9rem;letter-spacing:.3px}
+.urgence-btn{width:100%;border-radius:999px;padding:12px 16px;border:none;font:600 .95rem 'DM Sans';cursor:pointer;color:#fff;margin-top:8px;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.urgence-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,0.3)}
+.btn-urgence-feu{background:linear-gradient(135deg,#ff6d00,#dd2c00)}
+.btn-urgence-svv{background:linear-gradient(135deg,#ff1744,#c62828)}
+.btn-urgence-call{background:linear-gradient(135deg,#2563eb,#1d4ed8)}
+
+/* Bandeau lecture seule (accès QR code intervenant) */
+.ro-banner{background:linear-gradient(135deg,rgba(37,99,235,0.15),rgba(29,78,216,0.1));border:1px solid rgba(37,99,235,0.4);border-radius:10px;padding:10px 14px;margin-bottom:14px;color:#93c5fd;font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:8px}
 @media(max-width:500px){.permit-card{flex-direction:column;align-items:flex-start}.detail-row{flex-direction:column}}
 </style>
 </head>
@@ -83,6 +95,11 @@ body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif
 <div class="filters">
     <div class="filter-group"><label>Date</label><input type="date" id="filtreDate"></div>
     <div class="filter-group"><label>Entreprise</label><select id="filtreEntreprise"><option value="all">Toutes</option></select></div>
+    <div class="filter-group"><label>Statut</label><select id="filtreStatut">
+        <option value="ouvert">Ouverts seulement</option>
+        <option value="cloture">Clôturés seulement</option>
+        <option value="all">Tous</option>
+    </select></div>
     <button class="btn-search" onclick="chargerPermisFeu()">🔍 Rechercher</button>
 </div>
 
@@ -98,6 +115,10 @@ body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif
 if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
 
 let permisCache = [];
+/* MODE LECTURE SEULE : accès via QR code (paramètre ?pf=... dans l'URL)
+   → l'intervenant peut consulter + télécharger le PDF mais ne peut pas clôturer,
+   et ne voit pas les autres permis (confidentialité) */
+const READ_ONLY = new URLSearchParams(location.search).has("pf");
 
 function fmtDate(iso){if(!iso)return"\u2014";const d=new Date(iso);return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR").slice(0,5);}
 function agentName(p){if(p.profiles){const n=[p.profiles.prenom,p.profiles.nom].filter(Boolean).join(" ");if(n)return n;}return p.agent_nom||(p.meta&&p.meta.agent_nom)||"\u2014";}
@@ -107,12 +128,19 @@ function esc(s){if(!s)return"\u2014";const d=document.createElement("div");d.tex
 async function chargerPermisFeu(){
     const dateF=document.getElementById("filtreDate").value;
     const entF=document.getElementById("filtreEntreprise").value;
+    const statutF=document.getElementById("filtreStatut").value;
     let q=supabaseClient.from("permis_feu").select("*, profiles(nom, prenom)").order("created_at",{ascending:false});
     if(dateF){q=q.gte("created_at",dateF+"T00:00:00").lte("created_at",dateF+"T23:59:59.999");}
     if(entF!=="all")q=q.eq("entreprise",entF);
     const{data,error}=await q;
     if(error){showToast("\u274c "+error.message,true);return;}
-    permisCache=data||[];
+    let result = data||[];
+
+    /* Filtrage par statut côté client (souple avec les variations de casse "cloture"/"Clôturé") */
+    if(statutF==="ouvert")      result = result.filter(p=>!isClos(p.statut));
+    else if(statutF==="cloture") result = result.filter(p=>isClos(p.statut));
+
+    permisCache = result;
     renderList(permisCache);
     document.getElementById("statTotal").textContent=permisCache.length;
     document.getElementById("statOuvert").textContent=permisCache.filter(p=>!isClos(p.statut)).length;
@@ -182,7 +210,27 @@ function ouvrirPermis(id){
 
     if(m.prolongations&&m.prolongations.length){html+=`<h3>Prolongations</h3>`;m.prolongations.forEach(pr=>{html+=`<div class="detail-value" style="margin-bottom:4px">\ud83d\udd04 ${esc(pr.ancienne_date||pr.date)} (${esc(pr.ancien_horaire||pr.horaire)}) \u2192 ${esc(pr.horodatage)}</div>`;});}
 
-    const cloBtn=clos?"":`<button class="btn-cloturer" onclick="cloturerPermis('${p.id}')">\u2705 Cl\u00f4turer</button>`;
+    /* BLOC URGENCES — visible pour tout le monde (intervenant comme PC Sécurité) */
+    if(!clos){
+        const lieuUrg = lieu && lieu !== "\u2014" ? esc(lieu) : "Position non renseignée";
+        html+=`<div class="urgence-block">
+            <h3>\ud83d\udea8 EN CAS D'URGENCE SUR LE CHANTIER</h3>
+            <div style="font-size:.85rem;color:#e0e4ef;margin-bottom:10px">
+                \ud83d\udccd <strong>${lieuUrg}</strong>
+            </div>
+            <a href="tel:0145484794" class="urgence-btn btn-urgence-call">\ud83d\udcde Appeler PC Sécurité — 01 45 48 47 94</a>
+            <button class="urgence-btn btn-urgence-feu" onclick="declarerUrgence('feu','${p.id}')">\ud83d\udd25 Déclarer une urgence incendie</button>
+            <button class="urgence-btn btn-urgence-svv" onclick="declarerUrgence('svv','${p.id}')">\ud83d\ude91 Déclarer une urgence — Secours à victime</button>
+        </div>`;
+    }
+
+    /* Bouton Clôturer UNIQUEMENT pour le PC Sécurité (pas en mode lecture seule / QR code) */
+    const cloBtn = (clos || READ_ONLY) ? "" : `<button class="btn-cloturer" onclick="cloturerPermis('${p.id}')">\u2705 Clôturer</button>`;
+
+    /* Bandeau d'information en mode lecture seule */
+    const roBanner = READ_ONLY ? `<div class="ro-banner">\ud83d\udd12 Consultation intervenant — mode lecture seule. Pour clôturer, s'adresser au PC Sécurité.</div>` : "";
+
+    html = roBanner + html;
     html+=`<div class="modal-actions">${cloBtn}<button class="btn-pdf" onclick="exportPDF('${p.id}')">\ud83d\udcc4 PDF</button><button class="btn-close" onclick="fermerPermis()">Fermer</button></div>`;
 
     document.getElementById("modalPermisContent").innerHTML=html;
@@ -194,10 +242,81 @@ function ouvrirPermis(id){
 function fermerPermis(){document.getElementById("modalPermis").classList.remove("active");}
 
 async function cloturerPermis(id){
+    /* Double verrou : même si quelqu'un appelle cette fonction en console depuis le QR */
+    if(READ_ONLY){showToast("\u26d4 Clôture réservée au PC Sécurité.",true);return;}
     if(!confirm("Cl\u00f4turer d\u00e9finitivement ce permis feu ?"))return;
-    const{error}=await supabaseClient.from("permis_feu").update({statut:"cloture"}).eq("id",id);
-    if(error){showToast("\u274c "+error.message,true);return;}
-    showToast("\u2705 Permis cl\u00f4tur\u00e9.");fermerPermis();chargerPermisFeu();
+
+    /* Mise à jour optimiste du cache local pour que la liste se rafraîchisse
+       visuellement même si le filtre Supabase a du retard */
+    const local = permisCache.find(x=>x.id===id);
+    if(local) local.statut = "cloture";
+
+    const nowIso = new Date().toISOString();
+    const{error}=await supabaseClient.from("permis_feu").update({
+        statut: "cloture",
+        date_fin: nowIso
+    }).eq("id",id);
+    if(error){
+        /* rollback en cas d'erreur */
+        if(local) local.statut = "actif";
+        showToast("\u274c "+error.message,true);
+        return;
+    }
+    showToast("\u2705 Permis cl\u00f4tur\u00e9.");
+    fermerPermis();
+    chargerPermisFeu();
+}
+
+/* Déclaration d'urgence depuis un permis feu (incendie ou secours à victime)
+   → Alerte le PC Sécurité via une insertion dans la table d'urgences */
+async function declarerUrgence(type, permisId){
+    const label = type === 'feu' ? 'URGENCE INCENDIE \ud83d\udd25' : 'URGENCE SECOURS À VICTIME \ud83d\ude91';
+    if(!confirm(`Confirmer : ${label}\n\nLe PC Sécurité sera notifié immédiatement.`)) return;
+
+    const p = permisCache.find(x=>x.id===permisId);
+    const lieu = p ? (p.lieu || (p.meta ? [p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" — ") : "")) : "";
+    const numero = p ? p.numero : "";
+
+    /* Insertion dans la table alertes_urgence si elle existe ; sinon fallback via permis_feu.meta */
+    try {
+        const payload = {
+            type_urgence: type,                 // 'feu' ou 'svv'
+            source: 'permis_feu',
+            permis_id: permisId,
+            permis_numero: numero,
+            lieu: lieu || null,
+            declared_at: new Date().toISOString(),
+            agent_nom: localStorage.getItem("nom") || null,
+            statut: 'active'
+        };
+        const { error } = await supabaseClient.from("alertes_urgence").insert(payload);
+        if(error && error.code !== "42P01"){ // 42P01 = table n'existe pas, on tombe en fallback
+            throw error;
+        }
+        if(error && error.code === "42P01"){
+            /* Fallback : on trace l'urgence dans la meta du permis */
+            const meta = p.meta || {};
+            meta.urgences = meta.urgences || [];
+            meta.urgences.push({ type, horodatage: new Date().toISOString(), agent: localStorage.getItem("nom") || null });
+            await supabaseClient.from("permis_feu").update({ meta }).eq("id", permisId);
+        }
+    } catch(e){
+        console.error(e);
+        showToast("\u274c Erreur : " + e.message, true);
+        return;
+    }
+
+    /* Notification sonore + alerte visuelle */
+    try {
+        const audio = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQBvAAAA");
+        audio.play().catch(()=>{});
+    } catch(e){}
+
+    showToast(`\u2705 ${label} déclarée — PC Sécurité notifié.`);
+    /* Appel téléphonique automatique en renfort si sur mobile */
+    if(/Android|iPhone|iPad/.test(navigator.userAgent)){
+        setTimeout(()=>{ location.href = "tel:0145484794"; }, 1200);
+    }
 }
 
 async function exportPDF(id){
@@ -244,6 +363,20 @@ async function chargerEntreprises(){
     const{data}=await supabaseClient.from("permis_feu").select("entreprise");if(!data)return;
     const sel=document.getElementById("filtreEntreprise");
     [...new Set(data.map(e=>e.entreprise).filter(Boolean))].sort().forEach(ent=>{const opt=document.createElement("option");opt.value=ent;opt.textContent=ent;sel.appendChild(opt);});
+}
+
+/* MODE LECTURE SEULE : arrivée via QR code → on cache l'interface de filtrage/liste
+   et on ouvre directement le permis concerné. L'intervenant ne voit pas les autres
+   permis (confidentialité) et ne peut ni les clôturer ni les modifier. */
+if(READ_ONLY){
+    document.querySelector(".filters").style.display = "none";
+    document.querySelector(".stats").style.display = "none";
+    document.querySelector(".permits-list").style.display = "none";
+    const h1 = document.querySelector(".header h1");
+    if(h1) h1.textContent = "🔥 Permis Feu — Consultation";
+    /* Retirer le bouton retour vers index en mode intervenant */
+    const backBtn = document.querySelector(".back-btn");
+    if(backBtn) backBtn.style.display = "none";
 }
 
 chargerEntreprises();chargerPermisFeu();

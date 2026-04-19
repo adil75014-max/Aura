@@ -85,29 +85,144 @@ button:hover {
     opacity: 0.9;
 }
 
-/* Tableau */
-table {
-    width: 100%;
-    margin-top: 20px;
-    border-collapse: collapse;
+/* Tableau — structure stricte pour alignement parfait */
+.table-wrapper {
+    overflow-x: auto;                    /* scroll horizontal si l'écran est trop petit */
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
 }
 
+table {
+    width: 100%;
+    min-width: 1100px;                   /* largeur plancher, évite le "squish" */
+    margin-top: 0;
+    border-collapse: collapse;
+    table-layout: fixed;                 /* clé : respect strict des largeurs définies */
+}
+
+/* Largeurs explicites via colgroup (voir HTML) — garantit l'alignement face à face */
+table col.col-nom       { width: 22%; }
+table col.col-ent       { width: 12%; }
+table col.col-zone      { width: 12%; }
+table col.col-date      { width: 11%; }
+table col.col-etat      { width:  8%; }
+table col.col-visite    { width:  8%; }
+table col.col-obs       { width: 15%; }
+table col.col-ouvrir    { width:  6%; }
+table col.col-modif     { width:  6%; }
+
 td, th {
-    padding: 12px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+    text-align: left;
+    font-size: 0.9rem;
 }
 
 th {
     cursor: pointer;
     color: var(--accent);
+    background: var(--card);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    user-select: none;
+    white-space: nowrap;
+}
+th:hover { background: rgba(212, 175, 55, 0.08); }
+
+/* Troncature pour les colonnes avec contenu long */
+td.cell-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.active {
-    color: #4ade80;
-    font-weight: 700;
+/* Wrapping contrôlé pour observations */
+td.cell-wrap {
+    white-space: normal;
+    word-break: break-word;
+    line-height: 1.35;
+    color: #cbd5e1;
+    font-size: 0.85rem;
 }
 
-/* Barre d’actions */
+/* Colonnes actions centrées */
+td.cell-action { text-align: center; }
+th.cell-action { text-align: center; cursor: default; }
+
+/* Alternance de lignes pour lisibilité + hover */
+tbody tr { transition: background 0.12s; }
+tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.015); }
+tbody tr:hover { background: rgba(212, 175, 55, 0.06); }
+
+/* Badges d'état / visite */
+.badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+    letter-spacing: 0.02em;
+}
+.badge-actif    { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
+.badge-warning  { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+.badge-danger   { background: rgba(239, 68, 68, 0.15);  color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+.badge-visite-oui { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+.badge-visite-non { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+
+/* Boutons dans les cellules */
+.btn-icon {
+    background: var(--bg2);
+    color: var(--accent);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: 0.15s;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+}
+.btn-icon:hover { background: var(--accent); color: #000; }
+
+.link-open {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: rgba(212, 175, 55, 0.08);
+    display: inline-block;
+    transition: 0.15s;
+}
+.link-open:hover { background: var(--accent); color: #000; }
+
+/* État vide */
+.empty-row td {
+    text-align: center;
+    padding: 40px 16px;
+    color: #64748b;
+    font-style: italic;
+}
+
+/* Responsive : tablet */
+@media (max-width: 960px) {
+    td, th { padding: 10px 8px; font-size: 0.82rem; }
+    .badge { padding: 3px 8px; font-size: 0.7rem; }
+}
+
+/* Barre d'actions : wrap propre sur mobile */
 .actions-bar {
     display:flex;
     gap:10px;
@@ -212,19 +327,35 @@ requireLogin();
 
     <input type="text" id="searchInput" placeholder="🔍 Recherche (nom, entreprise, zone)" style="margin-bottom:15px; width:100%;">
 
-    <table id="tablePP">
-        <tr>
-            <th onclick="trier('nom')">Nom du PDF ⬍</th>
-            <th onclick="trier('entreprise')">Entreprise ⬍</th>
-            <th onclick="trier('zone')">Zone ⬍</th>
-            <th onclick="trier('dateValidite')">Valable jusqu’au ⬍</th>
-            <th>État</th>
-            <th>Visite</th>
-            <th>Observations</th>
-            <th>Ouvrir</th>
-            <th>Modifier</th>
-        </tr>
-    </table>
+    <div class="table-wrapper">
+        <table id="tablePP">
+            <colgroup>
+                <col class="col-nom">
+                <col class="col-ent">
+                <col class="col-zone">
+                <col class="col-date">
+                <col class="col-etat">
+                <col class="col-visite">
+                <col class="col-obs">
+                <col class="col-ouvrir">
+                <col class="col-modif">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th onclick="trier('nom')">Nom du PDF ⬍</th>
+                    <th onclick="trier('entreprise')">Entreprise ⬍</th>
+                    <th onclick="trier('zone')">Zone ⬍</th>
+                    <th onclick="trier('dateValidite')">Valable jusqu'au ⬍</th>
+                    <th class="cell-action">État</th>
+                    <th class="cell-action">Visite</th>
+                    <th>Observations</th>
+                    <th class="cell-action">Ouvrir</th>
+                    <th class="cell-action">Modif.</th>
+                </tr>
+            </thead>
+            <tbody id="tbodyPP"></tbody>
+        </table>
+    </div>
 </div><!-- ============================
      MODALE D'ÉDITION
 ============================ -->
@@ -297,27 +428,32 @@ let lastCriticalCount = 0;
 // Affichage des plans actifs
 // ============================
 function afficherPlans() {
-    const table = document.getElementById("tablePP");
-
-    table.innerHTML = `
-        <tr>
-            <th onclick="trier('nom')">Nom du PDF ⬍</th>
-            <th onclick="trier('entreprise')">Entreprise ⬍</th>
-            <th onclick="trier('zone')">Zone ⬍</th>
-            <th onclick="trier('dateValidite')">Valable jusqu’au ⬍</th>
-            <th>État</th>
-            <th>Visite</th>
-            <th>Observations</th>
-            <th>Ouvrir</th>
-            <th>Modifier</th>
-        </tr>
-    `;
+    const tbody = document.getElementById("tbodyPP");
+    tbody.innerHTML = "";
 
     const now = new Date();
     const fEnt = document.getElementById("filtreEntreprise").value;
     const fZone = document.getElementById("filtreZone").value;
     const fVisite = document.getElementById("filtreVisite").value;
     const search = document.getElementById("searchInput").value.toLowerCase();
+
+    /* Formatte une date ISO (YYYY-MM-DD) en JJ/MM/AAAA pour l'affichage */
+    const fmtFR = (iso) => {
+        if (!iso) return "—";
+        const d = new Date(iso);
+        if (isNaN(d)) return iso;
+        return d.toLocaleDateString("fr-FR");
+    };
+
+    /* Échappement HTML pour éviter tout cassage de structure par un contenu mal saisi */
+    const esc = (s) => {
+        if (s === null || s === undefined || s === "") return "";
+        const d = document.createElement("div");
+        d.textContent = String(s);
+        return d.innerHTML;
+    };
+
+    let nbAffiches = 0;
 
     plans.forEach((p, index) => {
         const validite = new Date(p.dateValidite);
@@ -328,32 +464,53 @@ function afficherPlans() {
         if (fZone && p.zone !== fZone) return;
         if (fVisite && (p.visite || "Non") !== fVisite) return;
 
+        const nomL = (p.nom || "").toLowerCase();
+        const entL = (p.entreprise || "").toLowerCase();
+        const zoneL = (p.zone || "").toLowerCase();
         if (
-            !p.nom.toLowerCase().includes(search) &&
-            !p.entreprise.toLowerCase().includes(search) &&
-            !p.zone.toLowerCase().includes(search)
+            !nomL.includes(search) &&
+            !entL.includes(search) &&
+            !zoneL.includes(search)
         ) return;
 
         const diff = (validite - now) / (1000 * 3600 * 24);
 
-        let color = "#4ade80"; // vert
-        if ((p.visite || "Non") === "Non") color = "#fbbf24"; // orange
-        if (diff <= 7) color = "#ef4444"; // rouge
+        /* Badge d'état contextuel */
+        let etatBadge;
+        if (diff <= 7)      etatBadge = `<span class="badge badge-danger">Expire ${Math.ceil(diff)}j</span>`;
+        else if (diff <= 30) etatBadge = `<span class="badge badge-warning">Bientôt</span>`;
+        else                 etatBadge = `<span class="badge badge-actif">Actif</span>`;
+
+        const visiteVal = p.visite || "Non";
+        const visiteBadge = visiteVal === "Oui"
+            ? `<span class="badge badge-visite-oui">✓ Oui</span>`
+            : `<span class="badge badge-visite-non">⚠ Non</span>`;
+
+        const obsClean = p.observations ? esc(p.observations) : `<span style="color:#475569;">—</span>`;
 
         const row = document.createElement("tr");
         row.innerHTML = `
-            <td>${p.nom}</td>
-            <td>${p.entreprise}</td>
-            <td>${p.zone}</td>
-            <td>${p.dateValidite}</td>
-            <td class="active">Actif</td>
-            <td style="color:${color}; font-weight:700;">${p.visite || "Non"}</td>
-            <td>${p.observations || "-"}</td>
-            <td><a href="${p.url}" target="_blank" style="color:var(--accent);">Ouvrir</a></td>
-            <td><button onclick="editPlan(${index})" style="background:var(--accent); color:black; padding:6px 10px; border-radius:6px; border:none;">✏️</button></td>
+            <td class="cell-truncate" title="${esc(p.nom)}">${esc(p.nom)}</td>
+            <td class="cell-truncate" title="${esc(p.entreprise)}">${esc(p.entreprise) || "—"}</td>
+            <td class="cell-truncate" title="${esc(p.zone)}">${esc(p.zone) || "—"}</td>
+            <td class="cell-truncate">${fmtFR(p.dateValidite)}</td>
+            <td class="cell-action">${etatBadge}</td>
+            <td class="cell-action">${visiteBadge}</td>
+            <td class="cell-wrap" title="${esc(p.observations || '')}">${obsClean}</td>
+            <td class="cell-action">${p.url && p.url !== "#" ? `<a href="${esc(p.url)}" target="_blank" class="link-open">📄</a>` : '<span style="color:#475569;">—</span>'}</td>
+            <td class="cell-action"><button class="btn-icon" onclick="editPlan(${index})" title="Modifier">✏️</button></td>
         `;
-        table.appendChild(row);
+        tbody.appendChild(row);
+        nbAffiches++;
     });
+
+    /* État vide : aucun plan correspond aux filtres */
+    if (nbAffiches === 0) {
+        const emptyRow = document.createElement("tr");
+        emptyRow.className = "empty-row";
+        emptyRow.innerHTML = `<td colspan="9">Aucun plan de prévention actif ne correspond à ces critères.</td>`;
+        tbody.appendChild(emptyRow);
+    }
 
     updateDashboard();
     updateAlertes();
@@ -372,9 +529,13 @@ function trier(colonne) {
 
     plans.sort((a, b) => {
         if (colonne === "dateValidite") {
-            return (new Date(a[colonne]) - new Date(b[colonne])) * triActuel.ordre;
+            const da = a[colonne] ? new Date(a[colonne]).getTime() : 0;
+            const db = b[colonne] ? new Date(b[colonne]).getTime() : 0;
+            return (da - db) * triActuel.ordre;
         }
-        return a[colonne].localeCompare(b[colonne]) * triActuel.ordre;
+        const va = (a[colonne] || "").toString();
+        const vb = (b[colonne] || "").toString();
+        return va.localeCompare(vb, "fr", { numeric: true }) * triActuel.ordre;
     });
 
     afficherPlans();
@@ -600,10 +761,61 @@ async function saveEdit() {
 }
 
 // ============================
+// Export CSV (compatible Excel)
+// ============================
+function exportExcel() {
+    if (!plans.length) { alert("Aucun plan à exporter."); return; }
+
+    /* CSV avec séparateur ";" (par défaut Excel français) + BOM UTF-8 pour accents */
+    const sep = ";";
+    const headers = ["Nom PDF", "Entreprise", "Zone", "Date validité", "Visite", "Observations", "URL PDF"];
+    const escapeCsv = (v) => {
+        const s = (v === null || v === undefined) ? "" : String(v);
+        /* Double-quote si le champ contient le séparateur, un guillemet ou un saut de ligne */
+        if (s.includes(sep) || s.includes('"') || s.includes("\n") || s.includes("\r")) {
+            return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+    };
+
+    const rows = plans.map(p => [
+        p.nom, p.entreprise, p.zone, p.dateValidite,
+        p.visite || "Non", p.observations || "", p.url || ""
+    ].map(escapeCsv).join(sep));
+
+    const csv = "\uFEFF" + headers.join(sep) + "\n" + rows.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const today = new Date().toISOString().slice(0, 10);
+    a.href = url;
+    a.download = `plans_prevention_${today}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+// ============================
 // Initialisation
 // ============================
 afficherPlans();
 remplirFiltres();
+
+/* Re-filtrer automatiquement dès qu'un filtre ou la recherche change */
+["filtreEntreprise", "filtreZone", "filtreVisite"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("change", afficherPlans);
+});
+const searchEl = document.getElementById("searchInput");
+if (searchEl) {
+    /* Léger debounce pour éviter de re-render à chaque touche */
+    let t;
+    searchEl.addEventListener("input", () => {
+        clearTimeout(t);
+        t = setTimeout(afficherPlans, 120);
+    });
+}
 </script><!-- ============================
      BOUTON MENU
 ============================ -->

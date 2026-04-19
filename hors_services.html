@@ -95,46 +95,98 @@
             color: #721c24;
         }
 
-        /* Tableau responsive */
+        /* Tableau responsive — structure stricte pour alignement parfait */
+        .table-wrapper {
+            margin-top: 30px;
+            overflow-x: auto;              /* scroll horizontal si écran trop petit */
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
         table {
             width: 100%;
-            margin-top: 30px;
+            min-width: 900px;              /* plancher pour garder la lisibilité */
+            margin-top: 0;
             border-collapse: collapse;
             background: white;
             border-radius: 12px;
             overflow: hidden;
+            table-layout: fixed;            /* respect strict des largeurs colgroup */
         }
 
+        /* Largeurs explicites — garantissent l'alignement face à face */
+        col.col-site    { width: 16%; }
+        col.col-zone    { width:  8%; }
+        col.col-boucle  { width:  8%; }
+        col.col-point   { width:  8%; }
+        col.col-adresse { width: 12%; }
+        col.col-date    { width: 13%; }
+        col.col-motif   { width: 20%; }
+        col.col-action  { width: 15%; }
+
         th, td {
-            padding: 12px;
+            padding: 12px 10px;
             border-bottom: 1px solid #ddd;
             text-align: center;
             font-size: 14px;
+            vertical-align: middle;
+            word-break: break-word;         /* coupe les mots trop longs plutôt que de déborder */
         }
 
         th {
             background: #007bff;
             color: white;
+            white-space: nowrap;            /* entêtes jamais cassées */
         }
 
+        /* Cellules au contenu potentiellement long : on wrap sur plusieurs lignes */
+        td.cell-wrap {
+            text-align: left;
+            line-height: 1.4;
+            white-space: normal;
+        }
+
+        /* Cellules courtes : troncature avec tooltip */
+        td.cell-short {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* Bouton "Remettre en service" — désormais un vrai bouton avec taille propre */
         .btn-rs {
             background: #28a745;
-            padding: 6px 12px;
+            padding: 8px 12px;
             border-radius: 6px;
+            border: none;
             color: white;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: normal;            /* autorise le retour à la ligne si besoin */
+            line-height: 1.2;
+            max-width: 100%;
+            transition: background 0.15s;
         }
 
         .btn-rs:hover {
             background: #1e7e34;
         }
 
+        /* État vide */
+        .empty-row td {
+            text-align: center;
+            padding: 30px 16px;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
         /* MOBILE OPTIMISATION */
         @media (max-width: 600px) {
             th, td {
                 font-size: 12px;
-                padding: 8px;
+                padding: 8px 6px;
             }
 
             button[type="submit"] {
@@ -143,6 +195,11 @@
 
             input, select, textarea {
                 font-size: 14px;
+            }
+
+            .btn-rs {
+                font-size: 11px;
+                padding: 6px 8px;
             }
         }
     </style>
@@ -195,21 +252,33 @@
 
     <h3 style="margin-top:40px;">DAI actuellement hors service</h3>
 
-    <table>
-        <thead>
-            <tr>
-                <th>Site</th>
-                <th>Zone</th>
-                <th>Boucle</th>
-                <th>Point</th>
-                <th>Adresse</th>
-                <th>Date HS</th>
-                <th>Motif</th>
-                <th>Action</th>
-            </tr>
-        </thead>
-        <tbody id="hsList"></tbody>
-    </table>
+    <div class="table-wrapper">
+        <table>
+            <colgroup>
+                <col class="col-site">
+                <col class="col-zone">
+                <col class="col-boucle">
+                <col class="col-point">
+                <col class="col-adresse">
+                <col class="col-date">
+                <col class="col-motif">
+                <col class="col-action">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th>Site</th>
+                    <th>Zone</th>
+                    <th>Boucle</th>
+                    <th>Point</th>
+                    <th>Adresse</th>
+                    <th>Date HS</th>
+                    <th>Motif</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="hsList"></tbody>
+        </table>
+    </div>
 
 </div>
 
@@ -254,7 +323,7 @@
 
     // AFFICHAGE
     async function loadHS() {
-        const { data } = await supabaseClient
+        const { data, error } = await supabaseClient
             .from("dai_hors_service")
             .select("*")
             .eq("statut", "hors_service")
@@ -263,19 +332,41 @@
         const list = document.getElementById("hsList");
         list.innerHTML = "";
 
+        if (error) {
+            list.innerHTML = `<tr class="empty-row"><td colspan="8">Erreur chargement : ${error.message}</td></tr>`;
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            list.innerHTML = `<tr class="empty-row"><td colspan="8">Aucune DAI actuellement hors service.</td></tr>`;
+            return;
+        }
+
+        /* Échappement HTML pour éviter qu'un motif/adresse contenant < > & ne casse la mise en page */
+        const esc = (s) => {
+            if (s === null || s === undefined) return "";
+            const d = document.createElement("div");
+            d.textContent = String(s);
+            return d.innerHTML;
+        };
+
         data.forEach(item => {
-            list.innerHTML += `
-                <tr>
-                    <td>${item.site}</td>
-                    <td>${item.zone}</td>
-                    <td>${item.boucle}</td>
-                    <td>${item.point}</td>
-                    <td>${item.adresse}</td>
-                    <td>${new Date(item.date_hs).toLocaleString()}</td>
-                    <td>${item.motif}</td>
-                    <td><span class="btn-rs" onclick="remiseService('${item.id}')">Remettre en service</span></td>
-                </tr>
+            const dateFmt = item.date_hs
+                ? new Date(item.date_hs).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })
+                : "—";
+
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td class="cell-short" title="${esc(item.site)}">${esc(item.site) || "—"}</td>
+                <td class="cell-short" title="${esc(item.zone)}">${esc(item.zone) || "—"}</td>
+                <td class="cell-short" title="${esc(item.boucle)}">${esc(item.boucle) || "—"}</td>
+                <td class="cell-short" title="${esc(item.point)}">${esc(item.point) || "—"}</td>
+                <td class="cell-wrap"  title="${esc(item.adresse)}">${esc(item.adresse) || "—"}</td>
+                <td class="cell-short" title="${dateFmt}">${dateFmt}</td>
+                <td class="cell-wrap"  title="${esc(item.motif)}">${esc(item.motif) || "—"}</td>
+                <td><button type="button" class="btn-rs" onclick="remiseService('${item.id}')">Remettre en service</button></td>
             `;
+            list.appendChild(row);
         });
     }
 

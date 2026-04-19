@@ -268,7 +268,7 @@ a:hover { text-decoration: underline; }
 <!-- INDICATEURS -->
 <div class="indicators">
     <div class="indicator">
-        <h3>Total rapports</h3>
+        <h3>Total enregistrements</h3>
         <p id="indTotal">—</p>
     </div>
     <div class="indicator">
@@ -287,15 +287,35 @@ a:hover { text-decoration: underline; }
         <h3>Vérifications</h3>
         <p id="indVerifs">—</p>
     </div>
+    <div class="indicator">
+        <h3>DAI hors service</h3>
+        <p id="indDaiHs" style="color:#ef4444;">—</p>
+    </div>
+    <div class="indicator">
+        <h3>Entrées / Sorties</h3>
+        <p id="indEntreeSortie">—</p>
+    </div>
+    <div class="indicator">
+        <h3>Interv. extérieures</h3>
+        <p id="indIntExt">—</p>
+    </div>
+    <div class="indicator">
+        <h3>Permis feu actifs</h3>
+        <p id="indPermisFeu" style="color:#fbbf24;">—</p>
+    </div>
 </div>
 
 <!-- FILTRES -->
 <div class="filters">
     <select id="source" onchange="applyFilters()">
         <option value="all">Toutes les sources</option>
-        <option value="rapports">Rapports</option>
-        <option value="rondes">Rondes</option>
-        <option value="verifications">Vérifications</option>
+        <option value="rapports">📋 Rapports</option>
+        <option value="rondes">🔄 Rondes</option>
+        <option value="verifications">🔍 Vérifications</option>
+        <option value="dai">🚨 DAI Hors Service</option>
+        <option value="entree_sortie">🚪 Entrées / Sorties</option>
+        <option value="interv_ext">🏗 Interventions extérieures</option>
+        <option value="permis_feu">🔥 Permis feu</option>
     </select>
 
     <select id="periode" onchange="toggleCustomDates(); applyFilters()">
@@ -356,6 +376,24 @@ a:hover { text-decoration: underline; }
             <option value="verif_popup">Vérification Pop up</option>
             <option value="verifreceptiontravaux">Réception Travaux</option>
         </optgroup>
+        <!-- DAI -->
+        <optgroup label="🚨 DAI">
+            <option value="dai_hors_service">Mise hors service DAI</option>
+            <option value="dai_remise_service">Remise en service DAI</option>
+        </optgroup>
+        <!-- Entrées / Sorties -->
+        <optgroup label="🚪 Accès">
+            <option value="entree">Entrée</option>
+            <option value="sortie">Sortie</option>
+        </optgroup>
+        <!-- Entreprises extérieures -->
+        <optgroup label="🏗 Entreprises">
+            <option value="interv_ext">Intervention entreprise extérieure</option>
+        </optgroup>
+        <!-- Permis feu -->
+        <optgroup label="🔥 Permis feu">
+            <option value="permis_feu">Permis feu établi</option>
+        </optgroup>
     </select>
 
     <select id="tri" onchange="applyFilters()">
@@ -396,6 +434,106 @@ a:hover { text-decoration: underline; }
 <button class="btn-mail" onclick="envoyerRapportsPDF('nuit')">🌙 Envoyer PDF 20h → 8h</button>
 
 <script>
+/* ==========================================================
+   DICTIONNAIRE DES LIBELLÉS DE TYPES
+   ==========================================================
+   Les codes techniques stockés en base (ex. "incendie",
+   "ronde_ouverture", "verif_j1_baie_ssi") sont traduits en
+   libellés lisibles par l'opérateur. Toute entrée inconnue
+   retombe sur le label brut après nettoyage (underscores → espaces).
+========================================================== */
+const TYPE_LABELS = {
+    /* --- Interventions --- */
+    'incendie':            'Détection incendie',
+    'odeur':               'Odeur suspecte',
+    'desincarceration':    'Désincarcération ASC/MC/Escalator/Toilette',
+    'fuite':               'Fuite d\'eau',
+    'alarme':              'Alarme technique',
+    'coupure':             'Coupure électrique',
+    'animalier':           'Sauvetage animalier',
+
+    /* --- Rondes (variantes sans underscore + avec underscore) --- */
+    'ronde_ouverture':           'Ronde d\'ouverture',
+    'ronde_travaux':             'Ronde Travaux',
+    'ronde_permis_feu':          'Ronde Permis feu',
+    'rondepermisfeu':            'Ronde Permis feu',
+    'ronde_issues_secours':      'Ronde Issue de secours',
+    'rondeissuessecours':        'Ronde Issue de secours',
+    'ronde_surface_vente':       'Ronde Surface de vente',
+    'rondesurfacevente':         'Ronde Surface de vente',
+    'ronde_technique':           'Ronde Technique',
+    'ronde_fermeture':           'Ronde de fermeture',
+    'ronde_toiture':             'Ronde Toiture',
+
+    /* --- Vérifications --- */
+    'verif_j1_baie_ssi':                 'J1 Baie SSI',
+    'verifj1baie_ssi':                   'J1 Baie SSI',
+    'verif_j2_materiel_pc':              'J2 Matériel PC',
+    'verifj2materiel_pc':                'J2 Matériel PC',
+    'verif_j3_materiel_secours':         'J3 Matériel de secours',
+    'verifj3materiel_secours':           'J3 Matériel de secours',
+    'verif_j4_epi':                      'J4 EPI',
+    'verifj4epi':                        'J4 EPI',
+    'verif_j5_interphonie_asc_mc':       'J5 Interphonie ASC/MC',
+    'verifj5interphonieascmc':           'J5 Interphonie ASC/MC',
+    'verif_extincteurs_ria_baes':        'Extincteur / RIA / BAES',
+    'verifextincteursria_baes':          'Extincteur / RIA / BAES',
+    'verif_sprinkler':                   'Sprinkler',
+    'verif_surpresseur':                 'Surpresseur',
+    'verif_colonne_seche':               'Colonne sèche',
+    'verifcolonneseche':                 'Colonne sèche',
+    'verif_desenfumage_naturel':         'Désenfumage naturel',
+    'verifdesenfumagenaturel':           'Désenfumage naturel',
+    'verif_baie_accessible':             'Baie accessible',
+    'verifbaieaccessible':               'Baie accessible',
+    'verif_eas':                         'EAS',
+    'verif_salle_gaz':                   'Salle automatique à gaz',
+    'verifsallegaz':                     'Salle automatique à gaz',
+    'verif_essai_annuel_technicien':     'Essai annuel Technicien',
+    'verifessaiannuel_technicien':       'Essai annuel Technicien',
+    'verif_essai_triennal_bureau':       'Essai triennal Bureau de contrôle',
+    'verifessaitriennal_bureau':         'Essai triennal Bureau de contrôle',
+    'verif_popup':                       'Vérification Pop up',
+    'verifreceptiontravaux':             'Réception Travaux',
+
+    /* --- Travaux --- */
+    'Travaux':    'Suivi des travaux',
+
+    /* --- Nouveautés (sources additionnelles) --- */
+    'hors_service':           'Mise hors service DAI',
+    'remise_service':         'Remise en service DAI',
+    'dai_hors_service':       'Mise hors service DAI',
+    'dai_remise_service':     'Remise en service DAI',
+    'entree':                 'Entrée',
+    'sortie':                 'Sortie',
+    'entree_sortie':          'Entrée / Sortie',
+    'intervention_exterieure':'Intervention entreprise extérieure',
+    'interv_ext':             'Intervention entreprise extérieure',
+    'permis_feu':             'Permis feu établi'
+};
+
+/* Retourne le libellé complet d'un type. Si le type est inconnu,
+   on le rend lisible en remplaçant les underscores par des espaces
+   et en mettant la première lettre en majuscule. */
+function labelFor(type) {
+    if (!type || type === '—') return '—';
+    if (TYPE_LABELS[type]) return TYPE_LABELS[type];
+    /* Fallback : clean-up visuel pour les types inconnus */
+    const cleaned = String(type).replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+}
+
+/* Alias utilisés ailleurs dans le fichier — tous pointent sur la même logique
+   pour garantir la cohérence des libellés dans toute l'application */
+const typeLabel = labelFor;
+
+/* Normalise une clé de type : minuscules, trim, garde les underscores
+   pour correspondre aux clés de TYPE_LABELS */
+function normalizeType(t) {
+    if (!t) return '';
+    return String(t).trim().toLowerCase();
+}
+
 /* ==========================================================
    SUPABASE CONFIG
    ========================================================== */
@@ -481,18 +619,49 @@ async function loadAllData() {
 
         if (vErr) throw vErr;
 
-        // 5) Unify into a single array
+        // 5) Load DAI hors service (historique complet, les remises en service
+        //    sont déduites de la colonne restaure_at lors du mapping)
+        const { data: dai, error: daiErr } = await supabaseClient
+            .from("dai_hors_service")
+            .select('*')
+            .order('date_hs', { ascending: false });
+        if (daiErr) console.warn('[Dashboard] DAI : ', daiErr.message);
+
+        // 6) Load entrées / sorties
+        const { data: entreeSortie, error: esErr } = await supabaseClient
+            .from("rapports_entree_sortie")
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (esErr) console.warn('[Dashboard] Entrée/Sortie : ', esErr.message);
+
+        // 7) Load interventions entreprises extérieures
+        const { data: intExt, error: ieErr } = await supabaseClient
+            .from("interventions_exterieures")
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (ieErr) console.warn('[Dashboard] Interv. ext. : ', ieErr.message);
+
+        // 8) Load permis feu
+        const { data: permisFeu, error: pfErr } = await supabaseClient
+            .from("permis_feu")
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (pfErr) console.warn('[Dashboard] Permis feu : ', pfErr.message);
+
+        // 9) Unify into a single array
         allData = [];
 
         (rapports || []).forEach(r => {
             const dt = new Date(r.created_at);
             const agent = resolveAgent(r.auteur_id, r.meta);
+            const typeKey = normalizeType(r.type || '');
             allData.push({
                 source: 'rapports',
                 date: dt.toISOString().split('T')[0],
                 heure: dt.toTimeString().slice(0, 5),
                 datetime: dt,
-                type: r.type || '—',
+                type: typeKey,
+                typeLabel: typeLabel(typeKey),
                 agent: agent,
                 lieu: r.localisation || '—',
                 resume: r.titre || r.description || '—',
@@ -508,15 +677,17 @@ async function loadAllData() {
         (rondes || []).forEach(r => {
             const dt = new Date(r.debut_at || r.created_at);
             const agent = resolveAgent(r.agent_id, r.meta);
+            const typeKey = normalizeType(r.type || '');
             allData.push({
                 source: 'rondes',
                 date: dt.toISOString().split('T')[0],
                 heure: dt.toTimeString().slice(0, 5),
                 datetime: dt,
-                type: r.type || '—',
+                type: typeKey,
+                typeLabel: typeLabel(typeKey),
                 agent: agent,
                 lieu: r.observations || '—',
-                resume: 'Ronde ' + (r.type || ''),
+                resume: typeLabel(typeKey),
                 statut: r.statut || '—',
                 priorite: r.statut === 'anomalie' ? 'haute' : 'normale',
                 id: r.id,
@@ -529,15 +700,17 @@ async function loadAllData() {
         (verifs || []).forEach(v => {
             const dt = new Date(v.created_at);
             const agent = resolveAgent(v.agent_id, v.meta);
+            const typeKey = normalizeType(v.type || '');
             allData.push({
                 source: 'verifications',
                 date: dt.toISOString().split('T')[0],
                 heure: dt.toTimeString().slice(0, 5),
                 datetime: dt,
-                type: v.type || '—',
+                type: typeKey,
+                typeLabel: typeLabel(typeKey),
                 agent: agent,
                 lieu: v.commentaire || '—',
-                resume: 'Vérif. ' + (v.type || '') + ' → ' + (v.resultat || ''),
+                resume: typeLabel(typeKey) + (v.resultat ? ' → ' + v.resultat : ''),
                 statut: v.resultat || '—',
                 priorite: v.resultat === 'non_conforme' || v.resultat === 'anomalie' ? 'haute' : 'normale',
                 id: v.id,
@@ -547,17 +720,154 @@ async function loadAllData() {
             });
         });
 
+        /* ─── DAI HORS SERVICE : 1 ou 2 entrées par enregistrement ───
+           - Toujours 1 entrée « dai_hors_service » (mise HS initiale)
+           - +1 entrée « dai_remise_service » si restaure_at est renseigné */
+        (dai || []).forEach(d => {
+            const dtHs = new Date(d.date_hs || d.signale_at || d.updated_at);
+            const lieuTxt = [d.site, d.zone, d.boucle, d.point, d.adresse].filter(Boolean).join(' – ') || '—';
+            const agent = d.agent || resolveAgent(d.responsable_id, null) || '—';
+
+            // Entrée HS
+            allData.push({
+                source: 'dai',
+                date: dtHs.toISOString().split('T')[0],
+                heure: dtHs.toTimeString().slice(0, 5),
+                datetime: dtHs,
+                type: 'dai_hors_service',
+                typeLabel: typeLabel('dai_hors_service'),
+                agent: agent,
+                lieu: lieuTxt,
+                resume: 'Mise hors service : ' + (d.motif || '—'),
+                statut: d.statut || 'hors_service',
+                priorite: 'haute',
+                id: d.id + ':hs',
+                description: d.motif || '',
+                meta: { ...d },
+                raw: d
+            });
+
+            // Entrée remise en service (si restaurée)
+            if (d.restaure_at) {
+                const dtRs = new Date(d.restaure_at);
+                allData.push({
+                    source: 'dai',
+                    date: dtRs.toISOString().split('T')[0],
+                    heure: dtRs.toTimeString().slice(0, 5),
+                    datetime: dtRs,
+                    type: 'dai_remise_service',
+                    typeLabel: typeLabel('dai_remise_service'),
+                    agent: agent,
+                    lieu: lieuTxt,
+                    resume: 'Remise en service — initialement HS le ' + dtHs.toLocaleDateString('fr-FR'),
+                    statut: 'remis_en_service',
+                    priorite: 'normale',
+                    id: d.id + ':rs',
+                    description: 'Remise en service suite à : ' + (d.motif || '—'),
+                    meta: { ...d },
+                    raw: d
+                });
+            }
+        });
+
+        /* ─── ENTRÉES / SORTIES ─── */
+        (entreeSortie || []).forEach(es => {
+            const dt = new Date(es.heure_entree || es.heure_sortie || es.created_at);
+            const typeKey = (es.type_mouvement === 'sortie') ? 'sortie' : 'entree';
+            const agent = es.agent_nom || resolveAgent(es.agent_id, null) || '—';
+            const nomComplet = [es.prenom_personne, es.nom_personne].filter(Boolean).join(' ');
+            const resumeParts = [];
+            if (nomComplet) resumeParts.push(nomComplet);
+            if (es.entreprise) resumeParts.push(es.entreprise);
+            if (es.badge_numero) resumeParts.push('Badge ' + es.badge_numero);
+            if (es.nb_personnes) resumeParts.push(es.nb_personnes + ' pers.');
+
+            allData.push({
+                source: 'entree_sortie',
+                date: dt.toISOString().split('T')[0],
+                heure: dt.toTimeString().slice(0, 5),
+                datetime: dt,
+                type: typeKey,
+                typeLabel: typeLabel(typeKey),
+                agent: agent,
+                lieu: es.zone || '—',
+                resume: resumeParts.join(' · ') || es.motif || '—',
+                statut: es.statut || (typeKey === 'entree' ? 'en_cours' : 'cloture'),
+                priorite: 'normale',
+                id: es.id,
+                description: es.observations || es.motif || '',
+                meta: { ...es },
+                raw: es
+            });
+        });
+
+        /* ─── INTERVENTIONS ENTREPRISES EXTÉRIEURES ─── */
+        (intExt || []).forEach(ie => {
+            const dt = new Date(ie.heure_arrivee || ie.created_at);
+            const agent = resolveAgent(ie.agent_escorte_id, null) || '—';
+            const lieuTxt = ie.zone || '—';
+            const resume = [ie.entreprise, ie.type_travaux, ie.responsable].filter(Boolean).join(' · ');
+
+            allData.push({
+                source: 'interv_ext',
+                date: dt.toISOString().split('T')[0],
+                heure: dt.toTimeString().slice(0, 5),
+                datetime: dt,
+                type: 'interv_ext',
+                typeLabel: typeLabel('interv_ext'),
+                agent: agent,
+                lieu: lieuTxt,
+                resume: resume || '—',
+                statut: ie.statut || (ie.heure_depart ? 'cloture' : 'en_cours'),
+                priorite: 'normale',
+                id: ie.id,
+                description: (ie.type_travaux || '') + (ie.telephone ? ' — ☎ ' + ie.telephone : ''),
+                meta: { ...ie },
+                raw: ie
+            });
+        });
+
+        /* ─── PERMIS FEU ÉTABLIS ─── */
+        (permisFeu || []).forEach(pf => {
+            const dt = new Date(pf.date_debut || pf.created_at);
+            const agent = pf.agent_nom || resolveAgent(pf.auteur_id, pf.meta) || '—';
+            const lieuTxt = pf.lieu || (pf.meta ? [pf.meta.magasin, pf.meta.etage, pf.meta.zone_canton].filter(Boolean).join(' – ') : '') || '—';
+
+            allData.push({
+                source: 'permis_feu',
+                date: dt.toISOString().split('T')[0],
+                heure: dt.toTimeString().slice(0, 5),
+                datetime: dt,
+                type: 'permis_feu',
+                typeLabel: typeLabel('permis_feu'),
+                agent: agent,
+                lieu: lieuTxt,
+                resume: (pf.numero ? pf.numero + ' · ' : '') + (pf.entreprise || '—'),
+                statut: pf.statut || 'actif',
+                priorite: pf.alarme_type ? 'urgente' : 'normale',
+                id: pf.id,
+                description: pf.description || '',
+                meta: pf.meta || {},
+                raw: pf
+            });
+        });
+
         // Sort by most recent
         allData.sort((a, b) => b.datetime - a.datetime);
 
         // Update indicators
-        updateIndicators(rapports || [], rondes || [], verifs || []);
+        updateIndicators(rapports || [], rondes || [], verifs || [], {
+            dai: dai || [],
+            entreeSortie: entreeSortie || [],
+            intExt: intExt || [],
+            permisFeu: permisFeu || []
+        });
 
         // Apply filters and render
         applyFilters();
 
-        const total = (rapports || []).length + (rondes || []).length + (verifs || []).length;
-        showToast(`✅ ${total} enregistrements chargés depuis Supabase`);
+        const total = allData.length;
+        showToast(`✅ ${total} enregistrements chargés (rapports, rondes, vérifs, DAI, E/S, int. ext., permis feu)`);
 
     } catch (err) {
         console.error('Supabase error:', err);
@@ -588,25 +898,44 @@ function resolveAgent(id, metaFallback) {
 /* ==========================================================
    INDICATORS
    ========================================================== */
-function updateIndicators(rapports, rondes, verifs) {
-    const total = rapports.length + rondes.length + verifs.length;
+function updateIndicators(rapports, rondes, verifs, extra) {
+    extra = extra || {};
+    const dai          = extra.dai || [];
+    const entreeSortie = extra.entreeSortie || [];
+    const intExt       = extra.intExt || [];
+    const permisFeu    = extra.permisFeu || [];
+
+    const total = rapports.length + rondes.length + verifs.length
+                + dai.length + entreeSortie.length + intExt.length + permisFeu.length;
     document.getElementById('indTotal').textContent = total;
 
-    // Ce mois
+    // Ce mois (basé sur allData qui contient déjà toutes les sources unifiées)
     const now = new Date();
     const moisActuel = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
     const ceMois = allData.filter(r => r.date.startsWith(moisActuel)).length;
     document.getElementById('indMonth').textContent = ceMois;
 
-    // Critiques
-    const critiques = rapports.filter(r => r.priorite === 'urgente' || r.priorite === 'haute').length;
-    document.getElementById('indCritique').textContent = critiques;
+    // Critiques — inclut les rapports urgents/hauts + DAI hors service (pas encore remis) + permis feu en alarme
+    const critiquesRapports = rapports.filter(r => r.priorite === 'urgente' || r.priorite === 'haute').length;
+    const daiEnHS           = dai.filter(d => d.statut === 'hors_service').length;
+    const permisFeuAlarme   = permisFeu.filter(p => p.alarme_type).length;
+    document.getElementById('indCritique').textContent = critiquesRapports + daiEnHS + permisFeuAlarme;
 
-    // Rondes
+    // Rondes / Vérifications
     document.getElementById('indRondes').textContent = rondes.length;
-
-    // Vérifications
     document.getElementById('indVerifs').textContent = verifs.length;
+
+    // Nouveaux indicateurs (si les éléments existent dans le DOM)
+    const ids = {
+        indDaiHs:        dai.filter(d => d.statut === 'hors_service').length,
+        indEntreeSortie: entreeSortie.length,
+        indIntExt:       intExt.length,
+        indPermisFeu:    permisFeu.filter(p => !p.statut || !p.statut.toLowerCase().includes('clos')).length
+    };
+    Object.entries(ids).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val;
+    });
 }
 
 /* ==========================================================
@@ -666,7 +995,11 @@ function applyFilters() {
     } else if (tri === 'agent') {
         data.sort((a, b) => a.agent.localeCompare(b.agent));
     } else if (tri === 'theme') {
-        data.sort((a, b) => a.type.localeCompare(b.type));
+        data.sort((a, b) => {
+            const la = a.typeLabel || labelFor(a.type);
+            const lb = b.typeLabel || labelFor(b.type);
+            return la.localeCompare(lb, 'fr');
+        });
     }
 
     filteredData = data;
@@ -692,9 +1025,25 @@ function renderTable(data) {
     table.style.display = '';
     empty.style.display = 'none';
 
-    const sourceLabels = { rapports: '📋 Rapport', rondes: '🔄 Ronde', verifications: '🔍 Vérif.' };
+    const sourceLabels = {
+        rapports:        '📋 Rapport',
+        rondes:          '🔄 Ronde',
+        verifications:   '🔍 Vérif.',
+        dai:             '🚨 DAI',
+        entree_sortie:   '🚪 E/S',
+        interv_ext:      '🏗 Ent. ext.',
+        permis_feu:      '🔥 Permis feu'
+    };
     const prioriteClasses = { urgente: 'badge-urgente', haute: 'badge-haute', normale: 'badge-normale', basse: 'badge-basse' };
-    const statutClasses = { ouvert: 'badge-ouvert', en_cours: 'badge-en_cours', cloture: 'badge-cloture', terminee: 'badge-cloture', conforme: 'badge-ouvert', non_conforme: 'badge-urgente', anomalie: 'badge-haute' };
+    const statutClasses = {
+        ouvert: 'badge-ouvert', en_cours: 'badge-en_cours',
+        cloture: 'badge-cloture', terminee: 'badge-cloture',
+        conforme: 'badge-ouvert', non_conforme: 'badge-urgente',
+        anomalie: 'badge-haute',
+        hors_service: 'badge-urgente',
+        remis_en_service: 'badge-cloture',
+        actif: 'badge-en_cours'
+    };
 
     data.forEach(r => {
         const tr = document.createElement('tr');
@@ -702,15 +1051,19 @@ function renderTable(data) {
         const pClass = prioriteClasses[r.priorite] || 'badge-normale';
         const sClass = statutClasses[r.statut] || 'badge-normale';
 
+        /* Utilise typeLabel si disponible (mapping complet FR),
+           sinon fallback sur labelFor pour normaliser à la volée */
+        const typeDisplay = r.typeLabel || labelFor(r.type);
+
         tr.innerHTML = `
             <td>${r.date}</td>
             <td>${r.heure}</td>
             <td>${sourceLabels[r.source] || r.source}</td>
-            <td>${r.type}</td>
-            <td>${r.agent}</td>
-            <td title="${escapeHtml(r.resume)}">${truncate(r.lieu, 30)}</td>
-            <td><span class="badge ${sClass}">${r.statut}</span></td>
-            <td><span class="badge ${pClass}">${r.priorite}</span></td>
+            <td>${escapeHtml(typeDisplay)}</td>
+            <td>${escapeHtml(r.agent)}</td>
+            <td title="${escapeHtml(r.resume)}">${escapeHtml(truncate(r.lieu, 30))}</td>
+            <td><span class="badge ${sClass}">${escapeHtml(r.statut)}</span></td>
+            <td><span class="badge ${pClass}">${escapeHtml(r.priorite)}</span></td>
             <td><button class="btn-view" onclick="openReport('${r.source}','${r.id}')">👁 Ouvrir</button></td>
         `;
         tbody.appendChild(tr);
@@ -752,10 +1105,30 @@ function exportCSV() {
         ...metaCols.map(k => 'meta.' + k)
     ];
 
+    /* Libellés FR des sources pour un export lisible */
+    const sourceLabelsCsv = {
+        rapports:      'Rapport',
+        rondes:        'Ronde',
+        verifications: 'Vérification',
+        dai:           'DAI hors service',
+        entree_sortie: 'Entrée / Sortie',
+        interv_ext:    'Intervention ext.',
+        permis_feu:    'Permis feu'
+    };
+
     const rows = filteredData.map(r => {
         const base = [
-            r.date, r.heure, r.source, r.type, r.agent, r.lieu, r.resume,
-            r.description || '', r.statut, r.priorite, r.id
+            r.date,
+            r.heure,
+            sourceLabelsCsv[r.source] || r.source,
+            r.typeLabel || labelFor(r.type),   // ← label FR complet au lieu du code brut
+            r.agent,
+            r.lieu,
+            r.resume,
+            r.description || '',
+            r.statut,
+            r.priorite,
+            r.id
         ];
         const metaVals = metaCols.map(k => {
             const v = (r.meta || {})[k];
@@ -904,7 +1277,7 @@ async function genererPDFUltra(rapportsFiltrés, titre) {
         pdf.setFillColor(color[0], color[1], color[2]);
         pdf.roundedRect(M, y, PW, 10, 2, 2, 'F');
         pdf.setFontSize(11); pdf.setTextColor(255); pdf.setFont(undefined, 'bold');
-        const headerTxt = (idx + 1) + '.  [' + (sourceLabels[r.source] || r.source).toUpperCase() + ']  ' + (r.type || '').toUpperCase();
+        const headerTxt = (idx + 1) + '.  [' + (sourceLabels[r.source] || r.source).toUpperCase() + ']  ' + (r.typeLabel || labelFor(r.type) || '').toUpperCase();
         pdf.text(headerTxt, M + 5, y + 7);
         pdf.setFont(undefined, 'normal');
         y += 14;
@@ -1063,7 +1436,7 @@ function openReport(source, id) {
         : '';
 
     const html = `
-        <h2>${sourceLabels[r.source] || r.source} — ${escapeHtml(r.type || '')}</h2>
+        <h2>${sourceLabels[r.source] || r.source} — ${escapeHtml(r.typeLabel || labelFor(r.type) || '')}</h2>
 
         <div class="field"><span class="field-label">Date / Heure</span>
              <div class="field-value">${r.date} à ${r.heure}</div></div>

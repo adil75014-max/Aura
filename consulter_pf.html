@@ -246,24 +246,52 @@ async function cloturerPermis(id){
     if(READ_ONLY){showToast("\u26d4 Clôture réservée au PC Sécurité.",true);return;}
     if(!confirm("Cl\u00f4turer d\u00e9finitivement ce permis feu ?"))return;
 
-    /* Mise à jour optimiste du cache local pour que la liste se rafraîchisse
-       visuellement même si le filtre Supabase a du retard */
-    const local = permisCache.find(x=>x.id===id);
-    if(local) local.statut = "cloture";
+    console.log("[Clôture PF] début — id :", id);
 
     const nowIso = new Date().toISOString();
-    const{error}=await supabaseClient.from("permis_feu").update({
-        statut: "cloture",
-        date_fin: nowIso
-    }).eq("id",id);
+
+    /* Appel UPDATE + on demande à Supabase de nous RENVOYER la ligne modifiée
+       pour avoir la preuve que le changement est bien persisté côté base */
+    const { data, error } = await supabaseClient
+        .from("permis_feu")
+        .update({ statut: "cloture", date_fin: nowIso })
+        .eq("id", id)
+        .select();
+
+    console.log("[Clôture PF] réponse Supabase :", { data, error });
+
     if(error){
-        /* rollback en cas d'erreur */
-        if(local) local.statut = "actif";
-        showToast("\u274c "+error.message,true);
+        showToast("\u274c " + error.message, true);
+        console.error("[Clôture PF] ERREUR :", error);
         return;
     }
-    showToast("\u2705 Permis cl\u00f4tur\u00e9.");
+
+    if(!data || data.length === 0){
+        /* Aucune ligne mise à jour — typiquement une policy RLS qui silencieusement refuse */
+        showToast("\u26a0\ufe0f Aucune ligne mise à jour (RLS ?) — permis non clôturé.", true);
+        console.warn("[Clôture PF] UPDATE n'a modifié aucune ligne. Vérifier les policies RLS.");
+        return;
+    }
+
+    console.log("[Clôture PF] \u2705 Ligne clôturée :", data[0]);
+
+    /* Mise à jour immédiate du cache local + re-render instantané de la liste
+       AVANT même de faire l'aller-retour serveur, pour un feedback visuel direct */
+    const local = permisCache.find(x => x.id === id);
+    if(local){
+        local.statut  = "cloture";
+        local.date_fin = nowIso;
+    }
+    renderList(permisCache);
+    /* Rafraîchit aussi les compteurs en haut de page */
+    document.getElementById("statOuvert").textContent = permisCache.filter(p => !isClos(p.statut)).length;
+    document.getElementById("statClos").textContent   = permisCache.filter(p => isClos(p.statut)).length;
+
+    showToast("\u2705 Permis " + (data[0].numero || "") + " clôturé.");
     fermerPermis();
+
+    /* Rechargement complet depuis le serveur pour resynchroniser
+       (au cas où d'autres changements auraient eu lieu en parallèle) */
     chargerPermisFeu();
 }
 

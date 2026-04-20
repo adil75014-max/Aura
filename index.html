@@ -1898,7 +1898,8 @@ function closeCalendar() {
 }
 
 function openModulesPanel() {
-    if (localStorage.getItem("role") !== "admin") {
+    const userRole = (localStorage.getItem("role") || "").toLowerCase();
+    if (userRole !== "admin" && userRole !== "superviseur") {
         showToast("⛔ Accès réservé à l'administrateur"); return;
     }
     document.getElementById("modulesPanel").classList.add("open");
@@ -2127,60 +2128,73 @@ async function loadFeuilleDeGardeForCO() {
     document.getElementById("gd-eff").textContent   = data.effectif       || "—";
 
     /* ═══ EXTRACTION DES AGENTS depuis data_json ═══
-       Structure de la feuille :
-         resp_bm_nom, chef_poste_nom, chef_torann_nom, chef_equipe_nom,
-         agent1_nom … agent4_nom (extensible)
-       On parcourt toutes les clés se terminant par "_nom" pour capter
-       aussi d'éventuels agents ajoutés plus tard (agent5_nom, renfort_nom, …) */
+       Nouvelle structure de la feuille de garde :
+         resp_bm_nom          → Responsable de garde BM
+         chef_poste_nom       → Chef de poste Torann
+         agent1_nom … agent5_nom → Agents
+       + champs _agent (missions : ouv_agent, vj1_agent, rs1_agent, etc.)
+       On parcourt toutes les clés se terminant par "_nom" ou "_agent"
+       pour capter tous les agents présents dans la feuille. */
     const json = data.data_json || {};
     const rawAgents = [];
 
     /* Mapping des rôles à partir du préfixe de la clé */
     const roleMap = {
         resp_bm:       'Responsable BM',
-        chef_poste:    'Chef de poste',
-        chef_torann:   'Chef Torann',
-        chef_equipe:   'Chef d\'équipe',
+        chef_poste:    'Chef de poste Torann',
         agent:         'Agent',
         stat:          'Stationnaire',
-        pause:         'Agent (pause)'
+        pause:         'Agent'
     };
 
+    /* Clés _agent liées à des missions spécifiques (ne définissent pas le rôle,
+       mais confirment la présence de l'agent sur la garde) */
+    const missionKeys = new Set([
+        'ouv_agent', 'vj1_agent', 'vj2_agent', 'vj3_agent', 'vj4_agent', 'vj5_agent',
+        'rc_pf_agent', 'rsv_950_agent', 'rs1_agent', 'rs2_agent', 'rs3_agent',
+        'rpf_11_agent', 'rt_pf_14_agent', 'rsv_1550_agent', 'rpf_16_agent',
+        'rt_pf_18_agent', 'rt_toit_agent', 'essai_num', 'mac_formateur'
+    ]);
+
     const seen = new Set();
+
+    /* 1) D'abord les champs _nom (agents principaux avec radio) */
     Object.keys(json).forEach(key => {
         if (!key.endsWith('_nom')) return;
+        /* Exclure les champs de permanences (pas des agents de garde) */
+        if (key.startsWith('perm_')) return;
         const nom = (json[key] || '').trim();
         if (!nom) return;
-        /* Dédoublonnage : un même agent peut apparaître dans plusieurs champs
-           (stationnement + pause par exemple) — on garde la 1re occurrence */
         if (seen.has(nom.toLowerCase())) return;
         seen.add(nom.toLowerCase());
 
-        /* Déduction du rôle à partir du préfixe de la clé */
         let role = 'Agent';
         for (const prefix in roleMap) {
             if (key.startsWith(prefix)) { role = roleMap[prefix]; break; }
         }
-        /* Cas particulier : les stationnaires (stat_8_10_nom, etc.) sont juste "Stationnaire" */
-        if (key.startsWith('stat_')) role = 'Stationnaire';
-        if (key.startsWith('pause_')) role = 'Agent';
 
-        /* Récupère aussi le radio associé si présent (agent1_radio, etc.) */
         const radioKey = key.replace('_nom', '_radio');
         const radio = (json[radioKey] || '').trim();
-
         rawAgents.push({ nom, role, radio });
     });
 
-    /* Ajouter aussi chef_poste et responsable_bm s'ils ne sont pas déjà présents
-       (au cas où ils seraient stockés uniquement dans les colonnes directes) */
+    /* 2) Ensuite les champs _agent (missions) — ajoute seulement si pas déjà vu */
+    missionKeys.forEach(key => {
+        const nom = (json[key] || '').trim();
+        if (!nom) return;
+        if (seen.has(nom.toLowerCase())) return;
+        seen.add(nom.toLowerCase());
+        rawAgents.push({ nom, role: 'Agent', radio: '' });
+    });
+
+    /* Ajouter aussi chef_poste et responsable_bm depuis les colonnes directes */
     const addIfMissing = (nom, role) => {
         if (!nom || nom === '—') return;
         if (seen.has(nom.toLowerCase())) return;
         seen.add(nom.toLowerCase());
         rawAgents.push({ nom: nom.trim(), role, radio: '' });
     };
-    addIfMissing(data.chef_poste,     'Chef de poste');
+    addIfMissing(data.chef_poste,     'Chef de poste Torann');
     addIfMissing(data.responsable_bm, 'Responsable BM');
 
     /* Fusionner avec l'état local (préserver les statuts en cours) */

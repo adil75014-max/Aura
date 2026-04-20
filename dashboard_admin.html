@@ -246,6 +246,18 @@ a:hover { text-decoration: underline; }
 .modal-close { background: rgba(239,68,68,0.2); border-color:#ef4444; color: #ef4444; }
 .modal-close:hover { background: #ef4444; color: white; }
 .modal-print { background: rgba(122,184,255,0.2); border-color:#7ab8ff; color: #7ab8ff; }
+
+/* Médias (photos/vidéos) dans le modal rapport */
+.media-section { margin-top:16px; }
+.media-section h3 { color:#7ab8ff; margin:14px 0 8px; font-size:1rem; }
+.media-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:10px; margin-bottom:12px; }
+.media-grid img { width:100%; border-radius:10px; border:1px solid rgba(255,255,255,0.1); cursor:pointer; transition:0.2s; aspect-ratio:4/3; object-fit:cover; background:#0a0d14; }
+.media-grid img:hover { border-color:#4da3ff; transform:scale(1.02); box-shadow:0 4px 16px rgba(77,163,255,0.25); }
+.media-grid video { width:100%; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:#000; max-height:260px; }
+/* Lightbox plein écran au clic sur une photo */
+.lightbox { position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:99999; display:none; justify-content:center; align-items:center; cursor:zoom-out; }
+.lightbox.active { display:flex; }
+.lightbox img { max-width:92vw; max-height:90vh; border-radius:12px; box-shadow:0 0 40px rgba(0,0,0,0.5); }
 .modal-print:hover { background: #7ab8ff; color: #000; }
 </style>
 </head>
@@ -658,7 +670,7 @@ async function loadAllData() {
             allData.push({
                 source: 'rapports',
                 date: dt.toISOString().split('T')[0],
-                heure: dt.toTimeString().slice(0, 5),
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
                 datetime: dt,
                 type: typeKey,
                 typeLabel: typeLabel(typeKey),
@@ -681,7 +693,7 @@ async function loadAllData() {
             allData.push({
                 source: 'rondes',
                 date: dt.toISOString().split('T')[0],
-                heure: dt.toTimeString().slice(0, 5),
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
                 datetime: dt,
                 type: typeKey,
                 typeLabel: typeLabel(typeKey),
@@ -704,7 +716,7 @@ async function loadAllData() {
             allData.push({
                 source: 'verifications',
                 date: dt.toISOString().split('T')[0],
-                heure: dt.toTimeString().slice(0, 5),
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
                 datetime: dt,
                 type: typeKey,
                 typeLabel: typeLabel(typeKey),
@@ -724,21 +736,21 @@ async function loadAllData() {
            - Toujours 1 entrée « dai_hors_service » (mise HS initiale)
            - +1 entrée « dai_remise_service » si restaure_at est renseigné */
         (dai || []).forEach(d => {
-            const dtHs = new Date(d.date_hs || d.signale_at || d.updated_at);
-            const lieuTxt = [d.site, d.zone, d.boucle, d.point, d.adresse].filter(Boolean).join(' – ') || '—';
+            const dtHs = new Date(d.date_hs || d.signale_at || d.updated_at || d.created_at);
+            const lieuParts = [d.site, d.zone, d.boucle, d.point, d.adresse].filter(Boolean);
+            const lieuTxt = lieuParts.length ? lieuParts.join(' – ') : '—';
             const agent = d.agent || resolveAgent(d.responsable_id, null) || '—';
 
-            // Entrée HS
             allData.push({
                 source: 'dai',
                 date: dtHs.toISOString().split('T')[0],
-                heure: dtHs.toTimeString().slice(0, 5),
+                heure: dtHs.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
                 datetime: dtHs,
                 type: 'dai_hors_service',
-                typeLabel: typeLabel('dai_hors_service'),
+                typeLabel: 'Mise hors service DAI',
                 agent: agent,
                 lieu: lieuTxt,
-                resume: 'Mise hors service : ' + (d.motif || '—'),
+                resume: 'Mise HS : ' + (d.motif || '—'),
                 statut: d.statut || 'hors_service',
                 priorite: 'haute',
                 id: d.id + ':hs',
@@ -747,19 +759,18 @@ async function loadAllData() {
                 raw: d
             });
 
-            // Entrée remise en service (si restaurée)
             if (d.restaure_at) {
                 const dtRs = new Date(d.restaure_at);
                 allData.push({
                     source: 'dai',
                     date: dtRs.toISOString().split('T')[0],
-                    heure: dtRs.toTimeString().slice(0, 5),
+                    heure: dtRs.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
                     datetime: dtRs,
                     type: 'dai_remise_service',
-                    typeLabel: typeLabel('dai_remise_service'),
+                    typeLabel: 'Remise en service DAI',
                     agent: agent,
                     lieu: lieuTxt,
-                    resume: 'Remise en service — initialement HS le ' + dtHs.toLocaleDateString('fr-FR'),
+                    resume: 'Remise en service — HS le ' + dtHs.toLocaleDateString('fr-FR'),
                     statut: 'remis_en_service',
                     priorite: 'normale',
                     id: d.id + ':rs',
@@ -770,29 +781,38 @@ async function loadAllData() {
             }
         });
 
-        /* ─── ENTRÉES / SORTIES ─── */
+        /* ─── ENTRÉES / SORTIES ───
+           Champs réels en base (vérifiés) :
+             type_mouvement, nom_personne, prenom_personne, entreprise,
+             zone, agent_nom, agent_id, heure_entree, heure_sortie,
+             motif, badge_numero, nb_personnes, type_entree, statut */
         (entreeSortie || []).forEach(es => {
             const dt = new Date(es.heure_entree || es.heure_sortie || es.created_at);
-            const typeKey = (es.type_mouvement === 'sortie') ? 'sortie' : 'entree';
+            const isSortie = (es.type_mouvement || '').toLowerCase().includes('sort');
+            /* Agent : priorité au nom texte, puis résolution par UUID */
             const agent = es.agent_nom || resolveAgent(es.agent_id, null) || '—';
+            /* Lieu : combine entreprise + zone + type_entree pour un contexte complet */
+            const lieuParts = [es.entreprise, es.zone, es.type_entree].filter(Boolean);
+            const lieu = lieuParts.length ? lieuParts.join(' · ') : '—';
+            /* Résumé : personne + nb + badge + motif */
             const nomComplet = [es.prenom_personne, es.nom_personne].filter(Boolean).join(' ');
             const resumeParts = [];
-            if (nomComplet) resumeParts.push(nomComplet);
-            if (es.entreprise) resumeParts.push(es.entreprise);
+            if (nomComplet && nomComplet !== es.entreprise) resumeParts.push(nomComplet);
+            if (es.nb_personnes && es.nb_personnes > 1) resumeParts.push(es.nb_personnes + ' pers.');
             if (es.badge_numero) resumeParts.push('Badge ' + es.badge_numero);
-            if (es.nb_personnes) resumeParts.push(es.nb_personnes + ' pers.');
+            if (es.motif) resumeParts.push(es.motif);
 
             allData.push({
                 source: 'entree_sortie',
                 date: dt.toISOString().split('T')[0],
-                heure: dt.toTimeString().slice(0, 5),
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
                 datetime: dt,
-                type: typeKey,
-                typeLabel: typeLabel(typeKey),
+                type: isSortie ? 'sortie' : 'entree',
+                typeLabel: isSortie ? 'Sortie' : 'Entrée',
                 agent: agent,
-                lieu: es.zone || '—',
-                resume: resumeParts.join(' · ') || es.motif || '—',
-                statut: es.statut || (typeKey === 'entree' ? 'en_cours' : 'cloture'),
+                lieu: lieu,
+                resume: resumeParts.join(' · ') || '—',
+                statut: es.statut || (es.heure_sortie ? 'cloture' : 'en_cours'),
                 priorite: 'normale',
                 id: es.id,
                 description: es.observations || es.motif || '',
@@ -801,23 +821,38 @@ async function loadAllData() {
             });
         });
 
-        /* ─── INTERVENTIONS ENTREPRISES EXTÉRIEURES ─── */
+        /* ─── INTERVENTIONS ENTREPRISES EXTÉRIEURES ───
+           Champs réels : entreprise, type_travaux, responsable, telephone,
+             zone, agent_escorte_id, heure_arrivee, heure_depart, statut */
         (intExt || []).forEach(ie => {
             const dt = new Date(ie.heure_arrivee || ie.created_at);
-            const agent = resolveAgent(ie.agent_escorte_id, null) || '—';
-            const lieuTxt = ie.zone || '—';
-            const resume = [ie.entreprise, ie.type_travaux, ie.responsable].filter(Boolean).join(' · ');
+            /* Agent : le responsable de l'entreprise est plus pertinent que l'escorteur
+               (qui est souvent null) — on affiche les deux si dispo */
+            const escorteur = resolveAgent(ie.agent_escorte_id, null);
+            const responsable = ie.responsable || '';
+            const agent = escorteur
+                ? escorteur + (responsable ? ' (resp. ' + responsable + ')' : '')
+                : responsable || '—';
+            /* Lieu : zone + entreprise pour le contexte */
+            const lieuParts = [ie.zone, ie.entreprise].filter(Boolean);
+            const lieu = lieuParts.length ? lieuParts.join(' · ') : '—';
+
+            /* Horaires de présence pour le résumé */
+            const hArr = ie.heure_arrivee ? new Date(ie.heure_arrivee).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : '';
+            const hDep = ie.heure_depart  ? new Date(ie.heure_depart).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }) : 'en cours';
+            const horaires = hArr ? (hArr + ' → ' + hDep) : '';
+            const resumeParts = [ie.entreprise, ie.type_travaux, horaires].filter(Boolean);
 
             allData.push({
                 source: 'interv_ext',
                 date: dt.toISOString().split('T')[0],
-                heure: dt.toTimeString().slice(0, 5),
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
                 datetime: dt,
                 type: 'interv_ext',
-                typeLabel: typeLabel('interv_ext'),
+                typeLabel: 'Intervention entreprise extérieure',
                 agent: agent,
-                lieu: lieuTxt,
-                resume: resume || '—',
+                lieu: lieu,
+                resume: resumeParts.join(' · ') || '—',
                 statut: ie.statut || (ie.heure_depart ? 'cloture' : 'en_cours'),
                 priorite: 'normale',
                 id: ie.id,
@@ -827,23 +862,35 @@ async function loadAllData() {
             });
         });
 
-        /* ─── PERMIS FEU ÉTABLIS ─── */
+        /* ─── PERMIS FEU ÉTABLIS ───
+           Champs réels : numero, lieu, entreprise, agent_nom, auteur_id,
+             date_debut, statut, meta(magasin, etage, zone_canton, horaires) */
         (permisFeu || []).forEach(pf => {
             const dt = new Date(pf.date_debut || pf.created_at);
-            const agent = pf.agent_nom || resolveAgent(pf.auteur_id, pf.meta) || '—';
-            const lieuTxt = pf.lieu || (pf.meta ? [pf.meta.magasin, pf.meta.etage, pf.meta.zone_canton].filter(Boolean).join(' – ') : '') || '—';
+            /* Agent : texte d'abord, puis UUID, puis meta */
+            const agent = pf.agent_nom
+                || resolveAgent(pf.auteur_id, pf.meta)
+                || (pf.meta && pf.meta.agent_nom)
+                || '—';
+            /* Lieu : colonne lieu d'abord, sinon assemblage depuis meta */
+            const lieuFromMeta = pf.meta ? [pf.meta.magasin, pf.meta.etage, pf.meta.zone_canton].filter(Boolean).join(' – ') : '';
+            const lieu = (pf.lieu && pf.lieu.trim()) ? pf.lieu : (lieuFromMeta || '—');
+            /* Résumé : numéro + entreprise + horaires si dispo */
+            const horaires = pf.meta && pf.meta.horaires ? pf.meta.horaires : '';
+            const resumeParts = [pf.numero, pf.entreprise, horaires].filter(Boolean);
+            const isClos = pf.statut && pf.statut.toLowerCase().includes('clos');
 
             allData.push({
                 source: 'permis_feu',
                 date: dt.toISOString().split('T')[0],
-                heure: dt.toTimeString().slice(0, 5),
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
                 datetime: dt,
                 type: 'permis_feu',
-                typeLabel: typeLabel('permis_feu'),
+                typeLabel: 'Permis feu établi',
                 agent: agent,
-                lieu: lieuTxt,
-                resume: (pf.numero ? pf.numero + ' · ' : '') + (pf.entreprise || '—'),
-                statut: pf.statut || 'actif',
+                lieu: lieu,
+                resume: resumeParts.join(' · ') || '—',
+                statut: isClos ? 'cloture' : (pf.statut || 'actif'),
                 priorite: pf.alarme_type ? 'urgente' : 'normale',
                 id: pf.id,
                 description: pf.description || '',
@@ -1405,8 +1452,64 @@ async function envoyerRapportsPDF(type) {
 }
 
 /* ==========================================================
-   OPEN REPORT — modale détail
+   OPEN REPORT — modale détail avec rendu médias
    ========================================================== */
+
+/* Détecte si une valeur est une URL de média (photo ou vidéo) */
+function isMediaUrl(v) {
+    if (typeof v !== 'string') return false;
+    try { new URL(v); } catch { return false; }
+    return /\.(jpg|jpeg|png|webp|gif|mp4|webm|mov)/i.test(v)
+        || v.includes('/storage/v1/object/public/rapports-media/');
+}
+function isImageUrl(v) { return typeof v === 'string' && /\.(jpg|jpeg|png|webp|gif)/i.test(v); }
+function isVideoUrl(v) { return typeof v === 'string' && /\.(mp4|webm|mov)/i.test(v); }
+
+/* Ouvre la lightbox plein écran sur une photo */
+function openLightbox(url) {
+    const lb = document.getElementById('lightbox');
+    const img = document.getElementById('lightboxImg');
+    img.src = url;
+    lb.classList.add('active');
+}
+
+/* Extrait tous les URLs médias depuis meta (photos, videos, et tout champ URL isolé) */
+function extractMedia(meta) {
+    const photos = [];
+    const videos = [];
+    if (!meta) return { photos, videos };
+
+    /* Champs dédiés : meta.photos et meta.videos (tableaux) */
+    if (Array.isArray(meta.photos)) meta.photos.forEach(u => { if (u) photos.push(u); });
+    if (Array.isArray(meta.videos)) meta.videos.forEach(u => { if (u) videos.push(u); });
+
+    /* Scan générique : tout champ contenant une URL de média */
+    Object.entries(meta).forEach(([k, v]) => {
+        if (k === 'photos' || k === 'videos') return; // déjà traité
+        if (typeof v === 'string' && isMediaUrl(v)) {
+            if (isImageUrl(v)) photos.push(v);
+            else if (isVideoUrl(v)) videos.push(v);
+        }
+        /* Tableau de strings (ex: meta.photo_urls) */
+        if (Array.isArray(v)) {
+            v.forEach(item => {
+                if (typeof item === 'string' && isMediaUrl(item)) {
+                    if (isImageUrl(item)) photos.push(item);
+                    else if (isVideoUrl(item)) videos.push(item);
+                }
+            });
+        }
+    });
+    return { photos, videos };
+}
+
+/* Clés meta à ne PAS afficher dans le dump texte générique
+   (soit ce sont des médias, soit des données internes redondantes) */
+const META_SKIP_KEYS = new Set([
+    'photos', 'videos', 'photo_urls', 'video_urls', 'media',
+    'signature_delivreur', 'signature_intervenant'
+]);
+
 function openReport(source, id) {
     const r = allData.find(x => x.source === source && String(x.id) === String(id));
     if (!r) {
@@ -1414,20 +1517,69 @@ function openReport(source, id) {
         return;
     }
 
-    const sourceLabels = { rapports: '📋 Rapport', rondes: '🔄 Ronde', verifications: '🔍 Vérification' };
+    const sourceLabels = {
+        rapports:        '📋 Rapport',
+        rondes:          '🔄 Ronde',
+        verifications:   '🔍 Vérification',
+        dai:             '🚨 DAI',
+        entree_sortie:   '🚪 Entrée/Sortie',
+        interv_ext:      '🏗 Interv. ext.',
+        permis_feu:      '🔥 Permis feu'
+    };
 
+    /* ── Extraction et rendu des médias ── */
+    const { photos, videos } = extractMedia(r.meta);
+    let mediaHtml = '';
+
+    if (photos.length) {
+        mediaHtml += `<div class="media-section"><h3>📸 Photos (${photos.length})</h3><div class="media-grid">`;
+        photos.forEach(url => {
+            mediaHtml += `<img src="${escapeHtml(url)}" alt="Photo" loading="lazy" onclick="openLightbox('${escapeHtml(url)}')" onerror="this.style.display='none'">`;
+        });
+        mediaHtml += `</div></div>`;
+    }
+
+    if (videos.length) {
+        mediaHtml += `<div class="media-section"><h3>🎥 Vidéos (${videos.length})</h3><div class="media-grid">`;
+        videos.forEach(url => {
+            mediaHtml += `<video src="${escapeHtml(url)}" controls preload="metadata" onerror="this.style.display='none'"></video>`;
+        });
+        mediaHtml += `</div></div>`;
+    }
+
+    /* ── Signatures (rendues comme images si présentes) ── */
+    let sigHtml = '';
+    const m = r.meta || {};
+    if (m.signature_delivreur || m.signature_intervenant) {
+        sigHtml += '<h3>✍️ Signatures</h3><div class="media-grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">';
+        if (m.signature_delivreur) sigHtml += `<div style="text-align:center"><img src="${m.signature_delivreur}" alt="Signature délivreur" style="aspect-ratio:auto;background:#f9fafb;padding:8px;max-height:140px;width:auto"><div style="font-size:.75rem;color:#7ab8ff;margin-top:4px">Délivreur</div></div>`;
+        if (m.signature_intervenant) sigHtml += `<div style="text-align:center"><img src="${m.signature_intervenant}" alt="Signature intervenant" style="aspect-ratio:auto;background:#f9fafb;padding:8px;max-height:140px;width:auto"><div style="font-size:.75rem;color:#7ab8ff;margin-top:4px">Intervenant</div></div>`;
+        sigHtml += '</div>';
+    }
+
+    /* ── Meta textuels (hors médias et signatures) ── */
     let metaHtml = '';
     if (r.meta && Object.keys(r.meta).length) {
-        metaHtml = '<h3>Détails complémentaires</h3>';
-        Object.entries(r.meta).forEach(([k, v]) => {
-            if (v === null || v === undefined || v === '') return;
-            const val = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
-            metaHtml += `
-                <div class="field">
-                    <span class="field-label">${escapeHtml(k)}</span>
-                    <div class="field-value">${escapeHtml(val)}</div>
-                </div>`;
+        const textEntries = Object.entries(r.meta).filter(([k, v]) => {
+            if (META_SKIP_KEYS.has(k)) return false;
+            if (v === null || v === undefined || v === '') return false;
+            /* Ignorer les URLs de médias individuelles déjà rendues */
+            if (typeof v === 'string' && isMediaUrl(v)) return false;
+            if (Array.isArray(v) && v.every(item => typeof item === 'string' && isMediaUrl(item))) return false;
+            return true;
         });
+
+        if (textEntries.length) {
+            metaHtml = '<h3>Détails complémentaires</h3>';
+            textEntries.forEach(([k, v]) => {
+                const val = typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
+                metaHtml += `
+                    <div class="field">
+                        <span class="field-label">${escapeHtml(k)}</span>
+                        <div class="field-value">${escapeHtml(val)}</div>
+                    </div>`;
+            });
+        }
     }
 
     const descHtml = r.description && r.description.trim()
@@ -1457,6 +1609,8 @@ function openReport(source, id) {
              <div class="field-value" style="font-family:monospace;font-size:0.85rem;opacity:0.7">${r.id}</div></div>
 
         ${descHtml}
+        ${mediaHtml}
+        ${sigHtml}
         ${metaHtml}
 
         <div class="modal-actions">
@@ -1476,10 +1630,11 @@ function closeReport() {
 async function printSingleReport(source, id) {
     const r = allData.find(x => x.source === source && String(x.id) === String(id));
     if (!r) return;
-    const titre = 'Rapport ' + (r.type || '') + ' du ' + r.date;
+    const typeName = r.typeLabel || labelFor(r.type) || 'detail';
+    const titre = 'Rapport ' + typeName + ' du ' + r.date;
     const pdf = await genererPDFUltra([r], titre);
-    pdf.save('Rapport_LBM_' + (r.type || 'detail').replace(/[^a-zA-Z0-9]/g, '_') + '_' + r.date + '.pdf');
-    showToast('📄 PDF du rapport telecharge');
+    pdf.save('Rapport_LBM_' + typeName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + r.date + '.pdf');
+    showToast('📄 PDF du rapport téléchargé');
 }
 
 /* ==========================================================
@@ -1515,6 +1670,11 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- MODALE DÉTAIL RAPPORT -->
 <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this) closeReport()">
     <div class="modal-box" id="modalContent"></div>
+</div>
+
+<!-- Lightbox plein écran pour les photos -->
+<div class="lightbox" id="lightbox" onclick="this.classList.remove('active')">
+    <img id="lightboxImg" src="" alt="Photo">
 </div>
 
 <!-- 🔐 Sécurité -->

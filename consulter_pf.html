@@ -76,7 +76,24 @@ body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif
 
 /* Bandeau lecture seule (accès QR code intervenant) */
 .ro-banner{background:linear-gradient(135deg,rgba(37,99,235,0.15),rgba(29,78,216,0.1));border:1px solid rgba(37,99,235,0.4);border-radius:10px;padding:10px 14px;margin-bottom:14px;color:#93c5fd;font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:8px}
-@media(max-width:500px){.permit-card{flex-direction:column;align-items:flex-start}.detail-row{flex-direction:column}}
+
+/* Sections réservées au PC Sécurité (passages / prolongation) */
+.admin-block{margin-top:20px;padding:14px;border-radius:12px;background:rgba(239,100,50,0.05);border:1px solid rgba(239,100,50,0.2)}
+.admin-block h3{color:#ef6432!important;margin:0 0 10px!important;font-size:.9rem;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.admin-block .admin-form{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.admin-block .admin-field{flex:1;min-width:140px}
+.admin-block label{display:block;font-size:.75rem;font-weight:600;color:#8899bb;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.admin-block input{width:100%;padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:.9rem 'DM Sans';outline:none;transition:.15s}
+.admin-block input:focus{border-color:#ef6432;box-shadow:0 0 0 3px rgba(239,100,50,0.15)}
+.admin-block .admin-btn{padding:10px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,#ef6432,#d44a1a);color:#fff;font:600 .85rem 'DM Sans';cursor:pointer;white-space:nowrap;transition:.2s}
+.admin-block .admin-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(239,100,50,0.35)}
+.admin-block .admin-btn:disabled{opacity:.6;cursor:wait}
+.admin-block .passages-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:10px}
+.admin-block .passage-tag{padding:4px 10px;border-radius:8px;background:rgba(239,100,50,0.15);color:#ef6432;font-size:.8rem;font-weight:600}
+.admin-block .empty-note{font-size:.8rem;color:#6b7a99;font-style:italic;margin-bottom:8px}
+.admin-block .hint{font-size:.75rem;color:#6b7a99;margin-top:6px;line-height:1.35}
+
+@media(max-width:500px){.permit-card{flex-direction:column;align-items:flex-start}.detail-row{flex-direction:column}.admin-block .admin-form{flex-direction:column}.admin-block .admin-btn{width:100%}}
 </style>
 </head>
 <body>
@@ -210,6 +227,50 @@ function ouvrirPermis(id){
 
     if(m.prolongations&&m.prolongations.length){html+=`<h3>Prolongations</h3>`;m.prolongations.forEach(pr=>{html+=`<div class="detail-value" style="margin-bottom:4px">\ud83d\udd04 ${esc(pr.ancienne_date||pr.date)} (${esc(pr.ancien_horaire||pr.horaire)}) \u2192 ${esc(pr.horodatage)}</div>`;});}
 
+    /* BLOC ADMIN : gestion des passages + prolongation
+       Visible UNIQUEMENT pour le PC Sécurité (pas en mode QR intervenant)
+       et seulement sur les permis non clôturés */
+    if(!clos && !READ_ONLY){
+        const passagesHtml = (m.passages && m.passages.length)
+            ? m.passages.map(h => `<span class="passage-tag">\ud83d\udd50 ${esc(h)}</span>`).join("")
+            : `<span class="empty-note">Aucun passage enregistré.</span>`;
+
+        /* Date actuelle en ISO pour le min du <input type=date> */
+        const todayIso = new Date().toISOString().slice(0, 10);
+        /* Date de validité actuelle du permis (pour pré-remplir) */
+        const currentDate = p.date_debut ? p.date_debut.slice(0, 10) : todayIso;
+        const currentHoraire = m.horaires || "";
+
+        /* ── Heures de passage ── */
+        html += `<div class="admin-block">
+            <h3>\ud83d\udd50 Heures de passage</h3>
+            <div class="passages-grid">${passagesHtml}</div>
+            <button type="button" class="admin-btn" onclick="ajouterPassage('${p.id}')">
+                ➕ Ajouter un passage (maintenant)
+            </button>
+            <div class="hint">Enregistre l'heure actuelle (${new Date().toLocaleTimeString("fr-FR").slice(0,5)}) comme passage effectué sur le chantier.</div>
+        </div>`;
+
+        /* ── Prolongation ── */
+        html += `<div class="admin-block">
+            <h3>\ud83d\udd04 Prolonger le permis feu</h3>
+            <div class="admin-form">
+                <div class="admin-field">
+                    <label>Nouvelle date de fin</label>
+                    <input type="date" id="prolong-date-${p.id}" min="${todayIso}" value="${currentDate}">
+                </div>
+                <div class="admin-field">
+                    <label>Nouvel horaire</label>
+                    <input type="text" id="prolong-horaire-${p.id}" placeholder="Ex : 08h00 - 18h00" value="${esc(currentHoraire)}">
+                </div>
+                <button type="button" class="admin-btn" onclick="prolongerPermis('${p.id}')">
+                    \ud83d\udd04 Prolonger
+                </button>
+            </div>
+            <div class="hint">L'ancienne date/horaire sera conservée dans l'historique des prolongations.</div>
+        </div>`;
+    }
+
     /* BLOC URGENCES — visible pour tout le monde (intervenant comme PC Sécurité) */
     if(!clos){
         const lieuUrg = lieu && lieu !== "\u2014" ? esc(lieu) : "Position non renseignée";
@@ -275,17 +336,22 @@ async function cloturerPermis(id){
 
     console.log("[Clôture PF] \u2705 Ligne clôturée :", data[0]);
 
-    /* Mise à jour immédiate du cache local + re-render instantané de la liste
-       AVANT même de faire l'aller-retour serveur, pour un feedback visuel direct */
-    const local = permisCache.find(x => x.id === id);
-    if(local){
-        local.statut  = "cloture";
-        local.date_fin = nowIso;
-    }
+    /* FORCER le filtre "Ouverts seulement" après une clôture —
+       au cas où l'utilisateur était sur "Tous" ou "Clôturés", il est logique
+       de revenir à la vue par défaut pour qu'il voie le permis disparaître */
+    const filtreStatutEl = document.getElementById("filtreStatut");
+    if (filtreStatutEl) filtreStatutEl.value = "ouvert";
+
+    /* Retirer directement le permis du cache local — pas besoin d'attendre
+       le serveur, on sait que c'est clôturé */
+    permisCache = permisCache.filter(x => x.id !== id);
+    console.log("[Clôture PF] permisCache après suppression :", permisCache.length, "permis restants");
+
+    /* Re-render immédiat de la liste + compteurs */
     renderList(permisCache);
-    /* Rafraîchit aussi les compteurs en haut de page */
-    document.getElementById("statOuvert").textContent = permisCache.filter(p => !isClos(p.statut)).length;
-    document.getElementById("statClos").textContent   = permisCache.filter(p => isClos(p.statut)).length;
+    document.getElementById("statTotal").textContent   = permisCache.length;
+    document.getElementById("statOuvert").textContent  = permisCache.filter(p => !isClos(p.statut)).length;
+    document.getElementById("statClos").textContent    = permisCache.filter(p =>  isClos(p.statut)).length;
 
     showToast("\u2705 Permis " + (data[0].numero || "") + " clôturé.");
     fermerPermis();
@@ -293,6 +359,106 @@ async function cloturerPermis(id){
     /* Rechargement complet depuis le serveur pour resynchroniser
        (au cas où d'autres changements auraient eu lieu en parallèle) */
     chargerPermisFeu();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AJOUTER UN PASSAGE au permis feu (heure actuelle horodatée)
+   Réservé au PC Sécurité — double-verrou côté fonction
+═══════════════════════════════════════════════════════════════ */
+async function ajouterPassage(permisId){
+    if(READ_ONLY){showToast("\u26d4 Action réservée au PC Sécurité.", true); return;}
+
+    /* Récupère le permis à jour depuis Supabase pour éviter les écrasements
+       si plusieurs postes PC Sécurité modifient en parallèle (meta = jsonb,
+       pas d'opérateur atomique côté client → re-fetch + merge) */
+    const { data: fresh, error: fetchErr } = await supabaseClient
+        .from("permis_feu").select("meta").eq("id", permisId).single();
+    if(fetchErr){ showToast("\u274c " + fetchErr.message, true); return; }
+
+    const newMeta = fresh.meta || {};
+    const passages = Array.isArray(newMeta.passages) ? newMeta.passages.slice() : [];
+
+    /* Format passage : JJ/MM HH:MM (lisible) */
+    const now = new Date();
+    const passageStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
+                     + " " + now.toLocaleTimeString("fr-FR").slice(0, 5);
+    passages.push(passageStr);
+    newMeta.passages = passages;
+
+    const { data, error } = await supabaseClient
+        .from("permis_feu").update({ meta: newMeta }).eq("id", permisId).select();
+    if(error){ showToast("\u274c " + error.message, true); return; }
+    if(!data || data.length === 0){
+        showToast("\u26a0\ufe0f Aucune ligne mise à jour (RLS ?)", true); return;
+    }
+
+    /* Synchro du cache local + re-rendu du modal */
+    const cached = permisCache.find(x => x.id === permisId);
+    if(cached) cached.meta = newMeta;
+    showToast("\u2705 Passage " + passageStr + " enregistré.");
+    ouvrirPermis(permisId);     // re-render le modal avec le nouveau passage
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROLONGER LE PERMIS FEU
+   → Change date_debut + meta.horaires et archive l'ancien
+     dans meta.prolongations[] avec horodatage
+═══════════════════════════════════════════════════════════════ */
+async function prolongerPermis(permisId){
+    if(READ_ONLY){showToast("\u26d4 Action réservée au PC Sécurité.", true); return;}
+
+    const newDate    = document.getElementById("prolong-date-"    + permisId).value;
+    const newHoraire = document.getElementById("prolong-horaire-" + permisId).value.trim();
+    if(!newDate)    { showToast("\u26a0\ufe0f Renseignez la nouvelle date.", true); return; }
+    if(!newHoraire) { showToast("\u26a0\ufe0f Renseignez le nouvel horaire.", true); return; }
+
+    if(!confirm(`Prolonger le permis feu jusqu'au ${new Date(newDate).toLocaleDateString("fr-FR")} (${newHoraire}) ?`)) return;
+
+    /* Re-fetch pour éviter d'écraser des prolongations concurrentes */
+    const { data: fresh, error: fetchErr } = await supabaseClient
+        .from("permis_feu").select("date_debut, meta").eq("id", permisId).single();
+    if(fetchErr){ showToast("\u274c " + fetchErr.message, true); return; }
+
+    const oldDate = fresh.date_debut ? fresh.date_debut.slice(0, 10) : "";
+    const newMeta = fresh.meta || {};
+    const prolongations = Array.isArray(newMeta.prolongations) ? newMeta.prolongations.slice() : [];
+
+    /* Trace l'ancienne date/horaire + horodatage de la prolongation */
+    prolongations.push({
+        ancienne_date:   oldDate,
+        ancien_horaire:  newMeta.horaires || "",
+        nouvelle_date:   newDate,
+        nouvel_horaire:  newHoraire,
+        horodatage:      new Date().toLocaleString("fr-FR"),
+        par:             localStorage.getItem("nom") || null
+    });
+
+    newMeta.prolongations = prolongations;
+    newMeta.horaires      = newHoraire;
+
+    /* UPDATE atomique : date_debut + meta en une seule requête */
+    const { data, error } = await supabaseClient
+        .from("permis_feu")
+        .update({
+            date_debut: newDate + "T00:00:00",
+            meta: newMeta
+        })
+        .eq("id", permisId)
+        .select();
+
+    if(error){ showToast("\u274c " + error.message, true); return; }
+    if(!data || data.length === 0){
+        showToast("\u26a0\ufe0f Aucune ligne mise à jour (RLS ?)", true); return;
+    }
+
+    /* Synchro cache local */
+    const cached = permisCache.find(x => x.id === permisId);
+    if(cached){
+        cached.date_debut = data[0].date_debut;
+        cached.meta       = newMeta;
+    }
+    showToast("\u2705 Permis prolongé jusqu'au " + new Date(newDate).toLocaleDateString("fr-FR"));
+    ouvrirPermis(permisId);     // re-render le modal
 }
 
 /* Déclaration d'urgence depuis un permis feu (incendie ou secours à victime)

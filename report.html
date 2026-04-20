@@ -139,17 +139,62 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+/* ═══════════════════════════════════════════════════════
+   UPLOAD MÉDIAS → Supabase Storage bucket "rapports-media"
+   Retourne un tableau d'URLs publiques
+═══════════════════════════════════════════════════════ */
+async function uploadMediaFiles(fileInputId, folder) {
+    const input = document.getElementById(fileInputId);
+    if (!input || !input.files.length) return [];
+
+    const urls = [];
+    for (const file of input.files) {
+        /* Nom unique : timestamp + nom nettoyé (pas de caractères spéciaux) */
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${folder}/${Date.now()}_${safeName}`;
+
+        const { error: upErr } = await supabaseClient
+            .storage
+            .from('rapports-media')
+            .upload(path, file, { contentType: file.type, upsert: false });
+
+        if (upErr) {
+            console.error(`[Upload] Erreur sur ${file.name} :`, upErr.message);
+            continue; /* on skip le fichier en erreur, on continue les autres */
+        }
+
+        /* URL publique permanente */
+        const { data: pub } = supabaseClient
+            .storage
+            .from('rapports-media')
+            .getPublicUrl(path);
+
+        if (pub && pub.publicUrl) urls.push(pub.publicUrl);
+    }
+    return urls;
+}
+
 async function saveReport() {
     const btn = document.getElementById("btnSave");
     btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
     try {
         const { code: typeCode, label: intervention } = resolveIntervention();
         const site = document.getElementById("reportSite").value;
+        const reportId = document.getElementById("reportId").textContent;
         const description = [
             "Informations générales:\n"+document.getElementById("infoGenerales").value,
             "Constat:\n"+document.getElementById("constat").value,
             "Actions réalisées:\n"+document.getElementById("actions").value
         ].join("\n\n");
+
+        /* ── Upload des médias ── */
+        btn.textContent = "⏳ Upload des photos...";
+        const photoUrls = await uploadMediaFiles('photos', 'photos/' + (reportId || 'unknown'));
+
+        btn.textContent = "⏳ Upload des vidéos...";
+        const videoUrls = await uploadMediaFiles('videos', 'videos/' + (reportId || 'unknown'));
+
+        btn.textContent = "⏳ Sauvegarde du rapport...";
 
         const { error } = await supabaseClient.from("rapports").insert({
             type: typeCode || "autre",
@@ -158,10 +203,22 @@ async function saveReport() {
             localisation: site || "Non précisé",
             statut: "ouvert",
             priorite: typeCode==="incendie" ? "haute" : "normale",
-            meta: { site, heure_debut: document.getElementById("reportTime").textContent, heure_fin: document.getElementById("reportEndTime").value, agent_nom: localStorage.getItem("nom"), intervention_label: intervention, report_id: document.getElementById("reportId").textContent }
+            meta: {
+                site,
+                heure_debut: document.getElementById("reportTime").textContent,
+                heure_fin: document.getElementById("reportEndTime").value,
+                agent_nom: localStorage.getItem("nom"),
+                intervention_label: intervention,
+                report_id: reportId,
+                photos: photoUrls,       // tableau d'URLs publiques
+                videos: videoUrls         // tableau d'URLs publiques
+            }
         });
         if (error) throw error;
-        showToast("✅ Rapport enregistré !");
+
+        const mediaCount = photoUrls.length + videoUrls.length;
+        const mediaSuffix = mediaCount > 0 ? ` (${photoUrls.length} photo(s), ${videoUrls.length} vidéo(s))` : '';
+        showToast("✅ Rapport enregistré !" + mediaSuffix);
         setTimeout(() => location.href="index.html", 1500);
     } catch(e) {
         showToast("❌ "+e.message, true);

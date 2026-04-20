@@ -1639,13 +1639,61 @@ const MISSION_TYPES = {
 };
 
 /* ══════════════════════════════════════════════════════
-   STATE
+   STATE — persisté dans localStorage pour survivre
+   aux navigations et rechargements de page
 ══════════════════════════════════════════════════════ */
 let coAgents    = [];   // agents from feuille de garde
-let coMissions  = [];   // active missions
-let coLog       = [];   // event log
-let coMissionCounter = 0;
-let currentModalTab = 'intervention';
+
+/* Restauration depuis localStorage (ou valeurs par défaut) */
+let coMissions       = JSON.parse(localStorage.getItem("coMissions") || "[]");
+let coLog            = JSON.parse(localStorage.getItem("coLog") || "[]");
+let coMissionCounter = parseInt(localStorage.getItem("coMissionCounter") || "0", 10);
+let currentModalTab  = 'intervention';
+
+/* Nettoyage automatique : si les missions datent d'un jour précédent, on repart à zéro
+   (nouvelle vacation = nouveau jeu de missions) */
+(function cleanupPreviousDay() {
+    const lastDate = localStorage.getItem("coStateDate");
+    const today = new Date().toISOString().split('T')[0];
+    if (lastDate && lastDate !== today) {
+        coMissions = [];
+        coLog = [];
+        coMissionCounter = 0;
+        localStorage.removeItem("coAgentStatuts");
+        console.info("[CO] Nouvelle journée détectée — état missions réinitialisé.");
+    }
+    localStorage.setItem("coStateDate", today);
+})();
+
+/* Sauvegarde centralisée — appelée après chaque modification de l'état */
+function saveCOState() {
+    try {
+        localStorage.setItem("coMissions", JSON.stringify(coMissions));
+        localStorage.setItem("coLog", JSON.stringify(coLog));
+        localStorage.setItem("coMissionCounter", String(coMissionCounter));
+        /* Sauvegarder aussi les statuts des agents pour les retrouver après navigation */
+        const agentStatuts = {};
+        coAgents.forEach(a => { if (a.statut !== 'libre') agentStatuts[a.nom] = a.statut; });
+        localStorage.setItem("coAgentStatuts", JSON.stringify(agentStatuts));
+    } catch(e) { console.warn("[CO] Erreur sauvegarde état :", e); }
+}
+
+/* Restaurer les statuts des agents après rechargement de la feuille de garde */
+function restoreAgentStatuts() {
+    try {
+        const saved = JSON.parse(localStorage.getItem("coAgentStatuts") || "{}");
+        coAgents.forEach(a => {
+            if (saved[a.nom]) a.statut = saved[a.nom];
+        });
+        /* Vérifier la cohérence : si un agent a un statut "mission" mais
+           qu'aucune mission ne le référence, le remettre libre */
+        coAgents.forEach(a => {
+            if (a.statut !== 'libre' && !coMissions.find(m => m.agent === a.nom)) {
+                a.statut = 'libre';
+            }
+        });
+    } catch(e) {}
+}
 
 /* ══════════════════════════════════════════════════════
    SIDEBAR
@@ -1844,12 +1892,13 @@ function updateNotifBadge() {
 }
 
 function pushNotification(text) {
-    const notif = { id: Date.now(), text, date: new Date().toLocaleString(), read: false };
+    const notif = { id: Date.now(), text, date: new Date().toLocaleString("fr-FR"), read: false };
     notifications.unshift(notif);
     saveNotifications();
     updateNotifBadge();
     renderNotificationsPanel();
-    showToast(text);
+    /* Toast : affiche seulement la première ligne pour rester lisible */
+    showToast(text.split('\n')[0]);
 }
 
 function showToast(text) {
@@ -1882,8 +1931,12 @@ function renderNotificationsPanel() {
     if (!notifications.length) { container.innerHTML = "<div style='opacity:0.7;'>Aucune notification.</div>"; return; }
     notifications.forEach(n => {
         const div = document.createElement("div");
-        div.style.cssText = "padding:10px 0; border-bottom:1px solid var(--border);";
-        div.innerHTML = `<div style="font-weight:600;">${n.text}</div><div style="font-size:0.8rem; opacity:0.7;">${n.date}</div>`;
+        div.style.cssText = "padding:12px 0; border-bottom:1px solid var(--border);";
+        /* Rendre les sauts de ligne visibles et mettre la première ligne en gras */
+        const lines = (n.text || '').split('\n');
+        const title = lines[0] || '';
+        const details = lines.slice(1).map(l => `<div style="font-size:0.82rem;opacity:0.8;margin-top:2px;">${l}</div>`).join('');
+        div.innerHTML = `<div style="font-weight:700;font-size:0.92rem;">${title}</div>${details}<div style="font-size:0.75rem;opacity:0.5;margin-top:4px;">${n.date}</div>`;
         container.appendChild(div);
     });
 }
@@ -2210,12 +2263,21 @@ async function loadFeuilleDeGardeForCO() {
         document.getElementById("co-agents-list").innerHTML =
             `<div class="co-empty"><span class="co-empty-icon">👤</span>Aucun agent dans la feuille de garde du jour</div>`;
     } else {
+        /* Restaurer les statuts des agents (mission/ronde/verif) depuis localStorage
+           pour que les agents en mission ne reviennent pas "libre" après navigation */
+        restoreAgentStatuts();
         renderAgents();
-        coLog.unshift({ time: coNow(), type: 'SYS', msg: `${coAgents.length} agents chargés depuis la feuille de garde`, agent: '' });
+        /* Ne loguer le chargement que si c'est la première fois (pas à chaque ouverture supervision) */
+        if (!coLog.find(l => l.msg && l.msg.includes('agents chargés') && l.time === coNow())) {
+            coLog.unshift({ time: coNow(), type: 'SYS', msg: `${coAgents.length} agents chargés depuis la feuille de garde`, agent: '' });
+            saveCOState();
+        }
         renderLog();
     }
 
     document.getElementById("badge-effectif").textContent = coAgents.length;
+    /* Render les missions persistées (elles sont en mémoire grâce au localStorage) */
+    renderMissions();
     updateStats();
 }
 
@@ -2283,7 +2345,10 @@ function closeMissionById(id) {
     freeAgent(m.agent);
     coMissions = coMissions.filter(x => x.id !== id);
     coLog.unshift({ time: coNow(), type: 'OK', msg: `Mission ${id} clôturée`, agent: m.agent });
-    pushNotification(`✔ ${m.id} — ${m.type} clôturée`);
+    const notifParts = [`✔ ${m.id} — ${m.type}`, `Agent : ${m.agent}`, `Lancée à ${m.time}`];
+    if (m.note) notifParts.push(`Note : ${m.note}`);
+    pushNotification(notifParts.join('\n'));
+    saveCOState();
     renderMissions(); renderAgents(); updateStats(); renderLog();
 }
 
@@ -2293,6 +2358,8 @@ function cancelMission(id) {
     freeAgent(m.agent);
     coMissions = coMissions.filter(x => x.id !== id);
     coLog.unshift({ time: coNow(), type: 'SYS', msg: `Mission ${id} annulée`, agent: m.agent });
+    pushNotification(`✕ ${m.id} — ${m.type} annulée (${m.agent})`);
+    saveCOState();
     renderMissions(); renderAgents(); updateStats(); renderLog();
 }
 
@@ -2304,9 +2371,12 @@ function reassignMission(id) {
 
 function clearAllMissions() {
     if (!confirm("Clôturer toutes les missions en cours ?")) return;
+    const nb = coMissions.length;
     coMissions.forEach(m => freeAgent(m.agent));
-    coLog.unshift({ time: coNow(), type: 'SYS', msg: 'Toutes missions clôturées', agent: '' });
+    coLog.unshift({ time: coNow(), type: 'SYS', msg: `Toutes missions clôturées (${nb})`, agent: '' });
+    pushNotification(`✔ ${nb} mission(s) clôturée(s) en bloc`);
     coMissions = [];
+    saveCOState();
     renderMissions(); renderAgents(); updateStats(); renderLog();
 }
 
@@ -2436,11 +2506,15 @@ function launchMission() {
     if (modalReassignId) {
         const m = coMissions.find(x => x.id === modalReassignId);
         if (m) {
+            const oldAgent = m.agent;
             freeAgent(m.agent);
             m.agent = agent;
             m.type  = type;
             m.note  = note;
             coLog.unshift({ time: coNow(), type: 'SYS', msg: `Mission ${m.id} réassignée → ${type}`, agent });
+            const notifParts = [`↩ ${m.id} réassignée`, `${type}`, `${oldAgent} → ${agent}`];
+            if (note) notifParts.push(`Note : ${note}`);
+            pushNotification(notifParts.join('\n'));
         }
     } else {
         coMissionCounter++;
@@ -2463,9 +2537,14 @@ function launchMission() {
 
         const logType = { intervention:'INT', verif:'VRF', ronde:'RON' }[currentModalTab];
         coLog.unshift({ time: coNow(), type: logType, msg: type, agent });
-        pushNotification(`${id} — ${type} → ${agent}`);
+
+        /* Notification complète avec note opérationnelle */
+        const notifParts = [`🚨 ${id} — ${type}`, `Agent : ${agent}`, `Heure : ${coNow()}`];
+        if (note) notifParts.push(`📝 Note : ${note}`);
+        pushNotification(notifParts.join('\n'));
     }
 
+    saveCOState();
     closeMissionModal();
     renderMissions(); renderAgents(); updateStats(); renderLog();
 }

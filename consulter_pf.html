@@ -169,8 +169,18 @@ async function chargerPermisFeu(){
 
 function renderList(list){
     const div=document.getElementById("permitsList");
-    if(!list.length){div.innerHTML='<div class="empty">Aucun permis feu trouv\u00e9.</div>';return;}
-    div.innerHTML=list.map(p=>{
+
+    /* ══ SÉCURITÉ : toujours respecter le filtre statut actif ══
+       Même si un permis clôturé se retrouve dans le cache (race condition,
+       re-fetch trop rapide, etc.), il ne sera JAMAIS affiché quand le
+       filtre est sur "Ouverts seulement". */
+    const statutF = (document.getElementById("filtreStatut") || {}).value || "ouvert";
+    let filtered = list;
+    if (statutF === "ouvert")       filtered = list.filter(p => !isClos(p.statut));
+    else if (statutF === "cloture") filtered = list.filter(p => isClos(p.statut));
+
+    if(!filtered.length){div.innerHTML='<div class="empty">Aucun permis feu trouv\u00e9.</div>';return;}
+    div.innerHTML=filtered.map(p=>{
         const clos=isClos(p.statut);
         const agent=agentName(p);
         const lieu=p.lieu||(p.meta?[p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" \u2014 "):"")||"\u2014";
@@ -303,7 +313,6 @@ function ouvrirPermis(id){
 function fermerPermis(){document.getElementById("modalPermis").classList.remove("active");}
 
 async function cloturerPermis(id){
-    /* Double verrou : même si quelqu'un appelle cette fonction en console depuis le QR */
     if(READ_ONLY){showToast("\u26d4 Clôture réservée au PC Sécurité.",true);return;}
     if(!confirm("Cl\u00f4turer d\u00e9finitivement ce permis feu ?"))return;
 
@@ -311,8 +320,6 @@ async function cloturerPermis(id){
 
     const nowIso = new Date().toISOString();
 
-    /* Appel UPDATE + on demande à Supabase de nous RENVOYER la ligne modifiée
-       pour avoir la preuve que le changement est bien persisté côté base */
     const { data, error } = await supabaseClient
         .from("permis_feu")
         .update({ statut: "cloture", date_fin: nowIso })
@@ -323,42 +330,52 @@ async function cloturerPermis(id){
 
     if(error){
         showToast("\u274c " + error.message, true);
-        console.error("[Clôture PF] ERREUR :", error);
         return;
     }
-
     if(!data || data.length === 0){
-        /* Aucune ligne mise à jour — typiquement une policy RLS qui silencieusement refuse */
-        showToast("\u26a0\ufe0f Aucune ligne mise à jour (RLS ?) — permis non clôturé.", true);
-        console.warn("[Clôture PF] UPDATE n'a modifié aucune ligne. Vérifier les policies RLS.");
+        showToast("\u26a0\ufe0f Aucune ligne mise à jour — permis non clôturé.", true);
         return;
     }
 
-    console.log("[Clôture PF] \u2705 Ligne clôturée :", data[0]);
+    console.log("[Clôture PF] \u2705 Ligne clôturée :", data[0].statut);
 
-    /* FORCER le filtre "Ouverts seulement" après une clôture —
-       au cas où l'utilisateur était sur "Tous" ou "Clôturés", il est logique
-       de revenir à la vue par défaut pour qu'il voie le permis disparaître */
+    /* ══ 1) Fermer le modal IMMÉDIATEMENT ══ */
+    fermerPermis();
+
+    /* ══ 2) Forcer le filtre sur "Ouverts seulement" ══ */
     const filtreStatutEl = document.getElementById("filtreStatut");
     if (filtreStatutEl) filtreStatutEl.value = "ouvert";
 
-    /* Retirer directement le permis du cache local — pas besoin d'attendre
-       le serveur, on sait que c'est clôturé */
+    /* ══ 3) Retirer le permis du cache local ══ */
     permisCache = permisCache.filter(x => x.id !== id);
-    console.log("[Clôture PF] permisCache après suppression :", permisCache.length, "permis restants");
 
-    /* Re-render immédiat de la liste + compteurs */
+    /* ══ 4) Re-render IMMÉDIAT de la liste + compteurs ══
+       C'est cette étape qui fait disparaître visuellement le permis.
+       On NE rappelle PAS chargerPermisFeu() immédiatement car ça
+       crée une race condition : le serveur peut encore retourner
+       l'ancien statut pendant quelques ms → le permis réapparaît. */
     renderList(permisCache);
     document.getElementById("statTotal").textContent   = permisCache.length;
     document.getElementById("statOuvert").textContent  = permisCache.filter(p => !isClos(p.statut)).length;
     document.getElementById("statClos").textContent    = permisCache.filter(p =>  isClos(p.statut)).length;
 
     showToast("\u2705 Permis " + (data[0].numero || "") + " clôturé.");
-    fermerPermis();
 
-    /* Rechargement complet depuis le serveur pour resynchroniser
-       (au cas où d'autres changements auraient eu lieu en parallèle) */
-    chargerPermisFeu();
+    /* ══ 5) Re-sync silencieux en arrière-plan après 3 secondes ══
+       Laisse le temps à Supabase de propager le changement.
+       Si le permis revient quand même (bug serveur), on le force hors de la liste. */
+    setTimeout(async () => {
+        try {
+            await chargerPermisFeu();
+            /* Double sécurité : si le permis clôturé est revenu dans le cache malgré le filtre */
+            const zombie = permisCache.find(x => x.id === id);
+            if (zombie && isClos(zombie.statut)) {
+                permisCache = permisCache.filter(x => x.id !== id);
+                renderList(permisCache);
+                console.log("[Clôture PF] zombie éliminé au re-sync");
+            }
+        } catch(e) { console.warn("[Clôture PF] re-sync échoué :", e); }
+    }, 3000);
 }
 
 /* ═══════════════════════════════════════════════════════════════

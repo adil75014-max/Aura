@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Permis Feu — Consultation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
+
+.header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.back-btn{background:rgba(239,100,50,0.12);border:1px solid rgba(239,100,50,0.3);color:#ef6432;padding:8px 14px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';transition:.2s}
+.back-btn:hover{background:#ef6432;color:#fff}
+.header h1{font-size:1.4rem;color:#ef6432;flex:1;letter-spacing:-.5px}
+
+.filters{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.filter-group{flex:1;min-width:140px}
+.filter-group label{display:block;font-size:.8rem;font-weight:600;color:#8899bb;margin-bottom:4px}
+.filter-group input,.filter-group select{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:.9rem 'DM Sans'}
+.filter-group input:focus,.filter-group select:focus{outline:none;border-color:#ef6432;box-shadow:0 0 0 3px rgba(239,100,50,0.15)}
+.btn-search{padding:10px 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#ef6432,#d44a1a);color:#fff;font:600 .9rem 'DM Sans';cursor:pointer;height:42px;white-space:nowrap}
+.btn-search:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(239,100,50,0.3)}
+
+.stats{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.stat{flex:1;min-width:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;text-align:center}
+.stat-num{font-size:1.6rem;font-weight:700;color:#ef6432}
+.stat-label{font-size:.75rem;color:#6b7a99;margin-top:2px}
+
+.permits-list{display:flex;flex-direction:column;gap:10px}
+.permit-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;transition:.2s;cursor:pointer}
+.permit-card:hover{border-color:rgba(239,100,50,0.3);background:rgba(239,100,50,0.04)}
+.permit-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
+.permit-icon.open{background:rgba(239,100,50,0.12);border:1px solid rgba(239,100,50,0.25)}
+.permit-icon.closed{background:rgba(0,200,120,0.12);border:1px solid rgba(0,200,120,0.25)}
+.permit-info{flex:1;min-width:0}
+.permit-info .permit-num{font-weight:700;font-size:.95rem;color:#e0e4ef}
+.permit-info .permit-meta{font-size:.8rem;color:#6b7a99;margin-top:3px;display:flex;flex-wrap:wrap;gap:8px}
+.pill{padding:4px 12px;border-radius:999px;font-size:.75rem;font-weight:600}
+.pill-open{background:rgba(239,100,50,0.15);color:#ef6432}
+.pill-closed{background:rgba(0,200,120,0.15);color:#00c878}
+.empty{text-align:center;padding:40px;color:#4a5578;font-size:.95rem}
+
+.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:none;justify-content:center;align-items:flex-start;padding:20px;z-index:999;overflow-y:auto}
+.modal-bg.active{display:flex}
+.modal-box{background:#131824;border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:28px;width:100%;max-width:720px;margin:20px auto;color:white}
+.modal-box h2{color:#ef6432;margin-bottom:18px;font-size:1.3rem;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:12px}
+.modal-box h3{color:#ff9966;margin:20px 0 8px;font-size:.95rem;letter-spacing:.3px}
+.detail-row{display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap}
+.detail-field{flex:1;min-width:200px;margin-bottom:10px}
+.detail-label{color:#8899bb;font-weight:600;font-size:.8rem;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.detail-value{color:#e0e4ef;white-space:pre-wrap;word-break:break-word;line-height:1.5;font-size:.95rem}
+.qr-block{text-align:center;margin:16px 0;padding:16px;background:white;border-radius:12px;display:inline-block}
+.signature-block img{max-width:280px;width:100%;border:1px solid rgba(255,255,255,0.1);border-radius:10px;background:#f9fafb}
+.passage-list{display:flex;flex-wrap:wrap;gap:6px}
+.passage-tag{padding:4px 10px;border-radius:8px;background:rgba(239,100,50,0.1);color:#ef6432;font-size:.85rem;font-weight:600}
+.modal-actions{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
+.modal-actions button{padding:10px 18px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';border:1px solid;transition:.2s}
+.btn-close{border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#8899bb}
+.btn-close:hover{background:rgba(255,255,255,0.12);color:#fff}
+.btn-cloturer{border-color:#00c878;background:rgba(0,200,120,0.1);color:#00c878}
+.btn-cloturer:hover{background:#00c878;color:#fff}
+.btn-pdf{border-color:#ef6432;background:rgba(239,100,50,0.1);color:#ef6432}
+.btn-pdf:hover{background:#ef6432;color:#fff}
+
+/* URGENCES */
+.urgence-block{margin:20px 0 16px;padding:14px;border-radius:14px;background:rgba(255,60,30,0.08);border:1px solid rgba(255,60,30,0.25)}
+.urgence-block h3{color:#ff4d2e !important;margin:0 0 10px !important;font-size:.9rem;letter-spacing:.3px}
+.urgence-btn{width:100%;border-radius:999px;padding:12px 16px;border:none;font:600 .95rem 'DM Sans';cursor:pointer;color:#fff;margin-top:8px;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.urgence-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,0.3)}
+.btn-urgence-feu{background:linear-gradient(135deg,#ff6d00,#dd2c00)}
+.btn-urgence-svv{background:linear-gradient(135deg,#ff1744,#c62828)}
+.btn-urgence-call{background:linear-gradient(135deg,#2563eb,#1d4ed8)}
+
+/* Bandeau lecture seule (accès QR code intervenant) */
+.ro-banner{background:linear-gradient(135deg,rgba(37,99,235,0.15),rgba(29,78,216,0.1));border:1px solid rgba(37,99,235,0.4);border-radius:10px;padding:10px 14px;margin-bottom:14px;color:#93c5fd;font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:8px}
+
+/* Sections réservées au PC Sécurité (passages / prolongation) */
+.admin-block{margin-top:20px;padding:14px;border-radius:12px;background:rgba(239,100,50,0.05);border:1px solid rgba(239,100,50,0.2)}
+.admin-block h3{color:#ef6432!important;margin:0 0 10px!important;font-size:.9rem;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.admin-block .admin-form{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.admin-block .admin-field{flex:1;min-width:140px}
+.admin-block label{display:block;font-size:.75rem;font-weight:600;color:#8899bb;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
+.admin-block input{width:100%;padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:.9rem 'DM Sans';outline:none;transition:.15s}
+.admin-block input:focus{border-color:#ef6432;box-shadow:0 0 0 3px rgba(239,100,50,0.15)}
+.admin-block .admin-btn{padding:10px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,#ef6432,#d44a1a);color:#fff;font:600 .85rem 'DM Sans';cursor:pointer;white-space:nowrap;transition:.2s}
+.admin-block .admin-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(239,100,50,0.35)}
+.admin-block .admin-btn:disabled{opacity:.6;cursor:wait}
+.admin-block .passages-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:10px}
+.admin-block .passage-tag{padding:4px 10px;border-radius:8px;background:rgba(239,100,50,0.15);color:#ef6432;font-size:.8rem;font-weight:600}
+.admin-block .empty-note{font-size:.8rem;color:#6b7a99;font-style:italic;margin-bottom:8px}
+.admin-block .hint{font-size:.75rem;color:#6b7a99;margin-top:6px;line-height:1.35}
+
+@media(max-width:500px){.permit-card{flex-direction:column;align-items:flex-start}.detail-row{flex-direction:column}.admin-block .admin-form{flex-direction:column}.admin-block .admin-btn{width:100%}}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <button class="back-btn" onclick="location.href='index.html'">⟵</button>
+    <h1>🔥 Permis Feu</h1>
+</div>
+
+<div class="stats">
+    <div class="stat"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Total</div></div>
+    <div class="stat"><div class="stat-num" id="statOuvert" style="color:#ef6432">0</div><div class="stat-label">Ouverts</div></div>
+    <div class="stat"><div class="stat-num" id="statClos" style="color:#00c878">0</div><div class="stat-label">Clôturés</div></div>
+</div>
+
+<div class="filters">
+    <div class="filter-group"><label>Date</label><input type="date" id="filtreDate"></div>
+    <div class="filter-group"><label>Entreprise</label><select id="filtreEntreprise"><option value="all">Toutes</option></select></div>
+    <div class="filter-group"><label>Statut</label><select id="filtreStatut">
+        <option value="ouvert">Ouverts seulement</option>
+        <option value="cloture">Clôturés seulement</option>
+        <option value="all">Tous</option>
+    </select></div>
+    <button class="btn-search" onclick="chargerPermisFeu()">🔍 Rechercher</button>
+</div>
+
+<div class="permits-list" id="permitsList"><div class="empty">Chargement…</div></div>
+
+<div class="modal-bg" id="modalPermis" onclick="if(event.target===this)fermerPermis()">
+    <div class="modal-box" id="modalPermisContent"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabaseClient.js"></script>
+<script>
+if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
+
+let permisCache = [];
+/* MODE LECTURE SEULE : accès via QR code (paramètre ?pf=... dans l'URL)
+   → l'intervenant peut consulter + télécharger le PDF mais ne peut pas clôturer,
+   et ne voit pas les autres permis (confidentialité) */
+const READ_ONLY = new URLSearchParams(location.search).has("pf");
+
+function fmtDate(iso){if(!iso)return"\u2014";const d=new Date(iso);return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR").slice(0,5);}
+function agentName(p){if(p.profiles){const n=[p.profiles.prenom,p.profiles.nom].filter(Boolean).join(" ");if(n)return n;}return p.agent_nom||(p.meta&&p.meta.agent_nom)||"\u2014";}
+function isClos(s){return s&&s.toLowerCase().includes("clos");}
+function esc(s){if(!s)return"\u2014";const d=document.createElement("div");d.textContent=s;return d.innerHTML;}
+
+async function chargerPermisFeu(){
+    const dateF=document.getElementById("filtreDate").value;
+    const entF=document.getElementById("filtreEntreprise").value;
+    const statutF=document.getElementById("filtreStatut").value;
+
+    let q=supabaseClient.from("permis_feu").select("*, profiles(nom, prenom)").order("created_at",{ascending:false});
+    if(dateF){q=q.gte("created_at",dateF+"T00:00:00").lte("created_at",dateF+"T23:59:59.999");}
+    if(entF!=="all")q=q.eq("entreprise",entF);
+
+    /* ══ FILTRE SERVEUR : ne pas recevoir les clôturés quand on veut les ouverts ══
+       C'est ça qui empêche le permis de revenir fantôme après clôture.
+       Avant, on filtrait seulement côté client → race condition possible. */
+    if(statutF==="ouvert")  q=q.neq("statut","cloture");
+    if(statutF==="cloture") q=q.eq("statut","cloture");
+
+    const{data,error}=await q;
+    if(error){showToast("\u274c "+error.message,true);return;}
+    permisCache = data||[];
+    renderList(permisCache);
+    document.getElementById("statTotal").textContent=permisCache.length;
+    document.getElementById("statOuvert").textContent=permisCache.filter(p=>!isClos(p.statut)).length;
+    document.getElementById("statClos").textContent=permisCache.filter(p=>isClos(p.statut)).length;
+
+    const urlNum=new URLSearchParams(location.search).get("pf");
+    if(urlNum){const match=permisCache.find(p=>p.numero===urlNum);if(match)ouvrirPermis(match.id);}
+}
+
+function renderList(list){
+    const div=document.getElementById("permitsList");
+
+    /* ══ SÉCURITÉ : toujours respecter le filtre statut actif ══
+       Même si un permis clôturé se retrouve dans le cache (race condition,
+       re-fetch trop rapide, etc.), il ne sera JAMAIS affiché quand le
+       filtre est sur "Ouverts seulement". */
+    const statutF = (document.getElementById("filtreStatut") || {}).value || "ouvert";
+    let filtered = list;
+    if (statutF === "ouvert")       filtered = list.filter(p => !isClos(p.statut));
+    else if (statutF === "cloture") filtered = list.filter(p => isClos(p.statut));
+
+    if(!filtered.length){div.innerHTML='<div class="empty">Aucun permis feu trouv\u00e9.</div>';return;}
+    div.innerHTML=filtered.map(p=>{
+        const clos=isClos(p.statut);
+        const agent=agentName(p);
+        const lieu=p.lieu||(p.meta?[p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" \u2014 "):"")||"\u2014";
+        const date=fmtDate(p.date_debut||p.created_at);
+        return `<div class="permit-card" onclick="ouvrirPermis('${p.id}')">
+            <div class="permit-icon ${clos?'closed':'open'}">${clos?'\u2705':'\ud83d\udd25'}</div>
+            <div class="permit-info">
+                <div class="permit-num">${p.numero||"Sans num\u00e9ro"}</div>
+                <div class="permit-meta">
+                    <span>\ud83d\udcc5 ${date}</span>
+                    <span>\ud83c\udfe2 ${esc(p.entreprise||"\u2014")}</span>
+                    <span>\ud83d\udccd ${esc(lieu).substring(0,30)}</span>
+                    <span>\ud83d\udc64 ${esc(agent)}</span>
+                </div>
+            </div>
+            <span class="pill ${clos?'pill-closed':'pill-open'}">${clos?"Cl\u00f4tur\u00e9":"Ouvert"}</span>
+        </div>`;
+    }).join("");
+}
+
+function ouvrirPermis(id){
+    const p=permisCache.find(x=>x.id===id);
+    if(!p){showToast("Permis introuvable.",true);return;}
+    const m=p.meta||{};const clos=isClos(p.statut);const agent=agentName(p);
+    const lieu=p.lieu||[m.magasin,m.etage,m.zone_canton].filter(Boolean).join(" \u2014 ")||"\u2014";
+
+    function field(lbl,val){return(val&&val!=="\u2014")?`<div class="detail-field"><span class="detail-label">${lbl}</span><div class="detail-value">${esc(val)}</div></div>`:"";}
+
+    const qrId="qr-"+p.id.slice(0,8);
+    let html=`<h2>\ud83d\udd25 ${esc(p.numero||"Permis Feu")}</h2>`;
+
+    html+=`<div class="detail-row">${field("Statut",clos?"\u2705 Cl\u00f4tur\u00e9":"\ud83d\udd34 Ouvert")}${field("Date",fmtDate(p.date_debut||p.created_at))}${field("Agent",agent)}</div>`;
+
+    html+=`<div style="text-align:center;margin:16px 0"><div class="qr-block"><canvas id="${qrId}"></canvas><div style="color:#333;font-size:.75rem;margin-top:6px">${esc(p.numero)}</div></div></div>`;
+
+    if(m.odt_par||m.odt_nom||m.odt_fonction){html+=`<h3>Ordre de travail</h3><div class="detail-row">${field("Donn\u00e9 par",m.odt_par)}${field("Nom",m.odt_nom)}${field("Fonction",m.odt_fonction)}</div>`;}
+
+    html+=`<h3>Entreprise</h3><div class="detail-row">${field("Concern\u00e9e",m.entreprise_concernee||p.entreprise)}${field("Ext\u00e9rieure",m.ext_raison_sociale)}${field("Repr\u00e9sentant",m.ext_representant)}</div>`;
+
+    html+=`<h3>Localisation</h3><div class="detail-row">${field("Lieu",lieu)}${field("Horaires",m.horaires)}</div>`;
+
+    if(m.operation||m.risques||m.mesures||m.moyens){html+=`<h3>Travaux</h3>${field("Op\u00e9ration",m.operation)}${field("Risques",m.risques)}${field("Mesures",m.mesures)}${field("Moyens",m.moyens)}`;}
+    if(!m.operation&&p.description){html+=`<h3>Description</h3>${field("",p.description)}`;}
+
+    if(m.signature_delivreur||m.signature_intervenant){
+        html+=`<h3>Signatures</h3><div class="detail-row">`;
+        if(m.signature_delivreur)html+=`<div class="detail-field signature-block"><span class="detail-label">D\u00e9livreur</span><img src="${m.signature_delivreur}" alt="Signature"></div>`;
+        if(m.signature_intervenant)html+=`<div class="detail-field signature-block"><span class="detail-label">Intervenant</span><img src="${m.signature_intervenant}" alt="Signature"></div>`;
+        html+=`</div>`;
+        if(m.pris_connaissance)html+=`<div style="color:#00c878;font-weight:600;margin-top:4px">\u2705 PRIS CONNAISSANCE</div>`;
+    }
+
+    if(m.passages&&m.passages.length){html+=`<h3>Heures de passage</h3><div class="passage-list">${m.passages.map(h=>`<span class="passage-tag">\ud83d\udd50 ${h}</span>`).join("")}</div>`;}
+
+    if(m.prolongations&&m.prolongations.length){html+=`<h3>Prolongations</h3>`;m.prolongations.forEach(pr=>{html+=`<div class="detail-value" style="margin-bottom:4px">\ud83d\udd04 ${esc(pr.ancienne_date||pr.date)} (${esc(pr.ancien_horaire||pr.horaire)}) \u2192 ${esc(pr.horodatage)}</div>`;});}
+
+    /* BLOC ADMIN : gestion des passages + prolongation
+       Visible UNIQUEMENT pour le PC Sécurité (pas en mode QR intervenant)
+       et seulement sur les permis non clôturés */
+    if(!clos && !READ_ONLY){
+        const passagesHtml = (m.passages && m.passages.length)
+            ? m.passages.map(h => `<span class="passage-tag">\ud83d\udd50 ${esc(h)}</span>`).join("")
+            : `<span class="empty-note">Aucun passage enregistré.</span>`;
+
+        /* Date actuelle en ISO pour le min du <input type=date> */
+        const todayIso = new Date().toISOString().slice(0, 10);
+        /* Date de validité actuelle du permis (pour pré-remplir) */
+        const currentDate = p.date_debut ? p.date_debut.slice(0, 10) : todayIso;
+        const currentHoraire = m.horaires || "";
+
+        /* ── Heures de passage ── */
+        html += `<div class="admin-block">
+            <h3>\ud83d\udd50 Heures de passage</h3>
+            <div class="passages-grid">${passagesHtml}</div>
+            <button type="button" class="admin-btn" onclick="ajouterPassage('${p.id}')">
+                ➕ Ajouter un passage (maintenant)
+            </button>
+            <div class="hint">Enregistre l'heure actuelle (${new Date().toLocaleTimeString("fr-FR").slice(0,5)}) comme passage effectué sur le chantier.</div>
+        </div>`;
+
+        /* ── Prolongation ── */
+        html += `<div class="admin-block">
+            <h3>\ud83d\udd04 Prolonger le permis feu</h3>
+            <div class="admin-form">
+                <div class="admin-field">
+                    <label>Nouvelle date de fin</label>
+                    <input type="date" id="prolong-date-${p.id}" min="${todayIso}" value="${currentDate}">
+                </div>
+                <div class="admin-field">
+                    <label>Nouvel horaire</label>
+                    <input type="text" id="prolong-horaire-${p.id}" placeholder="Ex : 08h00 - 18h00" value="${esc(currentHoraire)}">
+                </div>
+                <button type="button" class="admin-btn" onclick="prolongerPermis('${p.id}')">
+                    \ud83d\udd04 Prolonger
+                </button>
+            </div>
+            <div class="hint">L'ancienne date/horaire sera conservée dans l'historique des prolongations.</div>
+        </div>`;
+    }
+
+    /* BLOC URGENCES — visible pour tout le monde (intervenant comme PC Sécurité) */
+    if(!clos){
+        const lieuUrg = lieu && lieu !== "\u2014" ? esc(lieu) : "Position non renseignée";
+        html+=`<div class="urgence-block">
+            <h3>\ud83d\udea8 EN CAS D'URGENCE SUR LE CHANTIER</h3>
+            <div style="font-size:.85rem;color:#e0e4ef;margin-bottom:10px">
+                \ud83d\udccd <strong>${lieuUrg}</strong>
+            </div>
+            <a href="tel:0145484794" class="urgence-btn btn-urgence-call">\ud83d\udcde Appeler PC Sécurité — 01 45 48 47 94</a>
+            <button class="urgence-btn btn-urgence-feu" onclick="declarerUrgence('feu','${p.id}')">\ud83d\udd25 Déclarer une urgence incendie</button>
+            <button class="urgence-btn btn-urgence-svv" onclick="declarerUrgence('svv','${p.id}')">\ud83d\ude91 Déclarer une urgence — Secours à victime</button>
+        </div>`;
+    }
+
+    /* Bouton Clôturer UNIQUEMENT pour le PC Sécurité (pas en mode lecture seule / QR code) */
+    const cloBtn = (clos || READ_ONLY) ? "" : `<button class="btn-cloturer" onclick="cloturerPermis('${p.id}')">\u2705 Clôturer</button>`;
+
+    /* Bandeau d'information en mode lecture seule */
+    const roBanner = READ_ONLY ? `<div class="ro-banner">\ud83d\udd12 Consultation intervenant — mode lecture seule. Pour clôturer, s'adresser au PC Sécurité.</div>` : "";
+
+    html = roBanner + html;
+    html+=`<div class="modal-actions">${cloBtn}<button class="btn-pdf" onclick="exportPDF('${p.id}')">\ud83d\udcc4 PDF</button><button class="btn-close" onclick="fermerPermis()">Fermer</button></div>`;
+
+    document.getElementById("modalPermisContent").innerHTML=html;
+    document.getElementById("modalPermis").classList.add("active");
+
+    setTimeout(()=>{const c=document.getElementById(qrId);if(c)new QRious({element:c,size:140,value:location.origin+location.pathname+'?pf='+encodeURIComponent(p.numero),foreground:'#1d4ed8',background:'#ffffff',level:'M'});},100);
+}
+
+function fermerPermis(){document.getElementById("modalPermis").classList.remove("active");}
+
+async function cloturerPermis(id){
+    if(READ_ONLY){showToast("\u26d4 Clôture réservée au PC Sécurité.",true);return;}
+    if(!confirm("Cl\u00f4turer d\u00e9finitivement ce permis feu ?"))return;
+
+    console.log("[Clôture PF] début — id :", id);
+
+    const nowIso = new Date().toISOString();
+
+    const { data, error } = await supabaseClient
+        .from("permis_feu")
+        .update({ statut: "cloture", date_fin: nowIso })
+        .eq("id", id)
+        .select();
+
+    console.log("[Clôture PF] réponse Supabase :", { data, error });
+
+    if(error){
+        showToast("\u274c " + error.message, true);
+        return;
+    }
+    if(!data || data.length === 0){
+        showToast("\u26a0\ufe0f Aucune ligne mise à jour — permis non clôturé.", true);
+        return;
+    }
+
+    console.log("[Clôture PF] \u2705 Ligne clôturée :", data[0].statut);
+
+    /* ══ 1) Fermer le modal IMMÉDIATEMENT ══ */
+    fermerPermis();
+
+    /* ══ 2) Forcer le filtre sur "Ouverts seulement" ══ */
+    const filtreStatutEl = document.getElementById("filtreStatut");
+    if (filtreStatutEl) filtreStatutEl.value = "ouvert";
+
+    /* ══ 3) Retirer le permis du cache local ══ */
+    permisCache = permisCache.filter(x => x.id !== id);
+
+    /* ══ 4) Re-render IMMÉDIAT de la liste + compteurs ══
+       C'est cette étape qui fait disparaître visuellement le permis.
+       On NE rappelle PAS chargerPermisFeu() immédiatement car ça
+       crée une race condition : le serveur peut encore retourner
+       l'ancien statut pendant quelques ms → le permis réapparaît. */
+    renderList(permisCache);
+    document.getElementById("statTotal").textContent   = permisCache.length;
+    document.getElementById("statOuvert").textContent  = permisCache.filter(p => !isClos(p.statut)).length;
+    document.getElementById("statClos").textContent    = permisCache.filter(p =>  isClos(p.statut)).length;
+
+    showToast("\u2705 Permis " + (data[0].numero || "") + " clôturé.");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AJOUTER UN PASSAGE au permis feu (heure actuelle horodatée)
+   Réservé au PC Sécurité — double-verrou côté fonction
+═══════════════════════════════════════════════════════════════ */
+async function ajouterPassage(permisId){
+    if(READ_ONLY){showToast("\u26d4 Action réservée au PC Sécurité.", true); return;}
+
+    /* Récupère le permis à jour depuis Supabase pour éviter les écrasements
+       si plusieurs postes PC Sécurité modifient en parallèle (meta = jsonb,
+       pas d'opérateur atomique côté client → re-fetch + merge) */
+    const { data: fresh, error: fetchErr } = await supabaseClient
+        .from("permis_feu").select("meta").eq("id", permisId).single();
+    if(fetchErr){ showToast("\u274c " + fetchErr.message, true); return; }
+
+    const newMeta = fresh.meta || {};
+    const passages = Array.isArray(newMeta.passages) ? newMeta.passages.slice() : [];
+
+    /* Format passage : JJ/MM HH:MM (lisible) */
+    const now = new Date();
+    const passageStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
+                     + " " + now.toLocaleTimeString("fr-FR").slice(0, 5);
+    passages.push(passageStr);
+    newMeta.passages = passages;
+
+    const { data, error } = await supabaseClient
+        .from("permis_feu").update({ meta: newMeta }).eq("id", permisId).select();
+    if(error){ showToast("\u274c " + error.message, true); return; }
+    if(!data || data.length === 0){
+        showToast("\u26a0\ufe0f Aucune ligne mise à jour (RLS ?)", true); return;
+    }
+
+    /* Synchro du cache local + re-rendu du modal */
+    const cached = permisCache.find(x => x.id === permisId);
+    if(cached) cached.meta = newMeta;
+    showToast("\u2705 Passage " + passageStr + " enregistré.");
+    ouvrirPermis(permisId);     // re-render le modal avec le nouveau passage
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PROLONGER LE PERMIS FEU
+   → Change date_debut + meta.horaires et archive l'ancien
+     dans meta.prolongations[] avec horodatage
+═══════════════════════════════════════════════════════════════ */
+async function prolongerPermis(permisId){
+    if(READ_ONLY){showToast("\u26d4 Action réservée au PC Sécurité.", true); return;}
+
+    const newDate    = document.getElementById("prolong-date-"    + permisId).value;
+    const newHoraire = document.getElementById("prolong-horaire-" + permisId).value.trim();
+    if(!newDate)    { showToast("\u26a0\ufe0f Renseignez la nouvelle date.", true); return; }
+    if(!newHoraire) { showToast("\u26a0\ufe0f Renseignez le nouvel horaire.", true); return; }
+
+    if(!confirm(`Prolonger le permis feu jusqu'au ${new Date(newDate).toLocaleDateString("fr-FR")} (${newHoraire}) ?`)) return;
+
+    /* Re-fetch pour éviter d'écraser des prolongations concurrentes */
+    const { data: fresh, error: fetchErr } = await supabaseClient
+        .from("permis_feu").select("date_debut, meta").eq("id", permisId).single();
+    if(fetchErr){ showToast("\u274c " + fetchErr.message, true); return; }
+
+    const oldDate = fresh.date_debut ? fresh.date_debut.slice(0, 10) : "";
+    const newMeta = fresh.meta || {};
+    const prolongations = Array.isArray(newMeta.prolongations) ? newMeta.prolongations.slice() : [];
+
+    /* Trace l'ancienne date/horaire + horodatage de la prolongation */
+    prolongations.push({
+        ancienne_date:   oldDate,
+        ancien_horaire:  newMeta.horaires || "",
+        nouvelle_date:   newDate,
+        nouvel_horaire:  newHoraire,
+        horodatage:      new Date().toLocaleString("fr-FR"),
+        par:             localStorage.getItem("nom") || null
+    });
+
+    newMeta.prolongations = prolongations;
+    newMeta.horaires      = newHoraire;
+
+    /* UPDATE atomique : date_debut + meta en une seule requête */
+    const { data, error } = await supabaseClient
+        .from("permis_feu")
+        .update({
+            date_debut: newDate + "T00:00:00",
+            meta: newMeta
+        })
+        .eq("id", permisId)
+        .select();
+
+    if(error){ showToast("\u274c " + error.message, true); return; }
+    if(!data || data.length === 0){
+        showToast("\u26a0\ufe0f Aucune ligne mise à jour (RLS ?)", true); return;
+    }
+
+    /* Synchro cache local */
+    const cached = permisCache.find(x => x.id === permisId);
+    if(cached){
+        cached.date_debut = data[0].date_debut;
+        cached.meta       = newMeta;
+    }
+    showToast("\u2705 Permis prolongé jusqu'au " + new Date(newDate).toLocaleDateString("fr-FR"));
+    ouvrirPermis(permisId);     // re-render le modal
+}
+
+/* Déclaration d'urgence depuis un permis feu (incendie ou secours à victime)
+   → Alerte le PC Sécurité via une insertion dans la table d'urgences */
+async function declarerUrgence(type, permisId){
+    const label = type === 'feu' ? 'URGENCE INCENDIE \ud83d\udd25' : 'URGENCE SECOURS À VICTIME \ud83d\ude91';
+    if(!confirm(`Confirmer : ${label}\n\nLe PC Sécurité sera notifié immédiatement.`)) return;
+
+    const p = permisCache.find(x=>x.id===permisId);
+    const lieu = p ? (p.lieu || (p.meta ? [p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" — ") : "")) : "";
+    const numero = p ? p.numero : "";
+
+    /* Insertion dans la table alertes_urgence si elle existe ; sinon fallback via permis_feu.meta */
+    try {
+        const payload = {
+            type_urgence: type,                 // 'feu' ou 'svv'
+            source: 'permis_feu',
+            permis_id: permisId,
+            permis_numero: numero,
+            lieu: lieu || null,
+            declared_at: new Date().toISOString(),
+            agent_nom: localStorage.getItem("nom") || null,
+            statut: 'active'
+        };
+        const { error } = await supabaseClient.from("alertes_urgence").insert(payload);
+        if(error && error.code !== "42P01"){ // 42P01 = table n'existe pas, on tombe en fallback
+            throw error;
+        }
+        if(error && error.code === "42P01"){
+            /* Fallback : on trace l'urgence dans la meta du permis */
+            const meta = p.meta || {};
+            meta.urgences = meta.urgences || [];
+            meta.urgences.push({ type, horodatage: new Date().toISOString(), agent: localStorage.getItem("nom") || null });
+            await supabaseClient.from("permis_feu").update({ meta }).eq("id", permisId);
+        }
+    } catch(e){
+        console.error(e);
+        showToast("\u274c Erreur : " + e.message, true);
+        return;
+    }
+
+    /* Notification sonore + alerte visuelle */
+    try {
+        const audio = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQBvAAAA");
+        audio.play().catch(()=>{});
+    } catch(e){}
+
+    showToast(`\u2705 ${label} déclarée — PC Sécurité notifié.`);
+    /* Appel téléphonique automatique en renfort si sur mobile */
+    if(/Android|iPhone|iPad/.test(navigator.userAgent)){
+        setTimeout(()=>{ location.href = "tel:0145484794"; }, 1200);
+    }
+}
+
+async function exportPDF(id){
+    const p=permisCache.find(x=>x.id===id);if(!p)return;
+    const m=p.meta||{};const clos=isClos(p.statut);const agent=agentName(p);
+    const lieu=p.lieu||[m.magasin,m.etage,m.zone_canton].filter(Boolean).join(" - ")||"";
+
+    const{jsPDF}=window.jspdf;const pdf=new jsPDF('p','mm','a4');
+    const M=15,PW=180,BOT=275;let y=0,pg=0;
+    function np(){if(pg>0)pdf.addPage();pg++;y=18;}
+    function ft(){pdf.setDrawColor(180);pdf.setLineWidth(.2);pdf.line(M,283,M+PW,283);pdf.setFontSize(7);pdf.setTextColor(140);pdf.text('Le Bon Marche - SEGEP RG - Document confidentiel',M,288);pdf.text('Page '+pg,M+PW,288,{align:'right'});}
+    function es(n){if(y+n>BOT){ft();np();}}
+    function row(lbl,val){if(!val)return;es(8);pdf.setFontSize(8);pdf.setTextColor(100);pdf.text(lbl,M+2,y);pdf.setFontSize(10);pdf.setTextColor(30);const lines=pdf.splitTextToSize(String(val),PW-42);lines.forEach((l,i)=>{if(i>0)es(5);pdf.text(l,M+40,y);y+=5;});if(lines.length<=1)y+=1;}
+    function sec(txt){es(12);pdf.setFontSize(11);pdf.setTextColor(200,100,30);pdf.setFont(undefined,'bold');pdf.text(txt,M,y);y+=7;pdf.setFont(undefined,'normal');}
+
+    np();
+    pdf.setFillColor(15,25,50);pdf.rect(0,0,210,48,'F');
+    pdf.setFillColor(200,170,50);pdf.rect(0,48,210,1.5,'F');
+    pdf.setFontSize(18);pdf.setTextColor(255);pdf.text('PERMIS FEU',M,22);
+    pdf.setFontSize(12);pdf.setTextColor(200,170,50);pdf.text(p.numero||'Sans numero',M,32);
+    pdf.setFontSize(8);pdf.setTextColor(160);pdf.text('Le Bon Marche - SEGEP RG - Batiment 3',M,42);
+    y=58;
+
+    es(24);pdf.setFillColor(245,247,252);pdf.setDrawColor(200);pdf.roundedRect(M,y,PW,20,3,3,'FD');
+    pdf.setFontSize(8);pdf.setTextColor(100);pdf.text('Statut',M+6,y+7);pdf.text('Date',M+45,y+7);pdf.text('Agent',M+100,y+7);
+    pdf.setFontSize(10);pdf.setTextColor(20);pdf.setFont(undefined,'bold');
+    pdf.text(clos?'Cloture':'Ouvert',M+6,y+15);pdf.text(fmtDate(p.date_debut||p.created_at),M+45,y+15);pdf.text(agent,M+100,y+15);
+    pdf.setFont(undefined,'normal');y+=28;
+
+    if(m.odt_par||m.odt_nom){sec('Ordre de travail');row('Donne par',m.odt_par);row('Nom',m.odt_nom);row('Fonction',m.odt_fonction);}
+    sec('Entreprise');row('Concernee',m.entreprise_concernee||p.entreprise);row('Exterieure',m.ext_raison_sociale);row('Representant',m.ext_representant);
+    sec('Localisation');row('Lieu',lieu);row('Horaires',m.horaires);
+    if(m.operation||m.risques){sec('Travaux');row('Operation',m.operation);row('Risques',m.risques);row('Mesures',m.mesures);row('Moyens',m.moyens);}
+    if(!m.operation&&p.description){sec('Description');row('',p.description);}
+    if(m.passages&&m.passages.length){sec('Passages');row('Heures',m.passages.join(', '));}
+    if(m.prolongations&&m.prolongations.length){sec('Prolongations');m.prolongations.forEach(pr=>{row('',`${pr.ancienne_date||pr.date} (${pr.ancien_horaire||pr.horaire}) - ${pr.horodatage}`);});}
+
+    ft();
+    pdf.save('Permis_Feu_'+(p.numero||'').replace(/[^a-zA-Z0-9-]/g,'_')+'.pdf');
+    showToast('\ud83d\udcc4 PDF export\u00e9');
+}
+
+async function chargerEntreprises(){
+    const{data}=await supabaseClient.from("permis_feu").select("entreprise");if(!data)return;
+    const sel=document.getElementById("filtreEntreprise");
+    [...new Set(data.map(e=>e.entreprise).filter(Boolean))].sort().forEach(ent=>{const opt=document.createElement("option");opt.value=ent;opt.textContent=ent;sel.appendChild(opt);});
+}
+
+/* MODE LECTURE SEULE : arrivée via QR code → on cache l'interface de filtrage/liste
+   et on ouvre directement le permis concerné. L'intervenant ne voit pas les autres
+   permis (confidentialité) et ne peut ni les clôturer ni les modifier. */
+if(READ_ONLY){
+    document.querySelector(".filters").style.display = "none";
+    document.querySelector(".stats").style.display = "none";
+    document.querySelector(".permits-list").style.display = "none";
+    const h1 = document.querySelector(".header h1");
+    if(h1) h1.textContent = "🔥 Permis Feu — Consultation";
+    /* Retirer le bouton retour vers index en mode intervenant */
+    const backBtn = document.querySelector(".back-btn");
+    if(backBtn) backBtn.style.display = "none";
+}
+
+chargerEntreprises();chargerPermisFeu();
+</script>
+<script src="security.js"></script>
+<script src="global.js"></script>
+<script src="notifications_global.js"></script>
+</body>
+</html>

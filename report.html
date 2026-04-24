@@ -44,8 +44,34 @@ textarea { min-height:120px; resize:vertical; }
     <p><strong>Heure début :</strong> <span id="reportTime"></span></p>
     <label>Heure de fin :</label>
     <input type="time" id="reportEndTime">
-    <p><strong>Agent :</strong> <span id="reportAgent"></span></p>
+    <p><strong>Agent principal :</strong> <span id="reportAgent"></span></p>
     <p><strong>Type :</strong> <span id="reportType"></span></p>
+</div>
+
+<!-- SECTION MULTI-AGENTS (2 à 3 agents par intervention) -->
+<div class="section">
+    <h2>👥 Agents affectés à l'intervention</h2>
+    <p style="font-size:0.85rem;opacity:0.7;margin-bottom:12px;">
+        Vous pouvez affecter jusqu'à 3 agents sur cette intervention.
+    </p>
+    <div id="agentsContainer">
+        <div class="agent-row" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;">
+            <span style="font-size:1.1rem;">👤</span>
+            <span id="agent1Name" style="flex:1;font-weight:600;"></span>
+            <span style="font-size:0.75rem;opacity:0.6;background:rgba(212,175,55,0.15);padding:4px 10px;border-radius:6px;color:var(--accent);">Principal</span>
+        </div>
+    </div>
+
+    <div style="margin-top:10px;">
+        <label style="font-size:0.88rem;font-weight:600;">Ajouter un agent supplémentaire :</label>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+            <select id="agentSelect" style="flex:1;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.9rem;">
+                <option value="">— Sélectionner un agent —</option>
+            </select>
+            <button type="button" onclick="addAgent()" style="padding:10px 16px;background:var(--accent);color:#000;border:none;border-radius:10px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Ajouter</button>
+        </div>
+        <div id="agentMsg" style="font-size:0.8rem;margin-top:6px;display:none;"></div>
+    </div>
 </div>
 
 <div class="section"><h2>Informations générales</h2><textarea id="infoGenerales" placeholder="Décris la situation initiale..."></textarea></div>
@@ -129,7 +155,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const now = new Date();
     document.getElementById("reportDate").textContent = now.toLocaleDateString("fr-FR");
     document.getElementById("reportTime").textContent = now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-    document.getElementById("reportAgent").textContent = localStorage.getItem("nom") || "Inconnu";
+
+    const agentPrincipal = localStorage.getItem("nom") || "Inconnu";
+    document.getElementById("reportAgent").textContent = agentPrincipal;
+    document.getElementById("agent1Name").textContent = agentPrincipal;
 
     document.getElementById("reportSite").addEventListener("change", () => {
         const s = document.getElementById("reportSite").value;
@@ -137,7 +166,94 @@ document.addEventListener("DOMContentLoaded", () => {
         const codeForId = (code || "autre").toUpperCase().slice(0,3);
         document.getElementById("reportId").textContent = s+"-"+codeForId+"-"+Date.now().toString().slice(-6);
     });
+
+    // Charger la liste des agents depuis Supabase
+    loadAgentsList();
 });
+
+/* ═══════════════════════════════════════════════════════
+   MULTI-AGENTS : jusqu'à 3 agents par intervention
+═══════════════════════════════════════════════════════ */
+let assignedAgents = [localStorage.getItem("nom") || "Inconnu"];
+
+async function loadAgentsList() {
+    const select = document.getElementById("agentSelect");
+    try {
+        const { data, error } = await supabaseClient
+            .from("profiles")
+            .select("nom, prenom, role")
+            .order("nom");
+
+        if (error || !data) return;
+
+        data.forEach(p => {
+            const fullName = [p.prenom, p.nom].filter(Boolean).join(" ");
+            if (fullName && fullName !== assignedAgents[0]) {
+                const opt = document.createElement("option");
+                opt.value = fullName;
+                opt.textContent = fullName + (p.role ? " (" + p.role + ")" : "");
+                select.appendChild(opt);
+            }
+        });
+    } catch (e) {
+        console.warn("Impossible de charger la liste des agents:", e);
+    }
+}
+
+function addAgent() {
+    const select = document.getElementById("agentSelect");
+    const msg = document.getElementById("agentMsg");
+    const name = select.value;
+
+    msg.style.display = "none";
+
+    if (!name) {
+        msg.textContent = "Veuillez sélectionner un agent.";
+        msg.style.color = "#ff6b6b";
+        msg.style.display = "block";
+        return;
+    }
+
+    if (assignedAgents.includes(name)) {
+        msg.textContent = "Cet agent est déjà affecté.";
+        msg.style.color = "#ff6b6b";
+        msg.style.display = "block";
+        return;
+    }
+
+    if (assignedAgents.length >= 3) {
+        msg.textContent = "Maximum 3 agents par intervention.";
+        msg.style.color = "#ff6b6b";
+        msg.style.display = "block";
+        return;
+    }
+
+    assignedAgents.push(name);
+    select.value = "";
+
+    // Ajouter la ligne visuelle
+    const container = document.getElementById("agentsContainer");
+    const row = document.createElement("div");
+    row.className = "agent-row";
+    row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;";
+    row.innerHTML = `
+        <span style="font-size:1.1rem;">👤</span>
+        <span style="flex:1;font-weight:600;">${name}</span>
+        <span style="font-size:0.75rem;opacity:0.6;background:rgba(100,180,255,0.15);padding:4px 10px;border-radius:6px;color:#4da3ff;">Agent ${assignedAgents.length}</span>
+        <button type="button" onclick="removeAgent('${name}', this)" style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);color:#ff6b6b;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.8rem;">✕</button>
+    `;
+    container.appendChild(row);
+
+    msg.textContent = "✅ Agent ajouté avec succès.";
+    msg.style.color = "#4dff88";
+    msg.style.display = "block";
+    setTimeout(() => { msg.style.display = "none"; }, 2000);
+}
+
+function removeAgent(name, btn) {
+    assignedAgents = assignedAgents.filter(a => a !== name);
+    btn.closest(".agent-row").remove();
+}
 
 /* ═══════════════════════════════════════════════════════
    UPLOAD MÉDIAS → Supabase Storage bucket "rapports-media"
@@ -196,29 +312,44 @@ async function saveReport() {
 
         btn.textContent = "⏳ Sauvegarde du rapport...";
 
+        const priorite = typeCode==="incendie" ? "haute" : "normale";
+
         const { error } = await supabaseClient.from("rapports").insert({
             type: typeCode || "autre",
             titre: (intervention||"Rapport")+" — "+site,
             description: description,
             localisation: site || "Non précisé",
             statut: "ouvert",
-            priorite: typeCode==="incendie" ? "haute" : "normale",
+            priorite: priorite,
             meta: {
                 site,
                 heure_debut: document.getElementById("reportTime").textContent,
                 heure_fin: document.getElementById("reportEndTime").value,
-                agent_nom: localStorage.getItem("nom"),
+                agent_nom: assignedAgents[0],
+                agents_affectes: assignedAgents, // MULTI-AGENTS
+                nb_agents: assignedAgents.length,
                 intervention_label: intervention,
                 report_id: reportId,
-                photos: photoUrls,       // tableau d'URLs publiques
-                videos: videoUrls         // tableau d'URLs publiques
+                photos: photoUrls,
+                videos: videoUrls
             }
         });
         if (error) throw error;
 
+        // ── Notification globale visible par tous les rôles ──
+        const agentsStr = assignedAgents.join(", ");
+        if (typeof sendGlobalNotification === "function") {
+            await sendGlobalNotification(
+                "🔥 Nouvelle intervention : " + (intervention || "Rapport"),
+                "Site : " + (site || "—") + "\nAgents : " + agentsStr + "\nPriorité : " + priorite,
+                typeCode === "incendie" || typeCode === "alarme" ? "alarme" : "intervention",
+                priorite
+            );
+        }
+
         const mediaCount = photoUrls.length + videoUrls.length;
         const mediaSuffix = mediaCount > 0 ? ` (${photoUrls.length} photo(s), ${videoUrls.length} vidéo(s))` : '';
-        showToast("✅ Rapport enregistré !" + mediaSuffix);
+        showToast("✅ Rapport enregistré !" + mediaSuffix + " — " + assignedAgents.length + " agent(s)");
         setTimeout(() => location.href="index.html", 1500);
     } catch(e) {
         showToast("❌ "+e.message, true);
@@ -228,5 +359,6 @@ async function saveReport() {
 </script>
 <script src="security.js"></script>
 <script src="global.js"></script>
+<script src="notifications_global.js"></script>
 </body>
 </html>

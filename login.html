@@ -221,6 +221,7 @@ async function login() {
         // Stockage session
         localStorage.setItem("nom", data.user.nom);
         localStorage.setItem("role", data.user.role);
+        localStorage.setItem("loginTime", Date.now().toString());
 
         // Stockage biométrique
         localStorage.setItem("bio_username", username);

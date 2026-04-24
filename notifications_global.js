@@ -69,7 +69,7 @@ function subscribeToNotifications() {
                 showGlobalToast(newNotif.titre || newNotif.message || "Nouvelle notification");
 
                 // Son d'alerte si c'est une alarme
-                if (newNotif.type === "alarme" || newNotif.priorite === "haute") {
+                if (newNotif.type_notif === "alarme" || newNotif.priorite === "haute") {
                     playAlarmSound();
                 }
             })
@@ -89,7 +89,7 @@ async function sendGlobalNotification(titre, message, type = "info", priorite = 
     const notif = {
         titre: titre,
         message: message,
-        type: type, // "info", "alarme", "intervention", "alerte"
+        type_notif: type, // "info", "alarme", "intervention", "alerte"
         priorite: priorite, // "normale", "haute", "critique"
         emetteur: agent,
         emetteur_role: role,
@@ -232,7 +232,7 @@ function renderGlobalNotifPanel() {
             "intervention": "🔥",
             "alerte": "⚠️",
             "info": "ℹ️"
-        }[n.type] || "📢";
+        }[n.type_notif] || "📢";
 
         const prioriteColor = {
             "critique": "#ff4444",

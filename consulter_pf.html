@@ -146,18 +146,20 @@ async function chargerPermisFeu(){
     const dateF=document.getElementById("filtreDate").value;
     const entF=document.getElementById("filtreEntreprise").value;
     const statutF=document.getElementById("filtreStatut").value;
+
     let q=supabaseClient.from("permis_feu").select("*, profiles(nom, prenom)").order("created_at",{ascending:false});
     if(dateF){q=q.gte("created_at",dateF+"T00:00:00").lte("created_at",dateF+"T23:59:59.999");}
     if(entF!=="all")q=q.eq("entreprise",entF);
+
+    /* ══ FILTRE SERVEUR : ne pas recevoir les clôturés quand on veut les ouverts ══
+       C'est ça qui empêche le permis de revenir fantôme après clôture.
+       Avant, on filtrait seulement côté client → race condition possible. */
+    if(statutF==="ouvert")  q=q.neq("statut","cloture");
+    if(statutF==="cloture") q=q.eq("statut","cloture");
+
     const{data,error}=await q;
     if(error){showToast("\u274c "+error.message,true);return;}
-    let result = data||[];
-
-    /* Filtrage par statut côté client (souple avec les variations de casse "cloture"/"Clôturé") */
-    if(statutF==="ouvert")      result = result.filter(p=>!isClos(p.statut));
-    else if(statutF==="cloture") result = result.filter(p=>isClos(p.statut));
-
-    permisCache = result;
+    permisCache = data||[];
     renderList(permisCache);
     document.getElementById("statTotal").textContent=permisCache.length;
     document.getElementById("statOuvert").textContent=permisCache.filter(p=>!isClos(p.statut)).length;
@@ -360,22 +362,6 @@ async function cloturerPermis(id){
     document.getElementById("statClos").textContent    = permisCache.filter(p =>  isClos(p.statut)).length;
 
     showToast("\u2705 Permis " + (data[0].numero || "") + " clôturé.");
-
-    /* ══ 5) Re-sync silencieux en arrière-plan après 3 secondes ══
-       Laisse le temps à Supabase de propager le changement.
-       Si le permis revient quand même (bug serveur), on le force hors de la liste. */
-    setTimeout(async () => {
-        try {
-            await chargerPermisFeu();
-            /* Double sécurité : si le permis clôturé est revenu dans le cache malgré le filtre */
-            const zombie = permisCache.find(x => x.id === id);
-            if (zombie && isClos(zombie.statut)) {
-                permisCache = permisCache.filter(x => x.id !== id);
-                renderList(permisCache);
-                console.log("[Clôture PF] zombie éliminé au re-sync");
-            }
-        } catch(e) { console.warn("[Clôture PF] re-sync échoué :", e); }
-    }, 3000);
 }
 
 /* ═══════════════════════════════════════════════════════════════

@@ -344,18 +344,18 @@ async function cloturerPermis(id){
     /* ══ 1) Fermer le modal IMMÉDIATEMENT ══ */
     fermerPermis();
 
-    /* ══ 2) Forcer le filtre sur "Ouverts seulement" ══ */
+    /* ══ 2) Mettre à jour le permis dans le cache (pas le supprimer) ══ */
+    const idx = permisCache.findIndex(x => x.id === id);
+    if (idx !== -1) {
+        permisCache[idx].statut = "cloture";
+        permisCache[idx].date_fin = data[0].date_fin || new Date().toISOString();
+    }
+
+    /* ══ 3) Basculer sur la vue "Clôturés" pour montrer le résultat ══ */
     const filtreStatutEl = document.getElementById("filtreStatut");
-    if (filtreStatutEl) filtreStatutEl.value = "ouvert";
+    if (filtreStatutEl) filtreStatutEl.value = "cloture";
 
-    /* ══ 3) Retirer le permis du cache local ══ */
-    permisCache = permisCache.filter(x => x.id !== id);
-
-    /* ══ 4) Re-render IMMÉDIAT de la liste + compteurs ══
-       C'est cette étape qui fait disparaître visuellement le permis.
-       On NE rappelle PAS chargerPermisFeu() immédiatement car ça
-       crée une race condition : le serveur peut encore retourner
-       l'ancien statut pendant quelques ms → le permis réapparaît. */
+    /* ══ 4) Re-render la liste + compteurs ══ */
     renderList(permisCache);
     document.getElementById("statTotal").textContent   = permisCache.length;
     document.getElementById("statOuvert").textContent  = permisCache.filter(p => !isClos(p.statut)).length;

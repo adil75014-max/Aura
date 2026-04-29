@@ -339,8 +339,8 @@ a:hover { text-decoration: underline; }
         <option value="custom">Personnalisé</option>
     </select>
 
-    <input type="date" id="dateStart" style="display:none;" onchange="applyFilters()">
-    <input type="date" id="dateEnd" style="display:none;" onchange="applyFilters()">
+    <input type="date" id="dateStart" style="display:none;" onchange="applyFilters()" title="Date de début">
+    <input type="date" id="dateEnd" style="display:none;" onchange="applyFilters()" title="Date de fin">
 
     <select id="theme" onchange="applyFilters()">
         <option value="all">Tous les types</option>
@@ -990,8 +990,36 @@ function updateIndicators(rapports, rondes, verifs, extra) {
    ========================================================== */
 function toggleCustomDates() {
     const isCustom = document.getElementById('periode').value === 'custom';
-    document.getElementById('dateStart').style.display = isCustom ? '' : 'none';
-    document.getElementById('dateEnd').style.display = isCustom ? '' : 'none';
+    const startEl = document.getElementById('dateStart');
+    const endEl = document.getElementById('dateEnd');
+    startEl.style.display = isCustom ? '' : 'none';
+    endEl.style.display = isCustom ? '' : 'none';
+
+    // Ajouter/retirer les labels visuels
+    let lblStart = document.getElementById('lblDateStart');
+    let lblEnd = document.getElementById('lblDateEnd');
+
+    if (isCustom) {
+        if (!lblStart) {
+            lblStart = document.createElement('label');
+            lblStart.id = 'lblDateStart';
+            lblStart.textContent = 'Du :';
+            lblStart.style.cssText = 'font-size:0.85rem;color:var(--accent);font-weight:600;margin-bottom:-10px;';
+            startEl.parentNode.insertBefore(lblStart, startEl);
+        }
+        if (!lblEnd) {
+            lblEnd = document.createElement('label');
+            lblEnd.id = 'lblDateEnd';
+            lblEnd.textContent = 'Au :';
+            lblEnd.style.cssText = 'font-size:0.85rem;color:var(--accent);font-weight:600;margin-bottom:-10px;';
+            endEl.parentNode.insertBefore(lblEnd, endEl);
+        }
+        lblStart.style.display = '';
+        lblEnd.style.display = '';
+    } else {
+        if (lblStart) lblStart.style.display = 'none';
+        if (lblEnd) lblEnd.style.display = 'none';
+    }
 }
 
 function applyFilters() {
@@ -1054,6 +1082,16 @@ function applyFilters() {
 }
 
 /* ==========================================================
+   FORMAT DATE FR : YYYY-MM-DD → DD/MM/YYYY
+   ========================================================== */
+function formatDateFR(isoDate) {
+    if (!isoDate || isoDate.length < 10) return isoDate || '—';
+    const parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+/* ==========================================================
    RENDER TABLE
    ========================================================== */
 function renderTable(data) {
@@ -1103,7 +1141,7 @@ function renderTable(data) {
         const typeDisplay = r.typeLabel || labelFor(r.type);
 
         tr.innerHTML = `
-            <td>${r.date}</td>
+            <td>${formatDateFR(r.date)}</td>
             <td>${r.heure}</td>
             <td>${sourceLabels[r.source] || r.source}</td>
             <td>${escapeHtml(typeDisplay)}</td>
@@ -1165,7 +1203,7 @@ function exportCSV() {
 
     const rows = filteredData.map(r => {
         const base = [
-            r.date,
+            formatDateFR(r.date),
             r.heure,
             sourceLabelsCsv[r.source] || r.source,
             r.typeLabel || labelFor(r.type),   // ← label FR complet au lieu du code brut
@@ -1331,7 +1369,7 @@ async function genererPDFUltra(rapportsFiltrés, titre) {
 
         // Tableau info clé
         const infoRows = [
-            ['Date / Heure', r.date + '  a  ' + r.heure],
+            ['Date / Heure', formatDateFR(r.date) + '  a  ' + r.heure],
             ['Agent', r.agent || '\u2014'],
             ['Lieu', r.lieu || '\u2014'],
             ['Statut', r.statut || '\u2014'],
@@ -1591,7 +1629,7 @@ function openReport(source, id) {
         <h2>${sourceLabels[r.source] || r.source} — ${escapeHtml(r.typeLabel || labelFor(r.type) || '')}</h2>
 
         <div class="field"><span class="field-label">Date / Heure</span>
-             <div class="field-value">${r.date} à ${r.heure}</div></div>
+             <div class="field-value">${formatDateFR(r.date)} à ${r.heure}</div></div>
 
         <div class="field"><span class="field-label">Agent</span>
              <div class="field-value">${escapeHtml(r.agent)}</div></div>
@@ -1631,7 +1669,7 @@ async function printSingleReport(source, id) {
     const r = allData.find(x => x.source === source && String(x.id) === String(id));
     if (!r) return;
     const typeName = r.typeLabel || labelFor(r.type) || 'detail';
-    const titre = 'Rapport ' + typeName + ' du ' + r.date;
+    const titre = 'Rapport ' + typeName + ' du ' + formatDateFR(r.date);
     const pdf = await genererPDFUltra([r], titre);
     pdf.save('Rapport_LBM_' + typeName.replace(/[^a-zA-Z0-9]/g, '_') + '_' + r.date + '.pdf');
     showToast('📄 PDF du rapport téléchargé');

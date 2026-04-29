@@ -68,9 +68,11 @@ function subscribeToNotifications() {
                 renderGlobalNotifPanel();
                 showGlobalToast(newNotif.titre || newNotif.message || "Nouvelle notification");
 
-                // Son d'alerte si c'est une alarme
-                if (newNotif.type_notif === "alarme" || newNotif.priorite === "haute") {
+                // Son de notification (plus fort pour alarmes/haute priorité)
+                if (newNotif.type_notif === "alarme" || newNotif.priorite === "haute" || newNotif.priorite === "critique") {
                     playAlarmSound();
+                } else {
+                    playNotifSound();
                 }
             })
             .subscribe();
@@ -276,25 +278,30 @@ async function markAllNotifAsRead() {
 }
 
 // ───────────────────────────────────────
-//  SON D'ALARME
+//  SON DE NOTIFICATION
 // ───────────────────────────────────────
+let notifAudio = null;
+
 function playAlarmSound() {
     try {
-        const audio = document.getElementById("alarme-feu") || document.getElementById("alarme-svv");
-        if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(() => {});
-        } else {
-            // Bip d'urgence si pas d'audio dispo
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.frequency.value = 880;
-            osc.type = "square";
-            gain.gain.value = 0.3;
-            osc.start(); osc.stop(ctx.currentTime + 0.5);
+        // Utiliser le son fire_station_tone dédié aux notifications
+        if (!notifAudio) {
+            notifAudio = new Audio("fire_station_tone_x4.mp3");
+            notifAudio.volume = 0.7;
         }
+        notifAudio.currentTime = 0;
+        notifAudio.play().catch(() => {});
+    } catch (e) {}
+}
+
+function playNotifSound() {
+    try {
+        if (!notifAudio) {
+            notifAudio = new Audio("fire_station_tone_x4.mp3");
+            notifAudio.volume = 0.5;
+        }
+        notifAudio.currentTime = 0;
+        notifAudio.play().catch(() => {});
     } catch (e) {}
 }
 

@@ -505,9 +505,20 @@ async function declarerUrgence(type, permisId){
 
     /* Notification sonore + alerte visuelle */
     try {
-        const audio = new Audio("data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQBvAAAA");
+        const audio = new Audio("fire_station_tone_x4.mp3");
+        audio.volume = 0.8;
         audio.play().catch(()=>{});
     } catch(e){}
+
+    /* Notification globale visible par tous les rôles */
+    if (typeof sendGlobalNotification === "function") {
+        sendGlobalNotification(
+            label,
+            "Permis : " + numero + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—"),
+            "alarme",
+            "critique"
+        );
+    }
 
     showToast(`\u2705 ${label} déclarée — PC Sécurité notifié.`);
     /* Appel téléphonique automatique en renfort si sur mobile */

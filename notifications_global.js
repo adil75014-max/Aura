@@ -337,7 +337,8 @@ function showGlobalToast(text) {
 // ───────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
     const page = window.location.pathname.split("/").pop() || "index.html";
-    if (page !== "login.html") {
-        initGlobalNotifications();
-    }
+    // Ne pas init sur login ou sur accès QR code (pas de session)
+    if (page === "login.html") return;
+    if (page === "consulter_pf.html" && window.location.search.includes("pf=") && !localStorage.getItem("nom")) return;
+    initGlobalNotifications();
 });

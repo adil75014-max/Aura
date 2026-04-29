@@ -580,9 +580,27 @@ Inspection complète du lieu de travail et des locaux contigus.
 
     /* URGENCES */
     document.getElementById("btn-urgence-feu").addEventListener("click", () => {
+      if(!confirm("🔥 Confirmer : URGENCE INCENDIE\n\nLe PC Sécurité sera notifié immédiatement.")) return;
+      if (typeof sendGlobalNotification === "function") {
+          const lieu = [document.getElementById("magasin").value, document.getElementById("etage").value, document.getElementById("zone-canton").value].filter(Boolean).join(" — ");
+          sendGlobalNotification(
+              "🔥 URGENCE INCENDIE",
+              "Permis feu " + PERMIS_NUMERO + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—"),
+              "alarme", "critique"
+          );
+      }
       alert("🔥 URGENCE INCENDIE — Le PC Sécurité est notifié.");
     });
     document.getElementById("btn-urgence-svv").addEventListener("click", () => {
+      if(!confirm("🚑 Confirmer : URGENCE SECOURS À VICTIME\n\nLe PC Sécurité sera notifié immédiatement.")) return;
+      if (typeof sendGlobalNotification === "function") {
+          const lieu = [document.getElementById("magasin").value, document.getElementById("etage").value, document.getElementById("zone-canton").value].filter(Boolean).join(" — ");
+          sendGlobalNotification(
+              "🚑 URGENCE SECOURS À VICTIME",
+              "Permis feu " + PERMIS_NUMERO + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—"),
+              "alarme", "critique"
+          );
+      }
       alert("🚑 URGENCE — Secours à victime. Le PC Sécurité est notifié.");
     });
 

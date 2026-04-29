@@ -58,6 +58,10 @@ async function logout() {
 (function authGuard() {
     const page = window.location.pathname.split("/").pop() || "index.html";
     if (page === "login.html") return;
+
+    // Autoriser l'accès QR code au permis feu (mode lecture seule)
+    if (page === "consulter_pf.html" && window.location.search.includes("pf=")) return;
+
     const nom  = localStorage.getItem("nom");
     const role = localStorage.getItem("role");
     if (!nom || !role) { window.location.href = "login.html"; return; }

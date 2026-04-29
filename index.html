@@ -1181,7 +1181,7 @@
     ">
         <img src="bon_marche_facade.jpeg" alt="Le Bon Marché" style="
             width: 100%;
-            height: 220px;
+            aspect-ratio: 16 / 7;
             object-fit: cover;
             display: block;
             filter: brightness(0.9);
@@ -1191,7 +1191,7 @@
             bottom: 0;
             left: 0;
             right: 0;
-            padding: 16px 20px;
+            padding: 14px 20px;
             background: linear-gradient(transparent, rgba(0,0,0,0.75));
             color: #fff;
             font-size: 0.85rem;
@@ -2174,6 +2174,18 @@ function startCoClock() {
 function openSupervision() {
     document.getElementById("supervisionScreen").style.display = "flex";
     coRefreshAll();
+    // Fermer la sidebar si elle est ouverte
+    const sidebar = document.getElementById("sidebar");
+    if (sidebar) sidebar.style.left = "-320px";
+    const overlay = document.getElementById("overlay");
+    if (overlay) overlay.style.display = "none";
+}
+
+// Auto-ouverture supervision si paramètre ?supervision=1
+if (new URLSearchParams(window.location.search).get("supervision") === "1") {
+    document.addEventListener("DOMContentLoaded", () => {
+        setTimeout(openSupervision, 500);
+    });
 }
 
 function closeSupervision() {
@@ -2599,7 +2611,7 @@ document.addEventListener("DOMContentLoaded", () => {
     bloc.className = "menu-item";
     bloc.style.marginTop = "20px";
     bloc.innerHTML = "🛰️ Mode Supervision";
-    bloc.onclick = openSupervision;
+    bloc.onclick = function() { window.open("index.html?supervision=1", "_blank"); };
     sidebar.appendChild(bloc);
 
     /* Bouton Centre d'appel (console dispatch / softphone SIP)
@@ -2610,6 +2622,7 @@ document.addEventListener("DOMContentLoaded", () => {
     blocDispatch.style.marginTop = "4px";
     blocDispatch.style.textDecoration = "none";
     blocDispatch.href = "consoledispatch.html";
+    blocDispatch.target = "_blank";
     blocDispatch.innerHTML = "📞 Centre d'appel";
     blocDispatch.addEventListener("click", (e) => {
         console.log("[CentreAppel] clic → redirection vers", blocDispatch.href);

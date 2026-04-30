@@ -68,9 +68,12 @@ function subscribeToNotifications() {
                 renderGlobalNotifPanel();
                 showGlobalToast(newNotif.titre || newNotif.message || "Nouvelle notification");
 
-                // Son de notification (plus fort pour alarmes/haute priorité)
+                // Son de notification — joué chez agents/stationnaires/superviseurs/admins
                 if (newNotif.type_notif === "alarme" || newNotif.priorite === "haute" || newNotif.priorite === "critique") {
                     playAlarmSound();
+                    // Afficher le message dans la bannière
+                    const msgEl = document.getElementById("alarmBannerMsg");
+                    if (msgEl) msgEl.textContent = (newNotif.titre || "") + " — " + (newNotif.message || "");
                 } else {
                     playNotifSound();
                 }
@@ -278,31 +281,104 @@ async function markAllNotifAsRead() {
 }
 
 // ───────────────────────────────────────
-//  SON DE NOTIFICATION
+//  SON DE NOTIFICATION & ALARME
+//  Joué chez les agents/stationnaires/superviseurs/admins
+//  PAS chez l'intervenant du permis feu
 // ───────────────────────────────────────
-let notifAudio = null;
+let alarmAudio = null;
+let notifSoundAudio = null;
+let audioUnlocked = false;
+
+// Pré-initialiser les audios au premier clic (requis par les navigateurs mobiles)
+document.addEventListener("click", function unlockAudio() {
+    if (audioUnlocked) return;
+    try {
+        alarmAudio = new Audio("fire_station_tone_x4.mp3");
+        alarmAudio.volume = 1.0;
+        alarmAudio.load();
+        notifSoundAudio = new Audio("fire_station_tone_x4.mp3");
+        notifSoundAudio.volume = 0.4;
+        notifSoundAudio.load();
+        audioUnlocked = true;
+    } catch (e) {}
+}, { once: false });
 
 function playAlarmSound() {
     try {
-        // Utiliser le son fire_station_tone dédié aux notifications
-        if (!notifAudio) {
-            notifAudio = new Audio("fire_station_tone_x4.mp3");
-            notifAudio.volume = 0.7;
+        if (!alarmAudio) {
+            alarmAudio = new Audio("fire_station_tone_x4.mp3");
         }
-        notifAudio.currentTime = 0;
-        notifAudio.play().catch(() => {});
+        alarmAudio.volume = 1.0;
+        alarmAudio.loop = true; // Boucle continue pour alarme critique
+        alarmAudio.currentTime = 0;
+        alarmAudio.play().catch(() => {});
+
+        // Afficher une bannière d'alarme visuelle (au cas où le son est bloqué)
+        showAlarmBanner();
+
+        // Arrêter la boucle après 30 secondes
+        setTimeout(() => {
+            if (alarmAudio) { alarmAudio.loop = false; alarmAudio.pause(); }
+        }, 30000);
     } catch (e) {}
 }
 
 function playNotifSound() {
     try {
-        if (!notifAudio) {
-            notifAudio = new Audio("fire_station_tone_x4.mp3");
-            notifAudio.volume = 0.5;
+        if (!notifSoundAudio) {
+            notifSoundAudio = new Audio("fire_station_tone_x4.mp3");
         }
-        notifAudio.currentTime = 0;
-        notifAudio.play().catch(() => {});
+        notifSoundAudio.volume = 0.4;
+        notifSoundAudio.loop = false;
+        notifSoundAudio.currentTime = 0;
+        notifSoundAudio.play().catch(() => {});
     } catch (e) {}
+}
+
+// ───────────────────────────────────────
+//  BANNIÈRE D'ALARME VISUELLE
+//  S'affiche en plein écran pour garantir que l'alarme est vue
+// ───────────────────────────────────────
+function showAlarmBanner() {
+    if (document.getElementById("alarmBanner")) return;
+
+    const banner = document.createElement("div");
+    banner.id = "alarmBanner";
+    banner.innerHTML = `
+        <div style="font-size:2.5rem;margin-bottom:10px;">🚨</div>
+        <div style="font-size:1.4rem;font-weight:800;letter-spacing:0.05em;">ALARME EN COURS</div>
+        <div style="font-size:0.95rem;margin-top:8px;opacity:0.9;" id="alarmBannerMsg"></div>
+        <button onclick="closeAlarmBanner()" style="
+            margin-top:20px; padding:12px 30px; background:#fff; color:#b91c1c;
+            border:none; border-radius:10px; font-weight:700; font-size:1rem;
+            cursor:pointer;
+        ">✔ Acquitter</button>
+    `;
+    banner.style.cssText = `
+        position:fixed; inset:0; z-index:999999;
+        background:rgba(180,20,20,0.97); color:#fff;
+        display:flex; flex-direction:column;
+        justify-content:center; align-items:center;
+        font-family:system-ui,sans-serif; text-align:center;
+        animation: alarmPulse 0.8s ease-in-out infinite alternate;
+    `;
+
+    // CSS animation
+    const style = document.createElement("style");
+    style.textContent = `
+        @keyframes alarmPulse {
+            from { background: rgba(180,20,20,0.97); }
+            to { background: rgba(220,40,40,0.97); }
+        }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(banner);
+}
+
+function closeAlarmBanner() {
+    const banner = document.getElementById("alarmBanner");
+    if (banner) banner.remove();
+    if (alarmAudio) { alarmAudio.loop = false; alarmAudio.pause(); }
 }
 
 // ───────────────────────────────────────

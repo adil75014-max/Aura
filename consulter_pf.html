@@ -140,7 +140,7 @@ const READ_ONLY = new URLSearchParams(location.search).has("pf");
 
 function fmtDate(iso){if(!iso)return"\u2014";const d=new Date(iso);return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR").slice(0,5);}
 function agentName(p){if(p.profiles){const n=[p.profiles.prenom,p.profiles.nom].filter(Boolean).join(" ");if(n)return n;}return p.agent_nom||(p.meta&&p.meta.agent_nom)||"\u2014";}
-function isClos(s){return s&&s.toLowerCase().includes("clos");}
+function isClos(s){if(!s)return false;var l=s.toLowerCase();return l==="cloture"||l.includes("clos");}
 function esc(s){if(!s)return"\u2014";const d=document.createElement("div");d.textContent=s;return d.innerHTML;}
 
 async function chargerPermisFeu(){
@@ -162,9 +162,12 @@ async function chargerPermisFeu(){
     if(error){showToast("\u274c "+error.message,true);return;}
     permisCache = data||[];
     renderList(permisCache);
-    document.getElementById("statTotal").textContent=permisCache.length;
-    document.getElementById("statOuvert").textContent=permisCache.filter(p=>!isClos(p.statut)).length;
-    document.getElementById("statClos").textContent=permisCache.filter(p=>isClos(p.statut)).length;
+    /* Compteurs sur tous les permis */
+    const{data:allPF}=await supabaseClient.from("permis_feu").select("statut");
+    const allP=allPF||[];
+    document.getElementById("statTotal").textContent=allP.length;
+    document.getElementById("statOuvert").textContent=allP.filter(function(p){return !isClos(p.statut);}).length;
+    document.getElementById("statClos").textContent=allP.filter(function(p){return isClos(p.statut);}).length;
 
     const urlNum=new URLSearchParams(location.search).get("pf");
     if(urlNum){const match=permisCache.find(p=>p.numero===urlNum);if(match)ouvrirPermis(match.id);}
@@ -345,22 +348,11 @@ async function cloturerPermis(id){
     /* ══ 1) Fermer le modal IMMÉDIATEMENT ══ */
     fermerPermis();
 
-    /* ══ 2) Mettre à jour le permis dans le cache (pas le supprimer) ══ */
-    const idx = permisCache.findIndex(x => x.id === id);
-    if (idx !== -1) {
-        permisCache[idx].statut = "cloture";
-        permisCache[idx].date_fin = data[0].date_fin || new Date().toISOString();
-    }
-
-    /* ══ 3) Basculer sur la vue "Clôturés" pour montrer le résultat ══ */
+    /* ══ 2) Basculer sur "Clôturés" et recharger depuis le serveur ══ */
     const filtreStatutEl = document.getElementById("filtreStatut");
     if (filtreStatutEl) filtreStatutEl.value = "cloture";
 
-    /* ══ 4) Re-render la liste + compteurs ══ */
-    renderList(permisCache);
-    document.getElementById("statTotal").textContent   = permisCache.length;
-    document.getElementById("statOuvert").textContent  = permisCache.filter(p => !isClos(p.statut)).length;
-    document.getElementById("statClos").textContent    = permisCache.filter(p =>  isClos(p.statut)).length;
+    await chargerPermisFeu();
 
     showToast("\u2705 Permis " + (data[0].numero || "") + " clôturé.");
 }
@@ -471,15 +463,6 @@ async function declarerUrgence(type, permisId){
     const label = type === 'feu' ? 'URGENCE INCENDIE \ud83d\udd25' : 'URGENCE SECOURS À VICTIME \ud83d\ude91';
     if(!confirm(`Confirmer : ${label}\n\nLe PC Sécurité sera notifié immédiatement.`)) return;
 
-    // Jouer le son IMMÉDIATEMENT après le confirm (avant les appels async)
-    // pour respecter la politique autoplay des navigateurs mobiles
-    let alarmeAudio;
-    try {
-        alarmeAudio = new Audio("fire_station_tone_x4.mp3");
-        alarmeAudio.volume = 0.9;
-        alarmeAudio.play().catch(()=>{});
-    } catch(e){}
-
     const p = permisCache.find(x=>x.id===permisId);
     const lieu = p ? (p.lieu || (p.meta ? [p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" — ") : "")) : "";
     const numero = p ? p.numero : "";
@@ -513,9 +496,7 @@ async function declarerUrgence(type, permisId){
         return;
     }
 
-    /* Son déjà joué plus haut (avant les appels async) */
-
-    /* Notification globale visible par tous les rôles */
+    /* Notification globale → le son sera joué chez agents/stationnaires/superviseurs/admins */
     if (typeof sendGlobalNotification === "function") {
         sendGlobalNotification(
             label,

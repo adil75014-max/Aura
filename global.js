@@ -16,12 +16,10 @@ function toggleTheme() {
 }
 
 /* ---------------------------------------------------------
-   🏠 BOUTON RETOUR MENU — UN SEUL, SANS SUPERPOSITION
+   🏠 BOUTON RETOUR MENU — ZÉRO DOUBLON
    
-   Détecte TOUS les types de boutons retour existants :
-     .back-btn, .menu-return button, boutons onclick→index.html
-   Si trouvé : le transforme en "⟵ Menu → index.html"
-   Sinon : injecte UNE barre non-fixe en haut du contenu
+   1) Si la page a déjà un lien/bouton vers index.html → NE RIEN FAIRE
+   2) Sinon → injecter UN bouton dans le contenu (pas fixed)
 --------------------------------------------------------- */
 function injectRetourMenu() {
     const page = window.location.pathname.split("/").pop() || "index.html";
@@ -29,35 +27,20 @@ function injectRetourMenu() {
     if (page === "consulter_pf.html" && window.location.search.includes("pf=")) return;
     if (document.getElementById("globalRetourMenu")) return;
 
-    // ── Chercher un bouton retour existant (tous les patterns) ──
-    const selectors = [
-        ".back-btn",
-        ".menu-return button",
-        ".menu-return a",
-        "button[onclick*='index.html']",
-        "a[href='index.html']"
-    ];
+    // ── Chercher TOUT lien ou bouton existant pointant vers index.html ──
+    const allLinks = document.querySelectorAll("a[href='index.html'], a[href='./index.html']");
+    const allBtns = document.querySelectorAll(
+        "button[onclick*='index.html'], .back-btn, .btn-back, .nav-back, .menu-return"
+    );
 
-    let existing = null;
-    for (const sel of selectors) {
-        const el = document.querySelector(sel);
-        if (el) { existing = el; break; }
+    // Si un élément retour existe déjà → on le marque et on s'arrête
+    if (allLinks.length > 0 || allBtns.length > 0) {
+        const el = allLinks[0] || allBtns[0];
+        el.id = "globalRetourMenu";
+        return; // ← NE RIEN AJOUTER
     }
 
-    if (existing) {
-        // Transformer le bouton existant
-        existing.textContent = "⟵ Menu";
-        existing.id = "globalRetourMenu";
-        if (existing.tagName === "A") {
-            existing.href = "index.html";
-        } else {
-            existing.onclick = function(e) { e.preventDefault(); window.location.href = "index.html"; };
-        }
-        return;
-    }
-
-    // ── Aucun bouton trouvé → injecter dans le contenu ──
-    // Trouver le meilleur point d'insertion (pas dans un flex-body)
+    // ── Aucun retour trouvé → injecter dans le contenu ──
     const container = document.querySelector(".page-container")
                    || document.querySelector(".container")
                    || document.querySelector("main")

@@ -4,5 +4,5 @@
   X-XSS-Protection: 1; mode=block
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://hwqlajdytnxavqigmzio.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://hwqlajdytnxavqigmzio.supabase.co wss://hwqlajdytnxavqigmzio.supabase.co; frame-src https://view.officeapps.live.com https://outlook.office.com;
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://hwqlajdytnxavqigmzio.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://hwqlajdytnxavqigmzio.supabase.co wss://hwqlajdytnxavqigmzio.supabase.co https://api.meteo-concept.com; frame-src https://view.officeapps.live.com https://outlook.office.com;
   Strict-Transport-Security: max-age=31536000; includeSubDomains

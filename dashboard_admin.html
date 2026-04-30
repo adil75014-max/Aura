@@ -1140,6 +1140,14 @@ function renderTable(data) {
            sinon fallback sur labelFor pour normaliser à la volée */
         const typeDisplay = r.typeLabel || labelFor(r.type);
 
+        const statutLabels = {
+            ouvert: 'Ouvert', en_cours: 'En cours', cloture: 'Clôturé',
+            terminee: 'Terminée', conforme: 'Conforme', non_conforme: 'Non conforme',
+            anomalie: 'Anomalie', hors_service: 'Hors service',
+            remis_en_service: 'Remis en service', actif: 'Actif'
+        };
+        const statutDisplay = statutLabels[r.statut] || r.statut;
+
         tr.innerHTML = `
             <td>${formatDateFR(r.date)}</td>
             <td>${r.heure}</td>
@@ -1147,7 +1155,7 @@ function renderTable(data) {
             <td>${escapeHtml(typeDisplay)}</td>
             <td>${escapeHtml(r.agent)}</td>
             <td title="${escapeHtml(r.resume)}">${escapeHtml(truncate(r.lieu, 30))}</td>
-            <td><span class="badge ${sClass}">${escapeHtml(r.statut)}</span></td>
+            <td><span class="badge ${sClass}">${escapeHtml(statutDisplay)}</span></td>
             <td><span class="badge ${pClass}">${escapeHtml(r.priorite)}</span></td>
             <td><button class="btn-view" onclick="openReport('${r.source}','${r.id}')">👁 Ouvrir</button></td>
         `;

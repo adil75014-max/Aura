@@ -112,7 +112,8 @@ body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif
 <div class="filters">
     <div class="filter-group"><label>Date</label><input type="date" id="filtreDate"></div>
     <div class="filter-group"><label>Entreprise</label><select id="filtreEntreprise"><option value="all">Toutes</option></select></div>
-    <div class="filter-group"><label>Statut</label><select id="filtreStatut">
+    <div class="filter-group"><label>Statut</label><select id="filtreStatut" onchange="chargerPermisFeu()">
+        <option value="all">Tous</option>
         <option value="ouvert">Ouverts seulement</option>
         <option value="cloture">Clôturés seulement</option>
         <option value="all">Tous</option>
@@ -470,6 +471,15 @@ async function declarerUrgence(type, permisId){
     const label = type === 'feu' ? 'URGENCE INCENDIE \ud83d\udd25' : 'URGENCE SECOURS À VICTIME \ud83d\ude91';
     if(!confirm(`Confirmer : ${label}\n\nLe PC Sécurité sera notifié immédiatement.`)) return;
 
+    // Jouer le son IMMÉDIATEMENT après le confirm (avant les appels async)
+    // pour respecter la politique autoplay des navigateurs mobiles
+    let alarmeAudio;
+    try {
+        alarmeAudio = new Audio("fire_station_tone_x4.mp3");
+        alarmeAudio.volume = 0.9;
+        alarmeAudio.play().catch(()=>{});
+    } catch(e){}
+
     const p = permisCache.find(x=>x.id===permisId);
     const lieu = p ? (p.lieu || (p.meta ? [p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" — ") : "")) : "";
     const numero = p ? p.numero : "";
@@ -503,12 +513,7 @@ async function declarerUrgence(type, permisId){
         return;
     }
 
-    /* Notification sonore + alerte visuelle */
-    try {
-        const audio = new Audio("fire_station_tone_x4.mp3");
-        audio.volume = 0.8;
-        audio.play().catch(()=>{});
-    } catch(e){}
+    /* Son déjà joué plus haut (avant les appels async) */
 
     /* Notification globale visible par tous les rôles */
     if (typeof sendGlobalNotification === "function") {

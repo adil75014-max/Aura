@@ -16,43 +16,56 @@ function toggleTheme() {
 }
 
 /* ---------------------------------------------------------
-   🏠 BOUTON RETOUR MENU — SANS SUPERPOSITION
-   Stratégie :
-     1) Pages exclues : index.html, login.html
-     2) Si la page a déjà un .back-btn → on le transforme en "⟵ Menu → index.html"
-     3) Sinon → on injecte une barre fine NON-FIXE en haut de page
+   🏠 BOUTON RETOUR MENU — UN SEUL, SANS SUPERPOSITION
+   
+   Détecte TOUS les types de boutons retour existants :
+     .back-btn, .menu-return button, boutons onclick→index.html
+   Si trouvé : le transforme en "⟵ Menu → index.html"
+   Sinon : injecte UNE barre non-fixe en haut du contenu
 --------------------------------------------------------- */
 function injectRetourMenu() {
     const page = window.location.pathname.split("/").pop() || "index.html";
     if (page === "index.html" || page === "login.html" || page === "") return;
-    // Pas de retour menu sur accès QR code (mode lecture seule)
     if (page === "consulter_pf.html" && window.location.search.includes("pf=")) return;
     if (document.getElementById("globalRetourMenu")) return;
 
-    // ── Cas 1 : la page a déjà un bouton .back-btn → on le réutilise
-    const existingBack = document.querySelector(".back-btn");
-    if (existingBack) {
-        existingBack.textContent = "⟵ Menu";
-        existingBack.onclick = function(e) { e.preventDefault(); window.location.href = "index.html"; };
-        if (existingBack.tagName === "A") existingBack.href = "index.html";
-        existingBack.id = "globalRetourMenu";
+    // ── Chercher un bouton retour existant (tous les patterns) ──
+    const selectors = [
+        ".back-btn",
+        ".menu-return button",
+        ".menu-return a",
+        "button[onclick*='index.html']",
+        "a[href='index.html']"
+    ];
+
+    let existing = null;
+    for (const sel of selectors) {
+        const el = document.querySelector(sel);
+        if (el) { existing = el; break; }
+    }
+
+    if (existing) {
+        // Transformer le bouton existant
+        existing.textContent = "⟵ Menu";
+        existing.id = "globalRetourMenu";
+        if (existing.tagName === "A") {
+            existing.href = "index.html";
+        } else {
+            existing.onclick = function(e) { e.preventDefault(); window.location.href = "index.html"; };
+        }
         return;
     }
 
-    // ── Cas 2 : pas de back-btn → injecter une barre en haut de page
+    // ── Aucun bouton trouvé → injecter dans le contenu ──
+    // Trouver le meilleur point d'insertion (pas dans un flex-body)
+    const container = document.querySelector(".page-container")
+                   || document.querySelector(".container")
+                   || document.querySelector("main")
+                   || document.body;
+
     const bar = document.createElement("div");
     bar.id = "globalRetourMenu";
-    bar.style.cssText = [
-        "width:100%",
-        "padding:10px 16px",
-        "background:rgba(15,15,25,0.95)",
-        "border-bottom:1px solid rgba(212,175,55,0.2)",
-        "display:flex",
-        "align-items:center",
-        "z-index:9999",
-        "box-sizing:border-box",
-        "backdrop-filter:blur(10px)"
-    ].join(";");
+    bar.style.cssText = "padding:12px 0; margin-bottom:10px;";
 
     const link = document.createElement("a");
     link.href = "index.html";
@@ -63,10 +76,12 @@ function injectRetourMenu() {
         "font-size:0.9rem",
         "font-weight:600",
         "font-family:system-ui,-apple-system,sans-serif",
-        "padding:4px 14px",
+        "padding:8px 16px",
         "border:1px solid rgba(212,175,55,0.3)",
         "border-radius:10px",
-        "transition:all 0.2s"
+        "background:rgba(20,20,30,0.85)",
+        "transition:all 0.2s",
+        "display:inline-block"
     ].join(";");
 
     link.addEventListener("mouseenter", function() {
@@ -74,10 +89,10 @@ function injectRetourMenu() {
         this.style.color = "#000";
     });
     link.addEventListener("mouseleave", function() {
-        this.style.background = "transparent";
+        this.style.background = "rgba(20,20,30,0.85)";
         this.style.color = "#d4af37";
     });
 
     bar.appendChild(link);
-    document.body.insertBefore(bar, document.body.firstChild);
+    container.insertBefore(bar, container.firstChild);
 }

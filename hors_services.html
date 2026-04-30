@@ -224,6 +224,7 @@
             <option value="Moët Hennessy">Moët Hennessy</option>
             <option value="Magasin 3 – 115 Rue du Bac">Magasin 3 – 115 Rue du Bac</option>
             <option value="La Grande Épicerie Rive Droite">La Grande Épicerie Rive Droite</option>
+            <option value="SAM">La Samaritaine</option>
             <option value="Bagneux">Bagneux</option>
         </select>
 
@@ -300,7 +301,13 @@
         const boucle = document.getElementById("boucle").value;
         const point = document.getElementById("point").value;
         const adresse = document.getElementById("adresse").value;
-        const date_hs = document.getElementById("date_hs").value;
+        const dateRaw = document.getElementById("date_hs").value;
+        // Ajouter le fuseau horaire local pour éviter le décalage UTC
+        const tzOffset = -new Date().getTimezoneOffset();
+        const tzSign = tzOffset >= 0 ? "+" : "-";
+        const tzH = String(Math.floor(Math.abs(tzOffset)/60)).padStart(2,"0");
+        const tzM = String(Math.abs(tzOffset)%60).padStart(2,"0");
+        const date_hs = dateRaw ? dateRaw + ":00" + tzSign + tzH + ":" + tzM : null;
         const motif = document.getElementById("motif").value;
 
         const agent = "NomAgent"; 

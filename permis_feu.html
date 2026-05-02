@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
   <meta charset="UTF-8">
   <title>Permis Feu — Le Bon Marché</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <!-- QR CODE LIB -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js" crossorigin="anonymous"></script>
 
   <style>
     body {
@@ -246,7 +250,13 @@
     <h2>Travail à exécuter</h2>
 
     <label>Magasin</label>
-    <input type="text" id="magasin" placeholder="Le Bon Marché / La Grande Épicerie">
+    <select id="magasin">
+        <option value="">— Sélectionner le site —</option>
+        <option value="Le Bon Marché">Le Bon Marché</option>
+        <option value="La Grande Épicerie Rive Gauche">La Grande Épicerie Rive Gauche</option>
+        <option value="La Grande Épicerie Rive Droite">La Grande Épicerie Rive Droite</option>
+        <option value="La Samaritaine">La Samaritaine</option>
+    </select>
 
     <div class="row">
       <div>
@@ -442,7 +452,7 @@ Inspection complète du lieu de travail et des locaux contigus.
   </div>
 
   <!-- SCRIPTS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script>
     // Fallback showToast
@@ -574,7 +584,7 @@ Inspection complète du lieu de travail et des locaux contigus.
       const z = document.getElementById("zone-canton").value || "(zone ?)";
       document.getElementById("urgence-location").textContent = `${m} — ${e} — ${z}`;
     }
-    document.getElementById("magasin").addEventListener("input", updateUrgencePosition);
+    document.getElementById("magasin").addEventListener("change", updateUrgencePosition);
     document.getElementById("etage").addEventListener("input", updateUrgencePosition);
     document.getElementById("zone-canton").addEventListener("input", updateUrgencePosition);
 

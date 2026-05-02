@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
 <title>Consultation des Anomalies — Aura Sentinelle</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js" crossorigin="anonymous"></script>
 <style>
 :root{--bg-deep:#06080d;--bg-panel:rgba(12,16,28,0.85);--bg-glass:rgba(255,255,255,0.03);--bg-glass-hover:rgba(255,255,255,0.06);--border:rgba(255,255,255,0.06);--border-active:rgba(212,175,55,0.25);--text:#c8cdd8;--text-dim:rgba(255,255,255,0.35);--text-bright:#eef1f6;--gold:#d4af37;--gold-dim:rgba(212,175,55,0.6);--blue:#4da3ff;--green:#34d399;--yellow:#fbbf24;--orange:#fb923c;--red:#f87171;--crit-1:#6b7280;--crit-2:#34d399;--crit-3:#fbbf24;--crit-4:#fb923c;--crit-5:#ef4444;}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -170,7 +174,7 @@ tbody tr:last-child td{border-bottom:none;}
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script>
 let anomalieCourante = null;

@@ -1,15 +1,19 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
     <meta charset="UTF-8">
     <title>Dashboard Superviseur - LBM Sécurité</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
     <script src="supabaseClient.js"></script>
     <!-- jsPDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 
     <!-- 🎨 Design global (fallback si global.css absent) -->
     <link rel="stylesheet" href="global.css">
@@ -964,7 +968,7 @@ function updateIndicators(rapports, rondes, verifs, extra) {
 
     // Critiques — inclut les rapports urgents/hauts + DAI hors service (pas encore remis) + permis feu en alarme
     const critiquesRapports = rapports.filter(r => r.priorite === 'urgente' || r.priorite === 'haute').length;
-    const daiEnHS           = dai.filter(d => d.statut === 'hors_service').length;
+    const daiEnHS           = dai.filter(d => d.statut === 'hors_service' && !d.restaure_at).length;
     const permisFeuAlarme   = permisFeu.filter(p => p.alarme_type).length;
     document.getElementById('indCritique').textContent = critiquesRapports + daiEnHS + permisFeuAlarme;
 
@@ -974,10 +978,10 @@ function updateIndicators(rapports, rondes, verifs, extra) {
 
     // Nouveaux indicateurs (si les éléments existent dans le DOM)
     const ids = {
-        indDaiHs:        dai.filter(d => d.statut === 'hors_service').length,
+        indDaiHs:        dai.filter(d => d.statut === 'hors_service' && !d.restaure_at).length,
         indEntreeSortie: entreeSortie.length,
         indIntExt:       intExt.length,
-        indPermisFeu:    permisFeu.filter(p => !p.statut || !p.statut.toLowerCase().includes('clos')).length
+        indPermisFeu:    permisFeu.filter(p => !p.statut || (p.statut !== 'cloture' && p.statut !== 'clôturé')).length
     };
     Object.entries(ids).forEach(([id, val]) => {
         const el = document.getElementById(id);

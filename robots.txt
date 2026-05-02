@@ -1,0 +1,5 @@
+# Aura Sentinelle — Application interne
+# Interdire l'indexation par les moteurs de recherche
+
+User-agent: *
+Disallow: /

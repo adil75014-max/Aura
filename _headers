@@ -2,7 +2,15 @@
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   X-XSS-Protection: 1; mode=block
+  X-DNS-Prefetch-Control: off
+  X-Download-Options: noopen
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=()
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://hwqlajdytnxavqigmzio.supabase.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://hwqlajdytnxavqigmzio.supabase.co wss://hwqlajdytnxavqigmzio.supabase.co https://api.meteo-concept.com; frame-src https://view.officeapps.live.com https://outlook.office.com;
-  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  Permissions-Policy: camera=(self), microphone=(), geolocation=(self), payment=(), usb=(), bluetooth=(), serial=(), hid=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://hwqlajdytnxavqigmzio.supabase.co https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://hwqlajdytnxavqigmzio.supabase.co wss://hwqlajdytnxavqigmzio.supabase.co https://api.meteo-concept.com; media-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests;
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Cache-Control: no-store, no-cache, must-revalidate, private
+  Pragma: no-cache
+  X-Permitted-Cross-Domain-Policies: none
+  Cross-Origin-Embedder-Policy: credentialless
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Resource-Policy: same-origin

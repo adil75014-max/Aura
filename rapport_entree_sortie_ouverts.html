@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
 <title>Rapports Entrée/Sortie ouverts</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -48,7 +52,7 @@ button:hover { opacity:0.9; }
 <input type="text" id="search" placeholder="Rechercher (société, agent, date)…">
 <div id="liste"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script>
 // Fallback showToast si global.js n'est pas encore chargé

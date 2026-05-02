@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
 <title>Compte rendu incendie / technique / travaux</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
 <style>
 :root{--bg:#06080d;--panel:rgba(12,16,28,.85);--glass:rgba(255,255,255,.03);--bdr:rgba(255,255,255,.06);--bdr2:rgba(255,255,255,.1);--focus:rgba(212,175,55,.35);--tx:#b8bfcc;--txd:rgba(255,255,255,.3);--txb:#eef1f6;--gold:#d4af37;--goldg:rgba(212,175,55,.15);--fire:#ef4444;--firebg:rgba(239,68,68,.08);--firebd:rgba(239,68,68,.18);--tech:#3b82f6;--techbg:rgba(59,130,246,.08);--techbd:rgba(59,130,246,.18);--work:#f59e0b;--workbg:rgba(245,158,11,.08);--workbd:rgba(245,158,11,.18);--infobg:rgba(107,114,128,.08);--infobd:rgba(107,114,128,.18);--green:#34d399;--r:14px}
 *{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh}
@@ -349,7 +353,7 @@ async function envoyerMail(){await exportPDF();window.location.href='mailto:?sub
 document.getElementById('date').valueAsDate=new Date();
 </script>
 <script src="security.js"></script><script src="global.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="notifications_global.js"></script>
 </body>

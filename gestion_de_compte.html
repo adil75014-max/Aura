@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
 <title>Gestion des comptes</title>
 
@@ -406,7 +410,7 @@
 </div>
 
 <!-- SUPABASE -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 
 <script>
@@ -424,7 +428,7 @@ const client = supabaseClient;
 let comptesBruts = [];
 let comptesFiltres = [];
 let pageCourante = 1;
-const TAILLE_PAGE = 8;
+const TAILLE_PAGE = 50;
 
 /* ============================================================
    LOGS → table audit_log
@@ -677,6 +681,15 @@ async function creerCompte() {
         return;
     }
 
+    // Validation de la force du mot de passe
+    if (typeof validatePasswordStrength === "function") {
+        var pwCheck = validatePasswordStrength(password);
+        if (!pwCheck.valid) {
+            setStatus("⚠️ Mot de passe trop faible : " + pwCheck.errors.join(", "), true);
+            return;
+        }
+    }
+
     setStatus("Création du compte…");
 
     try {
@@ -759,8 +772,17 @@ async function modifierCompte(id) {
    RESET MOT DE PASSE — via Edge Function reset-password
 ============================================================ */
 async function resetPassword(id) {
-    const mdp = prompt("Nouveau mot de passe :");
+    var mdp = prompt("Nouveau mot de passe (min 8 car., 1 maj., 1 min., 1 chiffre, 1 spécial) :");
     if (!mdp) return;
+
+    // Validation de la force du mot de passe
+    if (typeof validatePasswordStrength === "function") {
+        var pwCheck = validatePasswordStrength(mdp);
+        if (!pwCheck.valid) {
+            alert("⚠️ Mot de passe trop faible :\n• " + pwCheck.errors.join("\n• "));
+            return;
+        }
+    }
 
     try {
         const res = await fetch("https://hwqlajdytnxavqigmzio.supabase.co/functions/v1/clever-function", {

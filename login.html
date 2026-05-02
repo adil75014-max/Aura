@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
 <title>Aura Sentinelle LBM – Login</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -157,10 +161,16 @@
         <div class="secure">Authentification requise</div>
 
         <label for="username">Nom d'utilisateur</label>
-        <input type="text" id="username" placeholder="Votre identifiant">
+        <input type="text" id="username" placeholder="Votre identifiant" autocomplete="off">
+
+        <!-- Honeypot anti-bot — invisible pour les humains -->
+        <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+            <label for="website">Website</label>
+            <input type="text" id="hp_field" name="website" tabindex="-1" autocomplete="off">
+        </div>
 
         <label for="password">Mot de passe</label>
-        <input type="password" id="password" placeholder="Votre mot de passe">
+        <input type="password" id="password" placeholder="Votre mot de passe" autocomplete="off">
 
         <button id="loginBtn" onclick="login()">Se connecter</button>
 
@@ -190,12 +200,101 @@
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
 
+// Audit log local (security.js n'est pas chargé sur login)
+function auditLog(action, detail) {
+    try {
+        if (typeof supabaseClient !== "undefined") {
+            supabaseClient.from("security_audit").insert({
+                action: action, detail: String(detail || "").substring(0, 500),
+                agent: "login_page", page: "login.html",
+                user_agent: navigator.userAgent.substring(0, 200),
+                created_at: new Date().toISOString()
+            }).then(function(){}).catch(function(){});
+        }
+    } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════════
+   ANTI-BRUTEFORCE — Côté client + serveur
+═══════════════════════════════════════════════════════ */
+var MAX_ATTEMPTS = 5;
+var LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+var DELAY_BASE_MS = 1000; // Délai progressif
+
+function getLoginAttempts() {
+    try {
+        var data = JSON.parse(localStorage.getItem("_login_attempts") || "{}");
+        return data;
+    } catch(e) { return {}; }
+}
+
+function saveLoginAttempts(data) {
+    localStorage.setItem("_login_attempts", JSON.stringify(data));
+}
+
+function isLockedOut() {
+    var data = getLoginAttempts();
+    if (data.count >= MAX_ATTEMPTS && data.lockedUntil) {
+        if (Date.now() < data.lockedUntil) {
+            var remaining = Math.ceil((data.lockedUntil - Date.now()) / 60000);
+            return remaining;
+        }
+        // Lock expiré → reset
+        saveLoginAttempts({});
+    }
+    return 0;
+}
+
+function recordFailedAttempt() {
+    var data = getLoginAttempts();
+    data.count = (data.count || 0) + 1;
+    data.lastAttempt = Date.now();
+    if (data.count >= MAX_ATTEMPTS) {
+        data.lockedUntil = Date.now() + LOCKOUT_MS;
+    }
+    saveLoginAttempts(data);
+    return data.count;
+}
+
+function resetAttempts() {
+    saveLoginAttempts({});
+}
+
+/* ═══════════════════════════════════════════════════════
+   SANITISATION — Anti-injection SQL/XSS
+═══════════════════════════════════════════════════════ */
+function sanitizeInput(str) {
+    if (!str) return "";
+    return str.replace(/[<>"'`;\\\/\{\}\[\]]/g, "").trim().substring(0, 128);
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOGIN
+═══════════════════════════════════════════════════════ */
 async function login() {
-    const username = document.getElementById("username").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const errorMsg = document.getElementById("errorMsg");
+    var username = sanitizeInput(document.getElementById("username").value);
+    var password = document.getElementById("password").value.trim();
+    var errorMsg = document.getElementById("errorMsg");
+    var loginBtn = document.getElementById("loginBtn");
 
     errorMsg.style.display = "none";
+
+    // Anti-bot honeypot
+    var hp = document.getElementById("hp_field");
+    if (hp && hp.value.length > 0) {
+        auditLog("BOT_DETECTED", "honeypot filled");
+        errorMsg.textContent = "Erreur de sécurité.";
+        errorMsg.style.display = "block";
+        return;
+    }
+
+    // Vérifier le verrouillage anti-bruteforce
+    var lockMin = isLockedOut();
+    if (lockMin > 0) {
+        errorMsg.textContent = "⛔ Compte verrouillé. Réessayez dans " + lockMin + " minute(s).";
+        errorMsg.style.display = "block";
+        return;
+    }
 
     if (!username || !password) {
         errorMsg.textContent = "Veuillez remplir tous les champs.";
@@ -203,68 +302,105 @@ async function login() {
         return;
     }
 
-    const form = new URLSearchParams();
+    // Délai progressif anti-bruteforce
+    var attempts = getLoginAttempts();
+    var delay = (attempts.count || 0) * DELAY_BASE_MS;
+    if (delay > 0) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Patientez...";
+        await new Promise(function(r){ setTimeout(r, delay); });
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Connexion...";
+
+    var form = new URLSearchParams();
     form.append("username", username);
     form.append("password", password);
 
     try {
-        const res = await fetch("https://hwqlajdytnxavqigmzio.supabase.co/functions/v1/super-action", {
+        var res = await fetch("https://hwqlajdytnxavqigmzio.supabase.co/functions/v1/super-action", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded"
-            },
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: form.toString()
         });
 
-        const raw = await res.text();
-        console.log("RAW RESPONSE:", raw);
-
-        let data = null;
-        try {
-            data = JSON.parse(raw);
-        } catch (e) {
-            console.error("JSON PARSE ERROR:", e);
-        }
+        var raw = await res.text();
+        var data = null;
+        try { data = JSON.parse(raw); } catch(e) {}
 
         if (!res.ok || !data || !data.user) {
-            errorMsg.textContent = (data && data.error) || "Identifiants incorrects.";
+            var failCount = recordFailedAttempt();
+            var remaining = MAX_ATTEMPTS - failCount;
+
+            // Enregistrer la tentative échouée dans Supabase
+            try {
+                supabaseClient.from("login_attempts").insert({
+                    username: username,
+                    success: false,
+                    ip_hint: navigator.userAgent.substring(0, 100),
+                    created_at: new Date().toISOString()
+                });
+            } catch(e) {}
+
+            if (remaining <= 0) {
+                errorMsg.textContent = "⛔ Trop de tentatives. Compte verrouillé 15 minutes.";
+            } else {
+                errorMsg.textContent = (data && data.error) || "Identifiants incorrects. " + remaining + " tentative(s) restante(s).";
+            }
             errorMsg.style.display = "block";
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Se connecter";
             return;
         }
+
+        // Succès → reset compteur
+        resetAttempts();
+
+        // Enregistrer la connexion réussie
+        try {
+            supabaseClient.from("login_attempts").insert({
+                username: username,
+                success: true,
+                ip_hint: navigator.userAgent.substring(0, 100),
+                created_at: new Date().toISOString()
+            });
+        } catch(e) {}
 
         // Stockage session
         localStorage.setItem("nom", data.user.nom);
         localStorage.setItem("role", data.user.role);
         localStorage.setItem("loginTime", Date.now().toString());
 
-        // Stockage biométrique
+        // Biométrie — stocker uniquement le username et le rôle (JAMAIS le mot de passe)
         localStorage.setItem("bio_username", username);
-        localStorage.setItem("bio_password", password);
+        localStorage.setItem("bio_role", data.user.role);
 
         window.location.href = "index.html";
 
-    } catch (err) {
-        console.error("FETCH ERROR:", err);
+    } catch(err) {
         errorMsg.textContent = "Erreur réseau.";
         errorMsg.style.display = "block";
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Se connecter";
     }
 }
 
 async function loginWithBiometrics() {
-    const errorMsg = document.getElementById("errorMsg");
+    var errorMsg = document.getElementById("errorMsg");
     errorMsg.style.display = "none";
 
-    const username = localStorage.getItem("bio_username");
-    const password = localStorage.getItem("bio_password");
+    var savedNom = localStorage.getItem("bio_username");
+    var savedRole = localStorage.getItem("bio_role");
 
-    if (!username || !password) {
-        errorMsg.textContent = "Aucune connexion biométrique enregistrée. Connectez-vous une première fois avec votre mot de passe.";
+    if (!savedNom) {
+        errorMsg.textContent = "Aucune session biométrique. Connectez-vous d'abord avec votre mot de passe.";
         errorMsg.style.display = "block";
         return;
     }
 
     try {
-        // Déclenche la biométrie (simplifiée)
+        // Déclencher la vérification biométrique
         await navigator.credentials.get({
             publicKey: {
                 challenge: new Uint8Array(32),
@@ -273,14 +409,15 @@ async function loginWithBiometrics() {
             }
         });
 
-        // On relance le login normal automatiquement
-        document.getElementById("username").value = username;
-        document.getElementById("password").value = password;
+        // Biométrie réussie → restaurer la session
+        localStorage.setItem("nom", savedNom);
+        localStorage.setItem("role", savedRole || "agent");
+        localStorage.setItem("loginTime", Date.now().toString());
+        resetAttempts();
 
-        login();
+        window.location.href = "index.html";
 
-    } catch (err) {
-        console.error("BIOMETRIC ERROR:", err);
+    } catch(err) {
         errorMsg.textContent = "Authentification biométrique annulée ou indisponible.";
         errorMsg.style.display = "block";
     }

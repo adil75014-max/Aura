@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="fr" data-theme="light">
 <head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
     <meta charset="UTF-8">
     <title>LBM Incendie – Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1493,10 +1497,14 @@
             </div>
 
             <div class="co-field">
-                <label class="co-label">Agent assigné</label>
-                <select class="co-select" id="modal-agent-select">
-                    <option value="">— Sélectionner un agent —</option>
-                </select>
+                <label class="co-label">Agents assignés (jusqu'à 3)</label>
+                <div id="modal-agents-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;min-height:28px;"></div>
+                <div style="display:flex;gap:6px;">
+                    <select class="co-select" id="modal-agent-select" style="flex:1;">
+                        <option value="">— Ajouter un agent —</option>
+                    </select>
+                    <button type="button" onclick="addAgentToMission()" style="padding:8px 14px;background:#d4af37;color:#000;border:none;border-radius:8px;font-weight:700;cursor:pointer;white-space:nowrap;">+</button>
+                </div>
             </div>
 
             <div class="co-field">
@@ -1586,7 +1594,7 @@ const MENU = [
         category: "Travaux & Stockage", icon: "🛠",
         visibleFor: ["admin","superviseur","stationnaire","agent"],
         items: [
-            { icon: "👤", label: "Ssiap 2 Chantier", link: "ssiap2chantier.html?type=Travaux" },
+            { icon: "👤", label: "SSiap 2 Chantier", link: "ssiap2chantier.html?type=Travaux" },
             { icon: "🚧", label: "Suivi des travaux et zone de stockage exceptionnel", link: "suivi_travaux.html?type=Travaux" },
             { icon: "🪟", label: "Vérification Pop up", link: "report.html?type=verif_popup" },
             { icon: "🏗", label: "Réception Travaux", link: "report.html?type=verifreceptiontravaux" }
@@ -2489,6 +2497,40 @@ function closeMissionModal() {
     document.getElementById("missionModal").classList.remove("open");
     document.getElementById("modal-note").value = "";
     modalReassignId = null;
+    modalSelectedAgents = [];
+    var tags = document.getElementById("modal-agents-tags");
+    if (tags) tags.innerHTML = "";
+}
+
+/* ── Multi-agents : jusqu'à 3 agents par mission ── */
+var modalSelectedAgents = [];
+
+function addAgentToMission() {
+    var sel = document.getElementById("modal-agent-select");
+    var name = sel.value;
+    if (!name) return;
+    if (modalSelectedAgents.includes(name)) { alert("Agent déjà sélectionné."); return; }
+    if (modalSelectedAgents.length >= 3) { alert("Maximum 3 agents par intervention."); return; }
+
+    modalSelectedAgents.push(name);
+    sel.value = "";
+    renderAgentTags();
+}
+
+function removeAgentFromMission(name) {
+    modalSelectedAgents = modalSelectedAgents.filter(function(a){ return a !== name; });
+    renderAgentTags();
+}
+
+function renderAgentTags() {
+    var container = document.getElementById("modal-agents-tags");
+    container.innerHTML = "";
+    modalSelectedAgents.forEach(function(name, i) {
+        var tag = document.createElement("span");
+        tag.style.cssText = "display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.3);border-radius:8px;font-size:0.85rem;color:#d4af37;font-weight:600;";
+        tag.innerHTML = "👤 " + name + ' <span onclick="removeAgentFromMission(\'' + name + '\')" style="cursor:pointer;opacity:0.7;font-size:1rem;">✕</span>';
+        container.appendChild(tag);
+    });
 }
 
 function switchModalTab(category) {
@@ -2540,52 +2582,52 @@ function populateAgentSelect() {
 }
 
 function launchMission() {
-    const type  = document.getElementById("modal-type-select").value;
-    const agent = document.getElementById("modal-agent-select").value;
-    const note  = document.getElementById("modal-note").value.trim();
+    var type  = document.getElementById("modal-type-select").value;
+    var note  = document.getElementById("modal-note").value.trim();
 
     if (!type)  { alert("Sélectionnez un type de mission."); return; }
-    if (!agent) { alert("Sélectionnez un agent."); return; }
+    if (!modalSelectedAgents.length) { alert("Sélectionnez au moins un agent."); return; }
+
+    var agentDisplay = modalSelectedAgents.join(", ");
 
     /* Si réassignation */
     if (modalReassignId) {
-        const m = coMissions.find(x => x.id === modalReassignId);
+        var m = coMissions.find(function(x){ return x.id === modalReassignId; });
         if (m) {
-            const oldAgent = m.agent;
-            freeAgent(m.agent);
-            m.agent = agent;
+            var oldAgent = m.agent;
+            m.agents = modalSelectedAgents.slice();
+            m.agent = agentDisplay;
             m.type  = type;
             m.note  = note;
-            coLog.unshift({ time: coNow(), type: 'SYS', msg: `Mission ${m.id} réassignée → ${type}`, agent });
-            const notifParts = [`↩ ${m.id} réassignée`, `${type}`, `${oldAgent} → ${agent}`];
-            if (note) notifParts.push(`Note : ${note}`);
-            pushNotification(notifParts.join('\n'));
+            coLog.unshift({ time: coNow(), type: 'SYS', msg: 'Mission ' + m.id + ' réassignée → ' + type, agent: agentDisplay });
+            pushNotification('↩ ' + m.id + ' réassignée\n' + type + '\n' + oldAgent + ' → ' + agentDisplay);
         }
     } else {
         coMissionCounter++;
-        const prefix = { intervention: 'INT', verif: 'VRF', ronde: 'RON' }[currentModalTab];
-        const id = `${prefix}-${String(coMissionCounter).padStart(3,'0')}`;
+        var prefix = { intervention: 'INT', verif: 'VRF', ronde: 'RON' }[currentModalTab];
+        var id = prefix + '-' + String(coMissionCounter).padStart(3,'0');
 
         coMissions.unshift({
-            id, type, agent, note,
+            id: id, type: type, agent: agentDisplay, agents: modalSelectedAgents.slice(), note: note,
             category: currentModalTab,
             time: coNow()
         });
 
-        /* Mettre à jour statut agent */
-        const a = coAgents.find(x => x.nom === agent);
-        if (a) {
-            a.statut = currentModalTab === 'intervention' ? 'mission'
-                     : currentModalTab === 'verif'        ? 'verif'
-                     : 'ronde';
-        }
+        /* Mettre à jour statut de CHAQUE agent sélectionné */
+        modalSelectedAgents.forEach(function(agentName) {
+            var a = coAgents.find(function(x){ return x.nom === agentName; });
+            if (a) {
+                a.statut = currentModalTab === 'intervention' ? 'mission'
+                         : currentModalTab === 'verif'        ? 'verif'
+                         : 'ronde';
+            }
+        });
 
-        const logType = { intervention:'INT', verif:'VRF', ronde:'RON' }[currentModalTab];
-        coLog.unshift({ time: coNow(), type: logType, msg: type, agent });
+        var logType = { intervention:'INT', verif:'VRF', ronde:'RON' }[currentModalTab];
+        coLog.unshift({ time: coNow(), type: logType, msg: type, agent: agentDisplay });
 
-        /* Notification complète avec note opérationnelle */
-        const notifParts = [`🚨 ${id} — ${type}`, `Agent : ${agent}`, `Heure : ${coNow()}`];
-        if (note) notifParts.push(`📝 Note : ${note}`);
+        var notifParts = ['🚨 ' + id + ' — ' + type, 'Agents : ' + agentDisplay, 'Heure : ' + coNow()];
+        if (note) notifParts.push('📝 Note : ' + note);
         pushNotification(notifParts.join('\n'));
     }
 
@@ -2651,7 +2693,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script>
 const supabaseFg = supabase.createClient(

@@ -282,57 +282,88 @@ async function markAllNotifAsRead() {
 
 // ───────────────────────────────────────
 //  SON DE NOTIFICATION & ALARME
-//  Joué chez les agents/stationnaires/superviseurs/admins
-//  PAS chez l'intervenant du permis feu
+//  Compatible iOS Safari, Android Chrome, Desktop
+//  Joué chez agents/stationnaires/superviseurs/admins
 // ───────────────────────────────────────
-let alarmAudio = null;
-let notifSoundAudio = null;
-let audioUnlocked = false;
+let _audioCtx = null;
+let _alarmBuffer = null;
+let _audioReady = false;
+let _alarmSource = null;
 
-// Pré-initialiser les audios au premier clic (requis par les navigateurs mobiles)
-document.addEventListener("click", function unlockAudio() {
-    if (audioUnlocked) return;
+// Créer/débloquer le contexte audio au premier geste utilisateur
+// iOS et Android exigent un AudioContext.resume() dans un événement utilisateur
+function _ensureAudioCtx() {
+    if (!_audioCtx) {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (_audioCtx.state === "suspended") {
+        _audioCtx.resume();
+    }
+}
+
+// Pré-charger le fichier audio en ArrayBuffer (compatible tous navigateurs)
+async function _preloadAlarm() {
+    if (_alarmBuffer) return;
     try {
-        alarmAudio = new Audio("fire_station_tone_x4.mp3");
-        alarmAudio.volume = 1.0;
-        alarmAudio.load();
-        notifSoundAudio = new Audio("fire_station_tone_x4.mp3");
-        notifSoundAudio.volume = 0.4;
-        notifSoundAudio.load();
-        audioUnlocked = true;
-    } catch (e) {}
-}, { once: false });
+        const resp = await fetch("fire_station_tone_x4.mp3");
+        const arrayBuf = await resp.arrayBuffer();
+        _ensureAudioCtx();
+        _alarmBuffer = await _audioCtx.decodeAudioData(arrayBuf);
+        _audioReady = true;
+    } catch (e) { console.warn("[AUDIO] Préchargement échoué:", e); }
+}
+
+// Débloquer l'audio au premier geste (tap, click, touchstart)
+["click", "touchstart", "touchend", "keydown"].forEach(function(evt) {
+    document.addEventListener(evt, function _unlock() {
+        _ensureAudioCtx();
+        _preloadAlarm();
+        document.removeEventListener(evt, _unlock);
+    }, { once: true, passive: true });
+});
+
+// Jouer le son via AudioContext (fonctionne sur iOS/Android/Desktop)
+function _playBuffer(loop, volume, durationSec) {
+    if (!_audioCtx || !_alarmBuffer) {
+        // Fallback HTML5 Audio (desktop)
+        try {
+            const fb = new Audio("fire_station_tone_x4.mp3");
+            fb.volume = volume;
+            fb.loop = loop;
+            fb.play().catch(function(){});
+            if (loop && durationSec) setTimeout(function(){ fb.loop=false; fb.pause(); }, durationSec*1000);
+        } catch(e){}
+        return;
+    }
+    try {
+        _ensureAudioCtx();
+        // Stopper la source précédente
+        if (_alarmSource) { try { _alarmSource.stop(); } catch(e){} }
+        _alarmSource = _audioCtx.createBufferSource();
+        _alarmSource.buffer = _alarmBuffer;
+        _alarmSource.loop = loop;
+
+        var gain = _audioCtx.createGain();
+        gain.gain.value = volume;
+        _alarmSource.connect(gain);
+        gain.connect(_audioCtx.destination);
+        _alarmSource.start(0);
+
+        if (loop && durationSec) {
+            setTimeout(function() {
+                try { _alarmSource.stop(); } catch(e){}
+            }, durationSec * 1000);
+        }
+    } catch (e) { console.warn("[AUDIO] Lecture échouée:", e); }
+}
 
 function playAlarmSound() {
-    try {
-        if (!alarmAudio) {
-            alarmAudio = new Audio("fire_station_tone_x4.mp3");
-        }
-        alarmAudio.volume = 1.0;
-        alarmAudio.loop = true; // Boucle continue pour alarme critique
-        alarmAudio.currentTime = 0;
-        alarmAudio.play().catch(() => {});
-
-        // Afficher une bannière d'alarme visuelle (au cas où le son est bloqué)
-        showAlarmBanner();
-
-        // Arrêter la boucle après 30 secondes
-        setTimeout(() => {
-            if (alarmAudio) { alarmAudio.loop = false; alarmAudio.pause(); }
-        }, 30000);
-    } catch (e) {}
+    _playBuffer(true, 1.0, 30);
+    showAlarmBanner();
 }
 
 function playNotifSound() {
-    try {
-        if (!notifSoundAudio) {
-            notifSoundAudio = new Audio("fire_station_tone_x4.mp3");
-        }
-        notifSoundAudio.volume = 0.4;
-        notifSoundAudio.loop = false;
-        notifSoundAudio.currentTime = 0;
-        notifSoundAudio.play().catch(() => {});
-    } catch (e) {}
+    _playBuffer(false, 0.5, 0);
 }
 
 // ───────────────────────────────────────
@@ -376,9 +407,9 @@ function showAlarmBanner() {
 }
 
 function closeAlarmBanner() {
-    const banner = document.getElementById("alarmBanner");
+    var banner = document.getElementById("alarmBanner");
     if (banner) banner.remove();
-    if (alarmAudio) { alarmAudio.loop = false; alarmAudio.pause(); }
+    if (_alarmSource) { try { _alarmSource.stop(); } catch(e){} _alarmSource = null; }
 }
 
 // ───────────────────────────────────────

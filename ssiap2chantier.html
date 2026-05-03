@@ -684,13 +684,35 @@ async function effacerJournee() {
             if (stErr) console.warn("Erreur suppression PDFs (on continue) :", stErr);
         }
 
-        // 2) Suppression de toutes les lignes de la table
-        const { error: delErr } = await supabaseClient
-            .from("ssiap2_chantier")
-            .delete()
-            .not("id", "is", null);
+        // 2) Suppression de toutes les lignes via leurs IDs (plus fiable qu'un filtre NOT IS NULL)
+        const allIds = interventions.map(i => i.id).filter(Boolean);
+        if (allIds.length) {
+            const { error: delErr, count } = await supabaseClient
+                .from("ssiap2_chantier")
+                .delete({ count: "exact" })
+                .in("id", allIds);
 
-        if (delErr) throw delErr;
+            if (delErr) throw delErr;
+
+            // Vérifier que toutes les lignes ont bien été supprimées
+            const { count: remaining } = await supabaseClient
+                .from("ssiap2_chantier")
+                .select("*", { count: "exact", head: true });
+
+            if (remaining > 0) {
+                // Une seconde tentative pour les lignes orphelines
+                const { data: leftover } = await supabaseClient
+                    .from("ssiap2_chantier")
+                    .select("id");
+                if (leftover && leftover.length) {
+                    const leftIds = leftover.map(r => r.id);
+                    await supabaseClient
+                        .from("ssiap2_chantier")
+                        .delete()
+                        .in("id", leftIds);
+                }
+            }
+        }
 
         // 3) Reset COMPLET de l'état local
         interventions = [];
@@ -721,6 +743,8 @@ async function effacerJournee() {
             if (el) el.textContent = "0";
         });
 
+        // Recharger depuis la base pour s'assurer que tout est bien synchronisé
+        await loadInterventions();
         refreshAll();
         alert("✅ Journée effacée.");
     } catch (e) {

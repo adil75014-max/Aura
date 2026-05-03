@@ -63,15 +63,41 @@ function subscribeToNotifications() {
                 table: "notifications"
             }, (payload) => {
                 const newNotif = payload.new;
+                const myRole = (localStorage.getItem("role") || "agent").toLowerCase();
+                const myName = localStorage.getItem("nom") || "";
+
+                // Toujours ajouter à la liste pour TOUS les rôles
                 globalNotifications.unshift(newNotif);
                 updateGlobalNotifBadge();
                 renderGlobalNotifPanel();
+
+                // Ne pas faire de toast/son pour ses propres notifications
+                if (newNotif.emetteur === myName) return;
+
+                const isAlarm = newNotif.type_notif === "alarme" || newNotif.priorite === "haute" || newNotif.priorite === "critique";
+                const isPermisFeuAlarm = isAlarm && /permis.*feu|incendie|secours.*victime|svv/i.test(
+                    (newNotif.titre || "") + " " + (newNotif.message || "")
+                );
+
+                // ── RÈGLES PAR RÔLE ──
+                if (myRole === "stationnaire") {
+                    // Stationnaire : uniquement les alarmes liées aux permis feu
+                    // (pas de son ni toast pour les autres notifications, juste la liste)
+                    if (isPermisFeuAlarm) {
+                        showGlobalToast(newNotif.titre || newNotif.message || "Alarme permis feu");
+                        playAlarmSound();
+                        const msgEl = document.getElementById("alarmBannerMsg");
+                        if (msgEl) msgEl.textContent = (newNotif.titre || "") + " — " + (newNotif.message || "");
+                    }
+                    // Sinon : la notification est silencieusement ajoutée à la liste (déjà fait au-dessus)
+                    return;
+                }
+
+                // ── Agent / Superviseur / Admin : son + toast pour TOUT ──
                 showGlobalToast(newNotif.titre || newNotif.message || "Nouvelle notification");
 
-                // Son de notification — joué chez agents/stationnaires/superviseurs/admins
-                if (newNotif.type_notif === "alarme" || newNotif.priorite === "haute" || newNotif.priorite === "critique") {
+                if (isAlarm) {
                     playAlarmSound();
-                    // Afficher le message dans la bannière
                     const msgEl = document.getElementById("alarmBannerMsg");
                     if (msgEl) msgEl.textContent = (newNotif.titre || "") + " — " + (newNotif.message || "");
                 } else {

@@ -1594,7 +1594,7 @@ const MENU = [
         category: "Travaux & Stockage", icon: "🛠",
         visibleFor: ["admin","superviseur","stationnaire","agent"],
         items: [
-            { icon: "👤", label: "SSiap 2 Chantier", link: "ssiap2chantier.html?type=Travaux" },
+            { icon: "👤", label: "SSIAP 2 Chantier", link: "ssiap2chantier.html?type=Travaux" },
             { icon: "🚧", label: "Suivi des travaux et zone de stockage exceptionnel", link: "suivi_travaux.html?type=Travaux" },
             { icon: "🪟", label: "Vérification Pop up", link: "report.html?type=verif_popup" },
             { icon: "🏗", label: "Réception Travaux", link: "report.html?type=verifreceptiontravaux" }
@@ -1932,14 +1932,36 @@ function updateNotifBadge() {
     badge.textContent = unread;
 }
 
-function pushNotification(text) {
+function pushNotification(text, options) {
+    options = options || {};
+    var isAlarm = options.alarm || /alarme|urgence|incendie|🔥|🚨/i.test(text);
+
     const notif = { id: Date.now(), text, date: new Date().toLocaleString("fr-FR"), read: false };
     notifications.unshift(notif);
     saveNotifications();
     updateNotifBadge();
     renderNotificationsPanel();
-    /* Toast : affiche seulement la première ligne pour rester lisible */
+
+    /* Toast visuel */
     showToast(text.split('\n')[0]);
+
+    /* Son systématique pour TOUTES les notifications de supervision */
+    if (isAlarm) {
+        if (typeof playAlarmSound === "function") playAlarmSound();
+    } else {
+        if (typeof playNotifSound === "function") playNotifSound();
+    }
+
+    /* Diffuser à tous les rôles via Supabase */
+    if (typeof sendGlobalNotification === "function") {
+        var lines = text.split('\n');
+        sendGlobalNotification(
+            lines[0] || "Notification",
+            lines.slice(1).join('\n') || text,
+            isAlarm ? "alarme" : "intervention",
+            isAlarm ? "critique" : "normale"
+        );
+    }
 }
 
 function showToast(text) {
@@ -2628,7 +2650,17 @@ function launchMission() {
 
         var notifParts = ['🚨 ' + id + ' — ' + type, 'Agents : ' + agentDisplay, 'Heure : ' + coNow()];
         if (note) notifParts.push('📝 Note : ' + note);
-        pushNotification(notifParts.join('\n'));
+        pushNotification(notifParts.join('\n'), { alarm: true });
+
+        /* Ouvrir automatiquement le rapport pour les interventions */
+        if (currentModalTab === 'intervention') {
+            // Encoder le type pour le passer en paramètre URL
+            var typeParam = encodeURIComponent(type);
+            var agentsParam = encodeURIComponent(modalSelectedAgents.join(","));
+            var noteParam = encodeURIComponent(note);
+            // Ouvrir dans un nouvel onglet pour ne pas perdre le superviseur
+            window.open("report.html?type=" + typeParam + "&agents=" + agentsParam + "&note=" + noteParam + "&missionId=" + id, "_blank");
+        }
     }
 
     saveCOState();

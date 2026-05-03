@@ -141,10 +141,20 @@ function getTypeLabel(code) {
 /* Récupère le type depuis (1) l'URL ?type=..., (2) le localStorage, sinon null */
 function resolveIntervention() {
     const params = new URLSearchParams(window.location.search);
-    const code = params.get("type");
-    if (code) {
-        const label = getTypeLabel(code);
-        // On stocke aussi dans localStorage pour cohérence avec le reste de l'app
+    const typeParam = params.get("type");
+    if (typeParam) {
+        // Le type peut être soit un code (ex: "incendie"), soit un libellé complet (ex: "Levée de doute")
+        // On essaie d'abord de le résoudre comme code, sinon comme libellé
+        let label, code;
+        if (TYPES[typeParam]) {
+            // C'est un code connu
+            code = typeParam;
+            label = TYPES[typeParam];
+        } else {
+            // C'est probablement un libellé envoyé par la supervision
+            label = typeParam;
+            code = LABEL_TO_CODE[typeParam] || typeParam.toLowerCase().replace(/\s+/g, "_").replace(/[^\w]/g, "");
+        }
         localStorage.setItem("selectedIntervention", label);
         return { code, label };
     }
@@ -161,13 +171,59 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("reportDate").textContent = now.toLocaleDateString("fr-FR");
     document.getElementById("reportTime").textContent = now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
 
-    const agentPrincipal = localStorage.getItem("nom") || "Inconnu";
-    document.getElementById("reportAgent").textContent = agentPrincipal;
-    document.getElementById("agent1Name").textContent = agentPrincipal;
+    // Récupérer les paramètres URL passés par la supervision
+    const params = new URLSearchParams(window.location.search);
+    const agentsFromURL = params.get("agents");
+    const noteFromURL = params.get("note");
+    const missionId = params.get("missionId");
+
+    // Si des agents sont passés depuis la supervision, les utiliser
+    if (agentsFromURL) {
+        const agentList = agentsFromURL.split(",").filter(Boolean);
+        if (agentList.length) {
+            assignedAgents = agentList;
+            const agentPrincipal = agentList[0];
+            document.getElementById("reportAgent").textContent = agentPrincipal;
+            document.getElementById("agent1Name").textContent = agentPrincipal;
+
+            // Afficher les agents supplémentaires
+            if (agentList.length > 1) {
+                const container = document.getElementById("agentsContainer");
+                for (let i = 1; i < agentList.length; i++) {
+                    const row = document.createElement("div");
+                    row.className = "agent-row";
+                    row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;";
+                    row.innerHTML = `
+                        <span style="font-size:1.1rem;">👤</span>
+                        <span style="flex:1;font-weight:600;">${agentList[i]}</span>
+                        <span style="font-size:0.75rem;opacity:0.6;background:rgba(100,180,255,0.15);padding:4px 10px;border-radius:6px;color:#4da3ff;">Agent ${i + 1}</span>
+                        <button type="button" onclick="removeAgent('${agentList[i]}', this)" style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);color:#ff6b6b;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.8rem;">✕</button>
+                    `;
+                    container.appendChild(row);
+                }
+            }
+        }
+    } else {
+        const agentPrincipal = localStorage.getItem("nom") || "Inconnu";
+        document.getElementById("reportAgent").textContent = agentPrincipal;
+        document.getElementById("agent1Name").textContent = agentPrincipal;
+    }
+
+    // Pré-remplir la note dans le champ "Informations générales"
+    if (noteFromURL) {
+        const infoGen = document.getElementById("infoGenerales");
+        if (infoGen) infoGen.value = "Note opérationnelle depuis la supervision : " + noteFromURL;
+    }
+
+    // Stocker le missionId pour le rapport
+    if (missionId) {
+        document.getElementById("reportId").textContent = missionId;
+    }
 
     document.getElementById("reportSite").addEventListener("change", () => {
         const s = document.getElementById("reportSite").value;
         if (!s) return;
+        if (missionId) return; // Ne pas écraser l'ID si fourni
         const codeForId = (code || "autre").toUpperCase().slice(0,3);
         document.getElementById("reportId").textContent = s+"-"+codeForId+"-"+Date.now().toString().slice(-6);
     });
@@ -184,6 +240,62 @@ let assignedAgents = [localStorage.getItem("nom") || "Inconnu"];
 async function loadAgentsList() {
     const select = document.getElementById("agentSelect");
     try {
+        // Charger la feuille de garde du jour
+        const todayISO = new Date().toISOString().split("T")[0];
+        const { data: feuille, error: fError } = await supabaseClient
+            .from("feuille_de_garde")
+            .select("*")
+            .eq("date_jour", todayISO)
+            .maybeSingle();
+
+        const agentsFromFeuille = [];
+
+        if (!fError && feuille && feuille.data_json) {
+            const json = feuille.data_json;
+            // Extraire tous les noms : chef_poste_nom, agent1_nom à agent5_nom, resp_bm_nom
+            const fieldsToCheck = [
+                "resp_bm_nom", "chef_poste_nom",
+                "agent1_nom", "agent2_nom", "agent3_nom", "agent4_nom", "agent5_nom",
+                "stat_8_10_nom", "stat_10_12_nom", "stat_12_13_nom",
+                "stat_13_15_nom", "stat_15_17_nom", "stat_17_19_nom",
+                "stat_19_21_nom", "stat_21_23_nom"
+            ];
+            const labels = {
+                resp_bm_nom: "Responsable BM",
+                chef_poste_nom: "Chef de poste",
+                agent1_nom: "Agent 1", agent2_nom: "Agent 2",
+                agent3_nom: "Agent 3", agent4_nom: "Agent 4", agent5_nom: "Agent 5"
+            };
+            const seen = new Set();
+            fieldsToCheck.forEach(field => {
+                const val = (json[field] || "").trim();
+                if (val && !seen.has(val.toLowerCase())) {
+                    seen.add(val.toLowerCase());
+                    agentsFromFeuille.push({
+                        nom: val,
+                        role: labels[field] || "Stationnaire"
+                    });
+                }
+            });
+        }
+
+        // Si la feuille de garde a des agents, les utiliser
+        if (agentsFromFeuille.length > 0) {
+            agentsFromFeuille.forEach(p => {
+                if (p.nom !== assignedAgents[0]) {
+                    const opt = document.createElement("option");
+                    opt.value = p.nom;
+                    opt.textContent = p.nom + " (" + p.role + ")";
+                    select.appendChild(opt);
+                }
+            });
+            // Petit indicateur visuel
+            const label = select.previousElementSibling;
+            if (label) label.textContent = "Personnel présent (feuille de garde du jour) :";
+            return;
+        }
+
+        // Sinon, fallback sur la table profiles
         const { data, error } = await supabaseClient
             .from("profiles")
             .select("nom, prenom, role")

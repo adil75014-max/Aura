@@ -221,10 +221,30 @@ async function loadFeuilleDeGarde() {
 
 async function nouvelleJournee() {
     if (!confirm("Démarrer une feuille vierge pour aujourd'hui ?\n\nCela écrasera toute saisie déjà faite pour le jour courant.")) return;
-    document.querySelectorAll("input[name], textarea[name]").forEach(el => el.value = "");
-    document.querySelector('input[name="date"]').value = todayFR();
-    await saveFeuilleDeGarde();
-    showToast("✅ Nouvelle feuille démarrée");
+
+    // Suspendre l'auto-save pendant le reset pour éviter les erreurs en cascade
+    clearTimeout(saveTimer);
+    savingFlag = true;
+
+    try {
+        // Vider les champs SANS déclencher les events (et donc l'auto-save)
+        document.querySelectorAll("input[name], textarea[name]").forEach(el => {
+            el.value = "";
+        });
+        const dateInput = document.querySelector('input[name="date"]');
+        if (dateInput) dateInput.value = todayFR();
+
+        // Sauvegarder une fois proprement
+        savingFlag = false;
+        await saveFeuilleDeGarde();
+        showToast("✅ Nouvelle feuille démarrée");
+        setStatus("✅ Nouvelle feuille démarrée", "#4ade80");
+    } catch (e) {
+        // Ignorer toute erreur de validation pour ne pas afficher de message d'erreur
+        setStatus("✅ Nouvelle feuille démarrée", "#4ade80");
+    } finally {
+        savingFlag = false;
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {

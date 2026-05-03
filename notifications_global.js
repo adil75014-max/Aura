@@ -280,90 +280,179 @@ async function markAllNotifAsRead() {
     }
 }
 
-// ───────────────────────────────────────
-//  SON DE NOTIFICATION & ALARME
-//  Compatible iOS Safari, Android Chrome, Desktop
-//  Joué chez agents/stationnaires/superviseurs/admins
-// ───────────────────────────────────────
-let _audioCtx = null;
-let _alarmBuffer = null;
-let _audioReady = false;
-let _alarmSource = null;
+// ═══════════════════════════════════════════════════════
+//  SON DE NOTIFICATION & ALARME — FIABLE iOS/Android/Web
+// ═══════════════════════════════════════════════════════
+//  Stratégie multi-niveaux :
+//   1) Élément <audio> HTML caché dans la page (le plus fiable)
+//   2) Pré-déblocage au premier geste utilisateur
+//   3) Fallback AudioContext si <audio> bloqué
+//   4) Fallback bip généré (oscillator) si tout échoue
+// ═══════════════════════════════════════════════════════
 
-// Créer/débloquer le contexte audio au premier geste utilisateur
-// iOS et Android exigent un AudioContext.resume() dans un événement utilisateur
-function _ensureAudioCtx() {
-    if (!_audioCtx) {
-        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+var _alarmEl = null;
+var _notifEl = null;
+var _audioUnlocked = false;
+var _audioCtx = null;
+var _alarmBuffer = null;
+var _alarmSource = null;
+
+function _ensureAudioElements() {
+    if (!_alarmEl) {
+        _alarmEl = document.createElement("audio");
+        _alarmEl.id = "_global_alarm_audio";
+        _alarmEl.src = "fire_station_tone_x4.mp3";
+        _alarmEl.preload = "auto";
+        _alarmEl.loop = true;
+        _alarmEl.volume = 1.0;
+        _alarmEl.playsInline = true;
+        _alarmEl.setAttribute("playsinline", "true");
+        _alarmEl.setAttribute("webkit-playsinline", "true");
+        _alarmEl.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;";
+        document.body.appendChild(_alarmEl);
     }
-    if (_audioCtx.state === "suspended") {
-        _audioCtx.resume();
+    if (!_notifEl) {
+        _notifEl = document.createElement("audio");
+        _notifEl.id = "_global_notif_audio";
+        _notifEl.src = "fire_station_tone_x4.mp3";
+        _notifEl.preload = "auto";
+        _notifEl.volume = 0.5;
+        _notifEl.playsInline = true;
+        _notifEl.setAttribute("playsinline", "true");
+        _notifEl.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;";
+        document.body.appendChild(_notifEl);
     }
 }
 
-// Pré-charger le fichier audio en ArrayBuffer (compatible tous navigateurs)
-async function _preloadAlarm() {
-    if (_alarmBuffer) return;
+// Débloquer au premier geste utilisateur (iOS exige absolument un user gesture)
+function _unlockAudio() {
+    if (_audioUnlocked) return;
+    _ensureAudioElements();
+
+    // Test : jouer-pauser immédiatement pour débloquer le tag audio
     try {
-        const resp = await fetch("fire_station_tone_x4.mp3");
-        const arrayBuf = await resp.arrayBuffer();
-        _ensureAudioCtx();
-        _alarmBuffer = await _audioCtx.decodeAudioData(arrayBuf);
-        _audioReady = true;
-    } catch (e) { console.warn("[AUDIO] Préchargement échoué:", e); }
-}
-
-// Débloquer l'audio au premier geste (tap, click, touchstart)
-["click", "touchstart", "touchend", "keydown"].forEach(function(evt) {
-    document.addEventListener(evt, function _unlock() {
-        _ensureAudioCtx();
-        _preloadAlarm();
-        document.removeEventListener(evt, _unlock);
-    }, { once: true, passive: true });
-});
-
-// Jouer le son via AudioContext (fonctionne sur iOS/Android/Desktop)
-function _playBuffer(loop, volume, durationSec) {
-    if (!_audioCtx || !_alarmBuffer) {
-        // Fallback HTML5 Audio (desktop)
-        try {
-            const fb = new Audio("fire_station_tone_x4.mp3");
-            fb.volume = volume;
-            fb.loop = loop;
-            fb.play().catch(function(){});
-            if (loop && durationSec) setTimeout(function(){ fb.loop=false; fb.pause(); }, durationSec*1000);
-        } catch(e){}
-        return;
-    }
-    try {
-        _ensureAudioCtx();
-        // Stopper la source précédente
-        if (_alarmSource) { try { _alarmSource.stop(); } catch(e){} }
-        _alarmSource = _audioCtx.createBufferSource();
-        _alarmSource.buffer = _alarmBuffer;
-        _alarmSource.loop = loop;
-
-        var gain = _audioCtx.createGain();
-        gain.gain.value = volume;
-        _alarmSource.connect(gain);
-        gain.connect(_audioCtx.destination);
-        _alarmSource.start(0);
-
-        if (loop && durationSec) {
-            setTimeout(function() {
-                try { _alarmSource.stop(); } catch(e){}
-            }, durationSec * 1000);
+        _alarmEl.muted = true;
+        var p1 = _alarmEl.play();
+        if (p1 && p1.then) {
+            p1.then(function() {
+                _alarmEl.pause();
+                _alarmEl.currentTime = 0;
+                _alarmEl.muted = false;
+            }).catch(function(){});
         }
-    } catch (e) { console.warn("[AUDIO] Lecture échouée:", e); }
+
+        _notifEl.muted = true;
+        var p2 = _notifEl.play();
+        if (p2 && p2.then) {
+            p2.then(function() {
+                _notifEl.pause();
+                _notifEl.currentTime = 0;
+                _notifEl.muted = false;
+            }).catch(function(){});
+        }
+    } catch(e) {}
+
+    // Aussi débloquer AudioContext (fallback)
+    try {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_audioCtx.state === "suspended") _audioCtx.resume();
+    } catch(e) {}
+
+    _audioUnlocked = true;
+}
+
+// Attacher le déblocage à TOUS les types de gestes utilisateur
+function _attachUnlockListeners() {
+    var events = ["click", "touchstart", "touchend", "pointerdown", "keydown", "mousedown"];
+    events.forEach(function(evt) {
+        document.addEventListener(evt, _unlockAudio, { capture: true, passive: true });
+    });
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", function() {
+        _ensureAudioElements();
+        _attachUnlockListeners();
+    });
+} else {
+    _ensureAudioElements();
+    _attachUnlockListeners();
 }
 
 function playAlarmSound() {
-    _playBuffer(true, 1.0, 30);
+    _ensureAudioElements();
+
+    // Tentative 1 : élément <audio>
+    try {
+        _alarmEl.currentTime = 0;
+        _alarmEl.loop = true;
+        _alarmEl.volume = 1.0;
+        var p = _alarmEl.play();
+        if (p && p.catch) p.catch(function() { _playFallbackAlarm(); });
+
+        // Couper après 30 secondes
+        setTimeout(function() {
+            try { _alarmEl.pause(); _alarmEl.currentTime = 0; } catch(e){}
+        }, 30000);
+    } catch(e) {
+        _playFallbackAlarm();
+    }
+
     showAlarmBanner();
+
+    // Vibration mobile (si disponible)
+    if (navigator.vibrate) {
+        try { navigator.vibrate([500, 200, 500, 200, 500, 200, 500]); } catch(e){}
+    }
 }
 
 function playNotifSound() {
-    _playBuffer(false, 0.5, 0);
+    _ensureAudioElements();
+    try {
+        _notifEl.currentTime = 0;
+        _notifEl.volume = 0.5;
+        var p = _notifEl.play();
+        if (p && p.catch) p.catch(function(){ _playFallbackBeep(0.5, 0.3); });
+    } catch(e) {
+        _playFallbackBeep(0.5, 0.3);
+    }
+    if (navigator.vibrate) {
+        try { navigator.vibrate(200); } catch(e){}
+    }
+}
+
+// Fallback alarme : bip d'urgence répété via AudioContext
+function _playFallbackAlarm() {
+    if (!_audioCtx) {
+        try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; }
+    }
+    if (_audioCtx.state === "suspended") _audioCtx.resume();
+
+    var beepCount = 0;
+    var maxBeeps = 30;
+    var interval = setInterval(function() {
+        if (beepCount >= maxBeeps) { clearInterval(interval); return; }
+        _playFallbackBeep(1.0, 0.3, beepCount % 2 === 0 ? 880 : 660);
+        beepCount++;
+    }, 1000);
+}
+
+function _playFallbackBeep(volume, duration, frequency) {
+    if (!_audioCtx) {
+        try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; }
+    }
+    try {
+        if (_audioCtx.state === "suspended") _audioCtx.resume();
+        var osc = _audioCtx.createOscillator();
+        var gain = _audioCtx.createGain();
+        osc.frequency.value = frequency || 880;
+        osc.type = "square";
+        gain.gain.value = volume;
+        osc.connect(gain);
+        gain.connect(_audioCtx.destination);
+        osc.start();
+        osc.stop(_audioCtx.currentTime + (duration || 0.3));
+    } catch(e){}
 }
 
 // ───────────────────────────────────────
@@ -409,7 +498,9 @@ function showAlarmBanner() {
 function closeAlarmBanner() {
     var banner = document.getElementById("alarmBanner");
     if (banner) banner.remove();
+    if (_alarmEl) { try { _alarmEl.pause(); _alarmEl.currentTime = 0; } catch(e){} }
     if (_alarmSource) { try { _alarmSource.stop(); } catch(e){} _alarmSource = null; }
+    if (navigator.vibrate) { try { navigator.vibrate(0); } catch(e){} }
 }
 
 // ───────────────────────────────────────

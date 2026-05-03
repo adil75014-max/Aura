@@ -685,7 +685,6 @@ async function effacerJournee() {
         }
 
         // 2) Suppression de toutes les lignes de la table
-        // (on cible toutes les lignes via une condition toujours vraie sur l'id)
         const { error: delErr } = await supabaseClient
             .from("ssiap2_chantier")
             .delete()
@@ -693,8 +692,35 @@ async function effacerJournee() {
 
         if (delErr) throw delErr;
 
-        // 3) Reset local
+        // 3) Reset COMPLET de l'état local
         interventions = [];
+
+        // Forcer le masquage explicite de la boîte d'alertes et vider sa liste
+        const alertBox = document.getElementById("alertes");
+        const alertList = document.getElementById("alertList");
+        if (alertBox) alertBox.style.display = "none";
+        if (alertList) alertList.innerHTML = "";
+
+        // Réinitialiser les filtres pour éviter qu'ils gardent l'ancienne valeur "e3" / "E3"
+        const fSoc = document.getElementById("filtreSociete");
+        const fZone = document.getElementById("filtreZone");
+        const fFeu = document.getElementById("filtreFeu");
+        const search = document.getElementById("searchInput");
+        if (fSoc) fSoc.innerHTML = '<option value="">Toutes</option>';
+        if (fZone) fZone.innerHTML = '<option value="">Toutes</option>';
+        if (fFeu) fFeu.value = "";
+        if (search) search.value = "";
+
+        // Vider le tableau d'interventions
+        const table = document.getElementById("tableInterv");
+        if (table) table.innerHTML = "";
+
+        // Reset des compteurs dashboard
+        ["dashTotal", "dashEnCours", "dashTermine", "dashOuvriers", "dashPermisFeu"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = "0";
+        });
+
         refreshAll();
         alert("✅ Journée effacée.");
     } catch (e) {

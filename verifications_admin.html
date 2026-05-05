@@ -41,13 +41,32 @@ textarea{min-height:60px;resize:vertical}
 .btn-sm{padding:6px 12px;font-size:.85rem;width:auto;margin:0;border-radius:8px}
 .btn-success{background:rgba(0,200,120,0.12);color:#00c878;border:1px solid rgba(0,200,120,0.3)}
 
-/* CHECKPOINT LIST */
-.cp-list{margin:10px 0}
-.cp-item{display:flex;align-items:center;gap:8px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;margin-bottom:6px}
-.cp-item .cp-num{width:28px;height:28px;border-radius:50%;background:rgba(77,163,255,0.15);color:#4da3ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
-.cp-item .cp-info{flex:1;min-width:0}
-.cp-item .cp-label{font-weight:600;font-size:.9rem}
-.cp-item .cp-zone{font-size:.8rem;color:#6b7a99}
+/* PALETTE DES TYPES DE CHAMPS (style GuardTek) */
+.fields-palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin:14px 0}
+.field-type{display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;font:600 .85rem 'DM Sans';color:#cbd2e0;transition:.2s;text-align:left}
+.field-type:hover{background:rgba(77,163,255,0.1);border-color:#4da3ff;color:#4da3ff;transform:translateY(-1px)}
+.field-type .ft-icon{font-size:1.1rem;width:24px;text-align:center;flex-shrink:0;color:#4da3ff}
+
+/* LISTE DES CHAMPS AJOUTÉS */
+.fields-builder{margin-top:18px}
+.builder-empty{text-align:center;color:#4a5578;padding:30px;font-size:.9rem;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.08);border-radius:10px}
+
+.field-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;margin-bottom:10px;position:relative}
+.field-card.group{background:rgba(77,163,255,0.06);border-color:rgba(77,163,255,0.25)}
+.field-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.field-num{width:28px;height:28px;border-radius:50%;background:rgba(77,163,255,0.18);color:#4da3ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
+.field-type-badge{font-size:.75rem;color:#6b7a99;background:rgba(255,255,255,0.04);padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:5px}
+.field-actions{margin-left:auto;display:flex;gap:6px}
+.field-body{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-body.full{grid-template-columns:1fr}
+.field-body label{margin-top:0}
+.field-body input,.field-body textarea,.field-body select{padding:8px 12px;font-size:.9rem}
+
+/* OPTIONS LIST (pour menus déroulants, listes, etc.) */
+.options-list{margin-top:6px}
+.opt-row{display:flex;gap:6px;margin-bottom:4px}
+.opt-row input{flex:1;padding:7px 10px;font-size:.85rem}
+.opt-row .btn-sm{padding:6px 10px;font-size:.8rem}
 
 /* TEMPLATE CARDS */
 .tpl-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin-bottom:10px}
@@ -68,9 +87,14 @@ textarea{min-height:60px;resize:vertical}
 
 .empty{text-align:center;padding:30px;color:#4a5578;font-size:.9rem}
 
-/* ADD CHECKPOINT INLINE */
-.add-cp-row{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-.add-cp-row input{flex:1;min-width:120px}
+/* CHECKBOX REQUIRED */
+.required-row{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:.85rem;color:#8899bb;cursor:pointer}
+.required-row input[type=checkbox]{width:auto;cursor:pointer}
+
+@media (max-width:600px){
+    .field-body{grid-template-columns:1fr}
+    .fields-palette{grid-template-columns:repeat(2,1fr)}
+}
 </style>
 </head>
 <body>
@@ -93,14 +117,11 @@ textarea{min-height:60px;resize:vertical}
     <label>Nom du modèle</label>
     <input type="text" id="tplName" placeholder="Ex : J1 Baie SSI, J4 EPI, Sprinkler…">
 
-    <label>Points de contrôle</label>
-    <div class="cp-list" id="cpList"></div>
+    <label style="margin-top:18px">Ajouter un élément au modèle</label>
+    <div class="fields-palette" id="fieldsPalette"></div>
 
-    <div class="add-cp-row">
-        <input type="text" id="cpLabel" placeholder="Libellé du point (ex: Voyant SSI principal)">
-        <input type="text" id="cpZone" placeholder="Zone (ex: PC Sécurité)" style="max-width:180px">
-        <button class="btn-secondary btn-sm" onclick="addCheckpoint()">+ Ajouter</button>
-    </div>
+    <label style="margin-top:18px">Structure du modèle</label>
+    <div class="fields-builder" id="fieldsBuilder"></div>
 
     <button class="btn btn-primary" onclick="saveTemplate()" style="margin-top:20px">💾 Enregistrer le modèle</button>
     <div id="createMsg" style="margin-top:10px;font-size:.9rem;text-align:center"></div>
@@ -123,78 +144,227 @@ textarea{min-height:60px;resize:vertical}
 <script>
 if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
 
-/* ============================================================
+/* ════════════════════════════════════════════════════════════════
+   TYPES DE CHAMPS DISPONIBLES (style GuardTek)
+═════════════════════════════════════════════════════════════════ */
+const FIELD_TYPES = [
+    { code: "groupe",      icon: "📁", label: "Nouveau Groupe" },
+    { code: "menu",        icon: "▾",  label: "Menu déroulant" },
+    { code: "checkbox",    icon: "☑",  label: "Case à cocher" },
+    { code: "textarea",    icon: "≡",  label: "Texte multi-ligne" },
+    { code: "heure",       icon: "🕐", label: "Heure" },
+    { code: "signature",   icon: "✍",  label: "Signature" },
+    { code: "libelle",     icon: "🏷", label: "Libellé (info)" },
+    { code: "ouinon",      icon: "⊙",  label: "Oui / Non" },
+    { code: "nombre",      icon: "#",  label: "Nombre" },
+    { code: "gps",         icon: "📍", label: "Localisation GPS" },
+    { code: "radio",       icon: "◉",  label: "Liste (1 choix)" },
+    { code: "image",       icon: "📤", label: "Téléchargement image" },
+    { code: "texte",       icon: "✎",  label: "Texte une ligne" },
+    { code: "email",       icon: "✉",  label: "Email" },
+    { code: "date",        icon: "📅", label: "Date" },
+    { code: "codebarre",   icon: "▦",  label: "Code-barres" },
+    { code: "photo",       icon: "🖼", label: "Image (capture)" },
+    { code: "liste_perso", icon: "≣",  label: "Liste personnalisée" }
+];
+
+/* ════════════════════════════════════════════════════════════════
+   BUILDER — éléments ajoutés
+═════════════════════════════════════════════════════════════════ */
+let fields = [];
+
+function renderPalette() {
+    const div = document.getElementById("fieldsPalette");
+    div.innerHTML = FIELD_TYPES.map(ft => `
+        <div class="field-type" onclick="addField('${ft.code}')">
+            <span class="ft-icon">${ft.icon}</span>
+            <span>${ft.label}</span>
+        </div>
+    `).join("");
+}
+
+function addField(typeCode) {
+    const t = FIELD_TYPES.find(f => f.code === typeCode);
+    if (!t) return;
+    const newField = {
+        id: "f_" + Date.now() + "_" + Math.floor(Math.random()*1000),
+        type: typeCode,
+        label: "",
+        zone: "",
+        required: false,
+        options: (typeCode === "menu" || typeCode === "radio" || typeCode === "liste_perso") ? ["Option 1", "Option 2"] : []
+    };
+    fields.push(newField);
+    renderBuilder();
+}
+
+function removeField(id) {
+    fields = fields.filter(f => f.id !== id);
+    renderBuilder();
+}
+
+function moveFieldUp(id) {
+    const i = fields.findIndex(f => f.id === id);
+    if (i > 0) { [fields[i-1], fields[i]] = [fields[i], fields[i-1]]; renderBuilder(); }
+}
+
+function moveFieldDown(id) {
+    const i = fields.findIndex(f => f.id === id);
+    if (i < fields.length - 1) { [fields[i+1], fields[i]] = [fields[i], fields[i+1]]; renderBuilder(); }
+}
+
+function updateField(id, prop, value) {
+    const f = fields.find(x => x.id === id);
+    if (!f) return;
+    f[prop] = value;
+}
+
+function addOption(id) {
+    const f = fields.find(x => x.id === id);
+    if (!f) return;
+    f.options.push("Nouvelle option");
+    renderBuilder();
+}
+
+function removeOption(id, idx) {
+    const f = fields.find(x => x.id === id);
+    if (!f || !f.options) return;
+    f.options.splice(idx, 1);
+    renderBuilder();
+}
+
+function updateOption(id, idx, value) {
+    const f = fields.find(x => x.id === id);
+    if (!f || !f.options) return;
+    f.options[idx] = value;
+}
+
+function renderBuilder() {
+    const div = document.getElementById("fieldsBuilder");
+    if (fields.length === 0) {
+        div.innerHTML = '<div class="builder-empty">Cliquez sur un type d\'élément ci-dessus pour commencer.</div>';
+        return;
+    }
+    div.innerHTML = fields.map((f, i) => renderFieldCard(f, i)).join("");
+}
+
+function renderFieldCard(f, idx) {
+    const t = FIELD_TYPES.find(x => x.code === f.type);
+    const isGroup = f.type === "groupe";
+    const isLibelle = f.type === "libelle";
+    const hasOptions = ["menu", "radio", "liste_perso"].includes(f.type);
+    const showZone = !isGroup && !isLibelle;
+
+    let optionsHtml = "";
+    if (hasOptions) {
+        optionsHtml = `
+            <div style="grid-column:1/-1">
+                <label style="margin-top:6px">Options</label>
+                <div class="options-list">
+                    ${(f.options || []).map((opt, i) => `
+                        <div class="opt-row">
+                            <input type="text" value="${escapeAttr(opt)}" oninput="updateOption('${f.id}',${i},this.value)">
+                            <button class="btn-danger btn-sm" onclick="removeOption('${f.id}',${i})">✕</button>
+                        </div>
+                    `).join("")}
+                    <button class="btn-secondary btn-sm" onclick="addOption('${f.id}')" style="margin-top:4px">+ Ajouter une option</button>
+                </div>
+            </div>
+        `;
+    }
+
+    const labelPlaceholder = isGroup ? "Nom du groupe (ex: Baie SSI)"
+                          : isLibelle ? "Texte informatif (ex: Vérifier visuellement chaque voyant)"
+                          : "Libellé du champ (ex: État du voyant rouge)";
+
+    return `
+        <div class="field-card ${isGroup ? 'group' : ''}">
+            <div class="field-head">
+                <div class="field-num">${idx + 1}</div>
+                <span class="field-type-badge">${t.icon} ${t.label}</span>
+                <div class="field-actions">
+                    <button class="btn-secondary btn-sm" onclick="moveFieldUp('${f.id}')" title="Monter">↑</button>
+                    <button class="btn-secondary btn-sm" onclick="moveFieldDown('${f.id}')" title="Descendre">↓</button>
+                    <button class="btn-danger btn-sm" onclick="removeField('${f.id}')" title="Supprimer">✕</button>
+                </div>
+            </div>
+            <div class="field-body ${(showZone && !hasOptions) ? '' : 'full'}">
+                <div>
+                    <label>${isGroup ? "Nom du groupe" : "Libellé"}</label>
+                    <input type="text" value="${escapeAttr(f.label)}" placeholder="${labelPlaceholder}" oninput="updateField('${f.id}','label',this.value)">
+                </div>
+                ${showZone ? `
+                <div>
+                    <label>Zone (optionnel)</label>
+                    <input type="text" value="${escapeAttr(f.zone)}" placeholder="Ex: PC Sécurité, Niveau -1…" oninput="updateField('${f.id}','zone',this.value)">
+                </div>
+                ` : ''}
+                ${optionsHtml}
+                ${(!isGroup && !isLibelle) ? `
+                <div style="grid-column:1/-1">
+                    <label class="required-row">
+                        <input type="checkbox" ${f.required ? 'checked' : ''} onchange="updateField('${f.id}','required',this.checked)">
+                        <span>Champ obligatoire</span>
+                    </label>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function escapeAttr(s) {
+    if (!s) return "";
+    return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+renderPalette();
+renderBuilder();
+
+/* ════════════════════════════════════════════════════════════════
    TABS
-============================================================ */
+═════════════════════════════════════════════════════════════════ */
 function showTab(id, btn) {
     document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
     document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
     document.getElementById(id).classList.add("active");
     if (btn) btn.classList.add("active");
-
     if (id === "tabTemplates") loadTemplates();
     if (id === "tabHistory") loadHistory();
 }
 
-/* ============================================================
-   CHECKPOINTS (en mémoire pour le formulaire de création)
-============================================================ */
-let checkpoints = [];
-
-function addCheckpoint() {
-    const label = document.getElementById("cpLabel").value.trim();
-    const zone = document.getElementById("cpZone").value.trim();
-    if (!label) { alert("Libellé du point requis."); return; }
-
-    checkpoints.push({ label, zone: zone || "—" });
-    document.getElementById("cpLabel").value = "";
-    document.getElementById("cpZone").value = "";
-    renderCheckpoints();
-}
-
-function removeCheckpoint(i) {
-    checkpoints.splice(i, 1);
-    renderCheckpoints();
-}
-
-function renderCheckpoints() {
-    const div = document.getElementById("cpList");
-    if (checkpoints.length === 0) {
-        div.innerHTML = '<div style="color:#4a5578;font-size:.85rem;padding:8px">Aucun point de contrôle ajouté.</div>';
-        return;
-    }
-    div.innerHTML = checkpoints.map((cp, i) => `
-        <div class="cp-item">
-            <div class="cp-num">${i + 1}</div>
-            <div class="cp-info">
-                <div class="cp-label">${cp.label}</div>
-                <div class="cp-zone">${cp.zone}</div>
-            </div>
-            <button class="btn-danger btn-sm" onclick="removeCheckpoint(${i})">✕</button>
-        </div>
-    `).join("");
-}
-renderCheckpoints();
-
-/* ============================================================
+/* ════════════════════════════════════════════════════════════════
    SAUVEGARDER UN MODÈLE
-============================================================ */
+═════════════════════════════════════════════════════════════════ */
 async function saveTemplate() {
     const name = document.getElementById("tplName").value.trim();
     const msg = document.getElementById("createMsg");
+    msg.textContent = "";
 
-    if (!name) { msg.textContent = "Nom du modèle requis."; msg.style.color = "#f87171"; return; }
-    if (checkpoints.length === 0) { msg.textContent = "Ajoutez au moins un point de contrôle."; msg.style.color = "#f87171"; return; }
+    if (!name) { msg.textContent = "❌ Nom du modèle requis."; msg.style.color = "#f87171"; return; }
+    if (fields.length === 0) { msg.textContent = "❌ Ajoutez au moins un élément."; msg.style.color = "#f87171"; return; }
 
-    msg.textContent = "⏳ Enregistrement…"; msg.style.color = "#8899bb";
+    // Vérifier que chaque champ a un libellé
+    const empty = fields.find(f => !f.label || f.label.trim() === "");
+    if (empty) { msg.textContent = "❌ Tous les éléments doivent avoir un libellé."; msg.style.color = "#f87171"; return; }
 
-    // Trouver le prochain ordre
+    // Calculer ordre = max + 1
     const { data: existing } = await supabaseClient
         .from("verifications_types")
         .select("ordre")
         .order("ordre", { ascending: false })
         .limit(1);
     const ordre = (existing && existing.length) ? existing[0].ordre + 1 : 1;
+
+    // Convertir fields → checkpoints (compatible avec verification_agent.html)
+    const checkpoints = fields.map(f => ({
+        id: f.id,
+        type: f.type,
+        label: f.label,
+        zone: f.zone || "",
+        required: !!f.required,
+        options: f.options || []
+    }));
 
     const { error } = await supabaseClient
         .from("verifications_types")
@@ -208,13 +378,13 @@ async function saveTemplate() {
 
     msg.textContent = "✅ Modèle « " + name + " » créé !"; msg.style.color = "#00c878";
     document.getElementById("tplName").value = "";
-    checkpoints = [];
-    renderCheckpoints();
+    fields = [];
+    renderBuilder();
 }
 
-/* ============================================================
+/* ════════════════════════════════════════════════════════════════
    CHARGER LES MODÈLES
-============================================================ */
+═════════════════════════════════════════════════════════════════ */
 async function loadTemplates() {
     const { data, error } = await supabaseClient
         .from("verifications_types")
@@ -224,25 +394,28 @@ async function loadTemplates() {
     const div = document.getElementById("templatesList");
 
     if (error) { div.innerHTML = '<div class="empty">Erreur : ' + error.message + '</div>'; return; }
-    if (!data || data.length === 0) { div.innerHTML = '<div class="empty">Aucun modèle créé. Allez dans « Créer un modèle ».</div>'; return; }
+    if (!data || data.length === 0) { div.innerHTML = '<div class="empty">Aucun modèle créé.</div>'; return; }
 
     div.innerHTML = data.map(t => {
-        const pts = (t.checkpoints || []).length;
+        const cps = t.checkpoints || [];
+        const pts = cps.length;
+        const groupes = cps.filter(c => c.type === "groupe").length;
         return `
         <div class="tpl-card">
             <div class="tpl-header">
                 <div>
-                    <div class="tpl-name">${t.label}</div>
+                    <div class="tpl-name">${escapeAttr(t.label)}</div>
                     <div class="tpl-meta">
-                        <span class="pill pill-pts">${pts} point${pts > 1 ? "s" : ""}</span>
+                        <span class="pill pill-pts">${pts} élément${pts > 1 ? "s" : ""}</span>
+                        ${groupes ? `<span class="pill" style="background:rgba(77,163,255,0.15);color:#4da3ff">${groupes} groupe${groupes > 1 ? "s" : ""}</span>` : ""}
                         — Créé le ${new Date(t.created_at).toLocaleDateString("fr-FR")}
                     </div>
                 </div>
             </div>
             <div class="tpl-actions">
                 <button class="btn-success btn-sm" onclick="lancerVerification('${t.id}')">▶ Lancer</button>
-                <button class="btn-secondary btn-sm" onclick="voirCheckpoints('${t.id}')">👁 Voir les points</button>
-                <button class="btn-secondary btn-sm" onclick="editTemplate('${t.id}','${t.label.replace(/'/g,"\\'")}')">✏️ Renommer</button>
+                <button class="btn-secondary btn-sm" onclick="voirCheckpoints('${t.id}')">👁 Voir la structure</button>
+                <button class="btn-secondary btn-sm" onclick="editTemplate('${t.id}','${escapeAttr(t.label).replace(/'/g,"\\'")}')">✏️ Renommer</button>
                 <button class="btn-danger btn-sm" onclick="deleteTemplate('${t.id}')">🗑</button>
             </div>
             <div id="cp-detail-${t.id}" style="display:none;margin-top:10px"></div>
@@ -257,17 +430,22 @@ function voirCheckpoints(id) {
     supabaseClient.from("verifications_types").select("checkpoints").eq("id", id).single()
         .then(({ data }) => {
             const cps = data.checkpoints || [];
-            if (cps.length === 0) { div.innerHTML = '<div style="color:#4a5578;padding:8px">Aucun point.</div>'; }
+            if (cps.length === 0) { div.innerHTML = '<div style="color:#4a5578;padding:8px">Aucun élément.</div>'; }
             else {
-                div.innerHTML = cps.map((cp, i) => `
-                    <div class="cp-item">
-                        <div class="cp-num">${i + 1}</div>
-                        <div class="cp-info">
-                            <div class="cp-label">${cp.label}</div>
-                            <div class="cp-zone">${cp.zone || "—"}</div>
+                div.innerHTML = cps.map((cp, i) => {
+                    const t = FIELD_TYPES.find(x => x.code === cp.type) || { icon: "•", label: cp.type };
+                    return `
+                    <div class="field-card ${cp.type === 'groupe' ? 'group' : ''}" style="margin-bottom:6px">
+                        <div class="field-head">
+                            <div class="field-num">${i + 1}</div>
+                            <span class="field-type-badge">${t.icon} ${t.label}</span>
+                            ${cp.required ? '<span class="pill" style="background:rgba(239,68,68,0.15);color:#f87171">Obligatoire</span>' : ''}
                         </div>
-                    </div>
-                `).join("");
+                        <div style="font-weight:600;font-size:.92rem">${escapeAttr(cp.label)}</div>
+                        ${cp.zone ? `<div style="font-size:.8rem;color:#6b7a99;margin-top:2px">📍 ${escapeAttr(cp.zone)}</div>` : ''}
+                        ${(cp.options && cp.options.length) ? `<div style="font-size:.8rem;color:#6b7a99;margin-top:4px">Options : ${cp.options.map(escapeAttr).join(" · ")}</div>` : ''}
+                    </div>`;
+                }).join("");
             }
             div.style.display = "block";
         });
@@ -286,10 +464,9 @@ async function deleteTemplate(id) {
     loadTemplates();
 }
 
-/* ============================================================
-   LANCER UNE VÉRIFICATION (crée une entrée dans verifications
-   puis redirige vers la page agent)
-============================================================ */
+/* ════════════════════════════════════════════════════════════════
+   LANCER UNE VÉRIFICATION
+═════════════════════════════════════════════════════════════════ */
 async function lancerVerification(templateId) {
     const { data: tpl } = await supabaseClient
         .from("verifications_types")
@@ -301,7 +478,7 @@ async function lancerVerification(templateId) {
 
     const cps = (tpl.checkpoints || []).map(cp => ({
         ...cp,
-        resultat: null,      // conforme / non_conforme / na
+        valeur: null,
         commentaire: "",
         horodatage: null
     }));
@@ -326,9 +503,9 @@ async function lancerVerification(templateId) {
     location.href = `verification_agent.html?id=${verifId}`;
 }
 
-/* ============================================================
+/* ════════════════════════════════════════════════════════════════
    HISTORIQUE
-============================================================ */
+═════════════════════════════════════════════════════════════════ */
 async function loadHistory() {
     const { data, error } = await supabaseClient
         .from("verifications")
@@ -343,19 +520,18 @@ async function loadHistory() {
     div.innerHTML = data.map(v => {
         const dt = new Date(v.created_at).toLocaleString("fr-FR");
         const cps = (v.meta && v.meta.checkpoints) || [];
-        const total = cps.length;
-        const ok = cps.filter(c => c.resultat === "conforme").length;
-        const ko = cps.filter(c => c.resultat === "non_conforme").length;
-        const isOk = ko === 0 && v.resultat !== "en_cours";
+        const fillable = cps.filter(c => c.type !== "groupe" && c.type !== "libelle");
+        const total = fillable.length;
+        const filled = fillable.filter(c => c.valeur !== null && c.valeur !== undefined && c.valeur !== "").length;
         const statusPill = v.resultat === "en_cours"
             ? '<span class="pill" style="background:rgba(255,180,50,0.15);color:#ffb432">En cours</span>'
-            : (isOk ? '<span class="pill pill-ok">Conforme</span>' : '<span class="pill pill-ko">Non conforme</span>');
+            : '<span class="pill pill-ok">Terminé</span>';
 
         return `
         <div class="hist-item">
             <div class="hist-info">
-                <strong>${v.type || "—"}</strong>
-                <small>${dt} — ${v.agent_nom || "—"} — ${ok}/${total} OK${ko ? ", " + ko + " KO" : ""}</small>
+                <strong>${escapeAttr(v.type || "—")}</strong>
+                <small>${dt} — ${escapeAttr(v.agent_nom || "—")} — ${filled}/${total} renseignés</small>
             </div>
             ${statusPill}
             ${v.resultat === "en_cours" ? `<button class="btn-success btn-sm" onclick="location.href='verification_agent.html?id=${v.id}'">▶ Reprendre</button>` : ""}
@@ -363,9 +539,6 @@ async function loadHistory() {
     }).join("");
 }
 
-/* ============================================================
-   INIT
-============================================================ */
 loadTemplates();
 </script>
 <script src="security.js"></script>

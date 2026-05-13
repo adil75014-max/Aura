@@ -1101,7 +1101,7 @@
 <div class="topbar">
     <div class="top-left">
         <div class="hamburger" onclick="toggleSidebar()">☰</div>
-        <div class="brand-title">LBM Service Incendie</div>
+        <div class="brand-title" id="brandTitle">LBM Service Incendie</div>
     </div>
 
     <div style="flex:1; display:flex; justify-content:center;">
@@ -1125,6 +1125,14 @@
             padding: 6px 14px; border-radius: 8px; color: var(--text);
             cursor: pointer; font-size: 0.85rem;
         ">Mode sombre</button>
+
+        <div id="servicePill" style="
+            display:inline-flex; align-items:center; gap:6px;
+            padding:4px 10px; border-radius:999px;
+            font-size:0.72rem; font-weight:600; letter-spacing:0.03em;
+            background: rgba(0,0,0,0.04);
+            border: 1px solid var(--border);
+        "></div>
 
         <div id="userInfo" style="font-weight:600;"></div>
 
@@ -1522,9 +1530,16 @@
 
 <script>
 /* ══════════════════════════════════════════════════════
-   MENU
+   MENUS PAR SERVICE — Multi-tenant frontend
+   Le service de l'utilisateur (localStorage.service)
+   détermine le menu affiché.
 ══════════════════════════════════════════════════════ */
-const MENU = [
+const ACTIVE_SERVICE = (localStorage.getItem("service") || "incendie").toLowerCase();
+
+const MENUS_BY_SERVICE = {
+
+/* ─────────── SERVICE INCENDIE (menu historique complet) ─────────── */
+incendie: [
     {
         category: "Exploitation", icon: "📄",
         visibleFor: ["admin","superviseur","stationnaire","agent"],
@@ -1636,7 +1651,165 @@ const MENU = [
             { icon: "🛡️", label: "GRC Assurance", link: "https://grcconnect.globalriskconsultants.com/ins/app/Main/Registry.aspx?q=0&t1=7B8BF0FC58054F0396B0629B59E09D4F&c2=false", external: true }
         ]
     }
-];
+],
+
+/* ─────────── SERVICE SÛRETÉ ─────────── */
+surete: [
+    {
+        category: "Exploitation", icon: "📄",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "📄", label: "Feuille de garde", link: "feuille_de_garde.html" },
+            { icon: "🕒", label: "Permanence", link: "permanence.html" },
+            { icon: "📊", label: "Main courante", link: "dashboard_admin.html" }
+        ]
+    },
+    {
+        category: "Interventions Sûreté", icon: "🛡️",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "🚨", label: "Vol", link: "report.html?type=vol" },
+            { icon: "⚔️", label: "Conflit / Altercation", link: "report.html?type=conflit" },
+            { icon: "🚪", label: "Intrusion", link: "report.html?type=intrusion" },
+            { icon: "👤", label: "Personne suspecte", link: "report.html?type=personne_suspecte" },
+            { icon: "📦", label: "Colis suspect", link: "report.html?type=colis_suspect" },
+            { icon: "🎒", label: "Objet abandonné", link: "report.html?type=objet_abandonne" },
+            { icon: "🚪", label: "Entrée & Sortie", link: "rapport_entree_sortie.html" }
+        ]
+    },
+    {
+        category: "Vidéosurveillance", icon: "📹",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "📹", label: "Consultation flux vidéo", link: "#" },
+            { icon: "💾", label: "Extraction enregistrement", link: "#" },
+            { icon: "⚠️", label: "Caméra hors service", link: "report.html?type=camera_hs" }
+        ]
+    },
+    {
+        category: "Rondes périmétriques", icon: "🔄",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "🚪", label: "Ronde d'ouverture", link: "ronde_agent_ble.html?type=ronde_ouverture_surete" },
+            { icon: "🛍", label: "Ronde Surface de vente", link: "ronde_agent_ble.html?type=ronde_surface_vente_surete" },
+            { icon: "🚪", label: "Ronde de fermeture", link: "ronde_agent_ble.html?type=ronde_fermeture_surete" },
+            { icon: "🌙", label: "Ronde de nuit", link: "ronde_agent_ble.html?type=ronde_nuit_surete" }
+        ]
+    },
+    {
+        category: "Administration", icon: "🤖",
+        visibleFor: ["admin","superviseur"],
+        items: [
+            { icon: "👤", label: "Gestion des comptes", link: "gestion_de_compte.html" },
+            { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" },
+            { icon: "🔄", label: "Gestion des rondes", link: "ronde_admin.html" }
+        ]
+    }
+],
+
+/* ─────────── SERVICE TECHNIQUE ─────────── */
+technique: [
+    {
+        category: "Exploitation", icon: "📄",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "📄", label: "Feuille de garde", link: "feuille_de_garde.html" },
+            { icon: "📊", label: "Tableau de bord", link: "dashboard_admin.html" }
+        ]
+    },
+    {
+        category: "Pannes & Interventions", icon: "🛠",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "⚡", label: "Panne électrique", link: "report.html?type=panne_elec" },
+            { icon: "❄️", label: "Panne CVC / Climatisation", link: "report.html?type=panne_cvc" },
+            { icon: "💧", label: "Panne plomberie / Fuite", link: "report.html?type=panne_plomberie" },
+            { icon: "🛗", label: "Panne ascenseur / monte-charge", link: "report.html?type=panne_ascenseur" },
+            { icon: "🔌", label: "Panne éclairage", link: "report.html?type=panne_eclairage" },
+            { icon: "🚪", label: "Porte automatique HS", link: "report.html?type=porte_auto" },
+            { icon: "🔥", label: "Chaudière / Production ECS", link: "report.html?type=chaudiere" }
+        ]
+    },
+    {
+        category: "Maintenance préventive", icon: "📅",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "🛠", label: "Maintenance hebdomadaire", link: "report.html?type=maint_hebdo" },
+            { icon: "📋", label: "Maintenance mensuelle", link: "report.html?type=maint_mens" },
+            { icon: "📆", label: "Maintenance annuelle", link: "report.html?type=maint_annuelle" },
+            { icon: "🏗", label: "Intervention prestataire", link: "rapport_intervention_exterieure.html" }
+        ]
+    },
+    {
+        category: "Hors Service", icon: "⚠️",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "🚧", label: "Liste équipements HS", link: "hors_services.html" },
+            { icon: "🔧", label: "Suivi travaux", link: "suivi_travaux.html" }
+        ]
+    },
+    {
+        category: "Administration", icon: "🤖",
+        visibleFor: ["admin","superviseur"],
+        items: [
+            { icon: "👤", label: "Gestion des comptes", link: "gestion_de_compte.html" },
+            { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" }
+        ]
+    }
+],
+
+/* ─────────── SERVICES GÉNÉRAUX ─────────── */
+services_generaux: [
+    {
+        category: "Exploitation", icon: "📄",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "📄", label: "Feuille de garde", link: "feuille_de_garde.html" },
+            { icon: "📊", label: "Main courante", link: "dashboard_admin.html" }
+        ]
+    },
+    {
+        category: "Logistique", icon: "📦",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "🚚", label: "Livraison entrante", link: "report.html?type=livraison_in" },
+            { icon: "📤", label: "Livraison sortante", link: "report.html?type=livraison_out" },
+            { icon: "✉️", label: "Réception courrier", link: "report.html?type=courrier" },
+            { icon: "📦", label: "Gestion colis", link: "report.html?type=colis" }
+        ]
+    },
+    {
+        category: "Propreté & Espaces", icon: "🧹",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "🧹", label: "Nettoyage / Propreté", link: "report.html?type=nettoyage" },
+            { icon: "🌿", label: "Espaces verts", link: "report.html?type=espaces_verts" },
+            { icon: "♻️", label: "Gestion déchets", link: "report.html?type=dechets" }
+        ]
+    },
+    {
+        category: "Réservations", icon: "🗓",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "🪑", label: "Réservation salle de réunion", link: "report.html?type=resa_salle" },
+            { icon: "🚗", label: "Réservation parking", link: "report.html?type=resa_parking" },
+            { icon: "🧰", label: "Réservation matériel", link: "report.html?type=resa_materiel" }
+        ]
+    },
+    {
+        category: "Administration", icon: "🤖",
+        visibleFor: ["admin","superviseur"],
+        items: [
+            { icon: "👤", label: "Gestion des comptes", link: "gestion_de_compte.html" },
+            { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" }
+        ]
+    }
+]
+
+};
+
+/* Compatibilité ascendante — MENU = menu du service actif */
+const MENU = MENUS_BY_SERVICE[ACTIVE_SERVICE] || MENUS_BY_SERVICE.incendie;
 
 /* Données missions pour les types */
 const MISSION_TYPES = {
@@ -2679,6 +2852,38 @@ document.addEventListener("DOMContentLoaded", () => {
     setInterval(checkUrgence, 2000);
     updateNotifBadge();
 
+    /* ─── Multi-tenant : afficher service + site dans le topbar ─── */
+    try {
+        var brand = document.getElementById("brandTitle");
+        var pill  = document.getElementById("servicePill");
+        var userInfo = document.getElementById("userInfo");
+
+        if (window.AuraTenant) {
+            var siteLabel = ({
+                "LBM":"LBM","GERG":"GERG","GERD":"GERD","SAM":"SAM","MH":"MH"
+            })[window.AuraTenant.siteCode] || window.AuraTenant.siteCode;
+
+            var srvLabel = ({
+                "incendie":"Service Incendie",
+                "surete":"Service Sûreté",
+                "technique":"Service Technique",
+                "services_generaux":"Services Généraux"
+            })[window.AuraTenant.service] || window.AuraTenant.service;
+
+            if (brand) brand.textContent = siteLabel + " " + srvLabel;
+            if (pill) {
+                pill.innerHTML =
+                    '<span style="width:8px;height:8px;border-radius:50%;background:' + window.AuraTenant.color() + ';display:inline-block;"></span>' +
+                    '<span>' + window.AuraTenant.label() + '</span>';
+            }
+        }
+        if (userInfo) {
+            var nom = localStorage.getItem("nom") || "";
+            var role = localStorage.getItem("role") || "";
+            userInfo.textContent = nom + (role ? " (" + role + ")" : "");
+        }
+    } catch(e) { console.warn("[Tenant] init topbar:", e); }
+
     /* Bouton supervision dans la sidebar */
     const sidebar = document.getElementById("sidebarContent");
     const bloc = document.createElement("div");
@@ -2727,6 +2932,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
 <script>
 const supabaseFg = supabase.createClient(
     "https://hwqlajdytnxavqigmzio.supabase.co",

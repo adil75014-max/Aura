@@ -369,6 +369,23 @@
                 <option value="Admin">Admin</option>
             </select>
 
+            <label>Site</label>
+            <select id="siteUser">
+                <option value="LBM">Le Bon Marché (LBM)</option>
+                <option value="GERG">Gerland Gauche (GERG)</option>
+                <option value="GERD">Gerland Droite (GERD)</option>
+                <option value="SAM">Samaritaine (SAM)</option>
+                <option value="MH">Mont-Hélios (MH)</option>
+            </select>
+
+            <label>Service</label>
+            <select id="serviceUser">
+                <option value="incendie">Sécurité Incendie</option>
+                <option value="surete">Sûreté</option>
+                <option value="technique">Technique</option>
+                <option value="services_generaux">Services Généraux</option>
+            </select>
+
             <button onclick="creerCompte()">Créer le compte</button>
 
             <div class="status-bar" id="statusGlobal"></div>
@@ -412,6 +429,7 @@
 <!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
 
 <script>
 /* ============================================================
@@ -537,6 +555,26 @@ function afficherPage() {
         const badgeOK = !!c.badgeuid;
         const roleClass = "role-" + (c.role || "").replace(/\s+/g, "");
 
+        const sitePill = c.site_code
+            ? `<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.4);color:#a07a18;font-size:0.72rem;font-weight:600;margin-right:4px;">🏢 ${c.site_code}</span>`
+            : `<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(220,38,38,0.1);color:#dc2626;font-size:0.72rem;">🏢 —</span>`;
+
+        const serviceColors = {
+            "incendie": "#ef4444",
+            "surete": "#3b82f6",
+            "technique": "#f59e0b",
+            "services_generaux": "#10b981"
+        };
+        const serviceLabels = {
+            "incendie": "Incendie",
+            "surete": "Sûreté",
+            "technique": "Technique",
+            "services_generaux": "Services Gén."
+        };
+        const svcColor = serviceColors[c.service] || "#6b7280";
+        const svcLabel = serviceLabels[c.service] || (c.service || "—");
+        const servicePill = `<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:${svcColor}1a;color:${svcColor};font-size:0.72rem;font-weight:600;border:1px solid ${svcColor}55;">⚙ ${svcLabel}</span>`;
+
         liste.innerHTML += `
             <div class="user">
                 <div class="row">
@@ -544,7 +582,8 @@ function afficherPage() {
                         <strong>${c.nom}</strong><br>
                         <span class="role-badge ${roleClass}">
                             ${c.role || "—"}
-                        </span><br>
+                        </span>
+                        ${sitePill}${servicePill}<br>
                         ${
                             badgeOK
                             ? `<span class="badge-status badge-ok">🟢 Badge : ${c.badgeuid}</span>`
@@ -556,6 +595,7 @@ function afficherPage() {
                         <button class="btn-secondary" onclick="toggleNFC('${c.id}')">Badge NFC</button>
                         ${badgeOK ? `<button class="btn-secondary" onclick="supprimerBadge('${c.id}')">Supprimer badge</button>` : ""}
                         <button class="btn-secondary" onclick="modifierCompte('${c.id}')">Modifier</button>
+                        <button class="btn-secondary" onclick="affecterSiteService('${c.id}', '${c.nom}', '${c.site_code || ''}', '${c.service || ''}')">Site / Service</button>
                         <button class="btn-secondary" onclick="resetPassword('${c.id}')">Reset MDP</button>
                         <button class="btn-danger" onclick="supprimerCompte('${c.id}')">Supprimer</button>
                     </div>
@@ -675,6 +715,8 @@ async function creerCompte() {
     const nom = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value.trim();
     const role = document.getElementById("roleUser").value;
+    const siteCode = (document.getElementById("siteUser") || {}).value || "LBM";
+    const service  = (document.getElementById("serviceUser") || {}).value || "incendie";
 
     if (!nom || !password) {
         setStatus("Champs manquants.", true);
@@ -699,7 +741,9 @@ async function creerCompte() {
             body: JSON.stringify({
                 username: nom,
                 password: password,
-                role: role
+                role: role,
+                site_code: siteCode,
+                service: service
             })
         });
 
@@ -710,7 +754,14 @@ async function creerCompte() {
             return;
         }
 
-        await ajouterLog("Création compte", `Nom: ${nom}, Rôle: ${role}`);
+        // ─── Forcer site_code + service côté BDD (au cas où l'edge function ne les gère pas encore) ───
+        try {
+            await client.from("users")
+                .update({ site_code: siteCode, service: service })
+                .ilike("nom", nom);
+        } catch(e) { console.warn("Update site/service:", e); }
+
+        await ajouterLog("Création compte", `Nom: ${nom}, Rôle: ${role}, Site: ${siteCode}, Service: ${service}`);
         setStatus("Compte créé avec succès.");
 
         document.getElementById("username").value = "";
@@ -720,6 +771,60 @@ async function creerCompte() {
     } catch (e) {
         setStatus("Erreur réseau lors de la création.", true);
     }
+}
+
+/* ============================================================
+   AFFECTATION SITE / SERVICE
+============================================================ */
+async function affecterSiteService(id, nom, currentSite, currentService) {
+    const sites = ["LBM", "GERG", "GERD", "SAM", "MH"];
+    const services = ["incendie", "surete", "technique", "services_generaux"];
+    const serviceLabels = {
+        "incendie": "Sécurité Incendie",
+        "surete": "Sûreté",
+        "technique": "Technique",
+        "services_generaux": "Services Généraux"
+    };
+
+    const sitePrompt = `Affecter "${nom}" à quel SITE ?\n\n` +
+        sites.map((s,i) => `${i+1}. ${s}`).join("\n") +
+        `\n\n(Tapez le code ou le numéro. Actuel : ${currentSite || "—"})`;
+    const siteAnswer = prompt(sitePrompt, currentSite || "LBM");
+    if (!siteAnswer) return;
+    let newSite = siteAnswer.toUpperCase().trim();
+    const numSite = parseInt(siteAnswer, 10);
+    if (numSite >= 1 && numSite <= sites.length) newSite = sites[numSite - 1];
+    if (sites.indexOf(newSite) === -1) {
+        alert("Code site invalide : " + newSite);
+        return;
+    }
+
+    const svcPrompt = `Affecter "${nom}" à quel SERVICE ?\n\n` +
+        services.map((s,i) => `${i+1}. ${serviceLabels[s]}`).join("\n") +
+        `\n\n(Tapez le numéro ou le code. Actuel : ${currentService || "—"})`;
+    const svcAnswer = prompt(svcPrompt, currentService || "incendie");
+    if (!svcAnswer) return;
+    let newService = svcAnswer.toLowerCase().trim();
+    const numSvc = parseInt(svcAnswer, 10);
+    if (numSvc >= 1 && numSvc <= services.length) newService = services[numSvc - 1];
+    if (services.indexOf(newService) === -1) {
+        alert("Service invalide : " + newService);
+        return;
+    }
+
+    const { error } = await client
+        .from("users")
+        .update({ site_code: newSite, service: newService })
+        .eq("id", id);
+
+    if (error) {
+        setStatus("Erreur affectation : " + error.message, true);
+        return;
+    }
+
+    await ajouterLog("Affectation site/service", `${nom} → ${newSite} / ${newService}`);
+    setStatus(`✅ ${nom} affecté à ${newSite} / ${serviceLabels[newService]}.`);
+    chargerComptes();
 }
 
 /* ============================================================

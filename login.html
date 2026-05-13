@@ -174,21 +174,6 @@
 
         <button id="loginBtn" onclick="login()">Se connecter</button>
 
-        <!-- Bouton biométrique -->
-        <button id="bioBtn" onclick="loginWithBiometrics()" style="
-            margin-top: 10px;
-            width: 86%;
-            padding: 10px;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.18);
-            border-radius: 8px;
-            color: #ffd27f;
-            cursor: pointer;
-            font-size: 0.85rem;
-        ">
-            🔒 Se connecter avec empreinte digitale
-        </button>
-
         <div class="badge-hint">Ou présentez votre badge NFC compatible Aura Sentinelle.</div>
 
         <div class="error" id="errorMsg"></div>
@@ -196,6 +181,10 @@
         <div class="footer">© <span id="year"></span> Aura Sentinelle LBM</div>
     </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
 
 <script>
 document.getElementById("year").textContent = new Date().getFullYear();
@@ -372,9 +361,27 @@ async function login() {
         localStorage.setItem("role", data.user.role);
         localStorage.setItem("loginTime", Date.now().toString());
 
-        // Biométrie — stocker uniquement le username et le rôle (JAMAIS le mot de passe)
-        localStorage.setItem("bio_username", username);
-        localStorage.setItem("bio_role", data.user.role);
+        // ─── Multi-tenant : récupérer site + service depuis la BDD ───
+        try {
+            var tenantRes = await supabaseClient
+                .from("users")
+                .select("site_code, service")
+                .ilike("nom", username)
+                .limit(1)
+                .maybeSingle();
+
+            if (tenantRes && tenantRes.data) {
+                localStorage.setItem("site_code", tenantRes.data.site_code || "LBM");
+                localStorage.setItem("service", (tenantRes.data.service || "incendie").toLowerCase());
+            } else {
+                // Valeurs par défaut si pas trouvé
+                localStorage.setItem("site_code", "LBM");
+                localStorage.setItem("service", "incendie");
+            }
+        } catch(e) {
+            localStorage.setItem("site_code", "LBM");
+            localStorage.setItem("service", "incendie");
+        }
 
         window.location.href = "index.html";
 
@@ -383,43 +390,6 @@ async function login() {
         errorMsg.style.display = "block";
         loginBtn.disabled = false;
         loginBtn.textContent = "Se connecter";
-    }
-}
-
-async function loginWithBiometrics() {
-    var errorMsg = document.getElementById("errorMsg");
-    errorMsg.style.display = "none";
-
-    var savedNom = localStorage.getItem("bio_username");
-    var savedRole = localStorage.getItem("bio_role");
-
-    if (!savedNom) {
-        errorMsg.textContent = "Aucune session biométrique. Connectez-vous d'abord avec votre mot de passe.";
-        errorMsg.style.display = "block";
-        return;
-    }
-
-    try {
-        // Déclencher la vérification biométrique
-        await navigator.credentials.get({
-            publicKey: {
-                challenge: new Uint8Array(32),
-                timeout: 60000,
-                userVerification: "required"
-            }
-        });
-
-        // Biométrie réussie → restaurer la session
-        localStorage.setItem("nom", savedNom);
-        localStorage.setItem("role", savedRole || "agent");
-        localStorage.setItem("loginTime", Date.now().toString());
-        resetAttempts();
-
-        window.location.href = "index.html";
-
-    } catch(err) {
-        errorMsg.textContent = "Authentification biométrique annulée ou indisponible.";
-        errorMsg.style.display = "block";
     }
 }
 </script>

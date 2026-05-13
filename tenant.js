@@ -1,114 +1,90 @@
 // ═══════════════════════════════════════════════════════════════
-//  TENANT.JS — Filtrage automatique site_code + service
+//  TENANT.JS v2 — Cloisonnement complet site_code + service
 //  ----------------------------------------------------------------
-//  Injecte automatiquement site_code et service sur tous les inserts
-//  et upserts vers les tables tenant. Évite les fuites de données
-//  entre sites (LBM/GERG/GERD/SAM/MH) et services (incendie/surete/
-//  technique/services_generaux).
+//  Intercepte AUTOMATIQUEMENT toutes les opérations Supabase sur
+//  les tables tenant pour ajouter un filtre site_code + service.
+//
+//  Couvre :
+//    .insert() / .upsert() → enrichit les données
+//    .select() / .update() / .delete() → ajoute .eq() en filtre
+//
+//  Échappatoires (admin global) :
+//    client.fromAll("table")            → sans filtre (méthode dédiée)
+//    AuraTenant.unscoped("table")       → alias équivalent
+//    AuraTenant.bypassNext()            → bypass UNE requête .from()
 // ═══════════════════════════════════════════════════════════════
 
 (function () {
     "use strict";
 
-    // ── 1. Exposer le contexte tenant en lecture ────────────────
-    var SITE  = (localStorage.getItem("site_code") || "LBM").toUpperCase();
-    var SERV  = (localStorage.getItem("service")   || "incendie").toLowerCase();
+    // ── 1. Contexte tenant (lu en localStorage) ─────────────────
+    var SITE = (localStorage.getItem("site_code") || "LBM").toUpperCase();
+    var SERV = (localStorage.getItem("service")   || "incendie").toLowerCase();
+    var _bypassNext = false;
 
     window.AuraTenant = {
         siteCode: SITE,
         service:  SERV,
-        // Helpers
         label: function () {
-            var sites = {
-                "LBM":  "Le Bon Marché",
-                "GERG": "Gerland Gauche",
-                "GERD": "Gerland Droite",
-                "SAM":  "Samaritaine",
-                "MH":   "Mont-Hélios"
-            };
-            var services = {
-                "incendie":          "Sécurité Incendie",
-                "surete":            "Sûreté",
-                "technique":         "Technique",
-                "services_generaux": "Services Généraux"
-            };
+            var sites = { "LBM":"Le Bon Marché","SAM":"Samaritaine","GERD":"La Grande Épicerie Rive Droite","GERG":"La Grande Épicerie Rive Gauche","MH":"Moët Hennessy" };
+            var services = { "incendie":"Sécurité Incendie","surete":"Sûreté","technique":"Technique","services_generaux":"Services Généraux" };
             return (services[SERV] || SERV) + " · " + (sites[SITE] || SITE);
         },
         color: function () {
-            return ({
-                "incendie":          "#ef4444",
-                "surete":            "#3b82f6",
-                "technique":         "#f59e0b",
-                "services_generaux": "#10b981"
-            })[SERV] || "#6b7280";
-        }
+            return ({ "incendie":"#ef4444","surete":"#3b82f6","technique":"#f59e0b","services_generaux":"#10b981" })[SERV] || "#6b7280";
+        },
+        // Bypass ponctuel — désactivé après le prochain .from()
+        bypassNext: function () { _bypassNext = true; },
+        unscoped: null   // assigné plus bas
     };
 
-    // ── 2. Tables soumises au filtrage multi-tenant ─────────────
+    // ── 2. Tables soumises au cloisonnement ─────────────────────
     var TENANT_TABLES = [
+        // Données opérationnelles
         "rapports", "permis_feu", "dai_hors_service", "ssiap2_chantier",
         "feuille_de_garde", "consignes_permanentes", "consignes_journalieres",
         "notifications", "audit_log", "verifications", "verifications_types",
-        "rondes", "interventions_exterieures", "suivi_travaux", "interventions"
+        "rondes", "interventions_exterieures", "suivi_travaux", "interventions",
+        // Ajouts v2 — modèles et rapports spécifiques
+        "rapport_modeles",        // Form Builder : modèles par service
+        "rapports_entree_sortie", // Entrées/sorties par service
+        "interventions_syope",    // Interventions médicales
+        "plan_prevention", "plans",
+        "alertes_urgence",        // Urgences cloisonnées par service
+        "ssiap"
     ];
-    // users a aussi site_code+service mais on ne le force PAS au filtre auto
-    // (la gestion des comptes admin doit pouvoir voir tous les utilisateurs)
+
+    // Tables JAMAIS filtrées
+    var GLOBAL_TABLES = [
+        "users",            // admins doivent voir tous les comptes
+        "login_attempts",   // audit cross-tenant
+        "security_audit",
+        "system_config",
+        "profiles"          // lookup utilisateurs (cross-service)
+    ];
 
     function isTenantTable(name) {
         if (!name) return false;
-        return TENANT_TABLES.indexOf(String(name).toLowerCase()) !== -1;
+        name = String(name).toLowerCase();
+        if (GLOBAL_TABLES.indexOf(name) !== -1) return false;
+        return TENANT_TABLES.indexOf(name) !== -1;
     }
 
-    // ── 3. Monkey-patch supabaseClient.from() ───────────────────
-    function patchClient(client) {
-        if (!client || client.__auraTenantPatched) return;
-        var originalFrom = client.from.bind(client);
-
-        client.from = function (tableName) {
-            var qb = originalFrom(tableName);
-
-            if (!isTenantTable(tableName)) return qb;
-
-            // Wrap insert
-            if (typeof qb.insert === "function") {
-                var origInsert = qb.insert.bind(qb);
-                qb.insert = function (values, options) {
-                    var enriched = enrichWithTenant(values);
-                    return origInsert(enriched, options);
-                };
-            }
-
-            // Wrap upsert
-            if (typeof qb.upsert === "function") {
-                var origUpsert = qb.upsert.bind(qb);
-                qb.upsert = function (values, options) {
-                    var enriched = enrichWithTenant(values);
-                    return origUpsert(enriched, options);
-                };
-            }
-
-            return qb;
-        };
-
-        client.__auraTenantPatched = true;
-    }
-
+    // ── 3. Enrichissement INSERT/UPSERT ─────────────────────────
     function enrichWithTenant(values) {
         if (!values) return values;
         if (Array.isArray(values)) {
-            return values.map(function (v) { return addTenantFields(v); });
+            return values.map(function (v) { return addFields(v); });
         }
-        return addTenantFields(values);
+        return addFields(values);
     }
 
-    function addTenantFields(obj) {
+    function addFields(obj) {
         if (!obj || typeof obj !== "object") return obj;
         var out = {};
-        // Copier l'objet d'origine
         for (var k in obj) {
             if (Object.prototype.hasOwnProperty.call(obj, k)) out[k] = obj[k];
         }
-        // N'écrase pas si déjà fourni explicitement
         if (typeof out.site_code === "undefined" || out.site_code === null || out.site_code === "") {
             out.site_code = SITE;
         }
@@ -118,7 +94,94 @@
         return out;
     }
 
-    // ── 4. Patch dès que supabaseClient est disponible ──────────
+    // ── 4. Application des filtres sur PostgrestFilterBuilder ───
+    function applyTenantFilter(fb) {
+        if (!fb || typeof fb.eq !== "function") return fb;
+        try {
+            fb = fb.eq("site_code", SITE);
+            fb = fb.eq("service", SERV);
+        } catch (e) { console.warn("[Tenant] applyFilter:", e); }
+        return fb;
+    }
+
+    // ── 5. Monkey-patch supabaseClient.from() ───────────────────
+    function patchClient(client) {
+        if (!client || client.__auraTenantPatched) return;
+
+        var originalFrom = client.from.bind(client);
+
+        // Échappatoire : client.fromAll("table") → pas de filtre
+        client.fromAll = function (tableName) {
+            return originalFrom(tableName);
+        };
+        window.AuraTenant.unscoped = function (tableName) {
+            return originalFrom(tableName);
+        };
+
+        client.from = function (tableName) {
+            var qb = originalFrom(tableName);
+
+            // Non-tenant ou bypass ponctuel → pas de patch
+            if (!isTenantTable(tableName) || _bypassNext) {
+                _bypassNext = false;
+                return qb;
+            }
+
+            // SELECT ───────────────────────────────────────────
+            if (typeof qb.select === "function") {
+                var origSelect = qb.select.bind(qb);
+                qb.select = function () {
+                    var result = origSelect.apply(null, arguments);
+                    return applyTenantFilter(result);
+                };
+            }
+
+            // INSERT ───────────────────────────────────────────
+            if (typeof qb.insert === "function") {
+                var origInsert = qb.insert.bind(qb);
+                qb.insert = function (values, options) {
+                    return origInsert(enrichWithTenant(values), options);
+                };
+            }
+
+            // UPSERT ───────────────────────────────────────────
+            if (typeof qb.upsert === "function") {
+                var origUpsert = qb.upsert.bind(qb);
+                qb.upsert = function (values, options) {
+                    return origUpsert(enrichWithTenant(values), options);
+                };
+            }
+
+            // UPDATE ───────────────────────────────────────────
+            if (typeof qb.update === "function") {
+                var origUpdate = qb.update.bind(qb);
+                qb.update = function (values, options) {
+                    var result = origUpdate(values, options);
+                    return applyTenantFilter(result);
+                };
+            }
+
+            // DELETE ───────────────────────────────────────────
+            if (typeof qb["delete"] === "function") {
+                var origDelete = qb["delete"].bind(qb);
+                qb["delete"] = function (options) {
+                    var result = origDelete(options);
+                    return applyTenantFilter(result);
+                };
+            }
+
+            return qb;
+        };
+
+        client.__auraTenantPatched = true;
+    }
+
+    // ── 6. Helper pour filtrer manuellement ─────────────────────
+    window.AuraTenant.filter = function (queryBuilder) {
+        return applyTenantFilter(queryBuilder);
+    };
+
+    // ── 7. Lance le patch dès que possible ──────────────────────
     function tryPatch() {
         try {
             if (typeof window.supabaseClient !== "undefined" && window.supabaseClient) {
@@ -130,7 +193,6 @@
     }
 
     if (!tryPatch()) {
-        // Réessayer pendant 3 secondes si supabaseClient se charge plus tard
         var attempts = 0;
         var interval = setInterval(function () {
             attempts++;
@@ -138,18 +200,5 @@
         }, 100);
     }
 
-    // ── 5. Helper public pour ajouter des filtres aux SELECTs ───
-    // Usage : AuraTenant.filter(client.from("rapports").select("*"))
-    window.AuraTenant.filter = function (queryBuilder, opts) {
-        opts = opts || {};
-        try {
-            if (typeof queryBuilder.eq === "function") {
-                if (opts.siteOnly !== false) queryBuilder = queryBuilder.eq("site_code", SITE);
-                if (opts.serviceOnly !== false) queryBuilder = queryBuilder.eq("service", SERV);
-            }
-        } catch (e) {}
-        return queryBuilder;
-    };
-
-    console.info("[Tenant] Actif :", SITE, "/", SERV);
+    console.info("[Tenant v2] Cloisonnement actif :", SITE, "/", SERV);
 })();

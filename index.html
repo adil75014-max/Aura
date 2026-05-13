@@ -1638,7 +1638,8 @@ incendie: [
             { icon: "🤖", label: "Analyse IA – Tous les rapports", link: "#" },
             { icon: "⚠️", label: "Analyse IA – Anomalies", link: "#" },
             { icon: "🚧", label: "Analyse IA – Hors Service", link: "#" },
-            { icon: "⚙️", label: "Gestion des modules", link: "javascript:openModulesPanel()" }
+            { icon: "⚙️", label: "Gestion des modules", link: "javascript:openModulesPanel()" },
+            { icon: "🎛️", label: "Éditeur de menu", link: "menu_admin.html" }
         ]
     },
     {
@@ -1702,7 +1703,8 @@ surete: [
         items: [
             { icon: "👤", label: "Gestion des comptes", link: "gestion_de_compte.html" },
             { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" },
-            { icon: "🔄", label: "Gestion des rondes", link: "ronde_admin.html" }
+            { icon: "🔄", label: "Gestion des rondes", link: "ronde_admin.html" },
+            { icon: "🎛️", label: "Éditeur de menu", link: "menu_admin.html" }
         ]
     }
 ],
@@ -1753,7 +1755,8 @@ technique: [
         visibleFor: ["admin","superviseur"],
         items: [
             { icon: "👤", label: "Gestion des comptes", link: "gestion_de_compte.html" },
-            { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" }
+            { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" },
+            { icon: "🎛️", label: "Éditeur de menu", link: "menu_admin.html" }
         ]
     }
 ],
@@ -1801,15 +1804,47 @@ services_generaux: [
         visibleFor: ["admin","superviseur"],
         items: [
             { icon: "👤", label: "Gestion des comptes", link: "gestion_de_compte.html" },
-            { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" }
+            { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" },
+            { icon: "🎛️", label: "Éditeur de menu", link: "menu_admin.html" }
         ]
     }
 ]
 
 };
 
-/* Compatibilité ascendante — MENU = menu du service actif */
-const MENU = MENUS_BY_SERVICE[ACTIVE_SERVICE] || MENUS_BY_SERVICE.incendie;
+/* Compatibilité ascendante — MENU = menu du service actif (peut être remplacé par fetchMenuFromDB) */
+let MENU = MENUS_BY_SERVICE[ACTIVE_SERVICE] || MENUS_BY_SERVICE.incendie;
+
+/* ──────────────────────────────────────────────────────
+   CHARGEMENT DU MENU DEPUIS LA BDD (service_menus)
+   Remplace le menu hardcodé par celui défini par l'admin
+   du service. Fallback silencieux sur le menu hardcodé.
+────────────────────────────────────────────────────── */
+async function fetchMenuFromDB() {
+    try {
+        if (typeof supabaseClient === "undefined" || !supabaseClient) return false;
+
+        const site = (localStorage.getItem("site_code") || "LBM").toUpperCase();
+        const srv  = (localStorage.getItem("service")   || "incendie").toLowerCase();
+
+        // service_menus est config (pas tenant) — on bypasse le filtre auto
+        const fromFn = supabaseClient.fromAll || supabaseClient.from;
+        const { data, error } = await fromFn.call(supabaseClient, "service_menus")
+            .select("menu_json")
+            .eq("site_code", site)
+            .eq("service", srv)
+            .maybeSingle();
+
+        if (!error && data && Array.isArray(data.menu_json) && data.menu_json.length > 0) {
+            MENU = data.menu_json;
+            console.info("[Menu] Chargé depuis BDD :", MENU.length, "sections");
+            return true;
+        }
+    } catch (e) {
+        console.warn("[Menu] Fallback hardcodé :", e && e.message);
+    }
+    return false;
+}
 
 /* Données missions pour les types */
 const MISSION_TYPES = {
@@ -2844,8 +2879,10 @@ function launchMission() {
 /* ══════════════════════════════════════════════════════
    DOMContentLoaded
 ══════════════════════════════════════════════════════ */
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     loadMenuFromStorage();
+    // Tente de charger le menu depuis la BDD (menu personnalisé par service)
+    await fetchMenuFromDB();
     generateSidebar();
     updateMeteo();
     setInterval(updateMeteo, 1800000);

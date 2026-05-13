@@ -372,10 +372,10 @@
             <label>Site</label>
             <select id="siteUser">
                 <option value="LBM">Le Bon Marché (LBM)</option>
-                <option value="GERG">Gerland Gauche (GERG)</option>
-                <option value="GERD">Gerland Droite (GERD)</option>
                 <option value="SAM">Samaritaine (SAM)</option>
-                <option value="MH">Mont-Hélios (MH)</option>
+                <option value="GERD">La Grande Épicerie Rive Droite (GERD)</option>
+                <option value="GERG">La Grande Épicerie Rive Gauche (GERG)</option>
+                <option value="MH">Moët Hennessy (MH)</option>
             </select>
 
             <label>Service</label>
@@ -777,7 +777,7 @@ async function creerCompte() {
    AFFECTATION SITE / SERVICE
 ============================================================ */
 async function affecterSiteService(id, nom, currentSite, currentService) {
-    const sites = ["LBM", "GERG", "GERD", "SAM", "MH"];
+    const sites = ["LBM", "SAM", "GERD", "GERG", "MH"];
     const services = ["incendie", "surete", "technique", "services_generaux"];
     const serviceLabels = {
         "incendie": "Sécurité Incendie",

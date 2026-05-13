@@ -5,6 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const savedTheme = localStorage.getItem("theme") || "light";
     document.documentElement.setAttribute("data-theme", savedTheme);
     injectRetourMenu();
+    injectServiceBanner();
 });
 
 function toggleTheme() {
@@ -13,6 +14,64 @@ function toggleTheme() {
     const next = current === "light" ? "dark" : "light";
     html.setAttribute("data-theme", next);
     localStorage.setItem("theme", next);
+}
+
+/* ---------------------------------------------------------
+   🏷️ BANNIÈRE SERVICE ACTIF
+   
+   Affiche en haut de chaque page une pastille indiquant
+   service + site de l'utilisateur (cloisonnement visible).
+   N'apparaît PAS sur login.html ni index.html (qui a déjà
+   sa pastille intégrée au topbar).
+--------------------------------------------------------- */
+function injectServiceBanner() {
+    const page = (window.location.pathname.split("/").pop() || "").toLowerCase();
+    if (page === "login.html" || page === "index.html" || page === "") return;
+    if (document.getElementById("auraServiceBanner")) return;
+
+    // Lit le contexte tenant
+    const site = (localStorage.getItem("site_code") || "").toUpperCase();
+    const srv  = (localStorage.getItem("service")   || "").toLowerCase();
+    if (!site && !srv) return; // pas connecté
+
+    const sites = { "LBM":"LBM", "GERG":"GERG", "GERD":"GERD", "SAM":"SAM", "MH":"MH" };
+    const services = {
+        "incendie":          { label:"Sécurité Incendie",   color:"#ef4444" },
+        "surete":            { label:"Sûreté",              color:"#3b82f6" },
+        "technique":         { label:"Technique",           color:"#f59e0b" },
+        "services_generaux": { label:"Services Généraux",   color:"#10b981" }
+    };
+    const cfg = services[srv] || { label: srv || "—", color: "#6b7280" };
+    const siteLabel = sites[site] || site || "—";
+
+    const banner = document.createElement("div");
+    banner.id = "auraServiceBanner";
+    banner.style.cssText = [
+        "position:fixed", "top:0", "left:0", "right:0",
+        "z-index:9998",
+        "padding:5px 14px",
+        "background:" + cfg.color,
+        "color:#fff",
+        "font-family:system-ui,-apple-system,sans-serif",
+        "font-size:0.78rem",
+        "font-weight:600",
+        "letter-spacing:0.04em",
+        "display:flex",
+        "justify-content:space-between",
+        "align-items:center",
+        "box-shadow:0 1px 4px rgba(0,0,0,0.2)"
+    ].join(";");
+
+    banner.innerHTML =
+        '<span>● ' + cfg.label + ' · ' + siteLabel + '</span>' +
+        '<span style="opacity:0.85;font-size:0.72rem;">' +
+            (localStorage.getItem("nom") || "") +
+        '</span>';
+
+    document.body.appendChild(banner);
+
+    // Pousse le contenu de la page vers le bas pour ne pas masquer
+    document.body.style.paddingTop = (parseInt(getComputedStyle(document.body).paddingTop) || 0) + 28 + "px";
 }
 
 /* ---------------------------------------------------------

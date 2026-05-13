@@ -174,7 +174,23 @@
 
         <button id="loginBtn" onclick="login()">Se connecter</button>
 
-        <div class="badge-hint">Ou présentez votre badge NFC compatible Aura Sentinelle.</div>
+        <!-- Bouton scan badge NFC -->
+        <button id="nfcBtn" onclick="startNFCLogin()" style="
+            margin-top: 10px;
+            width: 86%;
+            padding: 10px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,210,127,0.35);
+            border-radius: 8px;
+            color: #ffd27f;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        ">
+            🪪 Se connecter avec le badge NFC
+        </button>
+
+        <div id="nfcStatus" class="badge-hint" style="min-height:1.2em;"></div>
 
         <div class="error" id="errorMsg"></div>
 
@@ -390,6 +406,157 @@ async function login() {
         errorMsg.style.display = "block";
         loginBtn.disabled = false;
         loginBtn.textContent = "Se connecter";
+    }
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOGIN PAR BADGE NFC (Web NFC API — Chrome Android, HTTPS)
+═══════════════════════════════════════════════════════ */
+var _nfcScanning = false;
+var _nfcReader = null;
+
+async function startNFCLogin() {
+    var statusEl = document.getElementById("nfcStatus");
+    var btn = document.getElementById("nfcBtn");
+    var errorMsg = document.getElementById("errorMsg");
+    errorMsg.style.display = "none";
+
+    // 1. Vérifier le verrouillage anti-bruteforce
+    var lockMin = isLockedOut();
+    if (lockMin > 0) {
+        errorMsg.textContent = "⛔ Verrouillé. Réessayez dans " + lockMin + " minute(s).";
+        errorMsg.style.display = "block";
+        return;
+    }
+
+    // 2. Vérifier le support Web NFC
+    if (!("NDEFReader" in window)) {
+        statusEl.innerHTML = "ℹ️ Web NFC non supporté. Utilisez Chrome sur Android (HTTPS requis).";
+        statusEl.style.color = "#ff9ba8";
+        return;
+    }
+
+    // 3. Si déjà en scan, ne pas relancer
+    if (_nfcScanning) {
+        statusEl.innerHTML = "📡 Déjà en scan… présentez un badge.";
+        return;
+    }
+
+    try {
+        _nfcReader = new NDEFReader();
+        await _nfcReader.scan();
+        _nfcScanning = true;
+
+        btn.disabled = true;
+        btn.textContent = "📡 En attente du badge…";
+        statusEl.innerHTML = "Approchez votre badge NFC de l'appareil.";
+        statusEl.style.color = "#9be7ff";
+
+        _nfcReader.onreading = async function(event) {
+            var uid = event.serialNumber;
+            statusEl.innerHTML = "✅ Badge détecté : " + uid + " — vérification…";
+            await loginWithBadge(uid);
+        };
+
+        _nfcReader.onreadingerror = function() {
+            statusEl.innerHTML = "❌ Erreur de lecture, réessayez.";
+            statusEl.style.color = "#ff9ba8";
+        };
+
+    } catch(err) {
+        _nfcScanning = false;
+        btn.disabled = false;
+        btn.textContent = "🪪 Se connecter avec le badge NFC";
+        statusEl.innerHTML = "⚠️ NFC : " + (err.message || err.name || "indisponible") + ".";
+        statusEl.style.color = "#ff9ba8";
+
+        // Messages d'aide selon l'erreur
+        if (err.name === "NotAllowedError") {
+            statusEl.innerHTML += " (Permission refusée — autorisez le NFC dans les paramètres du site.)";
+        } else if (err.name === "NotSupportedError") {
+            statusEl.innerHTML += " (Appareil incompatible.)";
+        } else if (err.name === "SecurityError") {
+            statusEl.innerHTML += " (HTTPS requis — pas accessible en HTTP.)";
+        }
+    }
+}
+
+async function loginWithBadge(uid) {
+    var statusEl = document.getElementById("nfcStatus");
+    var errorMsg = document.getElementById("errorMsg");
+    var btn = document.getElementById("nfcBtn");
+
+    if (!uid) {
+        statusEl.innerHTML = "❌ UID vide.";
+        return;
+    }
+
+    // Anti-bruteforce check
+    var lockMin = isLockedOut();
+    if (lockMin > 0) {
+        statusEl.innerHTML = "⛔ Verrouillé. Réessayez dans " + lockMin + " minute(s).";
+        return;
+    }
+
+    try {
+        // Recherche du badge dans la table users
+        var { data, error } = await supabaseClient
+            .from("users")
+            .select("id, nom, role, site_code, service, badgeuid")
+            .eq("badgeuid", uid)
+            .maybeSingle();
+
+        if (error) {
+            statusEl.innerHTML = "❌ Erreur Supabase : " + error.message;
+            statusEl.style.color = "#ff9ba8";
+            return;
+        }
+
+        if (!data) {
+            recordFailedAttempt();
+            statusEl.innerHTML = "❌ Badge inconnu (UID : " + uid + "). Inscrivez-le dans 'Gestion des comptes' d'abord.";
+            statusEl.style.color = "#ff9ba8";
+
+            // Audit de la tentative échouée
+            try {
+                supabaseClient.from("login_attempts").insert({
+                    username: "BADGE:" + uid.substring(0, 30),
+                    success: false,
+                    ip_hint: "badge_unknown",
+                    created_at: new Date().toISOString()
+                });
+            } catch(e) {}
+            return;
+        }
+
+        // ✅ Badge trouvé → ouvrir la session
+        resetAttempts();
+        statusEl.innerHTML = "✅ Bienvenue " + data.nom + " — connexion…";
+        statusEl.style.color = "#4ade80";
+
+        localStorage.setItem("nom", data.nom);
+        localStorage.setItem("role", data.role || "agent");
+        localStorage.setItem("loginTime", Date.now().toString());
+        localStorage.setItem("site_code", data.site_code || "LBM");
+        localStorage.setItem("service", (data.service || "incendie").toLowerCase());
+
+        // Audit de connexion réussie
+        try {
+            supabaseClient.from("login_attempts").insert({
+                username: data.nom,
+                success: true,
+                ip_hint: "BADGE:" + uid.substring(0, 30),
+                created_at: new Date().toISOString()
+            });
+        } catch(e) {}
+
+        setTimeout(function() {
+            window.location.href = "index.html";
+        }, 600);
+
+    } catch(e) {
+        statusEl.innerHTML = "❌ Erreur réseau : " + e.message;
+        statusEl.style.color = "#ff9ba8";
     }
 }
 </script>

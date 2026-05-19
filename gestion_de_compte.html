@@ -504,10 +504,24 @@ async function chargerLogs() {
 
 /* ============================================================
    CHARGER COMPTES
+   --------------------------------------------------------------
+   Cloisonnement par site_code + service de l'admin connecté.
+   La table `users` est exclue du filtrage automatique de tenant.js
+   (elle est dans GLOBAL_TABLES), donc on filtre explicitement ici.
+   EXCEPTION : un super-admin voit TOUS les comptes, sans filtre.
 ============================================================ */
 async function chargerComptes() {
-    const { data, error } = await client.from("users").select("*")
-        .order("nom", { ascending:true });
+    const isSuperAdmin = (localStorage.getItem("role") || "").toLowerCase() === "superadmin";
+
+    let q = client.from("users").select("*");
+
+    if (!isSuperAdmin) {
+        const monSite    = (localStorage.getItem("site_code") || "LBM").toUpperCase();
+        const monService = (localStorage.getItem("service")   || "incendie").toLowerCase();
+        q = q.eq("site_code", monSite).eq("service", monService);
+    }
+
+    const { data, error } = await q.order("nom", { ascending:true });
 
     if (error) {
         console.error(error);
@@ -754,12 +768,15 @@ async function creerCompte() {
             return;
         }
 
-        // ─── Forcer site_code + service côté BDD (au cas où l'edge function ne les gère pas encore) ───
+        // ─── Forcer role + site_code + service côté BDD ──────────────
+        // (filet de sécurité : si l'edge function bright-function ne
+        // connaît pas le rôle "superadmin" ou ignore site/service, on
+        // réécrit les bonnes valeurs après création.)
         try {
             await client.from("users")
-                .update({ site_code: siteCode, service: service })
+                .update({ role: role, site_code: siteCode, service: service })
                 .ilike("nom", nom);
-        } catch(e) { console.warn("Update site/service:", e); }
+        } catch(e) { console.warn("Update post-création:", e); }
 
         await ajouterLog("Création compte", `Nom: ${nom}, Rôle: ${role}, Site: ${siteCode}, Service: ${service}`);
         setStatus("Compte créé avec succès.");
@@ -777,37 +794,41 @@ async function creerCompte() {
    AFFECTATION SITE / SERVICE
 ============================================================ */
 async function affecterSiteService(id, nom, currentSite, currentService) {
-    const sites = ["LBM", "SAM", "GERD", "GERG", "MH"];
-    const services = ["incendie", "surete", "technique", "services_generaux"];
-    const serviceLabels = {
-        "incendie": "Sécurité Incendie",
-        "surete": "Sûreté",
-        "technique": "Technique",
-        "services_generaux": "Services Généraux"
+    // Sites/services depuis le catalogue tenant (BDD ou fallback)
+    const cat = (window.AuraTenant && window.AuraTenant.sites) ? {
+        sites: window.AuraTenant.sites(),
+        services: window.AuraTenant.services()
+    } : {
+        sites: [{code:"LBM",nom:"Le Bon Marché"},{code:"SAM",nom:"Samaritaine"},{code:"GERD",nom:"GE Rive Droite"},{code:"GERG",nom:"GE Rive Gauche"},{code:"MH",nom:"Moët Hennessy"}],
+        services: [{code:"incendie",nom:"Sécurité Incendie"},{code:"surete",nom:"Sûreté"},{code:"technique",nom:"Technique"},{code:"services_generaux",nom:"Services Généraux"}]
     };
+    const siteCodes = cat.sites.map(s => s.code);
+    const svcCodes  = cat.services.map(s => s.code);
+    const serviceLabels = {};
+    cat.services.forEach(s => { serviceLabels[s.code] = s.nom; });
 
     const sitePrompt = `Affecter "${nom}" à quel SITE ?\n\n` +
-        sites.map((s,i) => `${i+1}. ${s}`).join("\n") +
+        cat.sites.map((s,i) => `${i+1}. ${s.code} — ${s.nom}`).join("\n") +
         `\n\n(Tapez le code ou le numéro. Actuel : ${currentSite || "—"})`;
-    const siteAnswer = prompt(sitePrompt, currentSite || "LBM");
+    const siteAnswer = prompt(sitePrompt, currentSite || siteCodes[0]);
     if (!siteAnswer) return;
     let newSite = siteAnswer.toUpperCase().trim();
     const numSite = parseInt(siteAnswer, 10);
-    if (numSite >= 1 && numSite <= sites.length) newSite = sites[numSite - 1];
-    if (sites.indexOf(newSite) === -1) {
+    if (numSite >= 1 && numSite <= siteCodes.length) newSite = siteCodes[numSite - 1];
+    if (siteCodes.indexOf(newSite) === -1) {
         alert("Code site invalide : " + newSite);
         return;
     }
 
     const svcPrompt = `Affecter "${nom}" à quel SERVICE ?\n\n` +
-        services.map((s,i) => `${i+1}. ${serviceLabels[s]}`).join("\n") +
+        cat.services.map((s,i) => `${i+1}. ${s.nom}`).join("\n") +
         `\n\n(Tapez le numéro ou le code. Actuel : ${currentService || "—"})`;
-    const svcAnswer = prompt(svcPrompt, currentService || "incendie");
+    const svcAnswer = prompt(svcPrompt, currentService || svcCodes[0]);
     if (!svcAnswer) return;
     let newService = svcAnswer.toLowerCase().trim();
     const numSvc = parseInt(svcAnswer, 10);
-    if (numSvc >= 1 && numSvc <= services.length) newService = services[numSvc - 1];
-    if (services.indexOf(newService) === -1) {
+    if (numSvc >= 1 && numSvc <= svcCodes.length) newService = svcCodes[numSvc - 1];
+    if (svcCodes.indexOf(newService) === -1) {
         alert("Service invalide : " + newService);
         return;
     }
@@ -823,7 +844,7 @@ async function affecterSiteService(id, nom, currentSite, currentService) {
     }
 
     await ajouterLog("Affectation site/service", `${nom} → ${newSite} / ${newService}`);
-    setStatus(`✅ ${nom} affecté à ${newSite} / ${serviceLabels[newService]}.`);
+    setStatus(`✅ ${nom} affecté à ${newSite} / ${serviceLabels[newService] || newService}.`);
     chargerComptes();
 }
 
@@ -939,6 +960,47 @@ async function supprimerBadge(id) {
    LANCEMENT — chargement indépendant (l'un ne bloque pas l'autre)
 ============================================================ */
 (async function init() {
+    // ─── Remplir dynamiquement les selects depuis le catalogue tenant ───
+    try {
+        if (window.AuraTenant && typeof window.AuraTenant.loadCatalogues === "function") {
+            await window.AuraTenant.loadCatalogues();
+            const sites = window.AuraTenant.sites();
+            const srvs  = window.AuraTenant.services();
+            const siteSel = document.getElementById("siteUser");
+            const srvSel  = document.getElementById("serviceUser");
+            if (siteSel && sites.length) {
+                siteSel.innerHTML = sites.map(s =>
+                    `<option value="${s.code}">${s.nom} (${s.code})</option>`
+                ).join("");
+            }
+            if (srvSel && srvs.length) {
+                srvSel.innerHTML = srvs.map(s =>
+                    `<option value="${s.code}">${s.nom}</option>`
+                ).join("");
+            }
+        }
+    } catch (e) { console.warn("[Init] catalogues:", e); }
+
+    // ─── Si super-admin, ajouter le rôle "SuperAdmin" au select ───
+    try {
+        const isSuperAdmin = (localStorage.getItem("role") || "").toLowerCase() === "superadmin";
+        if (isSuperAdmin) {
+            const roleSel = document.getElementById("roleUser");
+            if (roleSel && !Array.from(roleSel.options).some(o => o.value === "superadmin")) {
+                const opt = document.createElement("option");
+                opt.value = "superadmin";
+                opt.textContent = "SuperAdmin (accès global)";
+                roleSel.appendChild(opt);
+            }
+            // Bandeau visuel pour rappeler le mode
+            const banner = document.createElement("div");
+            banner.style.cssText = "background:linear-gradient(90deg,#a855f7,#7c3aed);color:#fff;padding:10px 16px;border-radius:10px;margin-bottom:16px;font-weight:600;font-size:0.88rem;display:flex;align-items:center;gap:10px;";
+            banner.innerHTML = '<span>🌐</span><span>Mode super-admin : tous les comptes de tous les sites/services sont visibles.</span>';
+            const main = document.querySelector(".grid, main, body");
+            if (main && main.firstChild) main.insertBefore(banner, main.firstChild);
+        }
+    } catch (e) { console.warn("[Init] super-admin role:", e); }
+
     // Charger les comptes en priorité
     await chargerComptes();
     // Puis les logs (non bloquant)

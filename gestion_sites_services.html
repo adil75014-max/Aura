@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gestion sites & services — Aura Sentinelle</title>
+<link rel="stylesheet" href="global.css">
+<style>
+    :root {
+        --bg: #0b0d10;
+        --bg2: #14181d;
+        --card: #1a1f26;
+        --border: #2a3038;
+        --text: #e6e8eb;
+        --text-dim: #a0a8b0;
+        --accent: #d4af37;
+        --purple: #a855f7;
+        --shadow: 0 6px 24px rgba(0,0,0,0.4);
+    }
+    body {
+        background: var(--bg); color: var(--text);
+        font-family: system-ui, -apple-system, sans-serif;
+        margin: 0; padding: 28px 20px;
+    }
+    .header {
+        max-width: 1100px; margin: 0 auto 24px;
+        display: flex; align-items: center; gap: 14px;
+    }
+    .header h1 {
+        font-size: 1.5rem; font-weight: 700; margin: 0;
+        background: linear-gradient(90deg, var(--purple), var(--accent));
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .header .subtitle {
+        font-size: 0.85rem; color: var(--text-dim);
+        margin-top: 4px;
+    }
+    .header .back {
+        margin-left: auto;
+        background: var(--bg2); color: var(--text);
+        border: 1px solid var(--border); padding: 8px 16px;
+        border-radius: 8px; text-decoration: none;
+        font-size: 0.85rem;
+    }
+    .header .back:hover { background: var(--card); }
+
+    .grid {
+        max-width: 1100px; margin: 0 auto;
+        display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
+    }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 14px; padding: 22px; box-shadow: var(--shadow);
+    }
+    .card h2 {
+        font-size: 1.1rem; margin: 0 0 6px;
+        display: flex; align-items: center; gap: 10px;
+    }
+    .card .count {
+        background: rgba(168,85,247,0.15); color: var(--purple);
+        padding: 2px 10px; border-radius: 999px;
+        font-size: 0.75rem; font-weight: 600;
+    }
+    .card .desc {
+        color: var(--text-dim); font-size: 0.82rem; margin-bottom: 16px;
+    }
+
+    label { display: block; font-size: 0.78rem; color: var(--text-dim); margin: 12px 0 4px; }
+    input[type=text], input[type=color] {
+        width: 100%; padding: 9px 12px; box-sizing: border-box;
+        background: var(--bg2); border: 1px solid var(--border);
+        border-radius: 8px; color: var(--text); font-size: 0.9rem;
+    }
+    input[type=color] { padding: 4px; height: 38px; }
+    button.primary {
+        background: var(--purple); color: #fff;
+        border: none; padding: 10px 20px; border-radius: 8px;
+        font-weight: 600; cursor: pointer; margin-top: 12px;
+        font-size: 0.88rem;
+    }
+    button.primary:hover { background: #9333ea; }
+    button.secondary {
+        background: var(--bg2); color: var(--text);
+        border: 1px solid var(--border); padding: 6px 12px;
+        border-radius: 6px; cursor: pointer; font-size: 0.78rem;
+    }
+    button.danger {
+        background: rgba(220,38,38,0.15); color: #ef4444;
+        border: 1px solid rgba(220,38,38,0.3);
+        padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.78rem;
+    }
+
+    .list-item {
+        background: var(--bg2); border: 1px solid var(--border);
+        padding: 10px 14px; border-radius: 10px; margin-bottom: 8px;
+        display: flex; align-items: center; gap: 12px;
+    }
+    .list-item .code {
+        font-family: monospace; font-weight: 600;
+        background: rgba(212,175,55,0.15); color: var(--accent);
+        padding: 3px 8px; border-radius: 6px;
+        font-size: 0.78rem;
+    }
+    .list-item .nom { flex: 1; }
+    .list-item .colordot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border); }
+
+    .empty { color: var(--text-dim); text-align: center; padding: 18px; font-size: 0.85rem; }
+    .status { padding: 10px 14px; border-radius: 8px; margin-top: 12px; font-size: 0.85rem; }
+    .status.ok    { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
+    .status.error { background: rgba(220,38,38,0.12); color: #ef4444; border: 1px solid rgba(220,38,38,0.3); }
+
+    .accessdenied {
+        max-width: 600px; margin: 80px auto; padding: 40px;
+        background: var(--card); border: 1px solid var(--border);
+        border-radius: 14px; text-align: center;
+    }
+    .accessdenied h1 { color: #ef4444; }
+</style>
+</head>
+<body>
+
+<div id="accessGate" class="accessdenied" style="display:none;">
+    <h1>🔒 Accès refusé</h1>
+    <p>Cette page est réservée aux super-administrateurs.</p>
+    <p style="color:var(--text-dim);font-size:0.85rem;">Connectez-vous avec un compte ayant le rôle <code>superadmin</code>.</p>
+    <a href="index.html" style="color:var(--accent);">← Retour</a>
+</div>
+
+<div id="mainContent" style="display:none;">
+
+<div class="header">
+    <div>
+        <h1>🌐 Gestion sites &amp; services</h1>
+        <div class="subtitle">Catalogue global — ajouté dynamiquement, utilisé partout dans l'app</div>
+    </div>
+    <a href="index.html" class="back">← Retour</a>
+</div>
+
+<div class="grid">
+
+    <!-- ─── SITES ─── -->
+    <div class="card">
+        <h2>🏢 Sites <span class="count" id="cntSites">0</span></h2>
+        <div class="desc">Codes courts (ex: LBM) utilisés dans les requêtes Supabase.</div>
+
+        <div id="listeSites"></div>
+
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+            <label>Code (court, MAJ)</label>
+            <input type="text" id="newSiteCode" placeholder="LBM" maxlength="20" style="text-transform:uppercase;">
+
+            <label>Nom complet</label>
+            <input type="text" id="newSiteNom" placeholder="Le Bon Marché" maxlength="120">
+
+            <button class="primary" onclick="ajouterSite()">+ Ajouter le site</button>
+            <div id="statusSites"></div>
+        </div>
+    </div>
+
+    <!-- ─── SERVICES ─── -->
+    <div class="card">
+        <h2>⚙️ Services <span class="count" id="cntServices">0</span></h2>
+        <div class="desc">Codes en minuscules (ex: incendie) utilisés pour le cloisonnement.</div>
+
+        <div id="listeServices"></div>
+
+        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
+            <label>Code (court, min., snake_case)</label>
+            <input type="text" id="newSrvCode" placeholder="incendie" maxlength="40" style="text-transform:lowercase;">
+
+            <label>Nom complet</label>
+            <input type="text" id="newSrvNom" placeholder="Sécurité Incendie" maxlength="120">
+
+            <label>Couleur d'identification</label>
+            <input type="color" id="newSrvColor" value="#a855f7">
+
+            <button class="primary" onclick="ajouterService()">+ Ajouter le service</button>
+            <div id="statusServices"></div>
+        </div>
+    </div>
+
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script>
+// ────────────────────────────────────────────────────────────
+// Garde d'accès : seul un super-admin peut accéder à cette page
+// ────────────────────────────────────────────────────────────
+const role = (localStorage.getItem("role") || "").toLowerCase();
+if (role !== "superadmin") {
+    document.getElementById("accessGate").style.display = "block";
+} else {
+    document.getElementById("mainContent").style.display = "block";
+    init();
+}
+
+function setStatus(target, msg, isError) {
+    const el = document.getElementById(target);
+    el.innerHTML = '<div class="status ' + (isError ? "error" : "ok") + '">' + msg + '</div>';
+    setTimeout(() => { el.innerHTML = ""; }, 4000);
+}
+
+async function init() {
+    await chargerSites();
+    await chargerServices();
+}
+
+// ─── SITES ──────────────────────────────────────────────────
+async function chargerSites() {
+    try {
+        const { data, error } = await supabaseClient
+            .from("sites").select("*").order("nom", { ascending: true });
+        if (error) {
+            // Table absente : guide l'utilisateur
+            if (error.code === "42P01") {
+                document.getElementById("listeSites").innerHTML =
+                    '<div class="empty">⚠️ Table <code>sites</code> non créée en BDD.<br>Exécute le SQL fourni dans Supabase Studio.</div>';
+                document.getElementById("cntSites").textContent = "0";
+                return;
+            }
+            throw error;
+        }
+        const liste = data || [];
+        document.getElementById("cntSites").textContent = liste.length;
+        if (!liste.length) {
+            document.getElementById("listeSites").innerHTML =
+                '<div class="empty">Aucun site. Ajoute-en un ci-dessous.</div>';
+            return;
+        }
+        document.getElementById("listeSites").innerHTML = liste.map(s => `
+            <div class="list-item">
+                <span class="code">${escapeHtml(s.code)}</span>
+                <span class="nom">${escapeHtml(s.nom)}</span>
+                <button class="secondary" onclick="renommerSite('${escapeAttr(s.code)}', '${escapeAttr(s.nom)}')">✏️</button>
+                <button class="danger" onclick="supprimerSite('${escapeAttr(s.code)}', '${escapeAttr(s.nom)}')">🗑</button>
+            </div>
+        `).join("");
+    } catch (e) {
+        console.error(e);
+        setStatus("statusSites", "Erreur : " + e.message, true);
+    }
+}
+
+async function ajouterSite() {
+    const code = (document.getElementById("newSiteCode").value || "").trim().toUpperCase();
+    const nom  = (document.getElementById("newSiteNom").value  || "").trim();
+    if (!code || !nom) { setStatus("statusSites", "Code et nom requis.", true); return; }
+    if (!/^[A-Z0-9_]+$/.test(code)) { setStatus("statusSites", "Code : MAJ, chiffres, _ uniquement.", true); return; }
+    try {
+        const { error } = await supabaseClient.from("sites").insert({ code, nom });
+        if (error) throw error;
+        document.getElementById("newSiteCode").value = "";
+        document.getElementById("newSiteNom").value  = "";
+        setStatus("statusSites", "✅ Site « " + nom + " » ajouté.");
+        await chargerSites();
+        // Recharger le cache du catalogue
+        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
+            await window.AuraTenant.loadCatalogues(true);
+        }
+    } catch (e) {
+        setStatus("statusSites", "Erreur : " + (e.message || e), true);
+    }
+}
+
+async function renommerSite(code, ancienNom) {
+    const nv = prompt("Nouveau nom pour le site « " + code + " » :", ancienNom);
+    if (!nv || nv === ancienNom) return;
+    try {
+        const { error } = await supabaseClient.from("sites").update({ nom: nv }).eq("code", code);
+        if (error) throw error;
+        setStatus("statusSites", "✅ Renommé.");
+        await chargerSites();
+        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
+            await window.AuraTenant.loadCatalogues(true);
+        }
+    } catch (e) {
+        setStatus("statusSites", "Erreur : " + (e.message || e), true);
+    }
+}
+
+async function supprimerSite(code, nom) {
+    if (!confirm(`Supprimer le site "${nom}" (${code}) ?\n\n⚠️ Les comptes et données existants liés à ce site resteront en BDD mais deviendront orphelins.`)) return;
+    try {
+        const { error } = await supabaseClient.from("sites").delete().eq("code", code);
+        if (error) throw error;
+        setStatus("statusSites", "✅ Site supprimé.");
+        await chargerSites();
+        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
+            await window.AuraTenant.loadCatalogues(true);
+        }
+    } catch (e) {
+        setStatus("statusSites", "Erreur : " + (e.message || e), true);
+    }
+}
+
+// ─── SERVICES ───────────────────────────────────────────────
+async function chargerServices() {
+    try {
+        const { data, error } = await supabaseClient
+            .from("services").select("*").order("nom", { ascending: true });
+        if (error) {
+            if (error.code === "42P01") {
+                document.getElementById("listeServices").innerHTML =
+                    '<div class="empty">⚠️ Table <code>services</code> non créée en BDD.<br>Exécute le SQL fourni dans Supabase Studio.</div>';
+                document.getElementById("cntServices").textContent = "0";
+                return;
+            }
+            throw error;
+        }
+        const liste = data || [];
+        document.getElementById("cntServices").textContent = liste.length;
+        if (!liste.length) {
+            document.getElementById("listeServices").innerHTML =
+                '<div class="empty">Aucun service. Ajoute-en un ci-dessous.</div>';
+            return;
+        }
+        document.getElementById("listeServices").innerHTML = liste.map(s => `
+            <div class="list-item">
+                <span class="colordot" style="background:${escapeAttr(s.couleur || '#6b7280')}"></span>
+                <span class="code">${escapeHtml(s.code)}</span>
+                <span class="nom">${escapeHtml(s.nom)}</span>
+                <button class="secondary" onclick="modifierService('${escapeAttr(s.code)}', '${escapeAttr(s.nom)}', '${escapeAttr(s.couleur || '#6b7280')}')">✏️</button>
+                <button class="danger" onclick="supprimerService('${escapeAttr(s.code)}', '${escapeAttr(s.nom)}')">🗑</button>
+            </div>
+        `).join("");
+    } catch (e) {
+        console.error(e);
+        setStatus("statusServices", "Erreur : " + e.message, true);
+    }
+}
+
+async function ajouterService() {
+    const code = (document.getElementById("newSrvCode").value || "").trim().toLowerCase();
+    const nom  = (document.getElementById("newSrvNom").value  || "").trim();
+    const couleur = document.getElementById("newSrvColor").value || "#6b7280";
+    if (!code || !nom) { setStatus("statusServices", "Code et nom requis.", true); return; }
+    if (!/^[a-z0-9_]+$/.test(code)) { setStatus("statusServices", "Code : minuscules, chiffres, _ uniquement.", true); return; }
+    try {
+        const { error } = await supabaseClient.from("services").insert({ code, nom, couleur });
+        if (error) throw error;
+        document.getElementById("newSrvCode").value = "";
+        document.getElementById("newSrvNom").value  = "";
+        setStatus("statusServices", "✅ Service « " + nom + " » ajouté.");
+        await chargerServices();
+        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
+            await window.AuraTenant.loadCatalogues(true);
+        }
+    } catch (e) {
+        setStatus("statusServices", "Erreur : " + (e.message || e), true);
+    }
+}
+
+async function modifierService(code, ancienNom, ancienneCouleur) {
+    const nv = prompt("Nouveau nom pour le service « " + code + " » :", ancienNom);
+    if (!nv) return;
+    const couleur = prompt("Nouvelle couleur (hex, ex #ef4444) ou laisser vide :", ancienneCouleur);
+    try {
+        const update = { nom: nv };
+        if (couleur && /^#[0-9a-fA-F]{6}$/.test(couleur.trim())) update.couleur = couleur.trim();
+        const { error } = await supabaseClient.from("services").update(update).eq("code", code);
+        if (error) throw error;
+        setStatus("statusServices", "✅ Service mis à jour.");
+        await chargerServices();
+        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
+            await window.AuraTenant.loadCatalogues(true);
+        }
+    } catch (e) {
+        setStatus("statusServices", "Erreur : " + (e.message || e), true);
+    }
+}
+
+async function supprimerService(code, nom) {
+    if (!confirm(`Supprimer le service "${nom}" (${code}) ?\n\n⚠️ Les comptes et données existants liés à ce service resteront en BDD mais deviendront orphelins.`)) return;
+    try {
+        const { error } = await supabaseClient.from("services").delete().eq("code", code);
+        if (error) throw error;
+        setStatus("statusServices", "✅ Service supprimé.");
+        await chargerServices();
+        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
+            await window.AuraTenant.loadCatalogues(true);
+        }
+    } catch (e) {
+        setStatus("statusServices", "Erreur : " + (e.message || e), true);
+    }
+}
+
+// ─── Helpers ────────────────────────────────────────────────
+function escapeHtml(s) {
+    if (s === null || s === undefined) return "";
+    const d = document.createElement("div");
+    d.textContent = String(s);
+    return d.innerHTML;
+}
+function escapeAttr(s) {
+    return String(s || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
+}
+</script>
+
+</body>
+</html>

@@ -1134,6 +1134,9 @@
             border: 1px solid var(--border);
         "></div>
 
+        <!-- Sélecteur de contexte super-admin (créé dynamiquement si role=superadmin) -->
+        <div id="superadminCtxBox" style="display:none; align-items:center; gap:6px;"></div>
+
         <div id="userInfo" style="font-weight:600;"></div>
 
         <button class="logout-top-btn" onclick="logout()" style="
@@ -1168,11 +1171,11 @@
 
     <div class="cards-container">
         <div class="card" onclick="window.location.href='consulte_anomalie.html'">📄 Anomalies</div>
-        <div class="card" onclick="window.location.href='hors_services.html'">🛠 DAI Hors Service</div>
-        <div class="card" id="card-permis-feu" onclick="window.location.href='permis_feu.html'">🔥 Créer un permis feu</div>
-        <div class="card" onclick="window.location.href='consulter_pf.html'">📁 Consulter les permis feu</div>
+        <div class="card" data-service="incendie" onclick="window.location.href='hors_services.html'">🛠 DAI Hors Service</div>
+        <div class="card" data-service="incendie" id="card-permis-feu" onclick="window.location.href='permis_feu.html'">🔥 Créer un permis feu</div>
+        <div class="card" data-service="incendie" onclick="window.location.href='consulter_pf.html'">📁 Consulter les permis feu</div>
 
-        <button id="btn-stop-alarme" style="
+        <button id="btn-stop-alarme" data-service="incendie" style="
             margin-top: 12px; width: 100%; padding: 12px; border: none;
             border-radius: 12px; background: #111; color: white;
             font-weight: 700; font-size: 1rem; display: none;
@@ -1198,7 +1201,7 @@
             display: block;
             filter: brightness(0.9);
         ">
-        <div style="
+        <div id="facadeBrandLabel" style="
             position: absolute;
             bottom: 0;
             left: 0;
@@ -1216,8 +1219,10 @@
 
 </div>
 
-<audio id="alarme-feu" src="sons/alarme-incendie.mp3"></audio>
-<audio id="alarme-svv" src="sons/alarme-ambulance.mp3"></audio>
+<!-- Les anciens <audio src="sons/alarme-*.mp3"> ont été retirés :
+     les fichiers n'existaient pas dans le projet et le système son
+     est désormais entièrement géré par notifications_global.js
+     (fichier fire_station_tone_x4.mp3 + fallback AudioContext + iOS playsInline) -->
 
 <div id="modulesPanel" class="panel" style="max-width:480px; overflow-y:auto;">
     <div class="panel-header">
@@ -2069,35 +2074,51 @@ async function updateMeteo() {
 
 /* ══════════════════════════════════════════════════════
    URGENCE PERMIS FEU
+   ----------------------------------------------------------------
+   Refonte : l'alarme s'affiche désormais via showAlarmBanner()
+   (popup plein écran + son cross-plateforme défini dans
+   notifications_global.js → fire_station_tone_x4.mp3).
+   La card "Créer un permis feu" n'est plus mutée visuellement
+   et reste fonctionnelle. Cette fonction ne gère plus que :
+     - la visibilité du bouton "Arrêter l'alarme"
+     - le déclenchement UNIQUE du popup+son sur transition active
+     - la fermeture du popup quand l'urgence est acquittée
 ══════════════════════════════════════════════════════ */
-function checkUrgence() {
-    const cardPermis = document.getElementById("card-permis-feu");
-    const sonFeu     = document.getElementById("alarme-feu");
-    const sonSVV     = document.getElementById("alarme-svv");
-    const btnStop    = document.getElementById("btn-stop-alarme");
-    const etat       = localStorage.getItem("permisFeuUrgence");
+let _urgenceAlarmActive = false;
 
-    if (etat === "feu") {
-        btnStop.style.display = "block";
-        cardPermis.style.background = "rgba(255,0,0,0.45)";
-        cardPermis.style.border = "3px solid red";
-        cardPermis.innerHTML = "🔥 URGENCE INCENDIE — PERMIS FEU";
-        sonSVV.pause(); sonFeu.loop = true; sonFeu.play().catch(()=>{});
-        return;
+function checkUrgence() {
+    const btnStop = document.getElementById("btn-stop-alarme");
+    const etat    = localStorage.getItem("permisFeuUrgence");
+    const isActive = (etat === "feu" || etat === "svv");
+
+    if (btnStop) btnStop.style.display = isActive ? "block" : "none";
+
+    // Transition INACTIF → ACTIF : déclenche popup + son une seule fois
+    if (isActive && !_urgenceAlarmActive) {
+        _urgenceAlarmActive = true;
+        const msg = (etat === "feu")
+            ? "🔥 URGENCE INCENDIE — PERMIS FEU"
+            : "🚑 URGENCE — SECOURS À VICTIME";
+        try {
+            if (typeof playAlarmSound === "function") {
+                playAlarmSound(); // joue le son ET appelle showAlarmBanner() en interne
+            } else if (typeof showAlarmBanner === "function") {
+                showAlarmBanner();
+            }
+            // Personnaliser le message du banner après création
+            setTimeout(function () {
+                const m = document.getElementById("alarmBannerMsg");
+                if (m) m.textContent = msg;
+            }, 50);
+        } catch (e) { console.warn("[Urgence] popup:", e); }
     }
-    if (etat === "svv") {
-        btnStop.style.display = "block";
-        cardPermis.style.background = "rgba(0,80,255,0.45)";
-        cardPermis.style.border = "3px solid #0055ff";
-        cardPermis.innerHTML = "🚑 URGENCE — SECOURS À VICTIME";
-        sonFeu.pause(); sonSVV.loop = true; sonSVV.play().catch(()=>{});
-        return;
+    // Transition ACTIF → INACTIF : ferme le popup
+    else if (!isActive && _urgenceAlarmActive) {
+        _urgenceAlarmActive = false;
+        try {
+            if (typeof closeAlarmBanner === "function") closeAlarmBanner();
+        } catch (e) { console.warn("[Urgence] close:", e); }
     }
-    btnStop.style.display = "none";
-    cardPermis.style.background = "";
-    cardPermis.style.border = "";
-    cardPermis.innerHTML = "🔥 Créer un permis feu";
-    sonFeu.pause(); sonSVV.pause();
 }
 
 /* ══════════════════════════════════════════════════════
@@ -2896,22 +2917,69 @@ document.addEventListener("DOMContentLoaded", async () => {
         var userInfo = document.getElementById("userInfo");
 
         if (window.AuraTenant) {
-            var siteLabel = ({
-                "LBM":"LBM","GERG":"GERG","GERD":"GERD","SAM":"SAM","MH":"MH"
-            })[window.AuraTenant.siteCode] || window.AuraTenant.siteCode;
+            // S'assurer que les catalogues sont chargés (sites/services dynamiques)
+            if (typeof window.AuraTenant.loadCatalogues === "function") {
+                try { await window.AuraTenant.loadCatalogues(); } catch(e) {}
+            }
 
-            var srvLabel = ({
-                "incendie":"Service Incendie",
-                "surete":"Service Sûreté",
-                "technique":"Service Technique",
-                "services_generaux":"Services Généraux"
-            })[window.AuraTenant.service] || window.AuraTenant.service;
+            if (window.AuraTenant.isGlobalMode) {
+                if (brand) brand.textContent = "🌐 Aura Sentinelle — Super-admin";
+            } else if (window.AuraTenant.siteCode && window.AuraTenant.service) {
+                // Résolution du nom complet depuis les catalogues
+                var sites = window.AuraTenant.sites();
+                var srvs  = window.AuraTenant.services();
+                var siteName = window.AuraTenant.siteCode;
+                var srvName  = window.AuraTenant.service;
+                for (var i=0; i<sites.length; i++) {
+                    if (sites[i].code === window.AuraTenant.siteCode) { siteName = sites[i].nom; break; }
+                }
+                for (var j=0; j<srvs.length; j++) {
+                    if (srvs[j].code === window.AuraTenant.service) { srvName = "Service " + srvs[j].nom; break; }
+                }
+                if (brand) brand.textContent = siteName + " — " + srvName;
+            }
 
-            if (brand) brand.textContent = siteLabel + " " + srvLabel;
             if (pill) {
                 pill.innerHTML =
                     '<span style="width:8px;height:8px;border-radius:50%;background:' + window.AuraTenant.color() + ';display:inline-block;"></span>' +
                     '<span>' + window.AuraTenant.label() + '</span>';
+            }
+
+            // ─── Sélecteur de contexte super-admin ───
+            if (window.AuraTenant.isSuperAdmin) {
+                var ctxBox = document.getElementById("superadminCtxBox");
+                if (ctxBox) {
+                    var sitesList = window.AuraTenant.sites();
+                    var srvList   = window.AuraTenant.services();
+                    var curSite   = window.AuraTenant.siteCode || "";
+                    var curSrv    = window.AuraTenant.service  || "";
+
+                    var siteOpts = '<option value="">— Site —</option>' + sitesList.map(function(s){
+                        return '<option value="' + s.code + '"' + (s.code === curSite ? ' selected' : '') + '>' + s.nom + '</option>';
+                    }).join('');
+                    var srvOpts = '<option value="">— Service —</option>' + srvList.map(function(s){
+                        return '<option value="' + s.code + '"' + (s.code === curSrv ? ' selected' : '') + '>' + s.nom + '</option>';
+                    }).join('');
+
+                    ctxBox.style.display = "inline-flex";
+                    ctxBox.innerHTML =
+                        '<select id="saSiteSel" style="padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:0.78rem;">' + siteOpts + '</select>' +
+                        '<select id="saSrvSel"  style="padding:4px 6px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:0.78rem;">' + srvOpts + '</select>' +
+                        '<button id="saApplyBtn" style="padding:4px 10px;border-radius:6px;border:1px solid #a855f7;background:#a855f7;color:#fff;font-size:0.75rem;font-weight:600;cursor:pointer;">Incarner</button>' +
+                        '<button id="saGlobalBtn" title="Mode global : voir tout, ne pas incarner" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:0.75rem;cursor:pointer;">🌐</button>' +
+                        '<a href="gestion_sites_services.html" title="Gérer les sites et services" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:0.75rem;text-decoration:none;display:inline-flex;align-items:center;">⚙️</a>';
+
+                    document.getElementById("saApplyBtn").onclick = function() {
+                        var s = document.getElementById("saSiteSel").value;
+                        var v = document.getElementById("saSrvSel").value;
+                        if (!s || !v) { alert("Choisir un site ET un service."); return; }
+                        window.AuraTenant.switchContext(s, v);
+                    };
+                    document.getElementById("saGlobalBtn").onclick = function() {
+                        if (!confirm("Passer en mode global ?\n\nVous verrez les données de TOUS les sites/services.")) return;
+                        window.AuraTenant.resetGlobalMode();
+                    };
+                }
             }
         }
         if (userInfo) {
@@ -2931,19 +2999,71 @@ document.addEventListener("DOMContentLoaded", async () => {
     sidebar.appendChild(bloc);
 
     /* Bouton Centre d'appel (console dispatch / softphone SIP)
+       Cloisonné au service incendie uniquement (softphone d'urgence).
        Utilise un vrai <a> pour éviter tout blocage silencieux de window.location
        et permettre l'ouverture en nouvel onglet (Ctrl+click / clic molette) */
-    const blocDispatch = document.createElement("a");
-    blocDispatch.className = "menu-item";
-    blocDispatch.style.marginTop = "4px";
-    blocDispatch.style.textDecoration = "none";
-    blocDispatch.href = "consoledispatch.html";
-    blocDispatch.target = "_blank";
-    blocDispatch.innerHTML = "📞 Centre d'appel";
-    blocDispatch.addEventListener("click", (e) => {
-        console.log("[CentreAppel] clic → redirection vers", blocDispatch.href);
-    });
-    sidebar.appendChild(blocDispatch);
+    var _activeService = (localStorage.getItem("service") || "incendie").toLowerCase();
+    var _isGlobalSuperAdmin = !!(window.AuraTenant && window.AuraTenant.isGlobalMode);
+    if (_activeService === "incendie" || _isGlobalSuperAdmin) {
+        const blocDispatch = document.createElement("a");
+        blocDispatch.className = "menu-item";
+        blocDispatch.style.marginTop = "4px";
+        blocDispatch.style.textDecoration = "none";
+        blocDispatch.href = "consoledispatch.html";
+        blocDispatch.target = "_blank";
+        blocDispatch.innerHTML = "📞 Centre d'appel" + (_isGlobalSuperAdmin && _activeService !== "incendie" ? " (incendie)" : "");
+        blocDispatch.addEventListener("click", (e) => {
+            console.log("[CentreAppel] clic → redirection vers", blocDispatch.href);
+        });
+        sidebar.appendChild(blocDispatch);
+    }
+
+    /* Lien admin gestion sites/services (super-admin uniquement) */
+    if (window.AuraTenant && window.AuraTenant.isSuperAdmin) {
+        const blocAdmin = document.createElement("a");
+        blocAdmin.className = "menu-item";
+        blocAdmin.style.marginTop = "4px";
+        blocAdmin.style.textDecoration = "none";
+        blocAdmin.href = "gestion_sites_services.html";
+        blocAdmin.innerHTML = "🌐 Sites & services";
+        sidebar.appendChild(blocAdmin);
+    }
+
+    /* ─── Cloisonnement par data-service : masque les éléments
+            non destinés au service actif. EXCEPTION : super-admin
+            en mode global voit tout. ─── */
+    try {
+        if (!_isGlobalSuperAdmin) {
+            document.querySelectorAll("[data-service]").forEach(function (el) {
+                const allowed = (el.getAttribute("data-service") || "")
+                    .split(",").map(function (s) { return s.trim().toLowerCase(); });
+                if (allowed.indexOf(_activeService) === -1) {
+                    el.style.display = "none";
+                }
+            });
+        }
+    } catch (e) { console.warn("[Tenant] cloisonnement data-service:", e); }
+
+    /* ─── Libellé façade dynamique selon service ─── */
+    try {
+        const facadeLbl = document.getElementById("facadeBrandLabel");
+        if (facadeLbl && window.AuraTenant) {
+            const siteName = ({
+                "LBM": "LE BON MARCHÉ",
+                "SAM": "LA SAMARITAINE",
+                "GERD": "LA GRANDE ÉPICERIE RIVE DROITE",
+                "GERG": "LA GRANDE ÉPICERIE RIVE GAUCHE",
+                "MH":  "MOËT HENNESSY"
+            })[window.AuraTenant.siteCode] || window.AuraTenant.siteCode;
+            const srvName = ({
+                "incendie":          "SÉCURITÉ INCENDIE",
+                "surete":            "SÛRETÉ",
+                "technique":         "TECHNIQUE",
+                "services_generaux": "SERVICES GÉNÉRAUX"
+            })[window.AuraTenant.service] || window.AuraTenant.service.toUpperCase();
+            facadeLbl.textContent = siteName + " — " + srvName;
+        }
+    } catch (e) { console.warn("[Tenant] façade:", e); }
 
     /* Theme */
     const saved = localStorage.getItem("theme");
@@ -2976,15 +3096,39 @@ const supabaseFg = supabase.createClient(
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cWxhamR5dG54YXZxaWdtemlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzg1NjgsImV4cCI6MjA4OTUxNDU2OH0.riGzQlfEPmo9SVK9Rs_fl33DnC5RR5qd2OUhgk4Twvs"
 );
 
+/* ─── Patch tenant pour ce second client : sinon ses requêtes
+        (feuille_de_garde, alertes_urgence) court-circuitent
+        le cloisonnement site_code + service ─── */
+try {
+    if (window.AuraTenant && typeof window.AuraTenant.patch === "function") {
+        window.AuraTenant.patch(supabaseFg);
+    }
+} catch (e) { console.warn("[Tenant] patch supabaseFg:", e); }
+
+/* Helper realtime : renvoie un objet { filter: ... } à passer à .on(...)
+   si on a un contexte tenant à appliquer, sinon objet vide. */
+function _tenantRtOpts(table) {
+    const opts = { event: "*", schema: "public", table: table };
+    try {
+        const f = window.AuraTenant && window.AuraTenant.realtimeFilter
+                ? window.AuraTenant.realtimeFilter() : null;
+        if (f) opts.filter = f;
+    } catch (e) {}
+    return opts;
+}
+
 const GARDE_ID = "00000000-0000-0000-0000-000000000001";
 
 /* Realtime — feuille de garde → met à jour l'encart info ET la liste d'agents */
 supabaseFg
     .channel("feuille_de_garde_realtime")
     .on("postgres_changes",
-        { event: "*", schema: "public", table: "feuille_de_garde" },
+        _tenantRtOpts("feuille_de_garde"),
         (payload) => {
             const d = payload.new || payload.old || {};
+            /* Filet client : ignore les payloads d'un autre tenant
+               (le filter serveur ne couvre que site_code, pas service) */
+            if (window.AuraTenant && !window.AuraTenant.matchesRealtime(d)) return;
             /* Mise à jour de l'encart info si les éléments existent (modale supervision ouverte) */
             const gdDate = document.getElementById("gd-date");
             if (gdDate) {
@@ -3156,10 +3300,12 @@ setInterval(loadUrgencesActives, 30000); // polling filet de sécurité toutes l
 supabaseFg
     .channel("alertes_urgence_realtime")
     .on("postgres_changes",
-        { event: "*", schema: "public", table: "alertes_urgence" },
+        _tenantRtOpts("alertes_urgence"),
         (payload) => {
             const event = payload.eventType;
             const row = payload.new || payload.old;
+            /* Filet client : ignore les payloads d'un autre tenant */
+            if (window.AuraTenant && !window.AuraTenant.matchesRealtime(row)) return;
             if (event === "INSERT" && row.statut === "active") {
                 /* Nouvelle urgence → on l'ajoute en tête et on déclenche immédiatement */
                 urgencesActives.unshift(row);

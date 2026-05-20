@@ -3127,16 +3127,15 @@ try {
     }
 } catch (e) { console.warn("[Tenant] patch supabaseFg:", e); }
 
-/* Helper realtime : renvoie un objet { filter: ... } à passer à .on(...)
-   si on a un contexte tenant à appliquer, sinon objet vide. */
+/* Helper realtime pour les channels Supabase de ce client.
+   ATTENTION : on NE met PAS de `filter` côté serveur car les rows avec
+   site_code=NULL (anciens rows, ou rows insérés avant tenant.js v3, ou
+   créés en mode super-admin global) seraient mangés par Supabase
+   realtime avant d'atteindre le client → panne totale des notifs et
+   alarmes. Le cloisonnement est assuré côté client par
+   AuraTenant.matchesRealtime() dans chaque callback. */
 function _tenantRtOpts(table) {
-    const opts = { event: "*", schema: "public", table: table };
-    try {
-        const f = window.AuraTenant && window.AuraTenant.realtimeFilter
-                ? window.AuraTenant.realtimeFilter() : null;
-        if (f) opts.filter = f;
-    } catch (e) {}
-    return opts;
+    return { event: "*", schema: "public", table: table };
 }
 
 const GARDE_ID = "00000000-0000-0000-0000-000000000001";

@@ -671,16 +671,31 @@ async function lancerNFC(id) {
             status.textContent = "Erreur NFC : " + err.message;
         }
     } else {
-        // Fallback : saisie manuelle de l'UID
+        // Fallback : saisie manuelle (iPhone, Safari desktop, Firefox, etc.)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+        const helpText = isIOS
+            ? "📱 <b>L'iPhone ne sait pas lire l'UID brut d'un badge</b> (limitation Apple)." +
+              " Pour récupérer le UID :" +
+              "<ol style=\"margin:6px 0 6px 18px; padding:0; font-size:0.85rem;\">" +
+              "<li>Avec un Android + NFC Tools (gratuit), onglet <i>Lire</i>, pose sur le badge → copie le UID.</li>" +
+              "<li>Ou avec l'app iOS <i>NFC TagWriter by NXP</i> (gratuite App Store), même principe.</li>" +
+              "<li>Ou regarde si le UID est imprimé sur le badge (parfois en tout petit ou en QR code).</li>" +
+              "</ol>"
+            : "📋 NFC non disponible sur ce navigateur. Saisis le UID à la main :";
+
         status.innerHTML = `
-            <span>NFC non disponible sur cet appareil. Saisie manuelle :</span>
-            <div style="display:flex; gap:8px; margin-top:8px;">
-                <input type="text" id="manualUID-${id}" placeholder="UID du badge (ex: 04:a2:b3:c4:d5:e6)"
-                       style="flex:1; padding:8px; border-radius:6px; border:1px solid var(--border);
-                              background:var(--bg2); color:var(--text);">
+            <div style="font-size:0.88rem; line-height:1.4;">${helpText}</div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+                <input type="text" id="manualUID-${id}"
+                       placeholder="UID (ex: 04:a2:b3:c4:d5:e6 ou 04a2b3c4d5e6)"
+                       style="flex:1; padding:9px 10px; border-radius:6px;
+                              border:1px solid var(--border); background:var(--bg2);
+                              color:var(--text); font-family:monospace;">
                 <button onclick="saisirBadgeManuel('${id}')"
-                        style="padding:8px 12px; border-radius:6px; background:var(--accent);
-                               color:#000; border:none; cursor:pointer; font-weight:600;">
+                        style="padding:9px 14px; border-radius:6px; background:var(--accent);
+                               color:#000; border:none; cursor:pointer; font-weight:700;">
                     ✅ Valider
                 </button>
             </div>

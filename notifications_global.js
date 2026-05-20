@@ -55,19 +55,23 @@ async function loadNotifications() {
 // ───────────────────────────────────────
 function subscribeToNotifications() {
     try {
-        // Filter tenant côté Supabase (site_code) si dispo
-        var rtFilter = (window.AuraTenant && window.AuraTenant.realtimeFilter)
-            ? window.AuraTenant.realtimeFilter() : null;
+        /* On NE filtre PAS côté serveur Supabase ici : si les anciens rows
+           ont site_code=NULL ou si la colonne manque, le filter serveur
+           les mange tous et l'utilisateur ne reçoit plus rien (régression
+           identifiée). Le cloisonnement reste assuré côté client via
+           AuraTenant.matchesRealtime() ci-dessous, qui rejette les
+           payloads d'un autre tenant tout en laissant passer ceux avec
+           site_code/service à NULL ou manquant. */
         var rtOpts = { event: "INSERT", schema: "public", table: "notifications" };
-        if (rtFilter) rtOpts.filter = rtFilter;
 
         notifChannel = supabaseClient
             .channel("global-notifications")
             .on("postgres_changes", rtOpts, (payload) => {
                 const newNotif = payload.new;
 
-                // Filet client : ignore les payloads d'un autre tenant
-                // (le filter serveur ne couvre que site_code, pas service)
+                // Filet client : rejet uniquement si le row appartient
+                // explicitement à un AUTRE tenant. Les rows sans site_code
+                // ou sans service passent (compatibilité ascendante).
                 if (window.AuraTenant && !window.AuraTenant.matchesRealtime(newNotif)) return;
 
                 const myRole = (localStorage.getItem("role") || "agent").toLowerCase();

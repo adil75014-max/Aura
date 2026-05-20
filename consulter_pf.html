@@ -503,9 +503,13 @@ async function declarerUrgence(type, permisId){
 
     /* Notification globale → le son sera joué chez agents/stationnaires/superviseurs/admins */
     if (typeof sendGlobalNotification === "function") {
+        // Le lieu doit apparaître DANS le titre pour qu'il soit visible
+        // dans le toast (qui n'affiche que titre || message[0]) ET dans
+        // le banner d'alarme. Le message conserve les détails complets.
+        var titreComplet = label + (lieu ? " — 📍 " + lieu : "");
         sendGlobalNotification(
-            label,
-            "Permis : " + numero + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—"),
+            titreComplet,
+            "Permis : " + numero + "\n📍 Lieu : " + (lieu || "Non précisé") + "\n👤 Agent : " + (localStorage.getItem("nom") || "—"),
             "alarme",
             "critique"
         );

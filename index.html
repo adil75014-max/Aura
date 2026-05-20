@@ -2096,9 +2096,24 @@ function checkUrgence() {
     // Transition INACTIF → ACTIF : déclenche popup + son une seule fois
     if (isActive && !_urgenceAlarmActive) {
         _urgenceAlarmActive = true;
-        const msg = (etat === "feu")
+
+        /* Récupérer le lieu de l'urgence la plus récente, si disponible */
+        var ctx = "";
+        try {
+            if (typeof urgencesActives !== "undefined" && urgencesActives.length) {
+                var u = urgencesActives[0];
+                var parts = [];
+                if (u && u.lieu)          parts.push("📍 " + u.lieu);
+                if (u && u.permis_numero) parts.push("📋 Permis " + u.permis_numero);
+                if (u && u.agent_nom)     parts.push("👤 " + u.agent_nom);
+                if (parts.length) ctx = "\n" + parts.join("\n");
+            }
+        } catch (e) {}
+
+        const msg = ((etat === "feu")
             ? "🔥 URGENCE INCENDIE — PERMIS FEU"
-            : "🚑 URGENCE — SECOURS À VICTIME";
+            : "🚑 URGENCE — SECOURS À VICTIME") + ctx;
+
         try {
             if (typeof playAlarmSound === "function") {
                 playAlarmSound(); // joue le son ET appelle showAlarmBanner() en interne
@@ -2108,7 +2123,14 @@ function checkUrgence() {
             // Personnaliser le message du banner après création
             setTimeout(function () {
                 const m = document.getElementById("alarmBannerMsg");
-                if (m) m.textContent = msg;
+                if (m) {
+                    m.textContent = msg;
+                    /* Préserver les retours à la ligne (sinon ils sont
+                       rendus comme des espaces et l'adresse se mélange) */
+                    m.style.whiteSpace = "pre-line";
+                    m.style.lineHeight = "1.5";
+                    m.style.maxWidth   = "90%";
+                }
             }, 50);
         } catch (e) { console.warn("[Urgence] popup:", e); }
     }

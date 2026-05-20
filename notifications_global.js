@@ -55,14 +55,21 @@ async function loadNotifications() {
 // ───────────────────────────────────────
 function subscribeToNotifications() {
     try {
+        // Filter tenant côté Supabase (site_code) si dispo
+        var rtFilter = (window.AuraTenant && window.AuraTenant.realtimeFilter)
+            ? window.AuraTenant.realtimeFilter() : null;
+        var rtOpts = { event: "INSERT", schema: "public", table: "notifications" };
+        if (rtFilter) rtOpts.filter = rtFilter;
+
         notifChannel = supabaseClient
             .channel("global-notifications")
-            .on("postgres_changes", {
-                event: "INSERT",
-                schema: "public",
-                table: "notifications"
-            }, (payload) => {
+            .on("postgres_changes", rtOpts, (payload) => {
                 const newNotif = payload.new;
+
+                // Filet client : ignore les payloads d'un autre tenant
+                // (le filter serveur ne couvre que site_code, pas service)
+                if (window.AuraTenant && !window.AuraTenant.matchesRealtime(newNotif)) return;
+
                 const myRole = (localStorage.getItem("role") || "agent").toLowerCase();
                 const myName = localStorage.getItem("nom") || "";
 
@@ -71,35 +78,41 @@ function subscribeToNotifications() {
                 updateGlobalNotifBadge();
                 renderGlobalNotifPanel();
 
-                // Ne pas faire de toast/son pour ses propres notifications
-                if (newNotif.emetteur === myName) return;
-
                 const isAlarm = newNotif.type_notif === "alarme" || newNotif.priorite === "haute" || newNotif.priorite === "critique";
                 const isPermisFeuAlarm = isAlarm && /permis.*feu|incendie|secours.*victime|svv/i.test(
                     (newNotif.titre || "") + " " + (newNotif.message || "")
                 );
+                const isCriticalAlarm = isPermisFeuAlarm || newNotif.priorite === "critique";
+
+                // Self-bypass différencié : on ne se notifie pas soi-même sur les
+                // notifs banales, mais on RECOIT les alarmes critiques (utile pour
+                // confirmer le départ du signal sur ses autres devices + acquitter).
+                if (newNotif.emetteur === myName && !isCriticalAlarm) return;
+
+                // Toast complet (titre + détails comme le lieu, agent, etc.)
+                const toastText = (newNotif.titre || "") +
+                                  (newNotif.message ? "\n" + newNotif.message : "") ||
+                                  "Nouvelle notification";
 
                 // ── RÈGLES PAR RÔLE ──
                 if (myRole === "stationnaire") {
                     // Stationnaire : uniquement les alarmes liées aux permis feu
-                    // (pas de son ni toast pour les autres notifications, juste la liste)
                     if (isPermisFeuAlarm) {
-                        showGlobalToast(newNotif.titre || newNotif.message || "Alarme permis feu");
+                        showGlobalToast(toastText);
                         playAlarmSound();
                         const msgEl = document.getElementById("alarmBannerMsg");
-                        if (msgEl) msgEl.textContent = (newNotif.titre || "") + " — " + (newNotif.message || "");
+                        if (msgEl) msgEl.textContent = toastText;
                     }
-                    // Sinon : la notification est silencieusement ajoutée à la liste (déjà fait au-dessus)
                     return;
                 }
 
-                // ── Agent / Superviseur / Admin : son + toast pour TOUT ──
-                showGlobalToast(newNotif.titre || newNotif.message || "Nouvelle notification");
+                // ── Agent / Superviseur / Admin / Superadmin : son + toast pour TOUT ──
+                showGlobalToast(toastText);
 
                 if (isAlarm) {
                     playAlarmSound();
                     const msgEl = document.getElementById("alarmBannerMsg");
-                    if (msgEl) msgEl.textContent = (newNotif.titre || "") + " — " + (newNotif.message || "");
+                    if (msgEl) msgEl.textContent = toastText;
                 } else {
                     playNotifSound();
                 }
@@ -493,7 +506,7 @@ function showAlarmBanner() {
     banner.innerHTML = `
         <div style="font-size:2.5rem;margin-bottom:10px;">🚨</div>
         <div style="font-size:1.4rem;font-weight:800;letter-spacing:0.05em;">ALARME EN COURS</div>
-        <div style="font-size:0.95rem;margin-top:8px;opacity:0.9;" id="alarmBannerMsg"></div>
+        <div style="font-size:0.95rem;margin-top:8px;opacity:0.95;white-space:pre-line;line-height:1.5;max-width:90%;text-align:center;" id="alarmBannerMsg"></div>
         <button onclick="closeAlarmBanner()" style="
             margin-top:20px; padding:12px 30px; background:#fff; color:#b91c1c;
             border:none; border-radius:10px; font-weight:700; font-size:1rem;

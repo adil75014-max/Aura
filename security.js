@@ -3,7 +3,7 @@
 //  28 protections actives — conforme OWASP Top 10
 // ═══════════════════════════════════════════════════════════════
 
-var VALID_ROLES = ["admin", "superviseur", "stationnaire", "agent"];
+var VALID_ROLES = ["admin", "superviseur", "stationnaire", "agent", "superadmin"];
 var MAX_SESSION_MS = 8 * 60 * 60 * 1000;
 var ALLOWED_SCRIPT_DOMAINS = [
     "supabase", "cdn.jsdelivr.net", "cdnjs.cloudflare.com",
@@ -18,13 +18,17 @@ var ALLOWED_OUTBOUND = [
 // ╔═══════════════════════════════════════════════════════╗
 // ║  1. RBAC — CONTRÔLE D'ACCÈS PAR RÔLE ET PAR PAGE    ║
 // ╚═══════════════════════════════════════════════════════╝
+// Le rôle "superadmin" a accès à TOUT par construction (court-circuit
+// dans le check ci-dessous), donc inutile de l'ajouter explicitement
+// dans chaque liste — mais on le fait quand même par défense en profondeur.
 var PAGE_PERMISSIONS = {
-    "dashboard_admin.html":    ["admin", "superviseur"],
-    "gestion_de_compte.html":  ["admin"],
-    "gestion_des_rapports.html": ["admin", "superviseur"],
-    "ronde_admin.html":        ["admin", "superviseur"],
-    "verifications_admin.html":["admin", "superviseur"],
-    "consoledispatch.html":    ["admin", "superviseur", "stationnaire"]
+    "dashboard_admin.html":      ["admin", "superviseur", "superadmin"],
+    "gestion_de_compte.html":    ["admin", "superadmin"],
+    "gestion_des_rapports.html": ["admin", "superviseur", "superadmin"],
+    "ronde_admin.html":          ["admin", "superviseur", "superadmin"],
+    "verifications_admin.html":  ["admin", "superviseur", "superadmin"],
+    "consoledispatch.html":      ["admin", "superviseur", "stationnaire", "superadmin"],
+    "gestion_sites_services.html": ["superadmin"]
 };
 
 // ╔═══════════════════════════════════════════════════════╗
@@ -61,7 +65,12 @@ function secureGet(k) {
     var role = localStorage.getItem("role");
     if (!nom || !role) { window.location.href = "login.html"; return; }
     if (VALID_ROLES.indexOf(role.toLowerCase()) === -1) {
-        localStorage.clear(); window.location.href = "login.html"; return;
+        // Rôle inconnu : on déconnecte proprement (sans flush total)
+        // pour préserver d'éventuelles données locales non sensibles.
+        localStorage.removeItem("nom");
+        localStorage.removeItem("role");
+        localStorage.removeItem("loginTime");
+        window.location.href = "login.html"; return;
     }
 
     // Expiration session
@@ -72,7 +81,9 @@ function secureGet(k) {
         window.location.href = "login.html"; return;
     }
 
-    // RBAC : vérifier les permissions de la page
+    // RBAC : court-circuit pour superadmin (accès partout)
+    if (role.toLowerCase() === "superadmin") return;
+
     var allowed = PAGE_PERMISSIONS[page];
     if (allowed && allowed.indexOf(role.toLowerCase()) === -1) {
         auditLog("ACCESS_DENIED", nom + " → " + page);

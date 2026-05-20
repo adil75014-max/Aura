@@ -203,6 +203,93 @@
 <script src="tenant.js"></script>
 
 <script>
+/* ═══════════════════════════════════════════════════════
+   AUTO-REDIRECT si déjà connecté
+   --------------------------------------------------------
+   Si un utilisateur arrive sur login.html alors qu'il a déjà
+   une session valide (nom + role + loginTime non expiré),
+   on le renvoie direct vers index.html. Ça évite que le bouton
+   retour du navigateur le coince sur une page de login en
+   apparence déconnecté alors qu'il l'est toujours.
+   ═══════════════════════════════════════════════════════ */
+(function () {
+    function _checkAlreadyLogged() {
+        try {
+            var nom = localStorage.getItem("nom");
+            var role = localStorage.getItem("role");
+            var loginTime = parseInt(localStorage.getItem("loginTime") || "0", 10);
+            var MAX_MS = 8 * 60 * 60 * 1000;
+            if (nom && role && loginTime && (Date.now() - loginTime) < MAX_MS) {
+                // Session valide → on retourne sur l'app
+                window.location.replace("index.html");
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    /* ─── Auto-login depuis ?badge=UID ─────────────────────────────
+       Contournement iOS : Safari iOS n'a pas accès au NFC via Web NFC,
+       mais depuis iOS 14, un iPhone qui détecte un tag NFC contenant un
+       record URL (NDEF URI) ouvre Safari automatiquement sur cette URL.
+       Si chaque badge est programmé avec
+         https://app/login.html?badge=SON_UID
+       on récupère le UID ici et on déclenche un login badge identique
+       à celui d'Android. Marche aussi sur Android (au passage). */
+    function _handleBadgeURLParam() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var badge = params.get("badge");
+            if (!badge) return false;
+
+            badge = badge.trim();
+            // Format raisonnable : alphanum + :, -, _, longueur 4..64
+            if (!/^[A-Za-z0-9:_-]{4,64}$/.test(badge)) return false;
+
+            // Vire le paramètre de l'URL → pas de UID dans l'historique
+            // du navigateur ni dans un partage de lien.
+            try { history.replaceState(null, "", window.location.pathname); } catch(e) {}
+
+            // Attend que supabaseClient et loginWithBadge soient prêts
+            // (les <script src=…> sont chargés après cette IIFE).
+            var tries = 0;
+            (function tryLogin() {
+                if (typeof window.supabaseClient !== "undefined"
+                    && typeof window.loginWithBadge === "function") {
+                    var statusEl = document.getElementById("nfcStatus");
+                    if (statusEl) {
+                        statusEl.innerHTML = "📡 Badge détecté via URL — connexion…";
+                        statusEl.style.color = "#9be7ff";
+                    }
+                    window.loginWithBadge(badge);
+                } else if (tries++ < 50) {
+                    setTimeout(tryLogin, 100);
+                }
+            })();
+            return true;
+        } catch (e) { return false; }
+    }
+
+    // Ordre important : on traite le paramètre badge AVANT le check de
+    // session, pour qu'un tap badge puisse écraser une session existante
+    // (passation de poste, changement d'agent…).
+    if (_handleBadgeURLParam()) return;
+
+    // 1. Check immédiat au chargement initial (utilise replace pour ne pas
+    //    polluer l'historique).
+    _checkAlreadyLogged();
+
+    // 2. Check sur 'pageshow' : ce listener se déclenche aussi quand la
+    //    page est servie depuis le back-forward cache (bfcache) lors d'un
+    //    "Retour" navigateur, où les scripts inline ne sont PAS ré-exécutés.
+    //    Sans ça, l'utilisateur croit être déconnecté alors que sa session
+    //    est intacte en localStorage.
+    window.addEventListener("pageshow", function (e) {
+        // e.persisted = true si la page vient du bfcache
+        if (e.persisted) _checkAlreadyLogged();
+    });
+})();
+
 document.getElementById("year").textContent = new Date().getFullYear();
 
 // Audit log local (security.js n'est pas chargé sur login)
@@ -431,7 +518,25 @@ async function startNFCLogin() {
 
     // 2. Vérifier le support Web NFC
     if (!("NDEFReader" in window)) {
-        statusEl.innerHTML = "ℹ️ Web NFC non supporté. Utilisez Chrome sur Android (HTTPS requis).";
+        // Détection iOS (iPhone, iPad ou iPad reportant comme Mac)
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        if (isIOS) {
+            statusEl.innerHTML =
+                "📱 <b>Sur iPhone, pas besoin de cliquer ici.</b><br>" +
+                "Pose simplement ton téléphone sur ton badge — iOS ouvrira " +
+                "automatiquement la page de connexion.<br>" +
+                "<small style=\"opacity:0.75\">" +
+                "Requiert iPhone XS ou plus récent + iOS 14+, et un badge " +
+                "programmé avec l'URL de l'application. " +
+                "Si rien ne se passe, demande à un admin de re-programmer ton badge." +
+                "</small>";
+        } else {
+            statusEl.innerHTML =
+                "ℹ️ Web NFC non supporté sur ce navigateur.<br>" +
+                "Utilise Chrome sur Android (HTTPS requis), ou pose ton " +
+                "téléphone sur ton badge si celui-ci est programmé en URL.";
+        }
         statusEl.style.color = "#ff9ba8";
         return;
     }

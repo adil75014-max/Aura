@@ -1175,11 +1175,10 @@
         <div class="card" data-service="incendie" id="card-permis-feu" onclick="window.location.href='permis_feu.html'">🔥 Créer un permis feu</div>
         <div class="card" data-service="incendie" onclick="window.location.href='consulter_pf.html'">📁 Consulter les permis feu</div>
 
-        <button id="btn-stop-alarme" data-service="incendie" style="
-            margin-top: 12px; width: 100%; padding: 12px; border: none;
-            border-radius: 12px; background: #111; color: white;
-            font-weight: 700; font-size: 1rem; display: none;
-        ">🛑 Arrêter l'alarme déclenchée par le permis feu</button>
+        <!-- Le bouton "Arrêter l'alarme" a été déplacé sur la bannière d'alarme
+             plein écran (notifications_global.js → showAlarmBanner). De là il
+             broadcast l'arrêt à TOUS les postes connectés via UPDATE de
+             alertes_urgence.statut → 'traitee'. -->
 
         <div class="card" onclick="window.location.href='consignes_permanentes.html'">📘 Consignes permanentes</div>
         <div class="card" onclick="window.location.href='https://lebonmarche.sharepoint.com/:x:/s/CONSIGNESSSIAP/IQCjVPIz99kkSrzsXjpCEC3CAWxWx5e2FjX3p_78tJAJdRk?e=TvlGaJ'">📅 Consignes journalières</div>
@@ -2087,11 +2086,8 @@ async function updateMeteo() {
 let _urgenceAlarmActive = false;
 
 function checkUrgence() {
-    const btnStop = document.getElementById("btn-stop-alarme");
     const etat    = localStorage.getItem("permisFeuUrgence");
     const isActive = (etat === "feu" || etat === "svv");
-
-    if (btnStop) btnStop.style.display = isActive ? "block" : "none";
 
     // Transition INACTIF → ACTIF : déclenche popup + son une seule fois
     if (isActive && !_urgenceAlarmActive) {
@@ -3364,28 +3360,10 @@ supabaseFg
     )
     .subscribe();
 
-/* Brancher le bouton stop alarme existant pour qu'il acquitte TOUTES les urgences actives */
-document.addEventListener("DOMContentLoaded", () => {
-    const btnStop = document.getElementById("btn-stop-alarme");
-    if (btnStop) {
-        btnStop.addEventListener("click", async () => {
-            if (!confirm("Arrêter l'alarme et acquitter toutes les urgences en cours ?")) return;
-            for (const u of urgencesActives.slice()) {
-                try {
-                    await supabaseFg.from("alertes_urgence").update({
-                        statut: "traitee",
-                        traitee_at: new Date().toISOString(),
-                        traitee_par: localStorage.getItem("nom") || null
-                    }).eq("id", u.id);
-                } catch(e) { console.error(e); }
-            }
-            urgencesActives = [];
-            renderUrgencesPanel();
-            syncUrgenceCardWithActives();
-            showToast("✅ Alarmes arrêtées");
-        });
-    }
-});
+/* Le bouton stop alarme a été déplacé sur la bannière d'alarme
+   (notifications_global.js → showAlarmBanner). Il appelle directement
+   window.stopAllAlarms() qui broadcast à tous les postes via UPDATE
+   de alertes_urgence.statut → 'traitee'. Plus rien à brancher ici. */
 </script>
 
 <script src="security.js"></script>

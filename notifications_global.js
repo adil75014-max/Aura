@@ -111,17 +111,49 @@ function subscribeToNotifications() {
                 }
 
                 // ── Agent / Superviseur / Admin / Superadmin : son + toast pour TOUT ──
-                showGlobalToast(toastText);
-
+                // ORDRE CRITIQUE : on lance le son AVANT le toast pour que le décodage
+                // audio démarre en parallèle de l'animation du toast → ils apparaissent
+                // / s'entendent en même temps perceptuellement.
                 if (isAlarm) {
-                    playAlarmSound();
-                    const msgEl = document.getElementById("alarmBannerMsg");
-                    if (msgEl) msgEl.textContent = toastText;
+                    playAlarmSound(); // démarre le son + crée la bannière en parallèle
                 } else {
                     playNotifSound();
                 }
+
+                showGlobalToast(toastText);
+
+                if (isAlarm) {
+                    const msgEl = document.getElementById("alarmBannerMsg");
+                    if (msgEl) msgEl.textContent = toastText;
+                }
             })
             .subscribe();
+
+        // ─── Subscription auxiliaire sur alertes_urgence ───
+        // Quand UNE row passe à statut='traitee' (UPDATE), on ferme
+        // automatiquement le banner d'alarme et on stoppe le son sur
+        // CE device. Combiné avec stopAllAlarms() qui broadcast cet
+        // UPDATE, ça donne un acquittement multi-device en temps réel.
+        try {
+            supabaseClient
+                .channel("alertes_urgence_stop")
+                .on("postgres_changes", {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "alertes_urgence"
+                }, (payload) => {
+                    const row = payload.new || {};
+                    if (window.AuraTenant && !window.AuraTenant.matchesRealtime(row)) return;
+                    if (row.statut === "traitee") {
+                        // Quelqu'un (peut-être nous, peut-être un autre poste) a stoppé.
+                        // On ferme le banner et on coupe le son sans rebroadcaster.
+                        closeAlarmBanner();
+                    }
+                })
+                .subscribe();
+        } catch (e) {
+            console.warn("[NOTIF] Subscription alertes_urgence_stop indisponible:", e);
+        }
     } catch (e) {
         console.warn("[NOTIF] Realtime non disponible:", e);
     }
@@ -501,6 +533,8 @@ function _playFallbackBeep(volume, duration, frequency) {
 // ───────────────────────────────────────
 //  BANNIÈRE D'ALARME VISUELLE
 //  S'affiche en plein écran pour garantir que l'alarme est vue
+//  Le bouton "🛑 ARRÊTER L'ALARME" broadcaste à tous les agents
+//  connectés via UPDATE de alertes_urgence → statut='traitee'.
 // ───────────────────────────────────────
 function showAlarmBanner() {
     if (document.getElementById("alarmBanner")) return;
@@ -508,14 +542,18 @@ function showAlarmBanner() {
     const banner = document.createElement("div");
     banner.id = "alarmBanner";
     banner.innerHTML = `
-        <div style="font-size:2.5rem;margin-bottom:10px;">🚨</div>
+        <div style="font-size:2.5rem;margin-bottom:6px;">🚨</div>
         <div style="font-size:1.4rem;font-weight:800;letter-spacing:0.05em;">ALARME EN COURS</div>
-        <div style="font-size:0.95rem;margin-top:8px;opacity:0.95;white-space:pre-line;line-height:1.5;max-width:90%;text-align:center;" id="alarmBannerMsg"></div>
-        <button onclick="closeAlarmBanner()" style="
-            margin-top:20px; padding:12px 30px; background:#fff; color:#b91c1c;
-            border:none; border-radius:10px; font-weight:700; font-size:1rem;
-            cursor:pointer;
-        ">✔ Acquitter</button>
+        <div style="font-size:1rem;margin-top:12px;opacity:0.98;white-space:pre-line;line-height:1.5;max-width:92%;text-align:center;font-weight:500;" id="alarmBannerMsg"></div>
+        <button onclick="window.stopAllAlarms && window.stopAllAlarms()" style="
+            margin-top:24px; padding:16px 32px; background:#fff; color:#b91c1c;
+            border:none; border-radius:12px; font-weight:800; font-size:1.05rem;
+            cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.3);
+            letter-spacing:0.03em;
+        ">🛑 ARRÊTER L'ALARME</button>
+        <div style="margin-top:10px;font-size:0.78rem;opacity:0.85;">
+            ⚠️ Stoppe l'alarme sur TOUS les postes connectés.
+        </div>
     `;
     banner.style.cssText = `
         position:fixed; inset:0; z-index:999999;
@@ -524,6 +562,7 @@ function showAlarmBanner() {
         justify-content:center; align-items:center;
         font-family:system-ui,sans-serif; text-align:center;
         animation: alarmPulse 0.8s ease-in-out infinite alternate;
+        padding:20px;
     `;
 
     // CSS animation
@@ -545,6 +584,48 @@ function closeAlarmBanner() {
     if (_alarmSource) { try { _alarmSource.stop(); } catch(e){} _alarmSource = null; }
     if (navigator.vibrate) { try { navigator.vibrate(0); } catch(e){} }
 }
+
+// ───────────────────────────────────────
+//  STOP ALARM BROADCAST
+//  Marque toutes les urgences actives comme traitées en BDD.
+//  Le realtime UPDATE propagera la fermeture du banner sur tous
+//  les autres devices connectés (incluant le PC sécurité).
+// ───────────────────────────────────────
+async function stopAllAlarms() {
+    closeAlarmBanner(); // ferme immédiatement localement, on n'attend pas le round-trip
+
+    if (typeof supabaseClient === "undefined") return;
+
+    try {
+        // Récupère toutes les urgences encore actives pour ce tenant.
+        // tenant.js patche déjà supabaseClient.from() → on est cloisonné automatiquement.
+        let q = supabaseClient.from("alertes_urgence")
+            .select("id")
+            .eq("statut", "active");
+
+        const { data, error } = await q;
+        if (error) { console.warn("[STOP-ALARM] fetch:", error); return; }
+        if (!data || !data.length) return;
+
+        // Marquer toutes traitées en parallèle
+        const nom = localStorage.getItem("nom") || null;
+        const updates = data.map(u =>
+            supabaseClient.from("alertes_urgence")
+                .update({
+                    statut: "traitee",
+                    traitee_at: new Date().toISOString(),
+                    traitee_par: nom
+                })
+                .eq("id", u.id)
+        );
+        await Promise.all(updates);
+        console.info("[STOP-ALARM] " + data.length + " urgence(s) traitée(s) par " + (nom || "—"));
+    } catch (e) {
+        console.error("[STOP-ALARM]", e);
+    }
+}
+// Exposé global pour le bouton onclick="window.stopAllAlarms()"
+window.stopAllAlarms = stopAllAlarms;
 
 // ───────────────────────────────────────
 //  TOAST GLOBAL

@@ -641,12 +641,29 @@ async function saveReport() {
                 Object.values(champsSpec).map(c => "• " + c.label + " : " + c.value).join("\n");
         }
 
+        /* ── Service métier déduit du TYPE (pas du service de l'agent) ──
+           Un "vol" est sûreté, une "panne" est technique, etc., quel que
+           soit l'agent qui saisit. Si le type n'est pas mappé (types
+           incendie génériques), on laisse tenant.js mettre le service. */
+        const SERVICE_PAR_TYPE = {
+            vol:"surete",conflit:"surete",intrusion:"surete",personne_suspecte:"surete",
+            colis_suspect:"surete",objet_abandonne:"surete",camera_hs:"surete",
+            video_consultation:"surete",video_extraction:"surete",
+            panne_elec:"technique",panne_cvc:"technique",panne_plomberie:"technique",
+            panne_ascenseur:"technique",panne_eclairage:"technique",porte_auto:"technique",
+            chaudiere:"technique",maint_hebdo:"technique",maint_mens:"technique",maint_annuelle:"technique",
+            livraison_in:"services_generaux",livraison_out:"services_generaux",courrier:"services_generaux",
+            colis:"services_generaux",nettoyage:"services_generaux",espaces_verts:"services_generaux",dechets:"services_generaux"
+        };
+        const serviceMetier = SERVICE_PAR_TYPE[typeCode]; // undefined si non mappé → tenant.js gère
+
         const { error } = await supabaseClient.from("rapports").insert({
             type: typeCode || "autre",
+            service: serviceMetier,  // forcé si métier connu, sinon tenant.js complète
             titre: (intervention||"Rapport")+" — "+site,
             description: description + blocSpec,
             localisation: site || "Non précisé",
-            statut: "ouvert",
+            statut: "cloture",
             priorite: priorite,
             meta: {
                 site,

@@ -61,6 +61,23 @@
             overflow-x: hidden;
         }
 
+        /* Fond radar immersif (service sûreté) */
+        #sureteRadar {
+            position: fixed;
+            inset: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            display: none;       /* activé par JS pour la sûreté */
+            opacity: 0;
+            transition: opacity 1.2s ease;
+        }
+        #sureteRadar.on { display: block; opacity: 1; }
+        /* Le contenu doit passer au-dessus du radar */
+        .topbar, .cards-container, .sidebar, .main-content,
+        #cardsContainer, .container, .dashboard-section { position: relative; z-index: 1; }
+
         .topbar {
             position: fixed;
             top: 0; left: 0; right: 0;
@@ -1097,6 +1114,10 @@
     </style>
 </head>
 <body>
+
+<!-- Fond radar immersif — activé uniquement pour le service sûreté.
+     pointer-events:none → ne gêne jamais les clics. z-index:0 derrière le contenu. -->
+<canvas id="sureteRadar" aria-hidden="true"></canvas>
 
 <div class="topbar">
     <div class="top-left">
@@ -3118,6 +3139,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     renderDashboardCards();
 
+    /* ─── Fond radar immersif pour le service sûreté ─── */
+    if (_activeService === "surete") {
+        if (window.initSureteRadar) initSureteRadar();
+    }
+
     /* ─── Libellé façade dynamique selon service ─── */
     try {
         const facadeLbl = document.getElementById("facadeBrandLabel");
@@ -3423,6 +3449,120 @@ supabaseFg
 </script>
 
 <script src="security.js"></script>
+<script>
+/* ============================================================
+   🛰️ FOND RADAR IMMERSIF — service sûreté
+   Canvas plein écran derrière le contenu (z-index 0, sans clics).
+   Balayage rotatif + anneaux + blips. Respecte prefers-reduced-motion.
+   ============================================================ */
+window.initSureteRadar = function () {
+    const canvas = document.getElementById("sureteRadar");
+    if (!canvas || canvas.dataset.init === "1") return;
+    canvas.dataset.init = "1";
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const COLOR = "80, 200, 220"; // cyan sûreté
+    let W, H, cx, cy, R, dpr;
+
+    function resize() {
+        dpr = Math.min(window.devicePixelRatio || 1, 2);
+        W = window.innerWidth; H = window.innerHeight;
+        canvas.width = W * dpr; canvas.height = H * dpr;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        cx = W / 2; cy = H / 2;
+        R = Math.min(W, H) * 0.46;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+    canvas.classList.add("on");
+
+    // Blips fixes (angle + rayon relatif), s'illuminent au passage du balayage
+    const blips = Array.from({ length: 8 }, () => ({
+        a: Math.random() * Math.PI * 2,
+        r: 0.22 + Math.random() * 0.72,
+        lit: 0
+    }));
+
+    let angle = -Math.PI / 2; // démarre en haut
+
+    function drawStatic() {
+        // Anneaux concentriques
+        ctx.lineWidth = 1;
+        for (let i = 1; i <= 4; i++) {
+            ctx.strokeStyle = "rgba(" + COLOR + "," + (0.05 + i * 0.02) + ")";
+            ctx.beginPath(); ctx.arc(cx, cy, R * i / 4, 0, Math.PI * 2); ctx.stroke();
+        }
+        // Croix + diagonales
+        ctx.strokeStyle = "rgba(" + COLOR + ",0.07)";
+        ctx.beginPath();
+        ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy);
+        ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R);
+        const d = R * 0.7071;
+        ctx.moveTo(cx - d, cy - d); ctx.lineTo(cx + d, cy + d);
+        ctx.moveTo(cx - d, cy + d); ctx.lineTo(cx + d, cy - d);
+        ctx.stroke();
+        // Graduations d'angle
+        ctx.fillStyle = "rgba(" + COLOR + ",0.10)";
+        for (let deg = 0; deg < 360; deg += 30) {
+            const a = deg * Math.PI / 180;
+            ctx.beginPath();
+            ctx.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    function draw() {
+        ctx.clearRect(0, 0, W, H);
+        drawStatic();
+
+        // Balayage (wedge dégradé conique si dispo)
+        if (ctx.createConicGradient) {
+            const g = ctx.createConicGradient(angle, cx, cy);
+            g.addColorStop(0, "rgba(" + COLOR + ",0.30)");
+            g.addColorStop(0.06, "rgba(" + COLOR + ",0.06)");
+            g.addColorStop(0.18, "rgba(" + COLOR + ",0)");
+            g.addColorStop(1, "rgba(" + COLOR + ",0)");
+            ctx.fillStyle = g;
+            ctx.beginPath(); ctx.moveTo(cx, cy);
+            ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.closePath(); ctx.fill();
+        }
+        // Ligne de balayage
+        ctx.strokeStyle = "rgba(" + COLOR + ",0.55)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(cx, cy);
+        ctx.lineTo(cx + Math.cos(angle) * R, cy + Math.sin(angle) * R);
+        ctx.stroke();
+        // Centre
+        ctx.fillStyle = "rgba(" + COLOR + ",0.5)";
+        ctx.beginPath(); ctx.arc(cx, cy, 2.5, 0, Math.PI * 2); ctx.fill();
+
+        // Blips
+        blips.forEach(b => {
+            let da = (b.a - angle) % (Math.PI * 2);
+            if (da < 0) da += Math.PI * 2;
+            if (da < 0.06) b.lit = 1;            // le balayage vient de passer
+            b.lit *= 0.975;                       // décroissance
+            if (b.lit > 0.02) {
+                const bx = cx + Math.cos(b.a) * R * b.r;
+                const by = cy + Math.sin(b.a) * R * b.r;
+                ctx.fillStyle = "rgba(" + COLOR + "," + (b.lit * 0.85) + ")";
+                ctx.beginPath(); ctx.arc(bx, by, 2.5 + b.lit * 3.5, 0, Math.PI * 2); ctx.fill();
+                ctx.strokeStyle = "rgba(" + COLOR + "," + (b.lit * 0.4) + ")";
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(bx, by, 6 + b.lit * 8, 0, Math.PI * 2); ctx.stroke();
+            }
+        });
+
+        angle += 0.016;
+        if (angle > Math.PI) angle -= Math.PI * 2;
+        if (!reduced) requestAnimationFrame(draw);
+    }
+
+    if (reduced) drawStatic(); else requestAnimationFrame(draw);
+};
+</script>
 <script src="global.js"></script>
 <script src="notifications_global.js"></script>
 </body>

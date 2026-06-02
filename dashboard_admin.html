@@ -1305,14 +1305,31 @@ function exportCSV() {
    PDF GENERATION
    ========================================================== */
 function getRapportsPlage(type) {
-    const todayStr = new Date().toISOString().split('T')[0];
+    // On raisonne sur l'objet Date réel (r.datetime), en heure LOCALE,
+    // pour éviter le décalage UTC et gérer le passage de minuit.
+    const now = new Date();
+    let start, end;
+
+    if (type === 'jour') {
+        // Vacation jour : aujourd'hui 08:00 → aujourd'hui 20:00 (local)
+        start = new Date(now); start.setHours(8, 0, 0, 0);
+        end   = new Date(now); end.setHours(20, 0, 0, 0);
+    } else {
+        // Vacation nuit : 20:00 → 08:00, à cheval sur deux jours
+        if (now.getHours() < 8) {
+            // tôt le matin → la nuit a commencé hier 20:00 et finit ce matin 08:00
+            start = new Date(now); start.setDate(start.getDate() - 1); start.setHours(20, 0, 0, 0);
+            end   = new Date(now); end.setHours(8, 0, 0, 0);
+        } else {
+            // soirée ou journée → nuit en cours/à venir : ce soir 20:00 → demain 08:00
+            start = new Date(now); start.setHours(20, 0, 0, 0);
+            end   = new Date(now); end.setDate(end.getDate() + 1); end.setHours(8, 0, 0, 0);
+        }
+    }
 
     return allData.filter(r => {
-        if (r.date !== todayStr) return false;
-        const h = parseInt(r.heure.split(':')[0]);
-        if (type === 'jour') return h >= 8 && h < 20;
-        if (type === 'nuit') return (h >= 20 && h <= 23) || (h >= 0 && h < 8);
-        return false;
+        const d = r.datetime instanceof Date ? r.datetime : new Date(r.datetime);
+        return d instanceof Date && !isNaN(d) && d >= start && d < end;
     });
 }
 
@@ -1430,11 +1447,12 @@ async function genererPDFUltra(rapportsFiltrés, titre) {
         y += 14;
 
         // Tableau info clé
+        const statutFrPdf = { ouvert:'Ouvert', cloture:'Cloture', en_cours:'En cours', traitee:'Traite', conforme:'Conforme', non_conforme:'Non conforme', hors_service:'Hors service', remis_en_service:'Remis en service', actif:'Actif' };
         const infoRows = [
             ['Date / Heure', formatDateFR(r.date) + '  a  ' + r.heure],
             ['Agent', r.agent || '\u2014'],
             ['Lieu', r.lieu || '\u2014'],
-            ['Statut', r.statut || '\u2014'],
+            ['Statut', statutFrPdf[r.statut] || r.statut || '\u2014'],
             ['Priorite', r.priorite || 'normale']
         ];
 
@@ -1475,33 +1493,32 @@ async function genererPDFUltra(rapportsFiltrés, titre) {
             });
         }
 
-        // Meta (clés utiles seulement, pas les données techniques)
-        if (r.meta && typeof r.meta === 'object') {
-            const skipKeys = ['form_data', 'form_fields', 'source'];
-            const metaEntries = Object.entries(r.meta).filter(([k, v]) => {
-                if (skipKeys.includes(k)) return false;
-                if (v === null || v === undefined || v === '') return false;
-                if (typeof v === 'object') return false;
-                return true;
-            });
+        // Champs spécifiques métier (objets volés, transporteur, etc.) —
+        // remplacent l'ancien dump technique. Stockés dans meta.champs_specifiques
+        // sous la forme { id: {label, value} }.
+        const cs = (r.meta && r.meta.champs_specifiques) ? r.meta.champs_specifiques : null;
+        if (cs && typeof cs === 'object' && Object.keys(cs).length) {
+            y += 3;
+            ensureSpace(12);
+            pdf.setFontSize(9); pdf.setTextColor(60, 80, 130); pdf.setFont(undefined, 'bold');
+            pdf.text('Informations specifiques', M, y); y += 5;
+            pdf.setFont(undefined, 'normal');
 
-            if (metaEntries.length) {
-                y += 3;
-                ensureSpace(10);
-                pdf.setFontSize(9); pdf.setTextColor(60, 80, 130); pdf.setFont(undefined, 'bold');
-                pdf.text('Details complementaires', M, y); y += 5;
-                pdf.setFont(undefined, 'normal');
-
-                metaEntries.forEach(([k, v]) => {
-                    ensureSpace(6);
-                    const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                    pdf.setFontSize(8); pdf.setTextColor(110);
-                    pdf.text(label + ' :', M + 4, y);
-                    pdf.setTextColor(40);
-                    pdf.text(String(v).substring(0, 100), M + 4 + pdf.getTextWidth(label + ' : ') + 2, y);
-                    y += 5;
+            Object.values(cs).forEach(item => {
+                if (!item || !item.value) return;
+                ensureSpace(6);
+                const label = String(item.label || '').substring(0, 40);
+                pdf.setFontSize(8); pdf.setTextColor(110);
+                pdf.text(label + ' :', M + 4, y);
+                pdf.setFontSize(9); pdf.setTextColor(40);
+                const valX = M + 4 + pdf.getTextWidth(label + ' : ') + 2;
+                const valLines = pdf.splitTextToSize(String(item.value), M + PW - valX - 2);
+                valLines.forEach((vl, i) => {
+                    if (i > 0) { y += 4.5; ensureSpace(5); }
+                    pdf.text(vl, valX, y);
                 });
-            }
+                y += 5;
+            });
         }
 
         // Séparateur
@@ -1705,13 +1722,9 @@ function openReport(source, id) {
         <div class="field"><span class="field-label">Statut / Priorité</span>
              <div class="field-value">${escapeHtml(r.statut)} — ${escapeHtml(r.priorite)}</div></div>
 
-        <div class="field"><span class="field-label">ID</span>
-             <div class="field-value" style="font-family:monospace;font-size:0.85rem;opacity:0.7">${r.id}</div></div>
-
         ${descHtml}
         ${mediaHtml}
         ${sigHtml}
-        ${metaHtml}
 
         <div class="modal-actions">
             <button class="modal-print" onclick="printSingleReport('${source}','${id}')">📄 Exporter ce rapport en PDF</button>
@@ -1904,6 +1917,10 @@ function applyServiceFilter() {
     // Filtre allData (unifié) pour la table affichée
     allData = rawR.allData.filter(row => _rowMatchesService(row, svc));
 
+    // Reconstruit les dropdowns "source" et "type" pour ne montrer que ce
+    // qui concerne le service actif (plus d'éléments incendie chez la sûreté).
+    rebuildFilterOptions(svc);
+
     // Re-calcule les KPI sur les sous-ensembles filtrés
     updateIndicators(fRapports, fRondes, fVerifs, {
         dai: fDai, entreeSortie: fEs, intExt: fIe, permisFeu: fPf
@@ -1911,6 +1928,55 @@ function applyServiceFilter() {
 
     // Re-applique les filtres UI existants (type/statut/date/...) puis re-render
     applyFilters();
+}
+
+/* Sources pertinentes par service (les autres n'ont pas de sens métier) */
+const SOURCES_BY_SERVICE = {
+    all:               ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu"],
+    incendie:          ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu"],
+    surete:            ["rapports","rondes"],
+    technique:         ["rapports","interv_ext"],
+    services_generaux: ["rapports","entree_sortie"]
+};
+const SOURCE_LABELS = {
+    rapports:"📋 Rapports", rondes:"🔄 Rondes", verifications:"🔍 Vérifications",
+    dai:"🚨 DAI Hors Service", entree_sortie:"🚪 Entrées / Sorties",
+    interv_ext:"🏗 Interventions extérieures", permis_feu:"🔥 Permis feu"
+};
+
+/* Reconstruit les listes déroulantes source + type d'après le service actif
+   et les données réellement présentes (allData déjà filtré par service). */
+function rebuildFilterOptions(svc) {
+    const countBySource = {};
+    const typesPresents = new Set();
+    allData.forEach(r => {
+        countBySource[r.source] = (countBySource[r.source] || 0) + 1;
+        if (r.type) typesPresents.add(r.type);
+    });
+
+    // ── Dropdown SOURCE ──
+    const srcSel = document.getElementById("source");
+    if (srcSel) {
+        const allowed = SOURCES_BY_SERVICE[svc] || SOURCES_BY_SERVICE.all;
+        const prev = srcSel.value;
+        let html = `<option value="all">Toutes les sources</option>`;
+        allowed.forEach(s => {
+            if (countBySource[s]) html += `<option value="${escapeAttr(s)}">${escapeHtml(SOURCE_LABELS[s] || s)}</option>`;
+        });
+        srcSel.innerHTML = html;
+        srcSel.value = [...srcSel.options].some(o => o.value === prev) ? prev : "all";
+    }
+
+    // ── Dropdown TYPE (theme) ──
+    const themeSel = document.getElementById("theme");
+    if (themeSel) {
+        const prev = themeSel.value;
+        const types = [...typesPresents].sort((a, b) => labelFor(a).localeCompare(labelFor(b)));
+        let html = `<option value="all">Tous les types</option>`;
+        types.forEach(t => { html += `<option value="${escapeAttr(t)}">${escapeHtml(labelFor(t))}</option>`; });
+        themeSel.innerHTML = html;
+        themeSel.value = [...themeSel.options].some(o => o.value === prev) ? prev : "all";
+    }
 }
 
 

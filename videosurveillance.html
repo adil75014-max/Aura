@@ -237,10 +237,11 @@ async function enregistrer() {
     try {
         const { error } = await supabaseClient.from("rapports").insert({
             type: (mode === "consultation") ? "video_consultation" : "video_extraction",
+            service: "surete",  // la vidéosurveillance relève toujours de la sûreté
             titre,
             description,
             localisation: champs.zone || champs.cameras || "Vidéosurveillance",
-            statut: "ouvert",
+            statut: "cloture",
             priorite: (mode === "extraction") ? "haute" : "normale",
             meta: {
                 agent_nom: agent,

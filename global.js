@@ -138,3 +138,32 @@ function injectRetourMenu() {
     bar.appendChild(link);
     container.insertBefore(bar, container.firstChild);
 }
+
+/* ---------------------------------------------------------
+   🛡️ PROTECTION XSS — échappement HTML partagé
+   ---------------------------------------------------------
+   Toute donnée issue de la base (saisie par un utilisateur :
+   nom, description, lieu, entreprise, commentaire, etc.) DOIT
+   passer par escapeHtml() avant d'être injectée via innerHTML.
+   Empêche l'exécution de code type <img src=x onerror=...>.
+--------------------------------------------------------- */
+function escapeHtml(value) {
+    if (value === null || value === undefined) return "";
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+}
+// Alias court + exposition globale (les pages chargent global.js)
+window.escapeHtml = escapeHtml;
+window.esc = escapeHtml;
+
+/* Échappe aussi pour un attribut entre guillemets simples ou doubles,
+   utile dans les onclick="...('${val}')". À utiliser quand une valeur
+   dynamique est placée dans un attribut HTML. */
+function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, "&#96;");
+}
+window.escapeAttr = escapeAttr;

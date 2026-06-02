@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<title>Vidéosurveillance — LBM Sûreté</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+<style>
+body { display:flex; justify-content:center; padding:20px; }
+.page-container { width:100%; max-width:700px; }
+h1 { text-align:center; margin-bottom:8px; color:var(--accent); font-size:1.6rem; }
+.subtitle { text-align:center; opacity:0.7; font-size:0.85rem; margin-bottom:20px; }
+.section { background:var(--card); border:1px solid var(--border); padding:18px; border-radius:14px; margin-bottom:18px; box-shadow:var(--shadow); }
+.section h2 { color:var(--accent); margin-bottom:10px; font-size:1.05rem; }
+label { display:block; margin-top:12px; font-size:0.9rem; font-weight:600; }
+textarea, input[type="text"], input[type="number"], input[type="datetime-local"], select {
+    width:100%; padding:10px; background:var(--bg2); border:1px solid var(--border);
+    border-radius:10px; color:var(--text); margin-top:6px; font-size:0.9rem; box-sizing:border-box;
+}
+.btn { background:var(--accent); border:none; padding:13px 16px; border-radius:10px; color:#000; font-weight:700; cursor:pointer; width:100%; margin-top:16px; font-size:1rem; }
+.btn:disabled { opacity:0.6; cursor:not-allowed; }
+.tabs { display:flex; gap:8px; margin-bottom:18px; }
+.tab { flex:1; padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); cursor:pointer; font-weight:600; font-size:0.92rem; }
+.tab.active { background:var(--accent); color:#000; border-color:var(--accent); }
+.menu-return { margin-bottom:14px; }
+.menu-return button { background:var(--bg2); border:1px solid var(--border); padding:8px 16px; border-radius:10px; color:var(--accent); cursor:pointer; }
+.rgpd-note { font-size:0.78rem; opacity:0.75; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.3); border-radius:8px; padding:10px 12px; margin-top:10px; line-height:1.5; }
+.auto-info { font-size:0.82rem; opacity:0.7; }
+.auto-info strong { opacity:1; }
+#toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#111; color:#fff; padding:12px 22px; border-radius:10px; font-size:0.9rem; opacity:0; transition:opacity .3s; pointer-events:none; z-index:9999; }
+#toast.show { opacity:1; }
+</style>
+</head>
+<body>
+<div class="page-container">
+
+<div class="menu-return"><button onclick="window.location.href='index.html'">← Retour</button></div>
+
+<h1>📹 Vidéosurveillance</h1>
+<div class="subtitle">Registre des consultations et extractions — traçabilité RGPD</div>
+
+<div class="tabs">
+    <button class="tab active" id="tab-consultation" onclick="switchMode('consultation')">👁 Consultation flux</button>
+    <button class="tab" id="tab-extraction" onclick="switchMode('extraction')">💾 Extraction enregistrement</button>
+</div>
+
+<div class="section">
+    <div class="auto-info">
+        <p><strong>Date :</strong> <span id="dateNow"></span> &nbsp;·&nbsp; <strong>Agent :</strong> <span id="agentNow"></span></p>
+    </div>
+</div>
+
+<!-- ── MODE CONSULTATION ── -->
+<div id="form-consultation">
+    <div class="section">
+        <h2>👁 Consultation de flux vidéo</h2>
+        <label>Caméra(s) consultée(s)</label>
+        <input type="text" id="c_cameras" placeholder="Ex : CAM-03 Hall, CAM-12 Quai livraison">
+
+        <label>Zone / secteur</label>
+        <input type="text" id="c_zone" placeholder="Ex : Rez-de-chaussée, réserves">
+
+        <label>Type de consultation</label>
+        <select id="c_type">
+            <option value="">— Choisir —</option>
+            <option>Temps réel (live)</option>
+            <option>Relecture immédiate</option>
+            <option>Levée de doute</option>
+            <option>Suivi d'intervention</option>
+        </select>
+
+        <label>Motif de la consultation</label>
+        <textarea id="c_motif" placeholder="Raison de la consultation (incident, ronde, alerte…)"></textarea>
+
+        <label>Observations</label>
+        <textarea id="c_obs" placeholder="Ce qui a été observé, suites éventuelles"></textarea>
+
+        <div class="rgpd-note">
+            ℹ️ Toute consultation de flux est tracée (agent, date, motif) conformément au RGPD
+            et au règlement intérieur sur la vidéoprotection.
+        </div>
+    </div>
+</div>
+
+<!-- ── MODE EXTRACTION ── -->
+<div id="form-extraction" style="display:none;">
+    <div class="section">
+        <h2>💾 Extraction d'enregistrement</h2>
+
+        <label>Demandeur</label>
+        <input type="text" id="e_demandeur" placeholder="Nom du demandeur">
+
+        <label>Qualité du demandeur</label>
+        <select id="e_qualite">
+            <option value="">— Choisir —</option>
+            <option>Interne — Direction</option>
+            <option>Interne — Sûreté</option>
+            <option>Police nationale</option>
+            <option>Gendarmerie</option>
+            <option>Autorité judiciaire</option>
+            <option>Assurance</option>
+        </select>
+
+        <label>Base légale de la demande</label>
+        <select id="e_base">
+            <option value="">— Choisir —</option>
+            <option>Réquisition judiciaire</option>
+            <option>Réquisition OPJ</option>
+            <option>Plainte / enquête interne</option>
+            <option>Sinistre / assurance</option>
+            <option>Droit d'accès personne concernée</option>
+        </select>
+
+        <label>N° de réquisition / PV / référence</label>
+        <input type="text" id="e_ref" placeholder="Référence du document justificatif">
+
+        <label>Période concernée — début</label>
+        <input type="datetime-local" id="e_debut">
+        <label>Période concernée — fin</label>
+        <input type="datetime-local" id="e_fin">
+
+        <label>Caméra(s) concernée(s)</label>
+        <input type="text" id="e_cameras" placeholder="Ex : CAM-03, CAM-07">
+
+        <label>Motif détaillé</label>
+        <textarea id="e_motif" placeholder="Objet de l'extraction"></textarea>
+
+        <label>Destinataire de l'extraction</label>
+        <input type="text" id="e_destinataire" placeholder="À qui le support est remis">
+
+        <label>Support de remise</label>
+        <select id="e_support">
+            <option value="">— Choisir —</option>
+            <option>Clé USB chiffrée</option>
+            <option>Transfert sécurisé</option>
+            <option>Remise en main propre</option>
+            <option>Gravure DVD</option>
+        </select>
+
+        <div class="rgpd-note">
+            ⚖️ L'extraction n'est légale que sur base d'une demande justifiée (réquisition, plainte,
+            droit d'accès). Conservez le justificatif. L'enregistrement de cette extraction au registre
+            est obligatoire et opposable.
+        </div>
+    </div>
+</div>
+
+<button class="btn" id="btnSave" onclick="enregistrer()">💾 Enregistrer au registre</button>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script>
+let mode = "consultation";
+
+function switchMode(m) {
+    mode = m;
+    document.getElementById("tab-consultation").classList.toggle("active", m === "consultation");
+    document.getElementById("tab-extraction").classList.toggle("active", m === "extraction");
+    document.getElementById("form-consultation").style.display = (m === "consultation") ? "block" : "none";
+    document.getElementById("form-extraction").style.display = (m === "extraction") ? "block" : "none";
+}
+
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("dateNow").textContent = new Date().toLocaleString("fr-FR");
+    document.getElementById("agentNow").textContent = localStorage.getItem("nom") || "—";
+    // ?action=extraction ouvre directement le bon onglet
+    const action = new URLSearchParams(location.search).get("action");
+    if (action === "extraction") switchMode("extraction");
+});
+
+async function enregistrer() {
+    const btn = document.getElementById("btnSave");
+    const agent = localStorage.getItem("nom") || "—";
+    let payload, titre, description, champs;
+
+    if (mode === "consultation") {
+        const cameras = document.getElementById("c_cameras").value.trim();
+        const motif   = document.getElementById("c_motif").value.trim();
+        if (!cameras || !motif) { showToast("⚠️ Renseigne au moins les caméras et le motif."); return; }
+        champs = {
+            cameras,
+            zone:   document.getElementById("c_zone").value.trim(),
+            type:   document.getElementById("c_type").value,
+            motif,
+            observations: document.getElementById("c_obs").value.trim()
+        };
+        titre = "Consultation vidéo — " + cameras;
+        description = "Consultation de flux vidéo\n" +
+            "Caméras : " + cameras + "\n" +
+            "Zone : " + (champs.zone || "—") + "\n" +
+            "Type : " + (champs.type || "—") + "\n" +
+            "Motif : " + motif +
+            (champs.observations ? "\nObservations : " + champs.observations : "");
+    } else {
+        const demandeur = document.getElementById("e_demandeur").value.trim();
+        const base      = document.getElementById("e_base").value;
+        const cameras   = document.getElementById("e_cameras").value.trim();
+        if (!demandeur || !base || !cameras) { showToast("⚠️ Demandeur, base légale et caméras sont obligatoires."); return; }
+        champs = {
+            demandeur,
+            qualite:     document.getElementById("e_qualite").value,
+            base_legale: base,
+            reference:   document.getElementById("e_ref").value.trim(),
+            periode_debut: document.getElementById("e_debut").value,
+            periode_fin:   document.getElementById("e_fin").value,
+            cameras,
+            motif:       document.getElementById("e_motif").value.trim(),
+            destinataire: document.getElementById("e_destinataire").value.trim(),
+            support:     document.getElementById("e_support").value
+        };
+        titre = "Extraction vidéo — " + demandeur + " (" + base + ")";
+        description = "Extraction d'enregistrement vidéo\n" +
+            "Demandeur : " + demandeur + " (" + (champs.qualite || "—") + ")\n" +
+            "Base légale : " + base + (champs.reference ? " — réf. " + champs.reference : "") + "\n" +
+            "Période : " + (champs.periode_debut || "?") + " → " + (champs.periode_fin || "?") + "\n" +
+            "Caméras : " + cameras + "\n" +
+            "Motif : " + (champs.motif || "—") + "\n" +
+            "Destinataire : " + (champs.destinataire || "—") + " · Support : " + (champs.support || "—");
+    }
+
+    btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
+    try {
+        const { error } = await supabaseClient.from("rapports").insert({
+            type: (mode === "consultation") ? "video_consultation" : "video_extraction",
+            titre,
+            description,
+            localisation: champs.zone || champs.cameras || "Vidéosurveillance",
+            statut: "ouvert",
+            priorite: (mode === "extraction") ? "haute" : "normale",
+            meta: {
+                agent_nom: agent,
+                registre: "videosurveillance",
+                mode,
+                champs_specifiques: champs,
+                horodatage: new Date().toISOString()
+            }
+        });
+        if (error) throw error;
+        showToast("✅ Enregistré au registre vidéosurveillance");
+        setTimeout(() => window.location.href = "index.html", 1200);
+    } catch (e) {
+        console.error(e);
+        showToast("❌ Erreur : " + (e.message || e));
+        btn.disabled = false; btn.textContent = "💾 Enregistrer au registre";
+    }
+}
+</script>
+<script src="global.js"></script>
+<script src="notifications_global.js"></script>
+</body>
+</html>

@@ -173,11 +173,11 @@ function renderForm() {
         switch (f.type) {
 
             case "title":
-                field.innerHTML = `<div class="title-block">${f.label}</div>`;
+                field.innerHTML = `<div class="title-block">${escapeHtml(f.label)}</div>`;
                 break;
 
             case "subtitle":
-                field.innerHTML = `<div class="subtitle-block">${f.label}</div>`;
+                field.innerHTML = `<div class="subtitle-block">${escapeHtml(f.label)}</div>`;
                 break;
 
             case "separator":
@@ -185,60 +185,60 @@ function renderForm() {
                 break;
 
             case "info":
-                field.innerHTML = `<div class="info-block">${f.info || f.label}</div>`;
+                field.innerHTML = `<div class="info-block">${escapeHtml(f.info || f.label)}</div>`;
                 break;
 
             case "text":
                 field.innerHTML = `
-                    <label>${f.label}</label>
-                    <input type="text" id="${f.id}" placeholder="${f.placeholder}">
+                    <label>${escapeHtml(f.label)}</label>
+                    <input type="text" id="${escapeAttr(f.id)}" placeholder="${escapeAttr(f.placeholder)}">
                 `;
                 break;
 
             case "textarea":
                 field.innerHTML = `
-                    <label>${f.label}</label>
-                    <textarea id="${f.id}" placeholder="${f.placeholder}"></textarea>
+                    <label>${escapeHtml(f.label)}</label>
+                    <textarea id="${escapeAttr(f.id)}" placeholder="${escapeAttr(f.placeholder)}"></textarea>
                 `;
                 break;
 
             case "number":
                 field.innerHTML = `
-                    <label>${f.label}</label>
-                    <input type="number" id="${f.id}" placeholder="${f.placeholder}">
+                    <label>${escapeHtml(f.label)}</label>
+                    <input type="number" id="${escapeAttr(f.id)}" placeholder="${escapeAttr(f.placeholder)}">
                 `;
                 break;
 
             case "date":
                 field.innerHTML = `
-                    <label>${f.label}</label>
-                    <input type="date" id="${f.id}">
+                    <label>${escapeHtml(f.label)}</label>
+                    <input type="date" id="${escapeAttr(f.id)}">
                 `;
                 break;
 
             case "time":
                 field.innerHTML = `
-                    <label>${f.label}</label>
-                    <input type="time" id="${f.id}">
+                    <label>${escapeHtml(f.label)}</label>
+                    <input type="time" id="${escapeAttr(f.id)}">
                 `;
                 break;
 
             case "select":
                 field.innerHTML = `
-                    <label>${f.label}</label>
-                    <select id="${f.id}">
-                        ${f.options.split(";").map(o => `<option>${o.trim()}</option>`).join("")}
+                    <label>${escapeHtml(f.label)}</label>
+                    <select id="${escapeAttr(f.id)}">
+                        ${f.options.split(";").map(o => `<option>${escapeHtml(o.trim())}</option>`).join("")}
                     </select>
                 `;
                 break;
 
             case "checkbox":
                 field.innerHTML = `
-                    <label>${f.label}</label>
+                    <label>${escapeHtml(f.label)}</label>
                     ${f.options.split(";").map(o => `
                         <label style="display:flex;align-items:center;gap:6px;">
-                            <input type="checkbox" value="${o.trim()}" id="${f.id}_${o.trim()}">
-                            ${o.trim()}
+                            <input type="checkbox" value="${escapeAttr(o.trim())}" id="${escapeAttr(f.id)}_${escapeAttr(o.trim())}">
+                            ${escapeHtml(o.trim())}
                         </label>
                     `).join("")}
                 `;
@@ -295,7 +295,7 @@ function getLocation(id) {
 }
 
 /* ------------------ Enregistrement ------------------ */
-function saveReport() {
+async function saveReport() {
     const data = {};
 
     model.fields.forEach(f => {

@@ -225,9 +225,9 @@ function buildRow(a,isLevee) {
     const grav=(a.meta&&a.meta.ai_gravite)||1;
     const dt=new Date(a.created_at).toLocaleDateString("fr-FR");
     const tr=document.createElement("tr");
-    let html=`<td><div class="date-cell">${dt}</div></td><td>${a.localisation||"—"}</td><td><span class="cat-badge">${cat}</span></td><td>${buildSev(grav)}</td>`;
+    let html=`<td><div class="date-cell">${dt}</div></td><td>${escapeHtml(a.localisation||"—")}</td><td><span class="cat-badge">${escapeHtml(cat)}</span></td><td>${buildSev(grav)}</td>`;
     if (isLevee) { const ld=a.updated_at?new Date(a.updated_at).toLocaleDateString("fr-FR"):"—"; html+=`<td><div class="date-cell">${ld}</div></td>`; }
-    html+=`<td><button class="btn-open" onclick="ouvrirDetail('${a.id}')">Ouvrir</button></td>`;
+    html+=`<td><button class="btn-open" onclick="ouvrirDetail('${escapeAttr(a.id)}')">Ouvrir</button></td>`;
     tr.innerHTML=html; return tr;
 }
 
@@ -245,14 +245,14 @@ async function ouvrirDetail(id) {
     const dt=new Date(data.created_at).toLocaleDateString("fr-FR");
     let photosHTML="";
     if (data.meta&&data.meta.photos&&data.meta.photos.length>0) {
-        photosHTML=`<div class="detail-field"><div class="field-label">Photos / Vidéos</div><div class="detail-photos">${data.meta.photos.map(p=>`<img src="${p}" alt="Photo anomalie">`).join("")}</div></div>`;
+        photosHTML=`<div class="detail-field"><div class="field-label">Photos / Vidéos</div><div class="detail-photos">${data.meta.photos.map(p=>`<img src="${escapeAttr(p)}" alt="Photo anomalie">`).join("")}</div></div>`;
     }
     document.getElementById("detailContent").innerHTML=`
         <div class="detail-field"><div class="field-label">Date de détection</div><div class="field-value mono">${dt}</div></div>
-        <div class="detail-field"><div class="field-label">Localisation</div><div class="field-value">${data.localisation||"—"}</div></div>
-        <div class="detail-field"><div class="field-label">Catégorie IA</div><div class="field-value"><span class="cat-badge">${cat}</span></div></div>
+        <div class="detail-field"><div class="field-label">Localisation</div><div class="field-value">${escapeHtml(data.localisation||"—")}</div></div>
+        <div class="detail-field"><div class="field-label">Catégorie IA</div><div class="field-value"><span class="cat-badge">${escapeHtml(cat)}</span></div></div>
         <div class="detail-field"><div class="field-label">Niveau de criticité</div><div class="field-value">${buildSev(grav)}</div></div>
-        <div class="detail-field"><div class="field-label">Description / Rapport</div><div class="field-value">${data.description||data.titre||"—"}</div></div>
+        <div class="detail-field"><div class="field-label">Description / Rapport</div><div class="field-value">${escapeHtml(data.description||data.titre||"—")}</div></div>
         ${data.statut==="cloture"?`<div class="detail-field"><div class="field-label">Date de levée</div><div class="field-value mono">${data.updated_at?new Date(data.updated_at).toLocaleDateString("fr-FR"):"—"}</div></div>`:""}
         ${photosHTML}`;
     document.getElementById("btnLever").style.display=data.statut==="cloture"?"none":"";

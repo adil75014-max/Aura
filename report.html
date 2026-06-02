@@ -79,6 +79,12 @@ textarea { min-height:120px; resize:vertical; }
     </div>
 </div>
 
+<!-- CHAMPS SPÉCIFIQUES AU TYPE (rendus dynamiquement selon ?type=) -->
+<div class="section" id="extraFieldsSection" style="display:none;">
+    <h2 id="extraFieldsTitle">Détails spécifiques</h2>
+    <div id="extraFields"></div>
+</div>
+
 <div class="section"><h2>Informations générales</h2><textarea id="infoGenerales" placeholder="Décris la situation initiale..."></textarea></div>
 <div class="section"><h2>Constat</h2><textarea id="constat" placeholder="Décris ce que tu as constaté..."></textarea></div>
 <div class="section"><h2>Actions réalisées</h2><textarea id="actions" placeholder="Décris les actions effectuées..."></textarea></div>
@@ -123,7 +129,163 @@ const TYPES = {
     verif_essai_triennal_bureau:    "Essai triennal Bureau de contrôle",
     // Rondes
     verif_popup:                    "Vérification Pop up",
-    verifreceptiontravaux:          "Réception Travaux"
+    verifreceptiontravaux:          "Réception Travaux",
+
+    // ─── SÛRETÉ ───
+    vol:                "Vol",
+    conflit:            "Conflit / Altercation",
+    intrusion:          "Intrusion",
+    personne_suspecte:  "Personne suspecte",
+    colis_suspect:      "Colis suspect",
+    objet_abandonne:    "Objet abandonné",
+    camera_hs:          "Caméra hors service",
+
+    // ─── TECHNIQUE ───
+    panne_elec:         "Panne électrique",
+    panne_cvc:          "Panne CVC / Climatisation",
+    panne_plomberie:    "Panne plomberie / Fuite",
+    panne_ascenseur:    "Panne ascenseur / monte-charge",
+    panne_eclairage:    "Panne éclairage",
+    porte_auto:         "Porte automatique HS",
+    chaudiere:          "Chaudière / Production ECS",
+    maint_hebdo:        "Maintenance hebdomadaire",
+    maint_mens:         "Maintenance mensuelle",
+    maint_annuelle:     "Maintenance annuelle",
+
+    // ─── SERVICES GÉNÉRAUX ───
+    livraison_in:       "Livraison entrante",
+    livraison_out:      "Livraison sortante",
+    courrier:           "Réception courrier",
+    colis:              "Gestion colis",
+    nettoyage:          "Nettoyage / Propreté",
+    espaces_verts:      "Espaces verts",
+    dechets:            "Gestion déchets"
+};
+
+/* Champs spécifiques par type d'intervention (adaptés au métier).
+   Rendus dynamiquement sous le type, sauvegardés dans meta.champs_specifiques.
+   Types de champ supportés : text, number, textarea, select (avec options). */
+const TYPE_EXTRA_FIELDS = {
+    // ── Sûreté ──
+    vol: [
+        { id: "objets_voles",   label: "Objets volés",        type: "textarea" },
+        { id: "valeur_estimee", label: "Valeur estimée (€)",  type: "number" },
+        { id: "auteur",         label: "Auteur",              type: "select", options: ["Non identifié","Identifié","Interpellé","En fuite"] },
+        { id: "plainte",        label: "Plainte déposée",     type: "select", options: ["Non","Oui","À faire"] }
+    ],
+    conflit: [
+        { id: "personnes",   label: "Personnes impliquées",  type: "text" },
+        { id: "niveau",      label: "Niveau",                type: "select", options: ["Verbal","Physique léger","Physique grave","Arme"] },
+        { id: "blesses",     label: "Blessés",               type: "select", options: ["Non","Oui — secours sur place","Oui — évacuation"] },
+        { id: "police",      label: "Intervention police",   type: "select", options: ["Non","Oui","En cours"] }
+    ],
+    intrusion: [
+        { id: "point_entree", label: "Point d'entrée",       type: "text" },
+        { id: "nb_individus", label: "Nombre d'individus",   type: "number" },
+        { id: "interpellation", label: "Interpellation",     type: "select", options: ["Non","Oui","Fuite"] },
+        { id: "police",      label: "Forces de l'ordre",     type: "select", options: ["Non","Prévenues","Sur place"] }
+    ],
+    personne_suspecte: [
+        { id: "description_pers", label: "Description de la personne", type: "textarea" },
+        { id: "comportement",     label: "Comportement observé",      type: "text" },
+        { id: "suite",            label: "Suite donnée",              type: "select", options: ["Surveillance","Contrôle","Éconduite","Forces de l'ordre"] }
+    ],
+    colis_suspect: [
+        { id: "localisation_colis", label: "Localisation précise", type: "text" },
+        { id: "description_colis",  label: "Description du colis",  type: "textarea" },
+        { id: "perimetre",          label: "Périmètre de sécurité", type: "select", options: ["Non","Établi"] },
+        { id: "demineurs",          label: "Démineurs / Police",    type: "select", options: ["Non","Appelés","Sur place"] }
+    ],
+    objet_abandonne: [
+        { id: "description_objet", label: "Description de l'objet", type: "textarea" },
+        { id: "proprietaire",      label: "Propriétaire",          type: "select", options: ["Inconnu","Retrouvé","Objet retiré"] }
+    ],
+    camera_hs: [
+        { id: "num_camera",    label: "N° / nom caméra",      type: "text" },
+        { id: "zone_couverte", label: "Zone couverte",        type: "text" },
+        { id: "type_panne",    label: "Type de panne",        type: "select", options: ["Image noire","Image figée","Réseau","Alimentation","Autre"] },
+        { id: "compensation",  label: "Mesure compensatoire", type: "select", options: ["Aucune","Gardiennage renforcé","Ronde supplémentaire"] }
+    ],
+    // ── Technique ──
+    panne_elec: [
+        { id: "equipement", label: "Équipement concerné",      type: "text" },
+        { id: "zone",       label: "Zone impactée",            type: "text" },
+        { id: "criticite",  label: "Criticité",                type: "select", options: ["Faible","Moyenne","Haute","Critique"] },
+        { id: "prestataire",label: "Prestataire",              type: "select", options: ["Non requis","À appeler","Appelé","Sur place"] },
+        { id: "delai",      label: "Délai estimé remise en service", type: "text" }
+    ],
+    panne_cvc: [
+        { id: "equipement",  label: "Équipement (CTA, groupe froid…)", type: "text" },
+        { id: "zone",        label: "Zone impactée",          type: "text" },
+        { id: "temperature", label: "Température relevée (°C)", type: "number" },
+        { id: "criticite",   label: "Criticité",              type: "select", options: ["Faible","Moyenne","Haute"] }
+    ],
+    panne_plomberie: [
+        { id: "localisation_fuite", label: "Localisation de la fuite", type: "text" },
+        { id: "ampleur",            label: "Ampleur",                  type: "select", options: ["Goutte à goutte","Modérée","Importante","Inondation"] },
+        { id: "eau_coupee",         label: "Arrivée d'eau coupée",     type: "select", options: ["Non","Oui"] }
+    ],
+    panne_ascenseur: [
+        { id: "num_appareil",      label: "N° appareil",          type: "text" },
+        { id: "personnes_bloquees",label: "Personnes bloquées",   type: "select", options: ["Non","Oui — dégagées","Oui — en cours"] },
+        { id: "ascensoriste",      label: "Ascensoriste",         type: "select", options: ["Non requis","Appelé","Sur place"] }
+    ],
+    panne_eclairage: [
+        { id: "zone",            label: "Zone",                 type: "text" },
+        { id: "nb_points",       label: "Nb points lumineux",   type: "number" },
+        { id: "eclairage_secours", label: "Éclairage de secours", type: "select", options: ["Fonctionnel","HS"] }
+    ],
+    porte_auto: [
+        { id: "num_porte", label: "N° / emplacement porte", type: "text" },
+        { id: "etat",      label: "État",                   type: "select", options: ["Bloquée fermée","Bloquée ouverte","Fonctionnement aléatoire"] },
+        { id: "securite",  label: "Impact sûreté",          type: "select", options: ["Aucun","Accès non sécurisé","Issue condamnée"] }
+    ],
+    chaudiere: [
+        { id: "equipement", label: "Équipement",            type: "text" },
+        { id: "impact_ecs", label: "Impact eau chaude",     type: "select", options: ["Aucun","Partiel","Total"] }
+    ],
+    maint_hebdo:    [ { id: "prestataire", label: "Intervenant", type: "text" }, { id: "conforme", label: "Conformité", type: "select", options: ["Conforme","Réserves","Non conforme"] } ],
+    maint_mens:     [ { id: "prestataire", label: "Intervenant", type: "text" }, { id: "conforme", label: "Conformité", type: "select", options: ["Conforme","Réserves","Non conforme"] } ],
+    maint_annuelle: [ { id: "prestataire", label: "Intervenant", type: "text" }, { id: "conforme", label: "Conformité", type: "select", options: ["Conforme","Réserves","Non conforme"] } ],
+    // ── Services Généraux ──
+    livraison_in: [
+        { id: "transporteur", label: "Transporteur",        type: "text" },
+        { id: "num_bl",       label: "N° bon de livraison",  type: "text" },
+        { id: "nb_colis",     label: "Nombre de colis",      type: "number" },
+        { id: "destinataire", label: "Destinataire",         type: "text" },
+        { id: "controle",     label: "Contrôle effectué",    type: "select", options: ["Oui — conforme","Oui — réserves","Non"] }
+    ],
+    livraison_out: [
+        { id: "transporteur", label: "Transporteur",        type: "text" },
+        { id: "num_bl",       label: "N° bon d'enlèvement",  type: "text" },
+        { id: "nb_colis",     label: "Nombre de colis",      type: "number" },
+        { id: "expediteur",   label: "Expéditeur / service", type: "text" }
+    ],
+    courrier: [
+        { id: "type_courrier", label: "Type",            type: "select", options: ["Lettre","Recommandé","Colis","Pli interne"] },
+        { id: "expediteur",    label: "Expéditeur",      type: "text" },
+        { id: "destinataire",  label: "Destinataire",    type: "text" }
+    ],
+    colis: [
+        { id: "transporteur", label: "Transporteur", type: "text" },
+        { id: "num_suivi",    label: "N° de suivi",  type: "text" },
+        { id: "destinataire", label: "Destinataire", type: "text" },
+        { id: "etat",         label: "État du colis", type: "select", options: ["Bon","Endommagé","Ouvert"] }
+    ],
+    nettoyage: [
+        { id: "zone",        label: "Zone",            type: "text" },
+        { id: "prestataire", label: "Prestataire",     type: "text" },
+        { id: "type_inter",  label: "Type",            type: "select", options: ["Quotidien","Ponctuel","Urgence","Vitrerie"] }
+    ],
+    espaces_verts: [
+        { id: "zone",       label: "Zone",  type: "text" },
+        { id: "type_inter", label: "Type",  type: "select", options: ["Arrosage","Taille","Plantation","Entretien"] }
+    ],
+    dechets: [
+        { id: "type_dechet", label: "Type de déchet", type: "select", options: ["DIB","Carton","Verre","DEEE","Dangereux"] },
+        { id: "volume",      label: "Volume / quantité", type: "text" },
+        { id: "evacuation",  label: "Évacuation",        type: "select", options: ["Local déchets","Enlèvement prestataire","Benne"] }
+    ]
 };
 
 /* Inverse libellé -> code (généré automatiquement) */
@@ -164,9 +326,48 @@ function resolveIntervention() {
     return { code: null, label: null };
 }
 
+/* Rendu des champs spécifiques au type d'intervention */
+function renderExtraFields(code, label) {
+    const section = document.getElementById("extraFieldsSection");
+    const wrap = document.getElementById("extraFields");
+    const fields = TYPE_EXTRA_FIELDS[code];
+    if (!fields || !fields.length) { section.style.display = "none"; return; }
+
+    document.getElementById("extraFieldsTitle").textContent = "Détails — " + (label || "intervention");
+    wrap.innerHTML = fields.map(f => {
+        const fid = "xf_" + f.id;
+        if (f.type === "select") {
+            const opts = (f.options || []).map(o => `<option value="${escapeAttr(o)}">${escapeHtml(o)}</option>`).join("");
+            return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
+                    <select id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}">
+                        <option value="">— Choisir —</option>${opts}
+                    </select>`;
+        }
+        if (f.type === "textarea") {
+            return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
+                    <textarea id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}" placeholder="${escapeAttr(f.label)}"></textarea>`;
+        }
+        const inputType = (f.type === "number") ? "number" : "text";
+        return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
+                <input type="${inputType}" id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}" placeholder="${escapeAttr(f.label)}">`;
+    }).join("");
+    section.style.display = "block";
+}
+
+/* Collecte des champs spécifiques saisis → objet {id:{label,value}} */
+function collectExtraFields() {
+    const out = {};
+    document.querySelectorAll("#extraFields [data-xf]").forEach(el => {
+        const v = (el.value || "").trim();
+        if (v) out[el.getAttribute("data-xf")] = { label: el.getAttribute("data-xflabel"), value: v };
+    });
+    return out;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const { code, label } = resolveIntervention();
     document.getElementById("reportType").textContent = label || "—";
+    renderExtraFields(code, label);
 
     const now = new Date();
     document.getElementById("reportDate").textContent = now.toLocaleDateString("fr-FR");
@@ -432,10 +633,18 @@ async function saveReport() {
 
         const priorite = typeCode==="incendie" ? "haute" : "normale";
 
+        /* ── Champs spécifiques au type ── */
+        const champsSpec = collectExtraFields();
+        let blocSpec = "";
+        if (Object.keys(champsSpec).length) {
+            blocSpec = "\n\nDétails spécifiques:\n" +
+                Object.values(champsSpec).map(c => "• " + c.label + " : " + c.value).join("\n");
+        }
+
         const { error } = await supabaseClient.from("rapports").insert({
             type: typeCode || "autre",
             titre: (intervention||"Rapport")+" — "+site,
-            description: description,
+            description: description + blocSpec,
             localisation: site || "Non précisé",
             statut: "ouvert",
             priorite: priorite,
@@ -448,6 +657,7 @@ async function saveReport() {
                 nb_agents: assignedAgents.length,
                 intervention_label: intervention,
                 report_id: reportId,
+                champs_specifiques: champsSpec,
                 photos: photoUrls,
                 videos: videoUrls
             }

@@ -279,6 +279,44 @@ a:hover { text-decoration: underline; }
 
 <h1>Dashboard Superviseur</h1>
 
+<!-- BARRE D'ONGLETS PAR SERVICE -->
+<style>
+.service-tabs {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin: 14px 0 18px; padding: 8px;
+    background: rgba(20,25,35,0.6); border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.05);
+}
+.service-tab {
+    flex: 1 1 140px; min-width: 130px;
+    padding: 10px 14px; border-radius: 8px;
+    background: transparent; color: #cbd5e1;
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer; font-weight: 600; font-size: 0.92rem;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: all 0.15s ease;
+}
+.service-tab:hover { background: rgba(255,255,255,0.04); color: #fff; }
+.service-tab.active {
+    background: linear-gradient(135deg, #d4af37, #b8941f);
+    color: #0a0d14; border-color: #d4af37;
+    box-shadow: 0 2px 8px rgba(212,175,55,0.3);
+}
+.service-tab[data-service="surete"].active    { background: linear-gradient(135deg,#3b82f6,#1e40af); color:#fff; border-color:#3b82f6; box-shadow:0 2px 8px rgba(59,130,246,0.35); }
+.service-tab[data-service="technique"].active { background: linear-gradient(135deg,#f59e0b,#b45309); color:#fff; border-color:#f59e0b; box-shadow:0 2px 8px rgba(245,158,11,0.35); }
+.service-tab[data-service="services_generaux"].active { background: linear-gradient(135deg,#10b981,#047857); color:#fff; border-color:#10b981; box-shadow:0 2px 8px rgba(16,185,129,0.35); }
+.service-tab[data-service="all"].active       { background: linear-gradient(135deg,#6b7280,#374151); color:#fff; border-color:#6b7280; }
+.service-tab .count {
+    font-size: 0.75rem; padding: 1px 8px; border-radius: 999px;
+    background: rgba(0,0,0,0.25); font-weight: 700;
+}
+.indicator.svc-hide { display: none !important; }
+</style>
+
+<div class="service-tabs" id="serviceTabs">
+    <!-- Onglets injectés par JS selon le rôle (admin = son service / superadmin = tous + Tous) -->
+</div>
+
 <!-- REFRESH -->
 <button class="btn-refresh" id="btnRefresh" onclick="loadAllData()">🔄 Rafraîchir les données</button>
 
@@ -907,16 +945,27 @@ async function loadAllData() {
         // Sort by most recent
         allData.sort((a, b) => b.datetime - a.datetime);
 
-        // Update indicators
-        updateIndicators(rapports || [], rondes || [], verifs || [], {
-            dai: dai || [],
+        // ─── Stockage des données brutes pour le filtre par service ───
+        // applyServiceFilter() les reprend, applique _activeServiceFilter,
+        // recalcule les KPI et re-render la table.
+        _rawDashData = {
+            allData: allData.slice(),
+            rapports:     rapports     || [],
+            rondes:       rondes       || [],
+            verifs:       verifs       || [],
+            dai:          dai          || [],
             entreeSortie: entreeSortie || [],
-            intExt: intExt || [],
-            permisFeu: permisFeu || []
-        });
+            intExt:       intExt       || [],
+            permisFeu:    permisFeu    || []
+        };
 
-        // Apply filters and render
-        applyFilters();
+        // Initialiser les onglets services au premier load uniquement
+        if (!_serviceTabsInited) {
+            _initServiceTabs();
+            _serviceTabsInited = true;
+        }
+        // Appliquer le filtre actif (qui appelle updateIndicators + applyFilters)
+        applyServiceFilter();
 
         const total = allData.length;
         showToast(`✅ ${total} enregistrements chargés (rapports, rondes, vérifs, DAI, E/S, int. ext., permis feu)`);
@@ -1689,8 +1738,183 @@ async function printSingleReport(source, id) {
 }
 
 /* ==========================================================
-   REALTIME SUBSCRIPTION (auto-refresh on new data)
+   🟦 FILTRAGE PAR SERVICE (regroupement des infos par métier)
+   ============================================================
+   - Pour un admin de service : il ne voit que son service (onglet
+     unique, pas de choix possible).
+   - Pour un super-admin : 5 onglets — Tous / Incendie / Sûreté /
+     Technique / Services Généraux. "Tous" est l'agrégation globale.
+   - Les indicateurs (KPI) sont service-spécifiques : ceux qui n'ont
+     pas de sens pour le service actif sont masqués (classe svc-hide).
+   - La table reportée et le compteur "Total" sont filtrés au même
+     niveau, depuis la même source unique (_rawDashData).
    ========================================================== */
+
+let _activeServiceFilter = null;   // null = pas encore initialisé
+let _rawDashData = null;           // snapshot brut du dernier loadAllData
+let _serviceTabsInited = false;
+
+const SERVICES_DEF = [
+    { code: "all",               label: "🌐 Tous",              superadminOnly: true  },
+    { code: "incendie",          label: "🔥 Incendie",          superadminOnly: false },
+    { code: "surete",            label: "🛡 Sûreté",            superadminOnly: false },
+    { code: "technique",         label: "🛠 Technique",         superadminOnly: false },
+    { code: "services_generaux", label: "📦 Services Généraux", superadminOnly: false }
+];
+
+/* Mappe un `type` (ex: vol, panne_elec, ronde_nuit_surete) à son service.
+   Pour les types non listés, retourne null → la row sera considérée
+   service-neutre (visible dans tous les onglets). */
+const TYPE_TO_SERVICE = {
+    // ─── Incendie ───
+    incendie: "incendie", odeur: "incendie", desincarceration: "incendie",
+    fuite: "incendie", alarme: "incendie", coupure: "incendie", animalier: "incendie",
+    // ─── Sûreté ───
+    vol: "surete", conflit: "surete", intrusion: "surete",
+    personne_suspecte: "surete", colis_suspect: "surete",
+    objet_abandonne: "surete", camera_hs: "surete",
+    video_consultation: "surete", video_extraction: "surete",
+    // ─── Technique ───
+    panne_elec: "technique", panne_cvc: "technique", panne_plomberie: "technique",
+    panne_ascenseur: "technique", panne_eclairage: "technique",
+    porte_auto: "technique", chaudiere: "technique",
+    maint_hebdo: "technique", maint_mens: "technique", maint_annuelle: "technique",
+    // ─── Services Généraux ───
+    livraison_in: "services_generaux", livraison_out: "services_generaux",
+    courrier: "services_generaux", colis: "services_generaux",
+    nettoyage: "services_generaux", espaces_verts: "services_generaux", dechets: "services_generaux"
+};
+
+function _mapTypeToService(type) {
+    if (!type) return null;
+    const k = String(type).toLowerCase().trim();
+    if (TYPE_TO_SERVICE[k]) return TYPE_TO_SERVICE[k];
+    if (k.endsWith("_surete")) return "surete";
+    if (k.startsWith("ronde_")) return "incendie";
+    if (k.startsWith("verif_")) return "incendie";
+    if (k.startsWith("panne_") || k.startsWith("maint_")) return "technique";
+    return null;
+}
+
+/* Une row appartient-elle au service donné ? Priorités :
+   1) Colonne `service` (depuis tenant.js / la BDD) si présente
+   2) Source spécifique (dai/permis_feu = incendie)
+   3) Type → service via TYPE_TO_SERVICE
+   4) Par défaut : visible partout (row "neutre") */
+function _rowMatchesService(row, service) {
+    if (!service || service === "all") return true;
+    const rawService = (row.raw && row.raw.service) ? String(row.raw.service).toLowerCase() : null;
+    if (rawService) return rawService === service;
+    const sourceMap = { dai: "incendie", permis_feu: "incendie" };
+    if (sourceMap[row.source]) return sourceMap[row.source] === service;
+    const inferred = _mapTypeToService(row.type);
+    if (inferred) return inferred === service;
+    return true; // neutre (entrée/sortie, interv ext) → visible partout
+}
+
+/* Quelles tuiles KPI afficher selon le service.
+   Les KPI non listés sont masqués pour ce service. */
+const KPIS_BY_SERVICE = {
+    all:               ["indTotal","indMonth","indCritique","indRondes","indVerifs","indDaiHs","indEntreeSortie","indIntExt","indPermisFeu"],
+    incendie:          ["indTotal","indMonth","indCritique","indRondes","indVerifs","indDaiHs","indEntreeSortie","indIntExt","indPermisFeu"],
+    surete:            ["indTotal","indMonth","indCritique","indRondes","indEntreeSortie"],
+    technique:         ["indTotal","indMonth","indCritique","indIntExt"],
+    services_generaux: ["indTotal","indMonth","indEntreeSortie","indIntExt"]
+};
+
+function _updateKPIVisibility(service) {
+    const showSet = new Set(KPIS_BY_SERVICE[service] || KPIS_BY_SERVICE.all);
+    document.querySelectorAll(".indicator").forEach(div => {
+        const valueId = div.querySelector("p")?.id;
+        div.classList.toggle("svc-hide", valueId && !showSet.has(valueId));
+    });
+}
+
+function _initServiceTabs() {
+    const isGlobal = !!(window.AuraTenant && window.AuraTenant.isGlobalMode);
+    const userService = (localStorage.getItem("service") || "incendie").toLowerCase();
+    const tabsBar = document.getElementById("serviceTabs");
+    if (!tabsBar) return;
+
+    // Un admin normal ne voit QUE son service (pas de tabs visibles, juste un label)
+    let visibleTabs;
+    if (isGlobal) {
+        visibleTabs = SERVICES_DEF.slice();
+        _activeServiceFilter = "all";
+    } else {
+        visibleTabs = SERVICES_DEF.filter(s => s.code === userService);
+        _activeServiceFilter = userService;
+    }
+
+    tabsBar.innerHTML = visibleTabs.map(s =>
+        `<button class="service-tab" data-service="${s.code}" onclick="_switchService('${s.code}')">${s.label}</button>`
+    ).join("");
+
+    // Marquer l'onglet actif
+    tabsBar.querySelectorAll(".service-tab").forEach(t =>
+        t.classList.toggle("active", t.dataset.service === _activeServiceFilter));
+}
+
+function _switchService(service) {
+    _activeServiceFilter = service;
+    document.querySelectorAll("#serviceTabs .service-tab").forEach(t =>
+        t.classList.toggle("active", t.dataset.service === service));
+    applyServiceFilter();
+}
+
+function applyServiceFilter() {
+    if (!_rawDashData) return;
+    const svc = _activeServiceFilter || "all";
+
+    // Affiche/masque les tuiles KPI pertinentes pour ce service
+    _updateKPIVisibility(svc);
+
+    // Filtre les sources brutes selon le service. Une row est conservée si :
+    //  - "all" → toujours
+    //  - sinon : sa colonne service correspond, ou son type est mappé à ce service
+    const filterRapport = r => svc === "all" ? true : (
+        (r.service && String(r.service).toLowerCase() === svc) ||
+        (!r.service && _mapTypeToService(r.type) === svc)
+    );
+    const filterRonde = r => svc === "all" ? true : (
+        (r.service && String(r.service).toLowerCase() === svc) ||
+        (!r.service && _mapTypeToService(r.type) === svc) ||
+        // rondes sans service ni type mappable : visibles incendie par défaut
+        (!r.service && !_mapTypeToService(r.type) && svc === "incendie")
+    );
+    const filterVerif = r => svc === "all" || svc === "incendie";
+    const filterDai   = () => svc === "all" || svc === "incendie";
+    const filterPf    = () => svc === "all" || svc === "incendie";
+    // E/S et interv ext : visibles partout sauf si service explicite différent
+    const filterCross = r => svc === "all" ? true : (
+        !r.service || String(r.service).toLowerCase() === svc ||
+        // par défaut visible sur incendie + services_generaux
+        (!r.service && (svc === "incendie" || svc === "services_generaux"))
+    );
+
+    const rawR = _rawDashData;
+    const fRapports = rawR.rapports.filter(filterRapport);
+    const fRondes   = rawR.rondes.filter(filterRonde);
+    const fVerifs   = rawR.verifs.filter(filterVerif);
+    const fDai      = rawR.dai.filter(filterDai);
+    const fEs       = rawR.entreeSortie.filter(filterCross);
+    const fIe       = rawR.intExt.filter(filterCross);
+    const fPf       = rawR.permisFeu.filter(filterPf);
+
+    // Filtre allData (unifié) pour la table affichée
+    allData = rawR.allData.filter(row => _rowMatchesService(row, svc));
+
+    // Re-calcule les KPI sur les sous-ensembles filtrés
+    updateIndicators(fRapports, fRondes, fVerifs, {
+        dai: fDai, entreeSortie: fEs, intExt: fIe, permisFeu: fPf
+    });
+
+    // Re-applique les filtres UI existants (type/statut/date/...) puis re-render
+    applyFilters();
+}
+
+
+
 function setupRealtime() {
     supabaseClient
         .channel('dashboard-live')

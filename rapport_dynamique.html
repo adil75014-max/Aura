@@ -125,7 +125,7 @@ function renderForm(fields) {
             currentCard = null;
             const card = document.createElement("div");
             card.className = "card";
-            card.innerHTML = `<h2>${f.label || "Section"}</h2>`;
+            card.innerHTML = `<h2>${escapeHtml(f.label || "Section")}</h2>`;
             container.appendChild(card);
             currentCard = card;
             return;
@@ -134,11 +134,11 @@ function renderForm(fields) {
         const card = ensureCard();
 
         if (type === "title") {
-            card.innerHTML += `<div class="section-title">${f.label || ""}</div>`;
+            card.innerHTML += `<div class="section-title">${escapeHtml(f.label || "")}</div>`;
             return;
         }
         if (type === "subtitle") {
-            card.innerHTML += `<div class="subtitle-text">${f.label || ""}</div>`;
+            card.innerHTML += `<div class="subtitle-text">${escapeHtml(f.label || "")}</div>`;
             return;
         }
         if (type === "separator") {
@@ -146,36 +146,37 @@ function renderForm(fields) {
             return;
         }
         if (type === "info") {
-            card.innerHTML += `<div class="info-text">${f.label || ""}</div>`;
+            card.innerHTML += `<div class="info-text">${escapeHtml(f.label || "")}</div>`;
             return;
         }
 
         const div = document.createElement("div");
         div.className = "field-group";
 
-        const label = f.label || f.id;
+        const label = escapeHtml(f.label || f.id);
+        const fid = escapeAttr(f.id);
 
         if (type === "text" || type === "number" || type === "date" || type === "time" || type === "location") {
             const inputType = type === "location" ? "text" : type;
-            const placeholder = type === "location" ? "Adresse / localisation" : (f.placeholder || "");
+            const placeholder = escapeAttr(type === "location" ? "Adresse / localisation" : (f.placeholder || ""));
             div.innerHTML = `
                 <label>${label}</label>
-                <input type="${inputType}" data-field-id="${f.id}" placeholder="${placeholder}">
+                <input type="${inputType}" data-field-id="${fid}" placeholder="${placeholder}">
             `;
         }
         else if (type === "textarea") {
             div.innerHTML = `
                 <label>${label}</label>
-                <textarea data-field-id="${f.id}" placeholder="${f.placeholder || ""}"></textarea>
+                <textarea data-field-id="${fid}" placeholder="${escapeAttr(f.placeholder || "")}"></textarea>
             `;
         }
         else if (type === "select") {
             const options = (f.options || "Option A,Option B").split(",").map(o => o.trim());
             div.innerHTML = `
                 <label>${label}</label>
-                <select data-field-id="${f.id}">
+                <select data-field-id="${fid}">
                     <option value="">— Choisir —</option>
-                    ${options.map(o => `<option value="${o}">${o}</option>`).join("")}
+                    ${options.map(o => `<option value="${escapeAttr(o)}">${escapeHtml(o)}</option>`).join("")}
                 </select>
             `;
         }
@@ -184,7 +185,7 @@ function renderForm(fields) {
             div.innerHTML = `
                 <label>${label}</label>
                 <div class="checkbox-row">
-                    ${options.map((o,i) => `<label><input type="checkbox" data-field-id="${f.id}" value="${o}"> ${o}</label>`).join("")}
+                    ${options.map((o,i) => `<label><input type="checkbox" data-field-id="${fid}" value="${escapeAttr(o)}"> ${escapeHtml(o)}</label>`).join("")}
                 </div>
             `;
         }
@@ -193,14 +194,14 @@ function renderForm(fields) {
             div.innerHTML = `
                 <label>${label}</label>
                 <div class="radio-row">
-                    ${options.map((o,i) => `<label><input type="radio" name="${f.id}" data-field-id="${f.id}" value="${o}"> ${o}</label>`).join("")}
+                    ${options.map((o,i) => `<label><input type="radio" name="${fid}" data-field-id="${fid}" value="${escapeAttr(o)}"> ${escapeHtml(o)}</label>`).join("")}
                 </div>
             `;
         }
         else if (type === "photo") {
             div.innerHTML = `
                 <label>📷 ${label}</label>
-                <input type="file" data-field-id="${f.id}" accept="image/*" capture="camera">
+                <input type="file" data-field-id="${fid}" accept="image/*" capture="camera">
             `;
         }
         else if (type === "equipier") {

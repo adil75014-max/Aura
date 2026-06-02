@@ -349,22 +349,24 @@ function afficherInterventions() {
         else if (i.feuRequis === "Oui") colorFeu = "#fbbf24";
 
         const row = document.createElement("tr");
+        // Sécurise l'URL : on n'autorise que http(s), sinon on l'ignore (anti javascript:)
+        const safeUrl = (i.url && /^https?:\/\//i.test(i.url)) ? i.url : "";
         row.innerHTML = `
-            <td>${i.societe}</td>
-            <td>${i.zone}</td>
-            <td>${i.dateFin}</td>
-            <td>${i.arrivee || "-"}</td>
+            <td>${escapeHtml(i.societe)}</td>
+            <td>${escapeHtml(i.zone)}</td>
+            <td>${escapeHtml(i.dateFin)}</td>
+            <td>${escapeHtml(i.arrivee || "-")}</td>
             <td>
                 ${i.depart 
-                    ? i.depart 
+                    ? escapeHtml(i.depart) 
                     : `<button onclick="declarerDepart(${index})" style="padding:6px 10px; border-radius:6px; background:#ef4444; color:white;">Sortie</button>`
                 }
             </td>
-            <td>${i.feuRequis}</td>
-            <td style="color:${colorFeu}; font-weight:700;">${i.feuSigne}</td>
-            <td>${i.ouvriers}</td>
-            <td>${i.observations || "-"}</td>
-            <td>${i.url ? `<a href="${i.url}" target="_blank" style="color:#6fb3ff;">Ouvrir</a>` : "-"}</td>
+            <td>${escapeHtml(i.feuRequis)}</td>
+            <td style="color:${colorFeu}; font-weight:700;">${escapeHtml(i.feuSigne)}</td>
+            <td>${escapeHtml(i.ouvriers)}</td>
+            <td>${escapeHtml(i.observations || "-")}</td>
+            <td>${safeUrl ? `<a href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener" style="color:#6fb3ff;">Ouvrir</a>` : "-"}</td>
             <td><button onclick="editIntervention(${index})">✏️</button></td>
         `;
         table.appendChild(row);
@@ -417,11 +419,11 @@ function remplirFiltres() {
     fZone.innerHTML = `<option value="">Toutes les zones</option>`;
 
     [...new Set(interventions.map(i => i.societe))].forEach(s => {
-        fSoc.innerHTML += `<option value="${s}">${s}</option>`;
+        fSoc.innerHTML += `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`;
     });
 
     [...new Set(interventions.map(i => i.zone))].forEach(z => {
-        fZone.innerHTML += `<option value="${z}">${z}</option>`;
+        fZone.innerHTML += `<option value="${escapeAttr(z)}">${escapeHtml(z)}</option>`;
     });
 }
 

@@ -513,7 +513,9 @@ async function chargerLogs() {
 async function chargerComptes() {
     const isSuperAdmin = (localStorage.getItem("role") || "").toLowerCase() === "superadmin";
 
-    let q = client.from("users").select("*");
+    // Colonnes explicites — JAMAIS password_hash (protégé aussi côté BDD
+    // par REVOKE SELECT, le select("*") échouerait désormais de toute façon).
+    let q = client.from("users").select("id, nom, role, statut, mission, lieu, badgeuid, site_code, service, created_at");
 
     if (!isSuperAdmin) {
         const monSite    = (localStorage.getItem("site_code") || "LBM").toUpperCase();

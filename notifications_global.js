@@ -370,7 +370,9 @@ var _notifEl = null;
 var _audioUnlocked = false;
 var _audioCtx = null;
 var _alarmBuffer = null;
-var _alarmSource = null;
+var _alarmSource = null;        // BufferSourceNode actif (pour pouvoir l'arrêter)
+var _alarmGain = null;          // Gain pour fade out propre
+var _bufferDecodePromise = null;
 
 function _ensureAudioElements() {
     if (!_alarmEl) {
@@ -399,12 +401,56 @@ function _ensureAudioElements() {
     }
 }
 
+// Décode le MP3 en AudioBuffer une seule fois → son instantané au play
+function _decodeAlarmBuffer() {
+    if (_alarmBuffer) return Promise.resolve(_alarmBuffer);
+    if (_bufferDecodePromise) return _bufferDecodePromise;
+    if (!_audioCtx) {
+        try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        catch(e) { return Promise.reject(e); }
+    }
+    _bufferDecodePromise = fetch("fire_station_tone_x4.mp3", { cache: "force-cache" })
+        .then(function(r) {
+            if (!r.ok) throw new Error("HTTP " + r.status);
+            return r.arrayBuffer();
+        })
+        .then(function(ab) {
+            // Safari iOS exige la forme callback de decodeAudioData (pas la promise)
+            return new Promise(function(resolve, reject) {
+                _audioCtx.decodeAudioData(ab, function(buf) {
+                    _alarmBuffer = buf;
+                    console.info("[Audio] Buffer alarme décodé : " + buf.duration.toFixed(1) + "s");
+                    resolve(buf);
+                }, function(err) {
+                    console.warn("[Audio] decodeAudioData failed:", err);
+                    reject(err);
+                });
+            });
+        })
+        .catch(function(e) {
+            console.warn("[Audio] Échec pré-décodage buffer (fallback HTML5 prendra le relais):", e);
+            _bufferDecodePromise = null; // permettre une nouvelle tentative plus tard
+            return null;
+        });
+    return _bufferDecodePromise;
+}
+
 // Débloquer au premier geste utilisateur (iOS exige absolument un user gesture)
 function _unlockAudio() {
-    if (_audioUnlocked) return;
     _ensureAudioElements();
 
-    // Test : jouer-pauser immédiatement pour débloquer le tag audio
+    // 1) Créer/reprendre l'AudioContext sur le geste utilisateur
+    if (!_audioCtx) {
+        try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
+    }
+    if (_audioCtx && _audioCtx.state === "suspended") {
+        try { _audioCtx.resume(); } catch(e) {}
+    }
+
+    // 2) Lancer (ou relancer) le pré-décodage du buffer alarme
+    _decodeAlarmBuffer();
+
+    // 3) Débloquer aussi les éléments <audio> HTML5 (fallback iOS très ancien)
     try {
         _alarmEl.muted = true;
         var p1 = _alarmEl.play();
@@ -415,7 +461,6 @@ function _unlockAudio() {
                 _alarmEl.muted = false;
             }).catch(function(){});
         }
-
         _notifEl.muted = true;
         var p2 = _notifEl.play();
         if (p2 && p2.then) {
@@ -427,16 +472,10 @@ function _unlockAudio() {
         }
     } catch(e) {}
 
-    // Aussi débloquer AudioContext (fallback)
-    try {
-        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (_audioCtx.state === "suspended") _audioCtx.resume();
-    } catch(e) {}
-
     _audioUnlocked = true;
 }
 
-// Attacher le déblocage à TOUS les types de gestes utilisateur
+// Attacher le déblocage à TOUS les types de gestes utilisateur (re-déclenche aussi resume() à chaque fois)
 function _attachUnlockListeners() {
     var events = ["click", "touchstart", "touchend", "pointerdown", "keydown", "mousedown"];
     events.forEach(function(evt) {
@@ -456,28 +495,71 @@ if (document.readyState === "loading") {
 
 function playAlarmSound() {
     _ensureAudioElements();
+    showAlarmBanner();
 
-    // Tentative 1 : élément <audio>
+    // Vibration mobile (immédiate, indépendante de l'audio)
+    if (navigator.vibrate) {
+        try { navigator.vibrate([500, 200, 500, 200, 500, 200, 500]); } catch(e){}
+    }
+
+    // ── PRIORITÉ 1 : Web Audio API avec buffer pré-décodé ──
+    // Le plus fiable : démarrage instantané, marche sur iOS dès que le
+    // contexte audio a été réveillé par un user gesture (ce que fait
+    // _unlockAudio attaché à tous les events).
+    if (_audioCtx && _alarmBuffer) {
+        try {
+            // S'assurer que le contexte n'est pas suspendu
+            if (_audioCtx.state === "suspended") {
+                _audioCtx.resume(); // best-effort
+            }
+            // Couper toute alarme précédente
+            if (_alarmSource) {
+                try { _alarmSource.stop(); } catch(e){}
+                _alarmSource = null;
+            }
+            var src = _audioCtx.createBufferSource();
+            src.buffer = _alarmBuffer;
+            src.loop = true;
+            var gain = _audioCtx.createGain();
+            gain.gain.value = 1.0;
+            src.connect(gain);
+            gain.connect(_audioCtx.destination);
+            src.start(0);
+            _alarmSource = src;
+            _alarmGain = gain;
+            // Auto-cut à 30s
+            setTimeout(function() {
+                try { src.stop(); } catch(e){}
+                if (_alarmSource === src) _alarmSource = null;
+            }, 30000);
+            return; // ✅ son lancé via Web Audio, on s'arrête là
+        } catch(e) {
+            console.warn("[Audio] Web Audio playback échec, fallback HTML5:", e);
+        }
+    }
+
+    // ── PRIORITÉ 2 : élément <audio> HTML5 (fallback) ──
+    // Si le buffer n'est pas encore décodé (premier chargement, ou décodage
+    // a échoué), on tombe sur l'élément audio classique. Au passage on
+    // relance le décodage pour la prochaine fois.
+    _decodeAlarmBuffer();
     try {
         _alarmEl.currentTime = 0;
         _alarmEl.loop = true;
         _alarmEl.volume = 1.0;
+        _alarmEl.muted = false;
         var p = _alarmEl.play();
-        if (p && p.catch) p.catch(function() { _playFallbackAlarm(); });
-
-        // Couper après 30 secondes
+        if (p && p.catch) {
+            p.catch(function(err) {
+                console.warn("[Audio] HTML5 play échec, fallback bip:", err && err.message);
+                _playFallbackAlarm();
+            });
+        }
         setTimeout(function() {
             try { _alarmEl.pause(); _alarmEl.currentTime = 0; } catch(e){}
         }, 30000);
     } catch(e) {
         _playFallbackAlarm();
-    }
-
-    showAlarmBanner();
-
-    // Vibration mobile (si disponible)
-    if (navigator.vibrate) {
-        try { navigator.vibrate([500, 200, 500, 200, 500, 200, 500]); } catch(e){}
     }
 }
 
@@ -580,7 +662,9 @@ function showAlarmBanner() {
 function closeAlarmBanner() {
     var banner = document.getElementById("alarmBanner");
     if (banner) banner.remove();
+    // Stop HTML5 audio
     if (_alarmEl) { try { _alarmEl.pause(); _alarmEl.currentTime = 0; } catch(e){} }
+    // Stop Web Audio BufferSource (la source primaire du son)
     if (_alarmSource) { try { _alarmSource.stop(); } catch(e){} _alarmSource = null; }
     if (navigator.vibrate) { try { navigator.vibrate(0); } catch(e){} }
 }

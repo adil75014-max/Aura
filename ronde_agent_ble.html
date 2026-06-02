@@ -467,7 +467,7 @@ function afficherPoints() {
             <div class="point ${status}">
                 <div class="point-num">${i + 1}</div>
                 <div class="point-info">
-                    <div class="point-name">${p.nom} <span class="point-tag ${tagClass}">${(p.tagType||"").toUpperCase()}</span></div>
+                    <div class="point-name">${escapeHtml(p.nom)} <span class="point-tag ${tagClass}">${escapeHtml((p.tagType||"").toUpperCase())}</span></div>
                     <div class="point-detail">${detail}</div>
                 </div>
                 <div class="point-actions">${manualBtn}</div>
@@ -543,7 +543,7 @@ function ouvrirRapport() {
         if (p.commentaires && p.commentaires.length) {
             p.commentaires.forEach(c => {
                 html += `<div style="margin-top:4px;padding:6px 10px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:.85rem">
-                    💬 ${c.texte} <span style="color:#6b7a99;font-size:.75rem">(${c.date})</span>
+                    💬 ${escapeHtml(c.texte)} <span style="color:#6b7a99;font-size:.75rem">(${escapeHtml(c.date)})</span>
                 </div>`;
             });
         }

@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js" crossorigin="anonymous"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
@@ -174,8 +175,42 @@ async function chargerPermisFeu(){
     document.getElementById("statOuvert").textContent=allP.filter(function(p){return !isClos(p.statut);}).length;
     document.getElementById("statClos").textContent=allP.filter(function(p){return isClos(p.statut);}).length;
 
-    const urlNum=new URLSearchParams(location.search).get("pf");
-    if(urlNum){const match=permisCache.find(p=>p.numero===urlNum);if(match)ouvrirPermis(match.id);}
+    const sp = new URLSearchParams(location.search);
+    const urlNum = sp.get("pf") || sp.get("numero");  // ?pf= (existant) ou ?numero= (depuis QR du PDF)
+    const autoUrgence = sp.get("urgence") === "1";    // ?urgence=1 → ouvre directement le panneau d'urgence
+    if (urlNum) {
+        const match = permisCache.find(p => p.numero === urlNum || p.id === urlNum);
+        if (match) {
+            ouvrirPermis(match.id);
+            if (autoUrgence) {
+                // Petit délai pour laisser le modal se rendre, puis surligner les boutons urgence
+                setTimeout(function() {
+                    const modal = document.getElementById("permisModal");
+                    if (modal) {
+                        const btns = modal.querySelectorAll(".urgence-btn");
+                        btns.forEach(b => {
+                            b.style.animation = "pulse-urgence 1s ease-in-out infinite alternate";
+                            b.style.outline = "3px solid #ef4444";
+                            b.style.outlineOffset = "3px";
+                        });
+                        // Scrolle automatiquement vers les boutons d'urgence
+                        const firstBtn = btns[0];
+                        if (firstBtn) firstBtn.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }
+                    // Injecte l'animation CSS si absente
+                    if (!document.getElementById("urgence-pulse-css")) {
+                        const st = document.createElement("style");
+                        st.id = "urgence-pulse-css";
+                        st.textContent = "@keyframes pulse-urgence { from { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } to { box-shadow: 0 0 0 16px rgba(239,68,68,0); } }";
+                        document.head.appendChild(st);
+                    }
+                }, 350);
+            }
+        } else {
+            // Permis pas dans le cache (ex: clos et le filtre actuel ne le montre pas)
+            console.warn("[QR-URGENCE] Permis non trouvé dans le cache pour numero:", urlNum);
+        }
+    }
 }
 
 function renderList(list){
@@ -557,9 +592,41 @@ async function exportPDF(id){
     if(m.passages&&m.passages.length){sec('Passages');row('Heures',m.passages.join(', '));}
     if(m.prolongations&&m.prolongations.length){sec('Prolongations');m.prolongations.forEach(pr=>{row('',`${pr.ancienne_date||pr.date} (${pr.ancien_horaire||pr.horaire}) - ${pr.horodatage}`);});}
 
+    // ─── QR CODE DE DÉCLENCHEMENT D'URGENCE ──────────────────────
+    // Permet à l'agent sur place de scanner le permis papier avec son
+    // téléphone → ouvre directement la page urgence pour CE permis.
+    // L'URL inclut le numéro du permis et le flag urgence=1.
+    try {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const urgenceUrl = baseUrl + "?numero=" + encodeURIComponent(p.numero || p.id) + "&urgence=1";
+        if (typeof QRCode !== "undefined" && QRCode.toDataURL) {
+            const qrDataUrl = await QRCode.toDataURL(urgenceUrl, {
+                width: 240, margin: 1, errorCorrectionLevel: "M",
+                color: { dark: "#000000", light: "#FFFFFF" }
+            });
+            // Encadré QR en bas de page 1 si la place le permet, sinon nouvelle page
+            es(48);
+            pdf.setDrawColor(220, 38, 38); pdf.setLineWidth(0.6);
+            pdf.roundedRect(M, y, PW, 42, 3, 3, "S");
+            pdf.addImage(qrDataUrl, "PNG", M + 3, y + 3, 36, 36);
+            pdf.setFontSize(11); pdf.setTextColor(220, 38, 38); pdf.setFont(undefined, "bold");
+            pdf.text("🚨 EN CAS D'URGENCE — SCANNER LE QR", M + 44, y + 10);
+            pdf.setFont(undefined, "normal"); pdf.setFontSize(9); pdf.setTextColor(60);
+            pdf.text("Scanne ce code avec ton téléphone pour ouvrir", M + 44, y + 18);
+            pdf.text("immédiatement la fiche d'urgence de ce permis feu.", M + 44, y + 23);
+            pdf.text("Tu pourras déclencher l'alarme depuis ton mobile,", M + 44, y + 28);
+            pdf.text("même sans accès au poste central.", M + 44, y + 33);
+            pdf.setFontSize(7); pdf.setTextColor(140);
+            pdf.text(p.numero || "", M + 44, y + 39);
+            y += 46;
+        }
+    } catch(e) {
+        console.warn("[PDF] QR urgence non généré :", e && e.message);
+    }
+
     ft();
     pdf.save('Permis_Feu_'+(p.numero||'').replace(/[^a-zA-Z0-9-]/g,'_')+'.pdf');
-    showToast('\ud83d\udcc4 PDF export\u00e9');
+    showToast('\ud83d\udcc4 PDF export\u00e9 (avec QR code urgence)');
 }
 
 async function chargerEntreprises(){

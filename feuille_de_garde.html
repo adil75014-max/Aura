@@ -281,7 +281,7 @@ document.addEventListener("DOMContentLoaded", function() {
             window.location.href = "index.html";
             return;
         }
-        var site = (window.AuraTenant && AuraTenant.label) ? AuraTenant.label : (localStorage.getItem("site_code") || "");
+        var site = (window.AuraTenant && AuraTenant.label) ? AuraTenant.label() : (localStorage.getItem("site_code") || "");
         var el = document.getElementById("fdgServiceLbl");
         if (el) el.textContent = site ? "— " + site : "";
     } catch(e) {}

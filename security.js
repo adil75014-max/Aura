@@ -22,7 +22,7 @@ var ALLOWED_OUTBOUND = [
 // dans le check ci-dessous), donc inutile de l'ajouter explicitement
 // dans chaque liste — mais on le fait quand même par défense en profondeur.
 var PAGE_PERMISSIONS = {
-    "dashboard_admin.html":      ["admin", "superviseur", "superadmin"],
+    "dashboard_admin.html":      ["admin", "superviseur", "stationnaire", "agent", "superadmin"],
     "gestion_de_compte.html":    ["admin", "superadmin"],
     "gestion_des_rapports.html": ["admin", "superviseur", "superadmin"],
     "ronde_admin.html":          ["admin", "superviseur", "superadmin"],

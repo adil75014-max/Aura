@@ -501,6 +501,38 @@ a:hover { text-decoration: underline; }
 const TYPE_LABELS = {
     /* --- Interventions --- */
     'ouverture_porte_casiers': 'Ouverture porte/casiers',
+    /* --- Technique --- */
+    'panne_elec':          'Panne électrique',
+    'panne_cvc':           'Panne CVC / Climatisation',
+    'panne_plomberie':     'Panne plomberie / Fuite',
+    'panne_ascenseur':     'Panne ascenseur / monte-charge',
+    'panne_eclairage':     'Panne éclairage',
+    'porte_auto':          'Porte automatique HS',
+    'chaudiere':           'Chaudière / Production ECS',
+    'maint_hebdo':         'Maintenance hebdomadaire',
+    'maint_mens':          'Maintenance mensuelle',
+    'maint_annuelle':      'Maintenance annuelle',
+    /* --- Services Généraux --- */
+    'livraison_in':        'Livraison entrante',
+    'livraison_out':       'Livraison sortante',
+    'courrier':            'Réception courrier',
+    'colis':               'Gestion colis',
+    'nettoyage':           'Nettoyage / Propreté',
+    'espaces_verts':       'Espaces verts',
+    'dechets':             'Gestion déchets',
+    'resa_salle':          'Réservation salle de réunion',
+    'resa_parking':        'Réservation parking',
+    'resa_materiel':       'Réservation matériel',
+    /* --- Sûreté --- */
+    'vol':                 'Vol',
+    'conflit':             'Conflit / Altercation',
+    'intrusion':           'Intrusion',
+    'personne_suspecte':   'Personne suspecte',
+    'colis_suspect':       'Colis suspect',
+    'objet_abandonne':     'Objet abandonné',
+    'camera_hs':           'Caméra hors service',
+    'video_consultation':  'Consultation vidéo',
+    'video_extraction':    'Extraction vidéo',
     'incendie':            'Détection incendie',
     'odeur':               'Odeur suspecte',
     'desincarceration':    'Désincarcération ASC/MC/Escalator/Toilette',
@@ -1836,7 +1868,8 @@ const TYPE_TO_SERVICE = {
     // ─── Services Généraux ───
     livraison_in: "services_generaux", livraison_out: "services_generaux",
     courrier: "services_generaux", colis: "services_generaux",
-    nettoyage: "services_generaux", espaces_verts: "services_generaux", dechets: "services_generaux"
+    nettoyage: "services_generaux", espaces_verts: "services_generaux", dechets: "services_generaux",
+    resa_salle: "services_generaux", resa_parking: "services_generaux", resa_materiel: "services_generaux"
 };
 
 function _mapTypeToService(type) {

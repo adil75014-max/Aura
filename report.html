@@ -162,7 +162,10 @@ const TYPES = {
     colis:              "Gestion colis",
     nettoyage:          "Nettoyage / Propreté",
     espaces_verts:      "Espaces verts",
-    dechets:            "Gestion déchets"
+    dechets:            "Gestion déchets",
+    resa_salle:         "Réservation salle de réunion",
+    resa_parking:       "Réservation parking",
+    resa_materiel:      "Réservation matériel"
 };
 
 /* Champs spécifiques par type d'intervention (adaptés au métier).
@@ -297,6 +300,32 @@ const TYPE_EXTRA_FIELDS = {
         { id: "type_dechet", label: "Type de déchet", type: "select", options: ["DIB","Carton","Verre","DEEE","Dangereux"] },
         { id: "volume",      label: "Volume / quantité", type: "text" },
         { id: "evacuation",  label: "Évacuation",        type: "select", options: ["Local déchets","Enlèvement prestataire","Benne"] }
+    ],
+    // ── Réservations (Services Généraux) ──
+    resa_salle: [
+        { id: "salle",        label: "Salle",                type: "text" },
+        { id: "date_resa",    label: "Date",                 type: "date" },
+        { id: "heure_debut",  label: "Heure début",          type: "time" },
+        { id: "heure_fin",    label: "Heure fin",            type: "time" },
+        { id: "demandeur",    label: "Demandeur / service",  type: "text" },
+        { id: "nb_personnes", label: "Nombre de personnes",  type: "number" },
+        { id: "equipements",  label: "Équipements",          type: "select", options: ["Aucun","Vidéoprojecteur","Visioconférence","Paperboard","Visio + vidéo","Sonorisation"] }
+    ],
+    resa_parking: [
+        { id: "emplacement",     label: "Emplacement / zone", type: "text" },
+        { id: "date_resa",       label: "Date",               type: "date" },
+        { id: "creneau",         label: "Créneau",            type: "text" },
+        { id: "demandeur",       label: "Demandeur",          type: "text" },
+        { id: "immatriculation", label: "Immatriculation",    type: "text" },
+        { id: "societe",         label: "Société / service",  type: "text" }
+    ],
+    resa_materiel: [
+        { id: "materiel",   label: "Matériel",        type: "text" },
+        { id: "quantite",   label: "Quantité",        type: "number" },
+        { id: "date_resa",  label: "Date",            type: "date" },
+        { id: "periode",    label: "Période / créneau", type: "text" },
+        { id: "demandeur",  label: "Demandeur",       type: "text" },
+        { id: "retour",     label: "Retour prévu",    type: "select", options: ["Même jour","Lendemain","Sous 1 semaine","À définir"] }
     ]
 };
 
@@ -359,7 +388,7 @@ function renderExtraFields(code, label) {
             return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
                     <textarea id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}" placeholder="${escapeAttr(f.label)}"></textarea>`;
         }
-        const inputType = (f.type === "number") ? "number" : "text";
+        const inputType = ["number","date","time"].includes(f.type) ? f.type : "text";
         return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
                 <input type="${inputType}" id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}" placeholder="${escapeAttr(f.label)}">`;
     }).join("");
@@ -665,7 +694,8 @@ async function saveReport() {
             panne_ascenseur:"technique",panne_eclairage:"technique",porte_auto:"technique",
             chaudiere:"technique",maint_hebdo:"technique",maint_mens:"technique",maint_annuelle:"technique",
             livraison_in:"services_generaux",livraison_out:"services_generaux",courrier:"services_generaux",
-            colis:"services_generaux",nettoyage:"services_generaux",espaces_verts:"services_generaux",dechets:"services_generaux"
+            colis:"services_generaux",nettoyage:"services_generaux",espaces_verts:"services_generaux",dechets:"services_generaux",
+            resa_salle:"services_generaux",resa_parking:"services_generaux",resa_materiel:"services_generaux"
         };
         const serviceMetier = SERVICE_PAR_TYPE[typeCode]; // undefined si non mappé → tenant.js gère
 

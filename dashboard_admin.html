@@ -487,6 +487,7 @@ a:hover { text-decoration: underline; }
 <button class="btn-excel" onclick="exportCSV()">📤 Exporter la sélection en CSV</button>
 <button class="btn-mail" onclick="envoyerRapportsPDF('jour')">📧 Envoyer PDF 8h → 20h</button>
 <button class="btn-mail" onclick="envoyerRapportsPDF('nuit')">🌙 Envoyer PDF 20h → 8h</button>
+<button class="btn-excel" onclick="configMailDest()">✉️ Destinataire mail</button>
 
 <script>
 /* ==========================================================
@@ -499,6 +500,7 @@ a:hover { text-decoration: underline; }
 ========================================================== */
 const TYPE_LABELS = {
     /* --- Interventions --- */
+    'ouverture_porte_casiers': 'Ouverture porte/casiers',
     'incendie':            'Détection incendie',
     'odeur':               'Odeur suspecte',
     'desincarceration':    'Désincarcération ASC/MC/Escalator/Toilette',
@@ -1534,38 +1536,77 @@ async function genererPDFUltra(rapportsFiltrés, titre) {
     return pdf;
 }
 
+function _serviceLabelMail(){
+    const svc=(localStorage.getItem("service")||"incendie").toLowerCase();
+    return ({incendie:"Sécurité Incendie", surete:"Sûreté", technique:"Technique", services_generaux:"Services Généraux"})[svc]||"Sécurité";
+}
+function getMailDest(force){
+    let to=localStorage.getItem("rapport_mail_to")||"";
+    if(force || !to){
+        const v=prompt("Adresse(s) e-mail destinataire(s) du compte rendu\n(séparées par des virgules) :", to);
+        if(v===null) return to||null;
+        to=v.trim(); localStorage.setItem("rapport_mail_to", to);
+    }
+    return to||null;
+}
+function configMailDest(){ if(getMailDest(true)) showToast("✉️ Destinataire enregistré"); }
+
 async function envoyerRapportsPDF(type) {
     const rapportsFiltrés = getRapportsPlage(type);
-
     const dateStr = new Date().toLocaleDateString('fr-FR');
+    const svcLabel = _serviceLabelMail();
     const titre = type === 'jour'
         ? 'Rapports du jour ' + dateStr + ' (8h - 20h)'
         : 'Rapports de nuit ' + dateStr + ' (20h - 8h)';
 
     const pdf = await genererPDFUltra(rapportsFiltrés, titre);
+    const filename = 'Rapports_' + svcLabel.replace(/[^a-zA-Z0-9]/g,'') + '_' + type + '_' + new Date().toISOString().split('T')[0] + '.pdf';
 
-    const filename = 'Rapports_LBM_' + type + '_' + new Date().toISOString().split('T')[0] + '.pdf';
-    pdf.save(filename);
-
-    // Mail professionnel
-    const subject = titre + ' — Le Bon Marche Securite';
-    const body = [
-        'Bonjour,',
-        '',
-        'Veuillez trouver ci-joint le compte rendu des evenements de la vacation.',
-        '',
-        'Vacation : ' + (type === 'jour' ? 'Jour (8h - 20h)' : 'Nuit (20h - 8h)'),
-        'Date : ' + dateStr,
-        'Total : ' + rapportsFiltrés.length + ' evenement(s)',
-        '',
-        'Cordialement,',
-        'Service Securite Incendie',
-        'Le Bon Marche — SEGEP RG — Batiment 3'
+    const vac = (type === 'jour' ? 'Jour (8h - 20h)' : 'Nuit (20h - 8h)');
+    const subject = titre + ' — Le Bon Marché ' + svcLabel;
+    const bodyText = [
+        'Bonjour,', '',
+        'Veuillez trouver ci-joint le compte rendu des evenements de la vacation.', '',
+        'Vacation : ' + vac, 'Date : ' + dateStr,
+        'Total : ' + rapportsFiltrés.length + ' evenement(s)', '',
+        'Cordialement,', 'Service ' + svcLabel, 'Le Bon Marche'
     ].join('\n');
+    const bodyHtml = '<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222">'
+        + '<p>Bonjour,</p>'
+        + '<p>Veuillez trouver <b>ci-joint</b> le compte rendu des événements de la vacation.</p>'
+        + '<table style="font-size:14px;border-collapse:collapse">'
+        + '<tr><td style="padding:2px 10px 2px 0"><b>Vacation :</b></td><td>'+vac+'</td></tr>'
+        + '<tr><td style="padding:2px 10px 2px 0"><b>Date :</b></td><td>'+dateStr+'</td></tr>'
+        + '<tr><td style="padding:2px 10px 2px 0"><b>Total :</b></td><td>'+rapportsFiltrés.length+' événement(s)</td></tr>'
+        + '</table>'
+        + '<p style="margin-top:16px">Cordialement,<br><b>Service '+svcLabel+'</b><br>Le Bon Marché</p></div>';
 
-    window.location.href = 'mailto:?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    // PDF en base64 (sans le préfixe "data:...base64,")
+    let pdfB64 = '';
+    try { pdfB64 = pdf.output('datauristring').split('base64,').pop(); } catch(e){}
 
-    showToast('📧 PDF genere (' + rapportsFiltrés.length + ' rapports)');
+    const to = getMailDest(false);
+    if (!to) { showToast('Envoi annulé (aucun destinataire)'); return; }
+
+    showToast('⏳ Envoi du mail en cours…');
+    try {
+        const { data, error } = await supabaseClient.functions.invoke('send-rapport-mail', {
+            body: { to: to, subject: subject, html: bodyHtml, pdf_base64: pdfB64, filename: filename }
+        });
+        if (error) throw error;
+        if (data && data.ok) {
+            showToast('📧 Mail envoyé à ' + to + ' — PDF joint (' + rapportsFiltrés.length + ' rapport(s))');
+            return;
+        }
+        throw new Error((data && data.error) || 'Réponse inattendue');
+    } catch (e) {
+        console.warn('[MAIL] Envoi serveur indisponible → repli téléchargement + mailto:', e);
+        pdf.save(filename); // repli : on télécharge le PDF
+        window.location.href = 'mailto:' + encodeURIComponent(to)
+            + '?subject=' + encodeURIComponent(subject)
+            + '&body=' + encodeURIComponent(bodyText + '\n\n(Envoi automatique indisponible : le PDF vient d\'être téléchargé, merci de le joindre au mail.)');
+        showToast('⚠️ Envoi auto non configuré — PDF téléchargé, à joindre manuellement');
+    }
 }
 
 /* ==========================================================

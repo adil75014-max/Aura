@@ -243,7 +243,7 @@
         "notifications", "audit_log", "verifications", "verifications_types",
         "rondes", "interventions_exterieures", "suivi_travaux", "interventions",
         "rapport_modeles", "rapports_entree_sortie", "interventions_syope",
-        "plan_prevention", "plans", "alertes_urgence", "ssiap"
+        "plan_prevention", "plans", "alertes_urgence", "ssiap", "controle_acces"
     ];
 
     // Tables JAMAIS filtrées

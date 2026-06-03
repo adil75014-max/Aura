@@ -131,6 +131,9 @@ const TYPES = {
     verif_popup:                    "Vérification Pop up",
     verifreceptiontravaux:          "Réception Travaux",
 
+    // ─── COMMUN (incendie + sûreté) ───
+    ouverture_porte_casiers: "Ouverture porte/casiers",
+
     // ─── SÛRETÉ ───
     vol:                "Vol",
     conflit:            "Conflit / Altercation",
@@ -166,6 +169,15 @@ const TYPES = {
    Rendus dynamiquement sous le type, sauvegardés dans meta.champs_specifiques.
    Types de champ supportés : text, number, textarea, select (avec options). */
 const TYPE_EXTRA_FIELDS = {
+    ouverture_porte_casiers: [
+        { id: "objet",       label: "Élément ouvert",       type: "select", options: ["Porte","Casier / vestiaire","Bureau","Local technique","Coffre / armoire","Autre"] },
+        { id: "reference",   label: "N° / localisation (porte, casier…)", type: "text" },
+        { id: "motif",       label: "Motif",                type: "select", options: ["Oubli de clé/badge","Demande hiérarchie/RH","Intervention technique","Contrôle/sûreté","Urgence","Objet oublié"] },
+        { id: "demandeur",   label: "Demandeur / autorisé par", type: "text" },
+        { id: "moyen",       label: "Moyen d'ouverture",    type: "select", options: ["Passe","Clé de secours","Code","Badge","Ouverture forcée"] },
+        { id: "temoin",      label: "Témoin présent",       type: "select", options: ["Non","Oui — agent","Oui — demandeur","Oui — responsable"] },
+        { id: "etat",        label: "État après ouverture", type: "select", options: ["Refermé/sécurisé","Laissé ouvert","Remis au demandeur"] }
+    ],
     // ── Sûreté ──
     vol: [
         { id: "objets_voles",   label: "Objets volés",        type: "textarea" },

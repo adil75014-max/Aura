@@ -1585,7 +1585,8 @@ incendie: [
             { icon: "🚪", label: "Entrée & Sortie", link: "rapport_entree_sortie.html" },
             { icon: "🚪", label: "Rapports Entrée/Sortie ouverts", link: "rapport_entree_sortie_ouverts.html" },
             { icon: "🧑‍⚕️", label: "Intervention sanitaire Syope", link: "rapport_interventions_syope.html" },
-            { icon: "🐕", label: "Sauvetage animalier", link: "report.html?type=animalier" }
+            { icon: "🐕", label: "Sauvetage animalier", link: "report.html?type=animalier" },
+            { icon: "🔑", label: "Ouverture porte/casiers", link: "report.html?type=ouverture_porte_casiers" }
         ]
     },
     {
@@ -1678,7 +1679,6 @@ surete: [
         category: "Exploitation", icon: "📄",
         visibleFor: ["admin","superviseur","stationnaire","agent"],
         items: [
-            { icon: "📄", label: "Feuille de garde", link: "feuille_de_garde.html" },
             { icon: "🕒", label: "Permanence", link: "permanence.html" },
             { icon: "📊", label: "Main courante", link: "dashboard_admin.html" }
         ]
@@ -1693,6 +1693,7 @@ surete: [
             { icon: "👤", label: "Personne suspecte", link: "report.html?type=personne_suspecte" },
             { icon: "📦", label: "Colis suspect", link: "report.html?type=colis_suspect" },
             { icon: "🎒", label: "Objet abandonné", link: "report.html?type=objet_abandonne" },
+            { icon: "🔑", label: "Ouverture porte/casiers", link: "report.html?type=ouverture_porte_casiers" },
             { icon: "🚪", label: "Entrée & Sortie", link: "rapport_entree_sortie.html" }
         ]
     },
@@ -1733,7 +1734,6 @@ technique: [
         category: "Exploitation", icon: "📄",
         visibleFor: ["admin","superviseur","stationnaire","agent"],
         items: [
-            { icon: "📄", label: "Feuille de garde", link: "feuille_de_garde.html" },
             { icon: "📊", label: "Tableau de bord", link: "dashboard_admin.html" }
         ]
     },
@@ -1785,7 +1785,6 @@ services_generaux: [
         category: "Exploitation", icon: "📄",
         visibleFor: ["admin","superviseur","stationnaire","agent"],
         items: [
-            { icon: "📄", label: "Feuille de garde", link: "feuille_de_garde.html" },
             { icon: "📊", label: "Main courante", link: "dashboard_admin.html" }
         ]
     },
@@ -2463,6 +2462,14 @@ function startCoClock() {
    CENTRE OPÉRATIONNEL — SUPERVISION
 ══════════════════════════════════════════════════════ */
 function openSupervision() {
+    // Supervision réservée au service incendie (console spécialisée)
+    var svc = (localStorage.getItem("service") || "incendie").toLowerCase();
+    var isGlobal = !!(window.AuraTenant && window.AuraTenant.isGlobalMode);
+    if (svc !== "incendie" && !isGlobal) {
+        alert("Le Mode Supervision est réservé au service Sécurité Incendie.");
+        window.location.href = "index.html";
+        return;
+    }
     document.getElementById("supervisionScreen").style.display = "flex";
     coRefreshAll();
     // Fermer la sidebar si elle est ouverte
@@ -3021,14 +3028,19 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     } catch(e) { console.warn("[Tenant] init topbar:", e); }
 
-    /* Bouton supervision dans la sidebar */
+    /* Bouton supervision dans la sidebar — INCENDIE uniquement
+       (console spécialisée incendie : urgences permis feu, missions SSIAP) */
     const sidebar = document.getElementById("sidebarContent");
-    const bloc = document.createElement("div");
-    bloc.className = "menu-item";
-    bloc.style.marginTop = "20px";
-    bloc.innerHTML = "🛰️ Mode Supervision";
-    bloc.onclick = function() { window.open("index.html?supervision=1", "_blank"); };
-    sidebar.appendChild(bloc);
+    var _svcForSupervision = (localStorage.getItem("service") || "incendie").toLowerCase();
+    var _globalForSupervision = !!(window.AuraTenant && window.AuraTenant.isGlobalMode);
+    if (_svcForSupervision === "incendie" || _globalForSupervision) {
+        const bloc = document.createElement("div");
+        bloc.className = "menu-item";
+        bloc.style.marginTop = "20px";
+        bloc.innerHTML = "🛰️ Mode Supervision";
+        bloc.onclick = function() { window.open("index.html?supervision=1", "_blank"); };
+        sidebar.appendChild(bloc);
+    }
 
     /* Bouton Centre d'appel (console dispatch / softphone SIP)
        Cloisonné au service incendie uniquement (softphone d'urgence).
@@ -3077,7 +3089,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         surete: [
             { icon: "🛡️", label: "Veille temps réel",    link: "surete_temps_reel.html",
               style: "background:linear-gradient(135deg, rgba(59,130,246,0.18), rgba(239,68,68,0.12)); border:1px solid rgba(59,130,246,0.4);" },
-            { icon: "📄", label: "Feuille de garde",      link: "feuille_de_garde.html" },
+            { icon: "🛂", label: "Contrôle d'accès",       link: "controle_acces.html",
+              style: "background:linear-gradient(135deg, rgba(6,182,212,0.18), rgba(59,130,246,0.12)); border:1px solid rgba(6,182,212,0.4);" },
             { icon: "🚨", label: "Vol",                   link: "report.html?type=vol" },
             { icon: "⚔️", label: "Conflit / Altercation", link: "report.html?type=conflit" },
             { icon: "🚪", label: "Intrusion",             link: "report.html?type=intrusion" },
@@ -3090,7 +3103,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             { icon: "📘", label: "Consignes permanentes", link: "consignes_permanentes.html" }
         ],
         technique: [
-            { icon: "📄", label: "Feuille de garde",      link: "feuille_de_garde.html" },
             { icon: "⚡", label: "Panne électrique",      link: "report.html?type=panne_elec" },
             { icon: "❄️", label: "Panne CVC / Clim",      link: "report.html?type=panne_cvc" },
             { icon: "💧", label: "Panne plomberie / Fuite", link: "report.html?type=panne_plomberie" },
@@ -3102,7 +3114,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             { icon: "📘", label: "Consignes permanentes", link: "consignes_permanentes.html" }
         ],
         services_generaux: [
-            { icon: "📄", label: "Feuille de garde",      link: "feuille_de_garde.html" },
             { icon: "🚚", label: "Livraison entrante",    link: "report.html?type=livraison_in" },
             { icon: "📤", label: "Livraison sortante",    link: "report.html?type=livraison_out" },
             { icon: "✉️", label: "Réception courrier",    link: "report.html?type=courrier" },

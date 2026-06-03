@@ -167,6 +167,7 @@ async function sendGlobalNotification(titre, message, type = "info", priorite = 
     const role  = localStorage.getItem("role") || "système";
 
     const notif = {
+        texte: message || titre || "Notification", // colonne NOT NULL en base — sans elle l'insert échouait
         titre: titre,
         message: message,
         type_notif: type, // "info", "alarme", "intervention", "alerte"
@@ -450,6 +451,12 @@ function _unlockAudio() {
     // 2) Lancer (ou relancer) le pré-décodage du buffer alarme
     _decodeAlarmBuffer();
 
+    // 2bis) KEEP-ALIVE : maintenir le contexte audio "running" en jouant un
+    // silence en boucle (gain 0). Sans ça, le navigateur suspend le contexte
+    // après le geste, et la 1ère alarme ne sonne pas (il fallait 2-3 essais).
+    // Avec ce keep-alive, le contexte reste actif → son instantané dès la 1ère.
+    _startAudioKeepAlive();
+
     // 3) Débloquer aussi les éléments <audio> HTML5 (fallback iOS très ancien)
     try {
         _alarmEl.muted = true;
@@ -474,6 +481,33 @@ function _unlockAudio() {
 
     _audioUnlocked = true;
 }
+
+// Source silencieuse persistante qui empêche la suspension du contexte audio.
+var _keepAliveSource = null;
+function _startAudioKeepAlive() {
+    if (!_audioCtx || _keepAliveSource) return;
+    try {
+        // Buffer d'1 frame silencieuse, joué en boucle à volume 0
+        var buf = _audioCtx.createBuffer(1, 1, _audioCtx.sampleRate);
+        var src = _audioCtx.createBufferSource();
+        src.buffer = buf;
+        src.loop = true;
+        var g = _audioCtx.createGain();
+        g.gain.value = 0; // totalement silencieux
+        src.connect(g);
+        g.connect(_audioCtx.destination);
+        src.start(0);
+        _keepAliveSource = src;
+    } catch(e) { /* pas bloquant */ }
+}
+
+// Si l'onglet revient au premier plan, on relance resume() + keep-alive
+document.addEventListener("visibilitychange", function() {
+    if (!document.hidden && _audioCtx) {
+        if (_audioCtx.state === "suspended") { try { _audioCtx.resume(); } catch(e){} }
+        _startAudioKeepAlive();
+    }
+});
 
 // Attacher le déblocage à TOUS les types de gestes utilisateur (re-déclenche aussi resume() à chaque fois)
 function _attachUnlockListeners() {

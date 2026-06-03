@@ -269,7 +269,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <body>
 
-<h1 style="text-align:center; margin-bottom:25px;">📋 Feuille de garde</h1>
+<h1 style="text-align:center; margin-bottom:25px;">📋 Feuille de garde <span id="fdgServiceLbl" style="font-size:0.6em;opacity:0.65;font-weight:500;"></span></h1>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    try {
+        var svc = (localStorage.getItem("service") || "incendie").toLowerCase();
+        var isGlobal = !!(window.AuraTenant && window.AuraTenant.isGlobalMode);
+        // Feuille de garde réservée au service incendie
+        if (svc !== "incendie" && !isGlobal) {
+            alert("La feuille de garde est réservée au service Sécurité Incendie.");
+            window.location.href = "index.html";
+            return;
+        }
+        var site = (window.AuraTenant && AuraTenant.label) ? AuraTenant.label : (localStorage.getItem("site_code") || "");
+        var el = document.getElementById("fdgServiceLbl");
+        if (el) el.textContent = site ? "— " + site : "";
+    } catch(e) {}
+});
+</script>
+
 
 <!-- Barre d'outils -->
 <div class="section" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">

@@ -12,7 +12,22 @@
 let globalNotifications = [];
 let notifChannel = null;
 
+// La cloche de notification / l'alarme sont RÉSERVÉES au service Sécurité Incendie.
+// Les autres services (sûreté, technique, services généraux) n'ont ni cloche,
+// ni alarme sonore, ni souscription temps réel aux notifications.
+// (Un superadmin qui "incarne" le service incendie aura service === "incendie"
+//  en localStorage, donc la cloche s'active normalement dans ce cas.)
+function _isNotifServiceIncendie() {
+    var svc = (localStorage.getItem("service") || "").toLowerCase().trim();
+    return svc === "incendie";
+}
+
 async function initGlobalNotifications() {
+    // Garde service : pas de cloche hors incendie.
+    if (!_isNotifServiceIncendie()) {
+        return;
+    }
+
     // Charger les notifications existantes depuis Supabase
     await loadNotifications();
 
@@ -100,9 +115,10 @@ function subscribeToNotifications() {
 
                 // ── RÈGLES PAR RÔLE ──
                 if (myRole === "stationnaire") {
-                    // Stationnaire : uniquement les alarmes liées aux permis feu
+                    // Stationnaire : uniquement les alarmes liées aux permis feu.
+                    // Le message va UNIQUEMENT dans la bannière plein écran (pas de
+                    // toast en plus, sinon l'adresse s'affiche deux fois).
                     if (isPermisFeuAlarm) {
-                        showGlobalToast(toastText);
                         playAlarmSound();
                         const msgEl = document.getElementById("alarmBannerMsg");
                         if (msgEl) msgEl.textContent = toastText;
@@ -110,21 +126,19 @@ function subscribeToNotifications() {
                     return;
                 }
 
-                // ── Agent / Superviseur / Admin / Superadmin : son + toast pour TOUT ──
-                // ORDRE CRITIQUE : on lance le son AVANT le toast pour que le décodage
-                // audio démarre en parallèle de l'animation du toast → ils apparaissent
-                // / s'entendent en même temps perceptuellement.
+                // ── Agent / Superviseur / Admin / Superadmin ──
                 if (isAlarm) {
-                    playAlarmSound(); // démarre le son + crée la bannière en parallèle
-                } else {
-                    playNotifSound();
-                }
-
-                showGlobalToast(toastText);
-
-                if (isAlarm) {
+                    // ALARME : bannière plein écran + son. Le texte (titre + lieu +
+                    // agent) va UNIQUEMENT dans la bannière. Auparavant on affichait
+                    // EN PLUS un toast avec le même texte → l'adresse apparaissait
+                    // deux fois à l'écran. Corrigé : plus de toast pour les alarmes.
+                    playAlarmSound();
                     const msgEl = document.getElementById("alarmBannerMsg");
                     if (msgEl) msgEl.textContent = toastText;
+                } else {
+                    // Notification banale : toast + son léger.
+                    playNotifSound();
+                    showGlobalToast(toastText);
                 }
             })
             .subscribe();
@@ -374,6 +388,7 @@ var _alarmBuffer = null;
 var _alarmSource = null;        // BufferSourceNode actif (pour pouvoir l'arrêter)
 var _alarmGain = null;          // Gain pour fade out propre
 var _bufferDecodePromise = null;
+var _alarmDecodeWaiting = false; // évite d'empiler plusieurs attentes de décodage
 
 function _ensureAudioElements() {
     if (!_alarmEl) {
@@ -521,10 +536,16 @@ if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function() {
         _ensureAudioElements();
         _attachUnlockListeners();
+        // Pré-décoder le son d'alarme DÈS le chargement (ne nécessite pas de
+        // geste utilisateur : decodeAudioData fonctionne sur un contexte suspendu).
+        // Sans ça, le décodage ne démarrait qu'au 1er clic → la 1ère alarme
+        // arrivait avant la fin du décodage et ne sonnait pas ("2e fois seulement").
+        _decodeAlarmBuffer();
     });
 } else {
     _ensureAudioElements();
     _attachUnlockListeners();
+    _decodeAlarmBuffer();
 }
 
 function playAlarmSound() {
@@ -534,6 +555,25 @@ function playAlarmSound() {
     // Vibration mobile (immédiate, indépendante de l'audio)
     if (navigator.vibrate) {
         try { navigator.vibrate([500, 200, 500, 200, 500, 200, 500]); } catch(e){}
+    }
+
+    // ── PRIORITÉ 0 : buffer pas encore décodé ──
+    // Cas rare (toute 1ère alarme juste après le chargement, décodage non
+    // terminé). On réveille le contexte, on attend la fin du décodage et on
+    // relance proprement, AU LIEU de tomber sur le fallback HTML5 peu fiable
+    // qui ne sonnait qu'à la 2e tentative. On sort ensuite (pas de double son).
+    if (_audioCtx && !_alarmBuffer && !_alarmDecodeWaiting) {
+        _alarmDecodeWaiting = true;
+        if (_audioCtx.state === "suspended") { try { _audioCtx.resume(); } catch(e){} }
+        _decodeAlarmBuffer().then(function(buf) {
+            _alarmDecodeWaiting = false;
+            if (buf && !_alarmSource) {
+                playAlarmSound();          // buffer prêt → lecture Web Audio propre
+            } else if (!buf) {
+                _playFallbackAlarm();      // décodage impossible → bip d'urgence
+            }
+        });
+        return;
     }
 
     // ── PRIORITÉ 1 : Web Audio API avec buffer pré-décodé ──

@@ -2,312 +2,199 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
 <title>Veille temps réel — Sûreté</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-    :root {
-        --bg: #0a0d14;
-        --card: #141925;
-        --card2: #1b2230;
-        --border: #28303f;
-        --text: #e8ebf0;
-        --dim: #9aa3b2;
-        --blue: #3b82f6;
-        --red: #ef4444;
-        --red-bg: rgba(239,68,68,0.12);
-        --red-border: rgba(239,68,68,0.5);
-        --green: #10b981;
-        --amber: #f59e0b;
-    }
-    * { box-sizing: border-box; }
-    body {
-        background: radial-gradient(circle at top left, #161d33, #0a0d14 55%);
-        color: var(--text);
-        font-family: system-ui, -apple-system, sans-serif;
-        margin: 0; padding: 18px 16px 60px;
-    }
-    .topbar {
-        display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
-        margin-bottom: 18px;
-    }
-    .topbar h1 {
-        font-size: 1.4rem; margin: 0; font-weight: 700;
-        display: flex; align-items: center; gap: 10px;
-        flex: 1; min-width: 220px;
-    }
-    .back-btn, .refresh-btn, .site-select {
-        background: var(--card2); color: var(--text);
-        border: 1px solid var(--border); border-radius: 8px;
-        padding: 8px 14px; font-size: 0.85rem; cursor: pointer;
-        text-decoration: none; display: inline-flex; align-items: center; gap: 6px;
-    }
-    .refresh-btn:hover, .back-btn:hover { background: var(--card); }
-    .site-select { appearance: none; }
-
-    .badge75 {
-        background: var(--red); color: #fff; font-weight: 800;
-        padding: 4px 12px; border-radius: 999px; font-size: 0.8rem;
-        display: inline-flex; align-items: center; gap: 6px;
-    }
-    .meta-line { color: var(--dim); font-size: 0.78rem; margin-bottom: 16px; }
-
-    .grid {
-        display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
-        max-width: 1300px; margin: 0 auto;
-    }
-    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-
-    .section {
-        background: var(--card); border: 1px solid var(--border);
-        border-radius: 14px; padding: 16px; overflow: hidden;
-    }
-    .section h2 {
-        font-size: 1.05rem; margin: 0 0 12px; display: flex;
-        align-items: center; gap: 8px; justify-content: space-between;
-    }
-    .section h2 .count {
-        font-size: 0.72rem; background: var(--card2); color: var(--dim);
-        padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border);
-    }
-
-    .item {
-        padding: 11px 12px; border-radius: 10px; margin-bottom: 9px;
-        background: var(--card2); border: 1px solid var(--border);
-        border-left: 3px solid var(--border);
-    }
-    .item.hot {
-        background: var(--red-bg);
-        border-color: var(--red-border);
-        border-left: 3px solid var(--red);
-    }
-    .item a { color: var(--text); text-decoration: none; font-weight: 600; font-size: 0.9rem; line-height: 1.35; }
-    .item a:hover { text-decoration: underline; }
-    .item .src { font-size: 0.7rem; color: var(--dim); margin-top: 5px; display: flex; gap: 8px; flex-wrap: wrap; }
-    .item .src .tag75 { color: var(--red); font-weight: 800; }
-    .item .desc { font-size: 0.8rem; color: var(--dim); margin-top: 5px; line-height: 1.4; }
-
-    .poi {
-        display: flex; align-items: center; gap: 10px; padding: 9px 12px;
-        border-radius: 10px; margin-bottom: 7px; background: var(--card2);
-        border: 1px solid var(--border);
-    }
-    .poi .ico { font-size: 1.2rem; }
-    .poi .nom { flex: 1; font-size: 0.86rem; font-weight: 600; }
-    .poi .dist { font-size: 0.78rem; color: var(--dim); white-space: nowrap; }
-    .poi .tel { font-size: 0.75rem; color: var(--blue); white-space: nowrap; }
-
-    .empty { color: var(--dim); text-align: center; padding: 24px; font-size: 0.85rem; }
-    .loading { text-align: center; padding: 30px; color: var(--dim); }
-    .spinner {
-        width: 28px; height: 28px; border: 3px solid var(--border);
-        border-top-color: var(--blue); border-radius: 50%;
-        animation: spin 0.8s linear infinite; margin: 0 auto 12px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .errbar {
-        background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.35);
-        color: var(--amber); border-radius: 8px; padding: 8px 12px;
-        font-size: 0.78rem; margin: 0 auto 14px; max-width: 1300px;
-    }
+body{margin:0;padding:16px;background:radial-gradient(circle at top,#0f1830,#080b14 60%);color:#e8ebf0;font-family:system-ui,sans-serif}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
+.bar h1{font-size:1.3rem;margin:0;flex:1;min-width:200px;display:flex;align-items:center;gap:8px}
+.btn{background:#16203a;border:1px solid #283042;color:#e8ebf0;border-radius:8px;padding:8px 13px;cursor:pointer;font-size:.85rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px;color:#e8ebf0;font-size:.9rem}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.section{background:#0e1626;border:1px solid #232c40;border-radius:14px;padding:16px}
+.section h2{font-size:1rem;margin:0 0 12px;color:#9ec5ff;display:flex;justify-content:space-between;align-items:center}
+.count{font-size:.75rem;background:#1e3a5f;border-radius:999px;padding:2px 9px;font-weight:600}
+.item{padding:9px 11px;border-radius:9px;margin-bottom:8px;background:#0a1120;border:1px solid #1d2740;border-left:3px solid #283042;font-size:.85rem}
+.item.hot{border-left-color:#ef4444;background:rgba(239,68,68,.06)}
+.item a{color:#6fb3ff;text-decoration:none}
+.item .meta{font-size:.74rem;opacity:.7;margin-top:3px}
+.tag75{font-size:.66rem;background:#ef4444;color:#fff;border-radius:999px;padding:1px 7px;margin-left:6px}
+.loading{opacity:.7;display:flex;align-items:center;gap:8px;font-size:.85rem;padding:10px}
+.spinner{width:16px;height:16px;border:2px solid #283042;border-top-color:#22d3ee;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{opacity:.6;text-align:center;padding:16px;font-size:.85rem}
+.legend{font-size:.74rem;opacity:.8;margin-top:8px;display:flex;gap:14px;flex-wrap:wrap}
+.leaflet-popup-content{font-size:.82rem}
 </style>
 </head>
 <body>
 
-<div class="topbar">
-    <h1>🛡️ Veille temps réel <span id="siteLabel" style="font-size:0.9rem;color:var(--dim);font-weight:500;"></span></h1>
-    <span id="badge75" class="badge75" style="display:none;">🔴 <span id="badge75n">0</span> alerte(s) 75007</span>
-    <select id="siteSelect" class="site-select" onchange="changerSite()"></select>
-    <button class="refresh-btn" onclick="charger()">🔄 Actualiser</button>
-    <a href="index.html" class="back-btn">← Retour</a>
+<div class="bar">
+    <h1>🛡️ Veille temps réel</h1>
+    <select id="siteSel" onchange="changeSite()"></select>
+    <button class="btn" onclick="fetchAll()">🔄 Actualiser</button>
+    <a class="btn" href="index.html">← Retour</a>
 </div>
-
-<div class="meta-line" id="metaLine">Chargement…</div>
-<div id="errBar"></div>
 
 <div class="grid">
-    <div class="section" style="grid-column: 1 / -1; border-color: rgba(239,68,68,0.3);">
-        <h2>📣 Manifestations prévues (Île-de-France) <span class="count" id="cntManifs">—</span></h2>
-        <div id="manifs"><div class="loading"><div class="spinner"></div>Récupération de l'agenda…</div></div>
+    <!-- CARTE -->
+    <div class="section" style="grid-column:1/-1;">
+        <h2>🗺️ Carte du quartier — rayon 1 km <span class="count" id="cntMap">—</span></h2>
+        <div id="sureteMap" style="height:430px;border-radius:12px;overflow:hidden;background:#0a1120"></div>
+        <div class="legend">
+            <span>🔵 Commissariat</span><span>🟥 Hôpital</span><span>🟧 Caserne</span>
+            <span>🟣 Transport / métro</span><span>🟡 Ambassade</span><span>⚪ Tourisme / culte</span>
+        </div>
     </div>
 
-    <div class="section" style="grid-column: 1 / -1;">
-        <h2>📰 Actualités &amp; faits divers <span class="count" id="cntNews">—</span></h2>
-        <div id="news"><div class="loading"><div class="spinner"></div>Récupération des flux…</div></div>
+    <!-- MANIFESTATIONS -->
+    <div class="section" style="grid-column:1/-1;border-color:rgba(239,68,68,0.3);">
+        <h2>📣 Manifestations & rassemblements — couverture presse <span class="count" id="cntManifs">—</span></h2>
+        <div style="font-size:.72rem;opacity:.6;margin:-6px 0 10px;">Source : presse (Google News). Pas de flux officiel préfecture disponible.</div>
+        <div id="manifs"><div class="loading"><div class="spinner"></div>Récupération en cours…</div></div>
     </div>
 
+    <!-- ACTUS -->
+    <div class="section" style="grid-column:1/-1;">
+        <h2>📰 Actualités / faits divers <span class="count" id="cntNews">—</span></h2>
+        <div id="news"><div class="loading"><div class="spinner"></div>Chargement…</div></div>
+    </div>
+
+    <!-- POINTS SENSIBLES -->
     <div class="section">
-        <h2>📅 Événements à proximité (75007) <span class="count" id="cntEvents">—</span></h2>
-        <div id="events"><div class="loading"><div class="spinner"></div>…</div></div>
+        <h2>📍 Points sensibles (1 km) <span class="count" id="cntSens">—</span></h2>
+        <div id="sensibles"><div class="loading"><div class="spinner"></div>Chargement…</div></div>
     </div>
 
+    <!-- RESSOURCES -->
     <div class="section">
-        <h2>🚓 Points d'appui <span class="count" id="cntPoi">—</span></h2>
-        <div id="poi"><div class="loading"><div class="spinner"></div>…</div></div>
+        <h2>🚓 Ressources de secours <span class="count" id="cntPoi">—</span></h2>
+        <div id="poi"><div class="loading"><div class="spinner"></div>Chargement…</div></div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
-<script src="supabaseClient.js"></script>
-<script src="tenant.js"></script>
 <script>
-// ─── Coordonnées des sites (centre des recherches géolocalisées) ───
 const SITES = {
-    LBM:  { nom: "Le Bon Marché (Paris 7e)",         lat: 48.8512, lon: 2.3240 },
-    SAM:  { nom: "Samaritaine (Paris 1er)",          lat: 48.8590, lon: 2.3425 },
-    GERD: { nom: "Gde Épicerie Rive Droite",         lat: 48.8699, lon: 2.3076 },
-    GERG: { nom: "Gde Épicerie Rive Gauche (7e)",    lat: 48.8512, lon: 2.3247 },
-    MH:   { nom: "Moët Hennessy (Paris 8e)",         lat: 48.8665, lon: 2.3060 }
+    LBM:  { nom: "Le Bon Marché (Paris 7e)",      lat: 48.8512, lon: 2.3240 },
+    SAM:  { nom: "Samaritaine (Paris 1er)",        lat: 48.8590, lon: 2.3425 },
+    GERD: { nom: "Gde Épicerie Rive Droite",       lat: 48.8699, lon: 2.3076 },
+    GERG: { nom: "Gde Épicerie Rive Gauche (7e)",  lat: 48.8512, lon: 2.3247 },
+    MH:   { nom: "Moët Hennessy (Paris 8e)",       lat: 48.8665, lon: 2.3060 }
 };
-
 const SUPABASE_FN = "https://hwqlajdytnxavqigmzio.supabase.co/functions/v1/surete-feed";
 const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cWxhamR5dG54YXZxaWdtemlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzg1NjgsImV4cCI6MjA4OTUxNDU2OH0.riGzQlfEPmo9SVK9Rs_fl33DnC5RR5qd2OUhgk4Twvs";
 
-let currentSite = (localStorage.getItem("site_code") || "LBM").toUpperCase();
+function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+
+let currentSite = localStorage.getItem("site_code") || "LBM";
 if (!SITES[currentSite]) currentSite = "LBM";
 
-// Remplir le sélecteur de site
-const sel = document.getElementById("siteSelect");
+const sel = document.getElementById("siteSel");
 sel.innerHTML = Object.keys(SITES).map(code =>
-    `<option value="${code}" ${code === currentSite ? "selected" : ""}>${SITES[code].nom}</option>`
-).join("");
+    `<option value="${code}" ${code===currentSite?"selected":""}>${esc(SITES[code].nom)}</option>`).join("");
 
-function changerSite() {
-    currentSite = document.getElementById("siteSelect").value;
-    charger();
-}
+function changeSite(){ currentSite = sel.value; fetchAll(); }
 
-function escapeHtml(s) {
-    const d = document.createElement("div");
-    d.textContent = s == null ? "" : String(s);
-    return d.innerHTML;
-}
-
-function formatDate(s) {
-    if (!s) return "";
-    const d = new Date(s);
-    if (isNaN(d)) return s;
-    return d.toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-}
-
-async function charger() {
+async function fetchAll(){
     const site = SITES[currentSite];
-    document.getElementById("siteLabel").textContent = "· " + site.nom;
-    document.getElementById("metaLine").textContent = "Chargement des sources…";
-    document.getElementById("errBar").innerHTML = "";
-
+    ["manifs","news","sensibles","poi"].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el) el.innerHTML='<div class="loading"><div class="spinner"></div>Chargement…</div>';
+    });
     try {
         const url = `${SUPABASE_FN}?section=all&lat=${site.lat}&lon=${site.lon}`;
         const res = await fetch(url, { headers: { "Authorization": "Bearer " + ANON } });
-        if (!res.ok) throw new Error("HTTP " + res.status);
+        if(!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
-
-        renderNews(data.news || []);
         renderManifs(data.manifestations || []);
-        renderEvents(data.events || []);
+        renderNews(data.news || []);
+        renderSensibles(data.points_sensibles || []);
         renderPoi(data.poi || []);
-
-        // Badge 75007
-        const n75 = data.count_75007 || 0;
-        const badge = document.getElementById("badge75");
-        if (n75 > 0) {
-            badge.style.display = "inline-flex";
-            document.getElementById("badge75n").textContent = n75;
-        } else {
-            badge.style.display = "none";
-        }
-
-        document.getElementById("metaLine").textContent =
-            "Dernière mise à jour : " + new Date().toLocaleTimeString("fr-FR") +
-            " · Zone : " + site.nom + " · Actualisation auto toutes les 5 min";
-
-        if (data.errors && data.errors.length) {
-            document.getElementById("errBar").innerHTML =
-                '<div class="errbar">⚠️ Sources momentanément indisponibles : ' +
-                escapeHtml(data.errors.join(" · ")) + '</div>';
-        }
-    } catch (e) {
-        document.getElementById("metaLine").textContent = "";
-        document.getElementById("errBar").innerHTML =
-            '<div class="errbar">❌ Impossible de joindre le service de veille : ' + escapeHtml(e.message) +
-            '. Réessaie dans un instant.</div>';
-        ["news", "events", "poi", "manifs"].forEach(id =>
-            document.getElementById(id).innerHTML = '<div class="empty">Indisponible.</div>');
+        renderMap(data, site);
+    } catch(e){
+        ["manifs","news","sensibles","poi"].forEach(id=>{
+            const el=document.getElementById(id);
+            if(el) el.innerHTML='<div class="empty">⚠️ Source indisponible ('+esc(e.message)+')</div>';
+        });
     }
 }
 
-function renderManifs(items) {
+/* ---- CARTE ---- */
+let _map=null, _layer=null;
+function renderMap(data, site){
+    if(typeof L==="undefined"){ document.getElementById("sureteMap").innerHTML='<div class="empty">Carte indisponible (Leaflet non chargé)</div>'; return; }
+    if(!_map){
+        _map = L.map("sureteMap",{scrollWheelZoom:false}).setView([site.lat,site.lon],15);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(_map);
+    } else { _map.setView([site.lat,site.lon],15); }
+    if(_layer) _map.removeLayer(_layer);
+    _layer = L.layerGroup().addTo(_map);
+
+    L.circle([site.lat,site.lon],{radius:1000,color:"#22d3ee",weight:1,fillColor:"#22d3ee",fillOpacity:0.05}).addTo(_layer);
+    L.circleMarker([site.lat,site.lon],{radius:8,color:"#fff",weight:2,fillColor:"#22d3ee",fillOpacity:1}).addTo(_layer).bindPopup("<b>"+esc(site.nom)+"</b>");
+
+    const dot=(c)=>L.divIcon({className:"",html:'<div style="width:14px;height:14px;border-radius:50%;background:'+c+';border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.6)"></div>',iconSize:[14,14],iconAnchor:[7,7]});
+    const colRes={police:"#3b82f6",hospital:"#ef4444",fire_station:"#f59e0b"};
+    (data.poi||[]).forEach(p=>{ if(p.lat&&p.lon) L.marker([p.lat,p.lon],{icon:dot(colRes[p.type]||"#3b82f6")}).addTo(_layer).bindPopup("<b>"+esc(p.nom)+"</b><br>"+(p.distance_m||"?")+" m"); });
+    const colSens={transport:"#a855f7",ambassade:"#eab308",tourisme:"#e5e7eb",culte:"#e5e7eb"};
+    (data.points_sensibles||[]).forEach(p=>{ if(p.lat&&p.lon) L.marker([p.lat,p.lon],{icon:dot(colSens[p.categorie]||"#e5e7eb")}).addTo(_layer).bindPopup("<b>"+esc(p.nom)+"</b><br>"+esc(p.type_label)+" · "+(p.distance_m||"?")+" m"); });
+
+    const n=(data.poi||[]).length+(data.points_sensibles||[]).length;
+    document.getElementById("cntMap").textContent = n+" points";
+    setTimeout(()=>{ try{_map.invalidateSize();}catch(e){} },200);
+}
+
+/* ---- LISTES ---- */
+function renderManifs(items){
     document.getElementById("cntManifs").textContent = items.length;
-    const el = document.getElementById("manifs");
-    if (!items.length) { el.innerHTML = '<div class="empty">Aucune manifestation listée pour le moment.</div>'; return; }
-    el.innerHTML = items.map(m => `
-        <div class="item ${m.zone75007 ? "hot" : ""}">
-            ${m.lien ? `<a href="${escapeHtml(m.lien)}" target="_blank" rel="noopener">${escapeHtml(m.titre)}</a>`
-                     : `<span style="font-weight:600;font-size:0.9rem;">${escapeHtml(m.titre)}</span>`}
-            ${m.details ? `<div class="desc">${escapeHtml(m.details)}</div>` : ""}
-            <div class="src">
-                ${m.arrondissement ? `<span class="${m.arrondissement === "7e" ? "tag75" : ""}">📍 Paris ${escapeHtml(m.arrondissement)}</span>` : ""}
-                ${m.date ? `<span>🕒 ${escapeHtml(formatDate(m.date))}</span>` : ""}
-                ${m.zone75007 ? `<span class="tag75">🔴 ZONE 75007</span>` : ""}
-            </div>
-        </div>
-    `).join("");
+    const el=document.getElementById("manifs");
+    if(!items.length){ el.innerHTML='<div class="empty">Aucune manifestation listée pour le moment.</div>'; return; }
+    el.innerHTML = items.slice(0,25).map(m=>`
+        <div class="item ${m.zone75007?"hot":""}">
+            <div>${m.lien?`<a href="${esc(m.lien)}" target="_blank" rel="noopener">${esc(m.titre)}</a>`:esc(m.titre)}
+                 ${m.zone75007?'<span class="tag75">🔴 7e</span>':""}</div>
+            <div class="meta">${esc(m.date||"")}${m.arrondissement?" · "+esc(m.arrondissement):""}${m.source?" · "+esc(m.source):""}</div>
+        </div>`).join("");
 }
-
-function renderNews(items) {
+function renderNews(items){
     document.getElementById("cntNews").textContent = items.length;
-    const el = document.getElementById("news");
-    if (!items.length) { el.innerHTML = '<div class="empty">Aucune actualité récupérée.</div>'; return; }
-    el.innerHTML = items.map(n => `
-        <div class="item ${n.zone75007 ? "hot" : ""}">
-            <a href="${escapeHtml(n.link)}" target="_blank" rel="noopener">${escapeHtml(n.title)}</a>
-            ${n.description ? `<div class="desc">${escapeHtml(n.description)}</div>` : ""}
-            <div class="src">
-                <span>📡 ${escapeHtml(n.source)}</span>
-                ${n.pubDate ? `<span>🕒 ${escapeHtml(formatDate(n.pubDate))}</span>` : ""}
-                ${n.zone75007 ? `<span class="tag75">🔴 75007</span>` : ""}
-            </div>
-        </div>
-    `).join("");
+    const el=document.getElementById("news");
+    if(!items.length){ el.innerHTML='<div class="empty">Aucune actualité.</div>'; return; }
+    el.innerHTML = items.slice(0,25).map(n=>`
+        <div class="item ${n.zone75007?"hot":""}">
+            <div>${n.link?`<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a>`:esc(n.title)}
+                 ${n.zone75007?'<span class="tag75">🔴 75007</span>':""}</div>
+            <div class="meta">${esc(n.source||"")}${n.pubDate?" · "+esc(n.pubDate):""}</div>
+        </div>`).join("");
 }
-
-function renderEvents(items) {
-    document.getElementById("cntEvents").textContent = items.length;
-    const el = document.getElementById("events");
-    if (!items.length) { el.innerHTML = '<div class="empty">Aucun événement listé pour le 75007.</div>'; return; }
-    el.innerHTML = items.map(e => `
-        <div class="item ${e.zone75007 ? "hot" : ""}">
-            ${e.url ? `<a href="${escapeHtml(e.url)}" target="_blank" rel="noopener">${escapeHtml(e.titre)}</a>`
-                    : `<span style="font-weight:600;font-size:0.9rem;">${escapeHtml(e.titre)}</span>`}
-            <div class="src">
-                ${e.lieu ? `<span>📍 ${escapeHtml(e.lieu)}</span>` : ""}
-                ${e.cp ? `<span class="${String(e.cp).includes("75007") ? "tag75" : ""}">${escapeHtml(e.cp)}</span>` : ""}
-                ${e.date_debut ? `<span>🗓 ${escapeHtml(formatDate(e.date_debut))}</span>` : ""}
-            </div>
-        </div>
-    `).join("");
+function renderSensibles(items){
+    document.getElementById("cntSens").textContent = items.length;
+    const el=document.getElementById("sensibles");
+    if(!items.length){ el.innerHTML='<div class="empty">Aucun point sensible.</div>'; return; }
+    el.innerHTML = items.slice(0,30).map(p=>`
+        <div class="item">
+            <div><b>${esc(p.nom)}</b></div>
+            <div class="meta">${esc(p.type_label)} · ${p.distance_m} m</div>
+        </div>`).join("");
 }
-
-function renderPoi(items) {
+function renderPoi(items){
     document.getElementById("cntPoi").textContent = items.length;
-    const el = document.getElementById("poi");
-    if (!items.length) { el.innerHTML = '<div class="empty">Aucun point d\'appui trouvé à proximité.</div>'; return; }
-    const ico = { police: "🚓", hospital: "🏥", fire_station: "🚒" };
-    el.innerHTML = items.map(p => `
-        <div class="poi">
-            <span class="ico">${ico[p.type] || "📍"}</span>
-            <span class="nom">${escapeHtml(p.nom)}</span>
-            ${p.tel ? `<a class="tel" href="tel:${escapeHtml(p.tel)}">${escapeHtml(p.tel)}</a>` : ""}
-            <span class="dist">${p.distance_m < 1000 ? p.distance_m + " m" : (p.distance_m/1000).toFixed(1) + " km"}</span>
-        </div>
-    `).join("");
+    const lbl={police:"🔵 Commissariat",hospital:"🟥 Hôpital",fire_station:"🟧 Caserne"};
+    const el=document.getElementById("poi");
+    if(!items.length){ el.innerHTML='<div class="empty">Aucune ressource trouvée.</div>'; return; }
+    el.innerHTML = items.slice(0,15).map(p=>`
+        <div class="item">
+            <div><b>${esc(p.nom)}</b> ${lbl[p.type]||""}</div>
+            <div class="meta">${p.distance_m} m${p.tel?" · "+esc(p.tel):""}</div>
+        </div>`).join("");
 }
 
-// Lancement + auto-refresh 5 min
-charger();
-setInterval(charger, 5 * 60 * 1000);
+fetchAll();
 </script>
 </body>
 </html>

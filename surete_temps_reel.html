@@ -98,7 +98,7 @@ const sel = document.getElementById("siteSel");
 sel.innerHTML = Object.keys(SITES).map(code =>
     `<option value="${code}" ${code===currentSite?"selected":""}>${esc(SITES[code].nom)}</option>`).join("");
 
-function changeSite(){ currentSite = sel.value; fetchAll(); }
+function changeSite(){ currentSite = sel.value; initMap(SITES[currentSite]); fetchAll(); }
 
 async function fetchAll(){
     const site = SITES[currentSite];
@@ -115,7 +115,7 @@ async function fetchAll(){
         renderNews(data.news || []);
         renderSensibles(data.points_sensibles || []);
         renderPoi(data.poi || []);
-        renderMap(data, site);
+        renderMapMarkers(data);
     } catch(e){
         ["manifs","news","sensibles","poi"].forEach(id=>{
             const el=document.getElementById(id);
@@ -125,28 +125,53 @@ async function fetchAll(){
 }
 
 /* ---- CARTE ---- */
-let _map=null, _layer=null;
-function renderMap(data, site){
-    if(typeof L==="undefined"){ document.getElementById("sureteMap").innerHTML='<div class="empty">Carte indisponible (Leaflet non chargé)</div>'; return; }
-    if(!_map){
-        _map = L.map("sureteMap",{scrollWheelZoom:false}).setView([site.lat,site.lon],15);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(_map);
-    } else { _map.setView([site.lat,site.lon],15); }
-    if(_layer) _map.removeLayer(_layer);
-    _layer = L.layerGroup().addTo(_map);
+let _map=null, _baseLayer=null, _markerLayer=null;
 
-    L.circle([site.lat,site.lon],{radius:1000,color:"#22d3ee",weight:1,fillColor:"#22d3ee",fillOpacity:0.05}).addTo(_layer);
-    L.circleMarker([site.lat,site.lon],{radius:8,color:"#fff",weight:2,fillColor:"#22d3ee",fillOpacity:1}).addTo(_layer).bindPopup("<b>"+esc(site.nom)+"</b>");
+// Initialise (ou recadre) la carte sur le site, BORNÉE au rayon de 1 km.
+// Appelée au chargement et à chaque changement de site, indépendamment des
+// données → le centre + le cercle + les bornes s'affichent toujours, même si
+// la récupération des points tarde ou échoue.
+function initMap(site){
+    if(typeof L==="undefined"){ document.getElementById("sureteMap").innerHTML='<div class="empty">Carte indisponible (Leaflet non chargé)</div>'; return; }
+    const center=[site.lat, site.lon];
+
+    if(!_map){
+        _map = L.map("sureteMap", { scrollWheelZoom:false, maxBoundsViscosity:1.0 }).setView(center, 15);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(_map);
+        _markerLayer = L.layerGroup().addTo(_map);
+    }
+
+    // Couche de base (cercle 1 km + repère du site) : recréée à chaque (re)centrage.
+    if(_baseLayer) _map.removeLayer(_baseLayer);
+    _baseLayer = L.layerGroup().addTo(_map);
+    const circle = L.circle(center,{radius:1000,color:"#22d3ee",weight:1,fillColor:"#22d3ee",fillOpacity:0.05}).addTo(_baseLayer);
+    L.circleMarker(center,{radius:8,color:"#fff",weight:2,fillColor:"#22d3ee",fillOpacity:1}).addTo(_baseLayer).bindPopup("<b>"+esc(site.nom)+"</b>");
+
+    // ── Contrainte 1 km : on ne peut ni se déplacer ni dézoomer hors de la zone ──
+    const bounds = circle.getBounds();
+    _map.setMaxBounds(bounds);                 // déplacement bloqué hors de la zone du cercle
+    _map.fitBounds(bounds);                     // cadre la zone de 1 km
+    try { _map.setMinZoom(_map.getBoundsZoom(bounds)); } catch(e){} // dézoom bloqué au niveau qui montre le 1 km
+
+    // Vider les marqueurs précédents lors d'un changement de site
+    if(_markerLayer) _markerLayer.clearLayers();
+    document.getElementById("cntMap").textContent = "—";
+    setTimeout(()=>{ try{_map.invalidateSize(); _map.fitBounds(bounds);}catch(e){} },200);
+}
+
+// Pose les marqueurs (ressources + points sensibles) sur la couche dédiée.
+function renderMapMarkers(data){
+    if(!_map || !_markerLayer) return;
+    _markerLayer.clearLayers();
 
     const dot=(c)=>L.divIcon({className:"",html:'<div style="width:14px;height:14px;border-radius:50%;background:'+c+';border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.6)"></div>',iconSize:[14,14],iconAnchor:[7,7]});
     const colRes={police:"#3b82f6",hospital:"#ef4444",fire_station:"#f59e0b"};
-    (data.poi||[]).forEach(p=>{ if(p.lat&&p.lon) L.marker([p.lat,p.lon],{icon:dot(colRes[p.type]||"#3b82f6")}).addTo(_layer).bindPopup("<b>"+esc(p.nom)+"</b><br>"+(p.distance_m||"?")+" m"); });
+    (data.poi||[]).forEach(p=>{ if(p.lat&&p.lon) L.marker([p.lat,p.lon],{icon:dot(colRes[p.type]||"#3b82f6")}).addTo(_markerLayer).bindPopup("<b>"+esc(p.nom)+"</b><br>"+(p.distance_m||"?")+" m"); });
     const colSens={transport:"#a855f7",ambassade:"#eab308",tourisme:"#e5e7eb",culte:"#e5e7eb"};
-    (data.points_sensibles||[]).forEach(p=>{ if(p.lat&&p.lon) L.marker([p.lat,p.lon],{icon:dot(colSens[p.categorie]||"#e5e7eb")}).addTo(_layer).bindPopup("<b>"+esc(p.nom)+"</b><br>"+esc(p.type_label)+" · "+(p.distance_m||"?")+" m"); });
+    (data.points_sensibles||[]).forEach(p=>{ if(p.lat&&p.lon) L.marker([p.lat,p.lon],{icon:dot(colSens[p.categorie]||"#e5e7eb")}).addTo(_markerLayer).bindPopup("<b>"+esc(p.nom)+"</b><br>"+esc(p.type_label)+" · "+(p.distance_m||"?")+" m"); });
 
     const n=(data.poi||[]).length+(data.points_sensibles||[]).length;
-    document.getElementById("cntMap").textContent = n+" points";
-    setTimeout(()=>{ try{_map.invalidateSize();}catch(e){} },200);
+    document.getElementById("cntMap").textContent = n>0 ? (n+" points") : "0 point (source OSM indisponible)";
 }
 
 /* ---- LISTES ---- */
@@ -194,6 +219,7 @@ function renderPoi(items){
         </div>`).join("");
 }
 
+initMap(SITES[currentSite]);
 fetchAll();
 </script>
 </body>

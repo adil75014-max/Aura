@@ -1554,6 +1554,18 @@
 ══════════════════════════════════════════════════════ */
 const ACTIVE_SERVICE = (localStorage.getItem("service") || "incendie").toLowerCase();
 
+// La cloche de notifications est RÉSERVÉE au service Sécurité Incendie.
+// Sur les autres services (sûreté, technique, services généraux), on masque
+// la cloche propre à la page d'accueil ainsi que son panneau.
+if (ACTIVE_SERVICE !== "incendie") {
+    const _hideBell = () => {
+        const b = document.getElementById("notifBell"); if (b) b.style.display = "none";
+        const p = document.getElementById("notificationsPanel"); if (p) p.style.display = "none";
+    };
+    _hideBell();
+    document.addEventListener("DOMContentLoaded", _hideBell);
+}
+
 const MENUS_BY_SERVICE = {
 
 /* ─────────── SERVICE INCENDIE (menu historique complet) ─────────── */

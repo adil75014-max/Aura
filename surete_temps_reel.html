@@ -30,6 +30,11 @@ select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px
 .empty{opacity:.6;text-align:center;padding:16px;font-size:.85rem}
 .legend{font-size:.74rem;opacity:.8;margin-top:8px;display:flex;gap:14px;flex-wrap:wrap}
 .leaflet-popup-content{font-size:.82rem}
+/* Sécurise le rendu des tuiles (évite le morcellement si une règle img héritée s'applique) */
+#sureteMap{position:relative}
+.leaflet-container{background:#0a1120}
+.leaflet-tile,.leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important;width:256px;height:256px}
+.leaflet-pane img{max-width:none!important}
 </style>
 </head>
 <body>
@@ -149,14 +154,29 @@ function initMap(site){
 
     // ── Contrainte 1 km : on ne peut ni se déplacer ni dézoomer hors de la zone ──
     const bounds = circle.getBounds();
-    _map.setMaxBounds(bounds);                 // déplacement bloqué hors de la zone du cercle
-    _map.fitBounds(bounds);                     // cadre la zone de 1 km
-    try { _map.setMinZoom(_map.getBoundsZoom(bounds)); } catch(e){} // dézoom bloqué au niveau qui montre le 1 km
+    _map.setMaxBounds(bounds);                                       // déplacement bloqué hors zone
+    try { _map.setMinZoom(_map.getBoundsZoom(bounds)); } catch(e){}  // dézoom bloqué au 1 km
 
     // Vider les marqueurs précédents lors d'un changement de site
     if(_markerLayer) _markerLayer.clearLayers();
     document.getElementById("cntMap").textContent = "—";
-    setTimeout(()=>{ try{_map.invalidateSize(); _map.fitBounds(bounds);}catch(e){} },200);
+
+    // ── Recadrage SANS animation + invalidateSize répété ──
+    // Sur mobile, la taille réelle du conteneur n'est pas connue à l'init :
+    // les tuiles se chargent au mauvais endroit et apparaissent « morcelées ».
+    // On recalcule la taille puis on recadre (sans animation pour ne pas
+    // laisser de tuiles bloquées), plusieurs fois le temps que la mise en
+    // page se stabilise.
+    const _settleMap = () => {
+        try { _map.invalidateSize(false); _map.fitBounds(bounds, { animate:false }); } catch(e){}
+    };
+    _settleMap();
+    [60, 250, 600, 1200].forEach(ms => setTimeout(_settleMap, ms));
+    if (!window._sureteResizeBound) {
+        window._sureteResizeBound = true;
+        window.addEventListener("resize", () => { try { _map && _map.invalidateSize(false); } catch(e){} });
+        window.addEventListener("load", _settleMap);
+    }
 }
 
 // Pose les marqueurs (ressources + points sensibles) sur la couche dédiée.

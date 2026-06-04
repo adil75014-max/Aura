@@ -50,7 +50,9 @@ select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px
     <!-- CARTE -->
     <div class="section" style="grid-column:1/-1;">
         <h2>🗺️ Carte du quartier — rayon 1 km <span class="count" id="cntMap">—</span></h2>
-        <div id="sureteMap" style="height:430px;border-radius:12px;overflow:hidden;background:#0a1120"></div>
+        <div style="display:flex;justify-content:center;">
+            <div id="sureteMap" style="width:100%;max-width:420px;aspect-ratio:1/1;border-radius:50%;overflow:hidden;background:#0a1120;border:2px solid #22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.08)"></div>
+        </div>
         <div class="legend">
             <span>🔵 Commissariat</span><span>🟥 Hôpital</span><span>🟧 Caserne</span>
             <span>🟣 Transport / métro</span><span>🟡 Ambassade</span><span>⚪ Tourisme / culte</span>
@@ -141,7 +143,15 @@ function initMap(site){
     const center=[site.lat, site.lon];
 
     if(!_map){
-        _map = L.map("sureteMap", { scrollWheelZoom:false, maxBoundsViscosity:1.0 }).setView(center, 15);
+        // fadeAnimation/zoomAnimation désactivés : empêche Leaflet de conserver
+        // d'anciennes tuiles pendant les transitions → plus d'effet « escalier ».
+        _map = L.map("sureteMap", {
+            scrollWheelZoom:false,
+            maxBoundsViscosity:1.0,
+            fadeAnimation:false,
+            zoomAnimation:false,
+            markerZoomAnimation:false
+        }).setView(center, 15);
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(_map);
         _markerLayer = L.layerGroup().addTo(_map);
     }
@@ -155,23 +165,22 @@ function initMap(site){
     // ── Contrainte 1 km : on ne peut ni se déplacer ni dézoomer hors de la zone ──
     const bounds = circle.getBounds();
     _map.setMaxBounds(bounds);                                       // déplacement bloqué hors zone
-    try { _map.setMinZoom(_map.getBoundsZoom(bounds)); } catch(e){}  // dézoom bloqué au 1 km
+    let _zoom = 15;
+    try { _zoom = _map.getBoundsZoom(bounds); _map.setMinZoom(_zoom); } catch(e){}
 
     // Vider les marqueurs précédents lors d'un changement de site
     if(_markerLayer) _markerLayer.clearLayers();
     document.getElementById("cntMap").textContent = "—";
 
-    // ── Recadrage SANS animation + invalidateSize répété ──
-    // Sur mobile, la taille réelle du conteneur n'est pas connue à l'init :
-    // les tuiles se chargent au mauvais endroit et apparaissent « morcelées ».
-    // On recalcule la taille puis on recadre (sans animation pour ne pas
-    // laisser de tuiles bloquées), plusieurs fois le temps que la mise en
-    // page se stabilise.
+    // ── Stabilisation : on recalcule la taille du conteneur puis on RÉ-AFFICHE
+    // la même vue (centre + zoom FIXE, sans animation). On ne touche jamais au
+    // zoom entre deux appels → aucune tuile ne s'accumule. Plusieurs passes le
+    // temps que la mise en page mobile se stabilise.
     const _settleMap = () => {
-        try { _map.invalidateSize(false); _map.fitBounds(bounds, { animate:false }); } catch(e){}
+        try { _map.invalidateSize(false); _map.setView(center, _zoom, { animate:false, reset:true }); } catch(e){}
     };
     _settleMap();
-    [60, 250, 600, 1200].forEach(ms => setTimeout(_settleMap, ms));
+    [80, 300, 700, 1500].forEach(ms => setTimeout(_settleMap, ms));
     if (!window._sureteResizeBound) {
         window._sureteResizeBound = true;
         window.addEventListener("resize", () => { try { _map && _map.invalidateSize(false); } catch(e){} });

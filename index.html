@@ -1613,7 +1613,7 @@ incendie: [
             { icon: "🛍", label: "Ronde Surface de vente", link: "ronde_agent_ble.html?type=ronde_surface_vente" },
             { icon: "🛠", label: "Ronde Technique", link: "ronde_agent_ble.html?type=ronde_technique" },
             { icon: "🚪", label: "Ronde de fermeture", link: "ronde_agent_ble.html?type=ronde_fermeture" },
-            { icon: "🏢", label: "Ronde Toiture", link: "rondeagentble.html?type=ronde_toiture" }
+            { icon: "🏢", label: "Ronde Toiture", link: "ronde_agent_ble.html?type=ronde_toiture" }
         ]
     },
     {
@@ -1772,6 +1772,14 @@ technique: [
             { icon: "📋", label: "Maintenance mensuelle", link: "report.html?type=maint_mens" },
             { icon: "📆", label: "Maintenance annuelle", link: "report.html?type=maint_annuelle" },
             { icon: "🏗", label: "Intervention prestataire", link: "rapport_intervention_exterieure.html" }
+        ]
+    },
+    {
+        category: "Rondes", icon: "🔄",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: [
+            { icon: "▶️", label: "Effectuer une ronde", link: "ronde_agent_ble.html?type=ronde_technique" },
+            { icon: "🔄", label: "Gestion des rondes", link: "ronde_admin.html" }
         ]
     },
     {
@@ -3125,6 +3133,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             { icon: "🔧", label: "Suivi travaux",         link: "suivi_travaux.html" },
             { icon: "🚧", label: "Équipements HS",        link: "hors_services.html" },
             { icon: "🏗", label: "Intervention prestataire", link: "rapport_intervention_exterieure.html" },
+            { icon: "🔄", label: "Effectuer une ronde",    link: "ronde_agent_ble.html?type=ronde_technique" },
             { icon: "📘", label: "Consignes permanentes", link: "consignes_permanentes.html" }
         ],
         services_generaux: [

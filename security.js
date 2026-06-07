@@ -11,6 +11,7 @@ var ALLOWED_SCRIPT_DOMAINS = [
 ];
 var ALLOWED_OUTBOUND = [
     "hwqlajdytnxavqigmzio.supabase.co", "api.meteo-concept.com",
+    "hubeau.eaufrance.fr",   // Hydrométrie Seine + piézométrie nappe (service incendie)
     "cdn.jsdelivr.net", "cdnjs.cloudflare.com",
     "fonts.googleapis.com", "fonts.gstatic.com"
 ];

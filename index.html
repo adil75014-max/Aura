@@ -1174,20 +1174,102 @@
 </div>
 
 <div class="content">
+    <!-- ═══════════════════════════════════════════════════════════════
+         BANDEAU MÉTÉO + HYDRO (intégré)
+         La section hydro (sous la ligne météo, séparée par un trait) est
+         affichée uniquement pour le service Sécurité Incendie, via JS dans
+         updateHydro(). Toutes les autres services ne voient que la météo.
+         Sources hydro : Hub'eau (hydrométrie + piézométrie) · Vigicrues
+         ═══════════════════════════════════════════════════════════════ -->
     <div id="meteoBloc" style="
         margin-bottom: 18px; padding: 14px 18px; border-radius: 14px;
         background: var(--card); border: 1px solid var(--border);
-        box-shadow: var(--shadow); display:flex; align-items:center;
-        justify-content:space-between; gap:12px; font-size:0.9rem;
+        box-shadow: var(--shadow);
+        display: flex; flex-direction: column; gap: 12px;
+        font-size: 0.9rem;
     ">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <span id="meteoIcon" style="font-size:1.6rem;"></span>
-            <div>
-                <div id="meteoTemp" style="font-weight:600;"></div>
-                <div id="meteoMessage" style="opacity:0.9;"></div>
+        <!-- Ligne météo (affichée pour tous les services) -->
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span id="meteoIcon" style="font-size:1.6rem;"></span>
+                <div>
+                    <div id="meteoTemp" style="font-weight:600;"></div>
+                    <div id="meteoMessage" style="opacity:0.9;"></div>
+                </div>
+            </div>
+            <div style="font-size:0.8rem; opacity:0.8;">Paris • Conditions opérationnelles</div>
+        </div>
+
+        <!-- Section hydro (service INCENDIE uniquement, togglée par updateHydro) -->
+        <div id="hydroBloc" style="
+            display: none;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            flex-direction: column; gap: 10px;
+        ">
+            <!-- Ligne 1 : niveau Seine + badge vigilance -->
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:1.6rem;">🌊</span>
+                    <div>
+                        <div style="font-weight:600;">
+                            Seine — Paris-Austerlitz :
+                            <span id="hydroSeineLevel">— m</span>
+                            <span id="hydroSeineTrend" style="font-size:0.8em; opacity:0.85; margin-left:4px;"></span>
+                        </div>
+                        <div id="hydroSeineMsg" style="opacity:0.9; font-size:0.85em;">Chargement des données hydrologiques…</div>
+                    </div>
+                </div>
+                <div id="hydroVigilanceBadge" style="
+                    padding: 4px 12px; border-radius: 999px;
+                    font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em;
+                    background: rgba(34,197,94,0.15); color: #16a34a;
+                    border: 1px solid rgba(34,197,94,0.3);
+                    white-space: nowrap;
+                ">VIGILANCE —</div>
+            </div>
+
+            <!-- Ligne 2 : grille d'indicateurs (nappe / mer NGF / marge) -->
+            <div style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                gap: 12px;
+                padding-top: 10px;
+                border-top: 1px solid var(--border);
+                font-size: 0.78rem;
+            ">
+                <div>
+                    <div style="opacity:0.6; font-size:0.68rem; letter-spacing:0.05em; margin-bottom:3px;">NAPPE PHRÉATIQUE</div>
+                    <div id="hydroNappe" style="font-weight:600;">—</div>
+                </div>
+                <div>
+                    <div style="opacity:0.6; font-size:0.68rem; letter-spacing:0.05em; margin-bottom:3px;">NIVEAU EAU vs BÂTIMENT</div>
+                    <div id="hydroSeaRef" style="font-weight:600;">—</div>
+                </div>
+                <div>
+                    <div style="opacity:0.6; font-size:0.68rem; letter-spacing:0.05em; margin-bottom:3px;">MARGE INFRASTRUCTURE</div>
+                    <div id="hydroSiteMargin" style="font-weight:600;">—</div>
+                </div>
+            </div>
+
+            <!-- Ligne 3 : actions opérationnelles (affichée si vigilance > VERT) -->
+            <div id="hydroActions" style="
+                display: none;
+                padding: 10px 12px;
+                border-radius: 8px;
+                font-size: 0.82rem;
+                background: rgba(245,158,11,0.1);
+                border: 1px solid rgba(245,158,11,0.3);
+            ">
+                <div id="hydroActionsTitle" style="font-weight:700; margin-bottom:6px;">⚠️ Moyens à pré-déployer</div>
+                <div id="hydroActionsList" style="opacity:0.95; line-height:1.55;"></div>
+            </div>
+
+            <!-- Pied : sources + dernière mise à jour -->
+            <div style="font-size:0.68rem; opacity:0.55; text-align:right;">
+                Sources : Hub'eau · Vigicrues — Maj <span id="hydroLastUpdate">—</span>
             </div>
         </div>
-        <div style="font-size:0.8rem; opacity:0.8;">Paris • Conditions opérationnelles</div>
     </div>
 
     <!-- Cards générées dynamiquement par renderDashboardCards() selon le service.
@@ -2107,6 +2189,377 @@ async function updateMeteo() {
 }
 
 /* ══════════════════════════════════════════════════════
+   HYDRO / RISQUE INONDATION (service INCENDIE uniquement)
+   ----------------------------------------------------------------
+   Surveillance temps réel de la montée des eaux pour permettre le
+   pré-déploiement rapide de moyens (pompes, batardeaux, sacs de
+   sable) en cas d'épisode de crue de la Seine ou de remontée de
+   nappe phréatique menaçant les sous-sols.
+
+   Sources publiques (sans clé API) :
+     • Hub'eau / Hydrométrie  → niveau Seine Paris-Austerlitz (F700000103)
+     • Hub'eau / Piézométrie  → nappe la plus proche (dpts 75 → 78)
+     • Vigicrues              → seuils officiels JAUNE / ORANGE / ROUGE
+
+   Référentiel NGF-IGN69 : le zéro NGF correspond au niveau moyen
+   de la mer au marégraphe de Marseille. L'altitude NGF d'un site
+   donne donc directement sa hauteur au-dessus du niveau de la mer.
+══════════════════════════════════════════════════════ */
+
+// Seuils Vigicrues officiels à l'échelle de Paris-Austerlitz (hauteur en m)
+const SEINE_PARIS_STATION = "F700000103";
+const SEINE_THRESHOLDS = {
+    jaune:  3.20,   // vigilance — surveillance renforcée
+    orange: 4.30,   // débordement urbain probable
+    rouge:  6.10,   // crue majeure (réf. 1910 : 8.62 m)
+    crue_1910: 8.62
+};
+
+// Cote du zéro de l'échelle de Paris-Austerlitz, exprimée en NGF-IGN69.
+// Conversion : hauteur_seine_NGF = SEINE_AUSTERLITZ_ZERO_NGF + hauteur_observée_m
+const SEINE_AUSTERLITZ_ZERO_NGF = 26.40;
+
+// Référentiel par site :
+//   • altitude_ngf            : altitude approximative du sol naturel / rue (m NGF-IGN69)
+//   • altitude_ngf_seuil_bas  : altitude du seuil exploité le plus bas du bâtiment.
+//                                Calé sur l'info terrain remontée : niveau le plus
+//                                bas = sol - 8 m (stocks, locaux techniques, transfo,
+//                                parking, GTC). C'est CE seuil qui est comparé au
+//                                niveau Seine NGF pour évaluer le risque d'infiltration.
+//   • dist_seine_m            : distance approximative à la Seine (exposition)
+//
+// ⚠️ Les altitudes_ngf de surface (sol) restent des estimations. Pour un usage
+//    opérationnel réel, faire valider par les services techniques de chaque site
+//    l'altitude NGF exacte de la rue devant chaque bâtiment (relevé géomètre).
+//
+// ⚠️ Conséquence physique pour Samaritaine et Moët Hennessy : leurs seuils bas
+//    (23 et 27 m NGF) sont à un niveau proche ou inférieur au niveau moyen Seine
+//    (~28 m NGF). Ces sites sont en pompage permanent — l'alerte "sous-sol
+//    immergé" ne signale pas un sinistre nouveau mais un état nominal à surveiller.
+const HYDRO_SITES = {
+    LBM:  { nom: "Le Bon Marché",              altitude_ngf: 37, altitude_ngf_seuil_bas: 29, dist_seine_m: 850 },
+    SAM:  { nom: "Samaritaine",                altitude_ngf: 31, altitude_ngf_seuil_bas: 23, dist_seine_m: 60  },
+    GERD: { nom: "Grande Épicerie Rive Droite",altitude_ngf: 50, altitude_ngf_seuil_bas: 42, dist_seine_m: 700 },
+    GERG: { nom: "Grande Épicerie Rive Gauche",altitude_ngf: 37, altitude_ngf_seuil_bas: 29, dist_seine_m: 850 },
+    MH:   { nom: "Moët Hennessy",              altitude_ngf: 35, altitude_ngf_seuil_bas: 27, dist_seine_m: 400 }
+};
+
+let HYDRO_PIEZO_CACHE = null;
+
+/* ---------- Découverte dynamique du piézomètre temps-réel ------- */
+async function discoverNearestPiezo() {
+    // Cache localStorage (7 jours) pour éviter les requêtes répétées
+    try {
+        const raw = localStorage.getItem("aura_hydro_piezo_v1");
+        if (raw) {
+            const c = JSON.parse(raw);
+            if (c && c.code && (Date.now() - c.ts) < 7 * 24 * 3600 * 1000) return c;
+        }
+    } catch (_) {}
+
+    // Recherche par département : Paris puis petite couronne
+    const depts = ["75", "92", "93", "94", "77", "78"];
+    for (const dpt of depts) {
+        try {
+            const url = `https://hubeau.eaufrance.fr/api/v1/niveaux_nappes/stations`
+                      + `?code_departement=${dpt}&nb_mesures_piezo_min=100&size=20&format=json`;
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (!data.data || !data.data.length) continue;
+
+            // Garder uniquement les stations actives ces 60 derniers jours
+            const nowTs = Date.now();
+            const live = data.data.filter(s => {
+                if (!s.code_bss) return false;
+                if (!s.date_fin_mesure) return false;
+                return (nowTs - new Date(s.date_fin_mesure).getTime()) < 60 * 24 * 3600 * 1000;
+            });
+            if (!live.length) continue;
+
+            // Préférer la station avec le plus de mesures
+            live.sort((a, b) => (b.nb_mesures_piezo || 0) - (a.nb_mesures_piezo || 0));
+            const chosen = live[0];
+            const info = {
+                ts: Date.now(),
+                code: chosen.code_bss,
+                nom: chosen.nom_commune || chosen.libelle_pe || chosen.code_bss,
+                altitude_station: chosen.altitude_station,
+                altitude_repere: chosen.altitude_repere,
+                departement: dpt
+            };
+            try { localStorage.setItem("aura_hydro_piezo_v1", JSON.stringify(info)); } catch (_) {}
+            return info;
+        } catch (_) { /* essai suivant */ }
+    }
+    return null;
+}
+
+/* ---------- Niveau de la Seine (temps réel, ~5-15 min) ---------- */
+async function fetchSeineLevel() {
+    // observations_tr renvoie les hauteurs en mm, ordre desc = plus récent en tête
+    const url = `https://hubeau.eaufrance.fr/api/v1/hydrometrie/observations_tr`
+              + `?code_entite=${SEINE_PARIS_STATION}&grandeur_hydro=H&size=12&sort=desc`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("Hub'eau hydrométrie indisponible");
+    const data = await res.json();
+    if (!data.data || !data.data.length) throw new Error("Pas de données Seine");
+
+    const latest = data.data[0];
+    const ref    = data.data[Math.min(6, data.data.length - 1)]; // ~30-60 min avant
+    const h_m       = (latest.resultat_obs || 0) / 1000;
+    const h_ref_m   = ref ? (ref.resultat_obs || 0) / 1000 : h_m;
+    const delta_mm  = Math.round((h_m - h_ref_m) * 1000);
+
+    return {
+        hauteur_m: h_m,
+        date: latest.date_obs,
+        delta_mm: delta_mm,
+        rising:  h_m > h_ref_m + 0.005,
+        falling: h_m < h_ref_m - 0.005
+    };
+}
+
+/* ---------- Niveau nappe phréatique (temps quasi-réel) ---------- */
+async function fetchPiezoLevel(piezo) {
+    if (!piezo || !piezo.code) return null;
+    const code = encodeURIComponent(piezo.code);
+    try {
+        // Temps réel d'abord (chroniques_tr, horaire)
+        let url = `https://hubeau.eaufrance.fr/api/v1/niveaux_nappes/chroniques_tr`
+                + `?code_bss=${code}&size=2&sort=desc`;
+        let res = await fetch(url);
+        let data = res.ok ? await res.json() : null;
+
+        // Fallback sur chroniques journalières si pas de TR pour ce piézomètre
+        if (!data || !data.data || !data.data.length) {
+            url = `https://hubeau.eaufrance.fr/api/v1/niveaux_nappes/chroniques`
+                + `?code_bss=${code}&size=2&sort=desc`;
+            res = await fetch(url);
+            data = res.ok ? await res.json() : null;
+        }
+        if (!data || !data.data || !data.data.length) return null;
+
+        const latest = data.data[0];
+        return {
+            profondeur_m: latest.profondeur_nappe,
+            niveau_ngf:   latest.niveau_eau_ngf,
+            date:         latest.date_mesure || latest.timestamp_mesure
+        };
+    } catch (_) {
+        return null;
+    }
+}
+
+/* ---------- Classification vigilance + actions ops -------------- */
+function getVigilanceLevel(seine_m) {
+    if (seine_m >= SEINE_THRESHOLDS.rouge) {
+        return {
+            code: "ROUGE",
+            color: "#dc2626", bg: "rgba(220,38,38,0.18)", border: "rgba(220,38,38,0.45)",
+            label: "Crue majeure en cours — sites directement menacés",
+            actions: [
+                "Activer la cellule de crise inondation interne",
+                "Évacuer les niveaux -1 et -2 (stocks, réserves, locaux techniques)",
+                "Déployer batardeaux + sacs de sable sur ouvertures basses et soupiraux",
+                "Coupures électriques préventives sous-sol selon procédure DAI",
+                "Liaison permanente BSPP / Préfecture de Police / DOPC"
+            ]
+        };
+    }
+    if (seine_m >= SEINE_THRESHOLDS.orange) {
+        return {
+            code: "ORANGE",
+            color: "#ea580c", bg: "rgba(234,88,12,0.16)", border: "rgba(234,88,12,0.4)",
+            label: "Débordement urbain probable — mesures conservatoires",
+            actions: [
+                "Pré-positionner pompes d'épuisement aux sous-sols",
+                "Vérifier étanchéité regards, soupiraux et accès véhicules",
+                "Préparer stock sacs de sable + batardeaux en zone facilement mobilisable",
+                "Sécuriser stocks et matériels sensibles au niveau -1",
+                "Briefing renforcé équipes de garde et astreintes incendie"
+            ]
+        };
+    }
+    if (seine_m >= SEINE_THRESHOLDS.jaune) {
+        return {
+            code: "JAUNE",
+            color: "#ca8a04", bg: "rgba(202,138,4,0.14)", border: "rgba(202,138,4,0.38)",
+            label: "Vigilance crue — surveillance renforcée",
+            actions: [
+                "Surveillance niveau toutes les 4 h sur ce dashboard",
+                "Inspection visuelle des sous-sols 2× par jour (matin / soir)",
+                "Vérification disponibilité et état du matériel anti-inondation"
+            ]
+        };
+    }
+    return {
+        code: "VERT",
+        color: "#16a34a", bg: "rgba(34,197,94,0.15)", border: "rgba(34,197,94,0.3)",
+        label: "Aucun phénomène hydrologique dangereux à signaler",
+        actions: []
+    };
+}
+
+/* ---------- Orchestrateur : mise à jour du bloc ----------------- */
+async function updateHydro() {
+    const bloc = document.getElementById("hydroBloc");
+    if (!bloc) return;
+
+    // Visible UNIQUEMENT pour le service Sécurité Incendie
+    const svc = (localStorage.getItem("service") || "incendie").toLowerCase();
+    if (svc !== "incendie") {
+        bloc.style.display = "none";
+        return;
+    }
+    bloc.style.display = "flex";
+
+    const siteCode = (localStorage.getItem("site_code") || "LBM").toUpperCase();
+    const siteCfg  = HYDRO_SITES[siteCode] || HYDRO_SITES.LBM;
+
+    const seineEl   = document.getElementById("hydroSeineLevel");
+    const trendEl   = document.getElementById("hydroSeineTrend");
+    const msgEl     = document.getElementById("hydroSeineMsg");
+    const badgeEl   = document.getElementById("hydroVigilanceBadge");
+    const nappeEl   = document.getElementById("hydroNappe");
+    const seaEl     = document.getElementById("hydroSeaRef");
+    const marginEl  = document.getElementById("hydroSiteMargin");
+    const actionsEl = document.getElementById("hydroActions");
+    const actTitle  = document.getElementById("hydroActionsTitle");
+    const actListEl = document.getElementById("hydroActionsList");
+    const updateEl  = document.getElementById("hydroLastUpdate");
+
+    // État de chargement initial pour la boîte "Niveau eau vs bâtiment"
+    if (seaEl) {
+        seaEl.innerHTML = `<span style="opacity:0.6">Chargement…</span>`
+                        + `<br><span style="opacity:0.7; font-size:0.85em">Seuil bas : <strong>${siteCfg.altitude_ngf_seuil_bas} m NGF</strong></span>`
+                        + `<br><span style="opacity:0.55; font-size:0.75em">${siteCfg.nom} · ~${siteCfg.dist_seine_m} m de la Seine</span>`;
+    }
+
+    try {
+        // === Niveau Seine ===
+        const seine = await fetchSeineLevel();
+        const vig   = getVigilanceLevel(seine.hauteur_m);
+
+        // Conversion en NGF-IGN69 (= hauteur au-dessus du niveau moyen de la mer)
+        const seine_ngf    = SEINE_AUSTERLITZ_ZERO_NGF + seine.hauteur_m;
+        const marge_site_m = siteCfg.altitude_ngf_seuil_bas - seine_ngf;
+
+        // Hauteur Seine + NGF inline (ex: "2.25 m · 28.65 m NGF")
+        seineEl.innerHTML = seine.hauteur_m.toFixed(2) + ` m`
+                          + ` <span style="opacity:0.6; font-size:0.82em">· ${seine_ngf.toFixed(2)} m NGF</span>`;
+        if (seine.rising) {
+            trendEl.innerHTML = ` <span style="color:#dc2626">↗ +${Math.abs(seine.delta_mm)} mm/h</span>`;
+        } else if (seine.falling) {
+            trendEl.innerHTML = ` <span style="color:#16a34a">↘ ${seine.delta_mm} mm/h</span>`;
+        } else {
+            trendEl.innerHTML = ` → stable`;
+        }
+        msgEl.textContent = vig.label;
+
+        // Badge vigilance coloré
+        badgeEl.textContent       = "VIGILANCE " + vig.code;
+        badgeEl.style.background  = vig.bg;
+        badgeEl.style.color       = vig.color;
+        badgeEl.style.borderColor = vig.border;
+
+        // Boîte "Niveau eau vs bâtiment" : NGF Seine + NGF seuil bas du bâtiment
+        if (seaEl) {
+            // Couleur du delta selon que l'eau est au-dessus ou en-dessous du seuil
+            const aboveBuilding = marge_site_m <= 0;
+            const ngfColor      = aboveBuilding ? "#dc2626" : "var(--text)";
+            seaEl.innerHTML = `<span style="font-weight:700; color:${ngfColor}">Seine : ${seine_ngf.toFixed(2)} m NGF</span>`
+                            + `<br><span style="font-size:0.85em">Seuil bas bâtiment : <strong>${siteCfg.altitude_ngf_seuil_bas} m NGF</strong></span>`
+                            + `<br><span style="opacity:0.55; font-size:0.72em">Réf. mer : zéro NGF-IGN69 (Marseille)</span>`;
+        }
+
+        // Boîte "Marge infrastructure" : marge site-spécifique en premier, marge Vigicrues en secondaire
+        if (marginEl) {
+            // Marge site-spécifique : différence entre seuil bas du bâtiment et niveau Seine NGF
+            // Valeur > 0  → seuil bas au-dessus du niveau Seine (situation nominale)
+            // Valeur < 0  → seuil bas sous le niveau Seine (état physiquement immergé,
+            //               pompage permanent requis ; l'alerte ne signale donc PAS un
+            //               sinistre nouveau mais une charge hydrostatique à surveiller)
+            let siteColor, siteLabel;
+            if (marge_site_m <= -2.0)     { siteColor = "#dc2626"; siteLabel = "charge hydrostatique critique"; }
+            else if (marge_site_m <= 0)   { siteColor = "#ea580c"; siteLabel = "sous-sol immergé · pompage permanent"; }
+            else if (marge_site_m <= 1.0) { siteColor = "#ca8a04"; siteLabel = "alerte rapprochée"; }
+            else if (marge_site_m <= 2.5) { siteColor = "#84cc16"; siteLabel = "vigilance bâtiment"; }
+            else                           { siteColor = "#16a34a"; siteLabel = "sécurisé"; }
+
+            // Marge Vigicrues (information secondaire, conservée pour situational awareness global)
+            let nextLabel, nextValue;
+            if (seine.hauteur_m < SEINE_THRESHOLDS.jaune)       { nextLabel = "JAUNE"; nextValue = SEINE_THRESHOLDS.jaune; }
+            else if (seine.hauteur_m < SEINE_THRESHOLDS.orange) { nextLabel = "ORANGE"; nextValue = SEINE_THRESHOLDS.orange; }
+            else if (seine.hauteur_m < SEINE_THRESHOLDS.rouge)  { nextLabel = "ROUGE"; nextValue = SEINE_THRESHOLDS.rouge; }
+            else                                                 { nextLabel = "crue 1910"; nextValue = SEINE_THRESHOLDS.crue_1910; }
+            const marge_vig = nextValue - seine.hauteur_m;
+
+            // Affichage principal : valeur de la marge (signée), grande
+            const margeStr  = (marge_site_m >= 0 ? "+" : "") + marge_site_m.toFixed(2);
+            const sitePrimary = `<span style="color:${siteColor}; font-size:1.15em; font-weight:700">${margeStr} m</span>`;
+            const vigSecondary = marge_vig > 0
+                ? `+${marge_vig.toFixed(2)} m avant vigilance ${nextLabel}`
+                : `seuil Vigicrues ${nextLabel} atteint`;
+
+            marginEl.innerHTML = sitePrimary
+                               + `<br><span style="color:${siteColor}; font-size:0.78em; font-weight:600">${siteLabel}</span>`
+                               + `<br><span style="opacity:0.55; font-size:0.72em">${vigSecondary}</span>`;
+        }
+
+        // Actions opérationnelles
+        if (vig.actions.length && actionsEl && actListEl) {
+            if (actTitle) actTitle.textContent = `⚠️ Moyens à pré-déployer — ${siteCfg.nom}`;
+            actListEl.innerHTML = vig.actions.map(a => `• ${a}`).join("<br>");
+            actionsEl.style.display      = "block";
+            actionsEl.style.background   = vig.bg;
+            actionsEl.style.borderColor  = vig.border;
+        } else if (actionsEl) {
+            actionsEl.style.display = "none";
+        }
+
+        // === Nappe phréatique ===
+        if (!HYDRO_PIEZO_CACHE) HYDRO_PIEZO_CACHE = await discoverNearestPiezo();
+        if (HYDRO_PIEZO_CACHE && nappeEl) {
+            const piezo = await fetchPiezoLevel(HYDRO_PIEZO_CACHE);
+            if (piezo && piezo.profondeur_m != null) {
+                const prof = Number(piezo.profondeur_m).toFixed(2);
+                // Alerte si nappe à moins de 3 m (risque infiltration sous-sols)
+                const alerte = piezo.profondeur_m < 3;
+                const color = alerte ? "#dc2626" : "var(--text)";
+                nappeEl.innerHTML = `<span style="font-weight:700; color:${color}">${prof} m</span> de profondeur`
+                                  + (alerte ? ` <span style="font-size:0.8em; color:#dc2626">⚠️ proche surface</span>` : "")
+                                  + `<br><span style="opacity:0.7; font-size:0.85em">${HYDRO_PIEZO_CACHE.nom || HYDRO_PIEZO_CACHE.code} (dpt ${HYDRO_PIEZO_CACHE.departement})</span>`;
+            } else {
+                nappeEl.innerHTML = `<span style="opacity:0.7">Données indisponibles</span>`
+                                  + `<br><span style="opacity:0.5; font-size:0.85em">${HYDRO_PIEZO_CACHE.nom || HYDRO_PIEZO_CACHE.code}</span>`;
+            }
+        } else if (nappeEl) {
+            nappeEl.innerHTML = `<span style="opacity:0.7">Piézomètre temps réel<br>non disponible dans le secteur</span>`;
+        }
+
+        if (updateEl) {
+            const d = seine.date ? new Date(seine.date) : new Date();
+            updateEl.textContent = d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        }
+    } catch (err) {
+        console.warn("[Hydro] Erreur:", err);
+        if (seineEl)  seineEl.textContent  = "indisponible";
+        if (trendEl)  trendEl.innerHTML    = "";
+        if (msgEl)    msgEl.textContent    = "Données hydrologiques temporairement indisponibles";
+        if (marginEl) marginEl.innerHTML   = `<span style="opacity:0.6">—</span>`;
+        if (nappeEl)  nappeEl.innerHTML    = `<span style="opacity:0.6">—</span>`;
+        if (actionsEl) actionsEl.style.display = "none";
+        if (badgeEl) {
+            badgeEl.textContent      = "INDISPONIBLE";
+            badgeEl.style.background = "rgba(107,114,128,0.15)";
+            badgeEl.style.color      = "#6b7280";
+            badgeEl.style.borderColor= "rgba(107,114,128,0.3)";
+        }
+    }
+}
+
+/* ══════════════════════════════════════════════════════
    URGENCE PERMIS FEU
    ----------------------------------------------------------------
    Refonte : l'alarme s'affiche désormais via showAlarmBanner()
@@ -2968,6 +3421,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     generateSidebar();
     updateMeteo();
     setInterval(updateMeteo, 1800000);
+    // Hydro / risque inondation (visible uniquement service incendie)
+    updateHydro();
+    setInterval(updateHydro, 600000); // 10 min — Hub'eau rafraîchit toutes les 5-15 min
     setInterval(checkUrgence, 2000);
     updateNotifBadge();
 

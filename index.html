@@ -2197,9 +2197,10 @@ async function updateMeteo() {
    nappe phréatique menaçant les sous-sols.
 
    Sources publiques (sans clé API) :
-     • Hub'eau / Hydrométrie  → niveau Seine Paris-Austerlitz (F700000103)
-     • Hub'eau / Piézométrie  → nappe la plus proche (dpts 75 → 78)
-     • Vigicrues              → seuils officiels JAUNE / ORANGE / ROUGE
+     • Hub'eau / Hydrométrie v2 → niveau Seine Paris-Austerlitz (F700000103)
+                                  ⚠️ v1 a été arrêtée le 05/05/2025, ne pas y revenir
+     • Hub'eau / Piézométrie v1 → nappe la plus proche (dpts 75 → 78)
+     • Vigicrues                → seuils officiels JAUNE / ORANGE / ROUGE
 
    Référentiel NGF-IGN69 : le zéro NGF correspond au niveau moyen
    de la mer au marégraphe de Marseille. L'altitude NGF d'un site
@@ -2298,7 +2299,7 @@ async function discoverNearestPiezo() {
 /* ---------- Niveau de la Seine (temps réel, ~5-15 min) ---------- */
 async function fetchSeineLevel() {
     // observations_tr renvoie les hauteurs en mm, ordre desc = plus récent en tête
-    const url = `https://hubeau.eaufrance.fr/api/v1/hydrometrie/observations_tr`
+    const url = `https://hubeau.eaufrance.fr/api/v2/hydrometrie/observations_tr`
               + `?code_entite=${SEINE_PARIS_STATION}&grandeur_hydro=H&size=12&sort=desc`;
     const res = await fetch(url);
     if (!res.ok) throw new Error("Hub'eau hydrométrie indisponible");

@@ -538,16 +538,31 @@ async function declarerUrgence(type, permisId){
 
     /* Notification globale → le son sera joué chez agents/stationnaires/superviseurs/admins */
     if (typeof sendGlobalNotification === "function") {
-        // Le lieu doit apparaître DANS le titre pour qu'il soit visible
-        // dans le toast (qui n'affiche que titre || message[0]) ET dans
-        // le banner d'alarme. Le message conserve les détails complets.
-        var titreComplet = label + (lieu ? " — 📍 " + lieu : "");
+        // Lieu UNIQUEMENT dans le message. Le banner d'alarme concatène
+        // déjà titre + "\n" + message dans alarmBannerMsg ; le mettre aussi
+        // dans le titre le faisait apparaître deux fois (bug bannière 2024).
         sendGlobalNotification(
-            titreComplet,
+            label,
             "Permis : " + numero + "\n📍 Lieu : " + (lieu || "Non précisé") + "\n👤 Agent : " + (localStorage.getItem("nom") || "—"),
             "alarme",
             "critique"
         );
+    }
+
+    /* Son + bannière jouent ICI, dans le user-gesture context (juste après le
+       confirm). Sans ça, sur iOS, le son n'arrive qu'au 2e déclenchement : le
+       echo realtime arrive après les dialogues natifs et l'AudioContext est
+       suspendu hors gesture context. */
+    if (typeof playAlarmSound === "function") {
+        try {
+            playAlarmSound();
+            var msgEl = document.getElementById("alarmBannerMsg");
+            if (msgEl) {
+                msgEl.textContent = label + "\nPermis : " + numero
+                                  + "\n📍 Lieu : " + (lieu || "Non précisé")
+                                  + "\n👤 Agent : " + (localStorage.getItem("nom") || "—");
+            }
+        } catch(e) { console.warn("[Urgence] playAlarmSound local:", e); }
     }
 
     showToast(`\u2705 ${label} déclarée — PC Sécurité notifié.`);

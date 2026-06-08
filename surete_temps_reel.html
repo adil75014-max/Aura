@@ -21,9 +21,15 @@ select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px
 .count{font-size:.75rem;background:#1e3a5f;border-radius:999px;padding:2px 9px;font-weight:600}
 .item{padding:9px 11px;border-radius:9px;margin-bottom:8px;background:#0a1120;border:1px solid #1d2740;border-left:3px solid #283042;font-size:.85rem}
 .item.hot{border-left-color:#ef4444;background:rgba(239,68,68,.06)}
+.item.warn{border-left-color:#f59e0b;background:rgba(245,158,11,.06)}
+.item.watch{border-left-color:#eab308;background:rgba(234,179,8,.04)}
 .item a{color:#6fb3ff;text-decoration:none}
 .item .meta{font-size:.74rem;opacity:.7;margin-top:3px}
 .tag75{font-size:.66rem;background:#ef4444;color:#fff;border-radius:999px;padding:1px 7px;margin-left:6px}
+.tagrisk{font-size:.62rem;font-weight:700;letter-spacing:.04em;border-radius:999px;padding:1px 7px;margin-left:6px;text-transform:uppercase}
+.tagrisk.critique{background:#dc2626;color:#fff}
+.tagrisk.alerte{background:#ea580c;color:#fff}
+.tagrisk.vigilance{background:#ca8a04;color:#fff}
 .loading{opacity:.7;display:flex;align-items:center;gap:8px;font-size:.85rem;padding:10px}
 .spinner{width:16px;height:16px;border:2px solid #283042;border-top-color:#22d3ee;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -35,6 +41,55 @@ select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px
 .leaflet-container{background:#0a1120}
 .leaflet-tile,.leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important;width:256px;height:256px}
 .leaflet-pane img{max-width:none!important}
+
+/* ── Bannière de risque sûreté au-dessus de la carte ────────────── */
+.riskBanner{
+    border-radius:12px;padding:14px 18px;margin-bottom:12px;
+    display:flex;align-items:center;gap:14px;
+    font-size:.9rem;line-height:1.45;
+    border:1px solid;
+    transition:all .3s ease;
+}
+.riskBanner.nominal   {background:rgba(34,197,94,.08); border-color:rgba(34,197,94,.35); color:#86efac}
+.riskBanner.vigilance {background:rgba(234,179,8,.10); border-color:rgba(234,179,8,.4);  color:#fde047}
+.riskBanner.alerte    {background:rgba(234,88,12,.12); border-color:rgba(234,88,12,.5);  color:#fed7aa}
+.riskBanner.critique  {background:rgba(220,38,38,.14); border-color:rgba(220,38,38,.6);  color:#fecaca;
+                       animation:riskPulse 1.6s ease-in-out infinite}
+@keyframes riskPulse{
+    0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.6)}
+    50%    {box-shadow:0 0 0 8px rgba(220,38,38,0)}
+}
+.riskBanner .ico{font-size:1.8rem;flex-shrink:0}
+.riskBanner .body{flex:1;min-width:0}
+.riskBanner .title{font-weight:700;font-size:.95rem;margin-bottom:3px;letter-spacing:.02em}
+.riskBanner .reasons{font-size:.78rem;opacity:.92}
+.riskBanner .reasons li{margin:2px 0}
+
+/* ── Marqueur de risque pulsant sur la carte (Leaflet divIcon) ──── */
+.riskPulse{position:relative;width:24px;height:24px}
+.riskPulse::before{
+    content:"";position:absolute;inset:-6px;border-radius:50%;
+    background:rgba(220,38,38,.5);animation:riskMapPulse 1.4s ease-out infinite
+}
+.riskPulse::after{
+    content:"";position:absolute;inset:0;border-radius:50%;
+    background:#dc2626;border:2px solid #fff;
+    box-shadow:0 0 6px rgba(0,0,0,.7)
+}
+@keyframes riskMapPulse{
+    0%  {transform:scale(.7);opacity:.9}
+    100%{transform:scale(2.0);opacity:0}
+}
+
+/* ── Anneau d'alerte autour du repère du site ───────────────────── */
+.siteAlertRing{
+    border-radius:50%;animation:siteAlert 1.8s ease-in-out infinite;
+    pointer-events:none
+}
+@keyframes siteAlert{
+    0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.7), 0 0 0 0 rgba(220,38,38,.4)}
+    50%    {box-shadow:0 0 0 14px rgba(220,38,38,0), 0 0 0 22px rgba(220,38,38,0)}
+}
 </style>
 </head>
 <body>
@@ -50,25 +105,37 @@ select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px
     <!-- CARTE -->
     <div class="section" style="grid-column:1/-1;">
         <h2>🗺️ Carte du quartier — rayon 1 km <span class="count" id="cntMap">—</span></h2>
+
+        <!-- Bannière de risque sûreté (calculée à partir des données filtrées) -->
+        <div id="riskBanner" class="riskBanner nominal">
+            <div class="ico">🛡️</div>
+            <div class="body">
+                <div class="title" id="riskBannerTitle">Évaluation en cours…</div>
+                <ul class="reasons" id="riskBannerReasons" style="list-style:none;padding:0;margin:0;"></ul>
+            </div>
+        </div>
+
         <div style="display:flex;justify-content:center;">
-            <div id="sureteMap" style="width:100%;max-width:420px;aspect-ratio:1/1;border-radius:50%;overflow:hidden;background:#0a1120;border:2px solid #22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.08)"></div>
+            <div id="sureteMap" style="width:100%;max-width:820px;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#0a1120;border:2px solid #22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.08)"></div>
         </div>
         <div class="legend">
             <span>🔵 Commissariat</span><span>🟥 Hôpital</span><span>🟧 Caserne</span>
             <span>🟣 Transport / métro</span><span>🟡 Ambassade</span><span>⚪ Tourisme / culte</span>
+            <span style="color:#fecaca;">🔴 Risque sûreté (pulsant)</span>
         </div>
     </div>
 
     <!-- MANIFESTATIONS -->
     <div class="section" style="grid-column:1/-1;border-color:rgba(239,68,68,0.3);">
-        <h2>📣 Manifestations & rassemblements — couverture presse <span class="count" id="cntManifs">—</span></h2>
-        <div style="font-size:.72rem;opacity:.6;margin:-6px 0 10px;">Source : presse (Google News). Pas de flux officiel préfecture disponible.</div>
+        <h2>📣 Manifestations & rassemblements à risque <span class="count" id="cntManifs">—</span></h2>
+        <div style="font-size:.72rem;opacity:.6;margin:-6px 0 10px;">Source presse (Google News). Filtre : uniquement les items susceptibles d'impacter le site (proximité + mots-clés sûreté).</div>
         <div id="manifs"><div class="loading"><div class="spinner"></div>Récupération en cours…</div></div>
     </div>
 
     <!-- ACTUS -->
     <div class="section" style="grid-column:1/-1;">
-        <h2>📰 Actualités / faits divers <span class="count" id="cntNews">—</span></h2>
+        <h2>📰 Faits divers & événements impactant la sûreté <span class="count" id="cntNews">—</span></h2>
+        <div style="font-size:.72rem;opacity:.6;margin:-6px 0 10px;">Filtre : agressions, vols, attaques, violences, menaces, évacuations, troubles à proximité. Les actus non pertinentes sont masquées.</div>
         <div id="news"><div class="loading"><div class="spinner"></div>Chargement…</div></div>
     </div>
 
@@ -118,16 +185,210 @@ async function fetchAll(){
         const res = await fetch(url, { headers: { "Authorization": "Bearer " + ANON } });
         if(!res.ok) throw new Error("HTTP " + res.status);
         const data = await res.json();
-        renderManifs(data.manifestations || []);
-        renderNews(data.news || []);
+
+        // ── Classification sûreté : on annote chaque item d'un niveau de risque ─
+        //    (null = pas pertinent pour la sûreté du site → masqué dans les listes)
+        const manifsAll = (data.manifestations || []).map(annotateRisk);
+        const newsAll   = (data.news          || []).map(annotateRisk);
+
+        // Listes filtrées : on ne garde que ce qui pose réellement un problème
+        const manifsRisk = manifsAll.filter(i => i._risk);
+        const newsRisk   = newsAll.filter(i => i._risk);
+
+        renderManifs(manifsRisk, manifsAll.length);
+        renderNews(newsRisk, newsAll.length);
         renderSensibles(data.points_sensibles || []);
         renderPoi(data.poi || []);
-        renderMapMarkers(data);
+        renderMapMarkers({ ...data, _manifsRisk: manifsRisk });
+        updateRiskBanner(manifsRisk, newsRisk, site);
     } catch(e){
         ["manifs","news","sensibles","poi"].forEach(id=>{
             const el=document.getElementById(id);
             if(el) el.innerHTML='<div class="empty">⚠️ Source indisponible ('+esc(e.message)+')</div>';
         });
+        updateRiskBanner([], [], site, "Données indisponibles");
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   CLASSIFICATION SÛRETÉ
+   Détermine si un item (manifestation, fait divers) constitue un risque
+   pour LE bâtiment. Trois critères combinés :
+     1) Présence de mots-clés sûreté (par niveau)
+     2) Proximité géographique : zone75007 OU distance_m < 1500 m OU
+        arrondissement = celui du site
+     3) Si on n'a aucun signal de proximité mais que les mots-clés sont
+        forts (critiques), on garde quand même
+   Retourne 'critique' | 'alerte' | 'vigilance' | null.
+═══════════════════════════════════════════════════════════════════ */
+const RISK_KEYWORDS = {
+    // ── CRITIQUE : menace immédiate, escalade obligatoire vers BSPP / DOPC ──
+    critique: [
+        // Attentat / terrorisme
+        "attentat","attaque terroriste","acte terroriste","fait terroriste",
+        "prise d'otage","prise d otage","otages",
+        "fusillade","tir","arme à feu","arme a feu","arme automatique",
+        "explosion","colis suspect","colis piégé","colis piege",
+        "véhicule bélier","vehicule belier","voiture bélier","voiture-bélier",
+        "voiture-belier","irruption armée","irruption armee",
+        "vigipirate","menace bombe","alerte à la bombe","alerte a la bombe",
+        "évacuation","evacuation","périmètre","perimetre","forcené","forcene",
+        // Variantes anglophones (parfois reprises en titre par presse FR)
+        "terror attack","active shooter","mass shooting","hostage situation",
+        "bomb threat","car ramming","stabbing attack"
+    ],
+    // ── ALERTE : surveillance renforcée, pré-positionnement de moyens ──
+    alerte: [
+        // Voie publique / ordre public
+        "manifestation","rassemblement","blocage","blocus","occupation",
+        "cortège","cortege","défilé","defile","manif sauvage",
+        "émeute","emeute","casseur","casseurs","violences urbaines",
+        "echauffouree","échauffourée","échauffourées","echauffourees",
+        // Effraction / vol organisé (cœur de menace LVMH retail luxe)
+        "cambriolage","braquage","casse","go-fast","go fast",
+        "vol à main armée","vol a main armee","vol à l'étalage organisé",
+        "vol a l etalage organise","attaque de bijouterie","attaque boutique",
+        "smash and grab","smash-and-grab",
+        "intrusion","saccage","saccager","saccagé","saccage",
+        "pillage","pillé","piller","pillent","looting",
+        "incendie criminel","incendie volontaire","vandalisme","tag",
+        // Activistes ayant déjà ciblé le luxe / LVMH
+        "extinction rebellion","dernière rénovation","derniere renovation",
+        "soulèvements de la terre","soulevements de la terre",
+        "anti-LVMH","anti lvmh","boycott LVMH","action anticapitaliste",
+        "aspersion","peinture","soupe",
+        // Agressions / menaces
+        "agression","menace","menaces","rixe","altercation",
+        "interpellation musclée","interpellation musclee",
+        "robbery","armed robbery"
+    ],
+    // ── VIGILANCE : événements pouvant gêner l'exploitation ──
+    vigilance: [
+        "vol","tentative de vol","pickpocket","pickpocketing",
+        "gilets jaunes","marche","mobilisation","grève","greve",
+        "perturbations","troubles","sit-in","sit in","squat",
+        "manif","fan-zone","fan zone","rave","free party",
+        "protest","strike","demonstration","rally"
+    ]
+};
+const PARIS_ARRONDS = {
+    LBM:"75007", SAM:"75001", GERD:"75008", GERG:"75007", MH:"75008"
+};
+
+// Mots ambigus : un même terme peut désigner un risque OU un événement
+// business normal (typique en environnement luxe). Si on détecte une
+// occurrence de la clé ambiguë ET que le contexte contient l'un des
+// termes de la liste associée, on disqualifie le hit.
+//
+// Exemple : "défilé" → manif politique OU défilé Dior. Si "fashion",
+// "couture", "collection", "runway" sont présents, c'est de la mode.
+// Pas un risque sûreté.
+const AMBIGUOUS_KEYWORDS = {
+    "défilé": ["mode","fashion","couture","collection","podium","runway","prêt-à-porter","pret-a-porter","haute couture"],
+    "defile": ["mode","fashion","couture","collection","podium","runway","pret-a-porter","haute couture"],
+    "cortège": ["funéraire","funeraire","mariage","royal","présidentiel","presidentiel","officiel"],
+    "cortege": ["funeraire","mariage","royal","presidentiel","officiel"]
+};
+
+function _normalize(s){
+    return String(s||"").toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g,""); // strip accents
+}
+
+function annotateRisk(item){
+    const out = { ...item, _risk: null, _reason: null };
+    const text = _normalize(
+        (item.titre || item.title || "") + " " +
+        (item.description || item.snippet || "") + " " +
+        (item.arrondissement || "")
+    );
+
+    // Niveau le plus élevé qui matche
+    let level = null, hit = null;
+    for (const lvl of ["critique","alerte","vigilance"]) {
+        const found = RISK_KEYWORDS[lvl].find(k => text.includes(_normalize(k)));
+        if (found) { level = lvl; hit = found; break; }
+    }
+    if (!level) return out; // aucun mot-clé sûreté → pas pertinent
+
+    // Désambiguïsation contextuelle : si le mot-clé matché est ambigu et que
+    // le contexte le disqualifie (ex. "défilé" + "fashion week" = mode, pas
+    // manif), on rejette l'item. Évite le bruit business pour LVMH.
+    const exclCtx = AMBIGUOUS_KEYWORDS[_normalize(hit)];
+    if (exclCtx && exclCtx.some(k => text.includes(_normalize(k)))) {
+        return out;
+    }
+
+    // Filtre de proximité STRICT : on ne retient l'item que s'il est
+    // géographiquement proche du site, quel que soit son niveau. Choix
+    // opérationnel validé : un attentat à 600 km ne change pas la posture
+    // immédiate du PC sûreté du Bon Marché — l'info pertinente pour ce
+    // dashboard est ce qui touche directement Paris et le site.
+    const dist  = Number(item.distance_m);
+    const arr   = String(item.arrondissement || "");
+    const close = item.zone75007 === true
+               || (Number.isFinite(dist) && dist <= 1500)
+               || (arr && arr === PARIS_ARRONDS[currentSite])
+               || (arr && /^(7500[1-9]|7501[0-9]|75020)$/.test(arr)); // tout Paris intra-muros
+    if (!close) return out;
+
+    out._risk   = level;
+    out._reason = hit;
+    return out;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   BANNIÈRE DE RISQUE GLOBALE
+   Agrège tous les items filtrés et affiche le niveau le plus élevé.
+═══════════════════════════════════════════════════════════════════ */
+function updateRiskBanner(manifs, news, site, errorMsg){
+    const el       = document.getElementById("riskBanner");
+    const titleEl  = document.getElementById("riskBannerTitle");
+    const reasonEl = document.getElementById("riskBannerReasons");
+    if (!el) return;
+
+    if (errorMsg) {
+        el.className = "riskBanner vigilance";
+        titleEl.textContent = "⚠ Évaluation impossible — " + errorMsg;
+        reasonEl.innerHTML = "";
+        return;
+    }
+
+    const all = [...manifs, ...news];
+    const order = { critique:3, alerte:2, vigilance:1 };
+    let maxLvl = 0, maxName = "nominal";
+    all.forEach(i => {
+        if ((order[i._risk] || 0) > maxLvl) {
+            maxLvl  = order[i._risk];
+            maxName = i._risk;
+        }
+    });
+
+    const counts = {
+        critique:  all.filter(i => i._risk === "critique").length,
+        alerte:    all.filter(i => i._risk === "alerte").length,
+        vigilance: all.filter(i => i._risk === "vigilance").length
+    };
+
+    el.className = "riskBanner " + maxName;
+    if (maxLvl === 0) {
+        titleEl.textContent = "✓ Aucun risque sûreté détecté à proximité de " + site.nom;
+        reasonEl.innerHTML = "<li style='opacity:.7'>Veille active — actualisation toutes les minutes</li>";
+    } else {
+        const labels = { critique:"CRITIQUE", alerte:"ALERTE", vigilance:"VIGILANCE" };
+        const total  = all.length;
+        titleEl.textContent = `${labels[maxName]} — ${total} risque${total>1?"s":""} sûreté à proximité`;
+        const lines = [];
+        if (counts.critique)  lines.push(`<li>🔴 <strong>${counts.critique}</strong> risque(s) critique(s)</li>`);
+        if (counts.alerte)    lines.push(`<li>🟠 <strong>${counts.alerte}</strong> alerte(s) — manifestation, agression, intrusion…</li>`);
+        if (counts.vigilance) lines.push(`<li>🟡 <strong>${counts.vigilance}</strong> en vigilance — surveillance renforcée</li>`);
+        // Premier item le plus grave en exemple
+        const top = all.find(i => i._risk === maxName);
+        if (top) {
+            const titre = top.titre || top.title || "(sans titre)";
+            lines.push(`<li style='margin-top:6px;opacity:.85'>📌 ${esc(titre.slice(0,90))}${titre.length>90?"…":""}</li>`);
+        }
+        reasonEl.innerHTML = lines.join("");
     }
 }
 
@@ -188,7 +449,7 @@ function initMap(site){
     }
 }
 
-// Pose les marqueurs (ressources + points sensibles) sur la couche dédiée.
+// Pose les marqueurs (ressources + points sensibles + RISQUES SÛRETÉ) sur la couche dédiée.
 function renderMapMarkers(data){
     if(!_map || !_markerLayer) return;
     _markerLayer.clearLayers();
@@ -199,32 +460,88 @@ function renderMapMarkers(data){
     const colSens={transport:"#a855f7",ambassade:"#eab308",tourisme:"#e5e7eb",culte:"#e5e7eb"};
     (data.points_sensibles||[]).forEach(p=>{ if(p.lat&&p.lon) L.marker([p.lat,p.lon],{icon:dot(colSens[p.categorie]||"#e5e7eb")}).addTo(_markerLayer).bindPopup("<b>"+esc(p.nom)+"</b><br>"+esc(p.type_label)+" · "+(p.distance_m||"?")+" m"); });
 
-    const n=(data.poi||[]).length+(data.points_sensibles||[]).length;
-    document.getElementById("cntMap").textContent = n>0 ? (n+" points") : "0 point (source OSM indisponible)";
+    // ── Marqueurs de risque sûreté (manifestations filtrées avec coordonnées) ──
+    const riskIcon = L.divIcon({
+        className: "",
+        html: '<div class="riskPulse"></div>',
+        iconSize: [24,24], iconAnchor: [12,12]
+    });
+    const risks = (data._manifsRisk || []).filter(m => m.lat && m.lon);
+    risks.forEach(m => {
+        const titre = m.titre || m.title || "Manifestation";
+        const dist  = m.distance_m ? m.distance_m + " m" : "";
+        const lvl   = m._risk ? m._risk.toUpperCase() : "RISQUE";
+        L.marker([m.lat, m.lon], { icon: riskIcon, zIndexOffset: 1000 })
+            .addTo(_markerLayer)
+            .bindPopup("<b style='color:#dc2626'>⚠ " + lvl + "</b><br>"
+                     + esc(titre) + (dist ? "<br><span style='opacity:.7'>" + dist + "</span>" : ""));
+    });
+
+    // ── Anneau d'alerte pulsant autour du repère du site si risques détectés ──
+    // Le repère du site est dans _baseLayer ; on ajoute un overlay HTML par-dessus
+    const site = SITES[currentSite];
+    if (site && _baseLayer) {
+        const hasRisk = risks.length > 0;
+        // On crée un divIcon spécifique pour le site (pulsant si risque)
+        const siteIcon = L.divIcon({
+            className: "",
+            html: hasRisk
+                ? '<div class="siteAlertRing" style="width:20px;height:20px;background:#22d3ee;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.7)"></div>'
+                : '<div style="width:16px;height:16px;border-radius:50%;background:#22d3ee;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.7)"></div>',
+            iconSize: [20,20], iconAnchor: [10,10]
+        });
+        // Retirer l'ancien repère statique posé par initMap pour éviter le doublon
+        _baseLayer.eachLayer(l => { if (l instanceof L.CircleMarker) _baseLayer.removeLayer(l); });
+        L.marker([site.lat, site.lon], { icon: siteIcon, zIndexOffset: 2000 })
+            .addTo(_baseLayer).bindPopup("<b>" + esc(site.nom) + "</b>" + (hasRisk ? "<br><span style='color:#fca5a5'>⚠ Risque sûreté à proximité</span>" : ""));
+    }
+
+    const n=(data.poi||[]).length+(data.points_sensibles||[]).length+risks.length;
+    const riskTxt = risks.length ? " · " + risks.length + " risque(s) sûreté" : "";
+    document.getElementById("cntMap").textContent = n>0 ? (n+" points" + riskTxt) : "0 point (source OSM indisponible)";
 }
 
 /* ---- LISTES ---- */
-function renderManifs(items){
+function _riskClass(r){ return r==="critique"?"hot":r==="alerte"?"warn":r==="vigilance"?"watch":""; }
+function _riskTag(r){ return r ? ` <span class="tagrisk ${r}">${r}</span>` : ""; }
+
+function renderManifs(items, totalAvant){
     document.getElementById("cntManifs").textContent = items.length;
     const el=document.getElementById("manifs");
-    if(!items.length){ el.innerHTML='<div class="empty">Aucune manifestation listée pour le moment.</div>'; return; }
+    const masques = (totalAvant || 0) - items.length;
+    const footer  = masques > 0
+        ? `<div style="font-size:.72rem;opacity:.55;text-align:right;margin-top:6px">${masques} item(s) non pertinent(s) masqué(s) par le filtre sûreté</div>`
+        : "";
+    if(!items.length){
+        el.innerHTML = '<div class="empty">Aucune manifestation à risque détectée à proximité.</div>' + footer;
+        return;
+    }
     el.innerHTML = items.slice(0,25).map(m=>`
-        <div class="item ${m.zone75007?"hot":""}">
+        <div class="item ${_riskClass(m._risk)}">
             <div>${m.lien?`<a href="${esc(m.lien)}" target="_blank" rel="noopener">${esc(m.titre)}</a>`:esc(m.titre)}
+                 ${_riskTag(m._risk)}
                  ${m.zone75007?'<span class="tag75">🔴 7e</span>':""}</div>
-            <div class="meta">${esc(m.date||"")}${m.arrondissement?" · "+esc(m.arrondissement):""}${m.source?" · "+esc(m.source):""}</div>
-        </div>`).join("");
+            <div class="meta">${esc(m.date||"")}${m.arrondissement?" · "+esc(m.arrondissement):""}${m.source?" · "+esc(m.source):""}${m._reason?` · mot-clé : ${esc(m._reason)}`:""}</div>
+        </div>`).join("") + footer;
 }
-function renderNews(items){
+function renderNews(items, totalAvant){
     document.getElementById("cntNews").textContent = items.length;
     const el=document.getElementById("news");
-    if(!items.length){ el.innerHTML='<div class="empty">Aucune actualité.</div>'; return; }
+    const masques = (totalAvant || 0) - items.length;
+    const footer  = masques > 0
+        ? `<div style="font-size:.72rem;opacity:.55;text-align:right;margin-top:6px">${masques} actu(s) non pertinente(s) masquée(s) par le filtre sûreté</div>`
+        : "";
+    if(!items.length){
+        el.innerHTML = '<div class="empty">Aucun fait divers impactant la sûreté à proximité.</div>' + footer;
+        return;
+    }
     el.innerHTML = items.slice(0,25).map(n=>`
-        <div class="item ${n.zone75007?"hot":""}">
+        <div class="item ${_riskClass(n._risk)}">
             <div>${n.link?`<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a>`:esc(n.title)}
+                 ${_riskTag(n._risk)}
                  ${n.zone75007?'<span class="tag75">🔴 75007</span>':""}</div>
-            <div class="meta">${esc(n.source||"")}${n.pubDate?" · "+esc(n.pubDate):""}</div>
-        </div>`).join("");
+            <div class="meta">${esc(n.source||"")}${n.pubDate?" · "+esc(n.pubDate):""}${n._reason?` · mot-clé : ${esc(n._reason)}`:""}</div>
+        </div>`).join("") + footer;
 }
 function renderSensibles(items){
     document.getElementById("cntSens").textContent = items.length;

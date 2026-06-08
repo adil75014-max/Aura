@@ -581,35 +581,56 @@ function playAlarmSound() {
     // contexte audio a été réveillé par un user gesture (ce que fait
     // _unlockAudio attaché à tous les events).
     if (_audioCtx && _alarmBuffer) {
-        try {
-            // S'assurer que le contexte n'est pas suspendu
-            if (_audioCtx.state === "suspended") {
-                _audioCtx.resume(); // best-effort
+        // Encapsulation du démarrage de la source dans une closure pour pouvoir
+        // soit l'appeler immédiatement (ctx running), soit la chaîner après
+        // resume() qui est asynchrone. Sans ça, src.start(0) partait AVANT
+        // que le contexte soit réellement repris → source silencieuse au 1er
+        // déclenchement quand le ctx était suspendu.
+        var _startSrc = function() {
+            try {
+                // Couper toute alarme précédente
+                if (_alarmSource) {
+                    try { _alarmSource.stop(); } catch(e){}
+                    _alarmSource = null;
+                }
+                var src = _audioCtx.createBufferSource();
+                src.buffer = _alarmBuffer;
+                src.loop = true;
+                var gain = _audioCtx.createGain();
+                gain.gain.value = 1.0;
+                src.connect(gain);
+                gain.connect(_audioCtx.destination);
+                src.start(0);
+                _alarmSource = src;
+                _alarmGain = gain;
+                // Auto-cut à 30s
+                setTimeout(function() {
+                    try { src.stop(); } catch(e){}
+                    if (_alarmSource === src) _alarmSource = null;
+                }, 30000);
+            } catch(e) {
+                console.warn("[Audio] Web Audio start échec, fallback HTML5:", e);
+                _playHtml5Fallback();
             }
-            // Couper toute alarme précédente
-            if (_alarmSource) {
-                try { _alarmSource.stop(); } catch(e){}
-                _alarmSource = null;
+        };
+
+        if (_audioCtx.state === "suspended") {
+            // resume() est asynchrone — on attend qu'il se termine AVANT de
+            // démarrer la source. Sinon, sur iOS / Chrome, src.start(0) peut
+            // s'exécuter sur un contexte encore figé et le son est perdu.
+            var p = _audioCtx.resume();
+            if (p && p.then) {
+                p.then(_startSrc).catch(function(err) {
+                    console.warn("[Audio] resume() rejeté, fallback HTML5:", err);
+                    _playHtml5Fallback();
+                });
+            } else {
+                _startSrc();
             }
-            var src = _audioCtx.createBufferSource();
-            src.buffer = _alarmBuffer;
-            src.loop = true;
-            var gain = _audioCtx.createGain();
-            gain.gain.value = 1.0;
-            src.connect(gain);
-            gain.connect(_audioCtx.destination);
-            src.start(0);
-            _alarmSource = src;
-            _alarmGain = gain;
-            // Auto-cut à 30s
-            setTimeout(function() {
-                try { src.stop(); } catch(e){}
-                if (_alarmSource === src) _alarmSource = null;
-            }, 30000);
-            return; // ✅ son lancé via Web Audio, on s'arrête là
-        } catch(e) {
-            console.warn("[Audio] Web Audio playback échec, fallback HTML5:", e);
+        } else {
+            _startSrc();
         }
+        return; // ✅ son lancé (synchrone ou via resume.then), on s'arrête là
     }
 
     // ── PRIORITÉ 2 : élément <audio> HTML5 (fallback) ──
@@ -617,6 +638,13 @@ function playAlarmSound() {
     // a échoué), on tombe sur l'élément audio classique. Au passage on
     // relance le décodage pour la prochaine fois.
     _decodeAlarmBuffer();
+    _playHtml5Fallback();
+}
+
+// Fallback HTML5 réutilisé par le chemin Web Audio en cas d'échec de resume()
+// ou de start(). Extrait en fonction séparée pour éviter la duplication.
+function _playHtml5Fallback() {
+    _ensureAudioElements();
     try {
         _alarmEl.currentTime = 0;
         _alarmEl.loop = true;

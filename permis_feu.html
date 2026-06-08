@@ -592,27 +592,41 @@ Inspection complète du lieu de travail et des locaux contigus.
     /* URGENCES */
     document.getElementById("btn-urgence-feu").addEventListener("click", () => {
       if(!confirm("🔥 Confirmer : URGENCE INCENDIE\n\nLe PC Sécurité sera notifié immédiatement.")) return;
+      const lieu = [document.getElementById("magasin").value, document.getElementById("etage").value, document.getElementById("zone-canton").value].filter(Boolean).join(" — ");
+      const msgFull = "Permis feu " + PERMIS_NUMERO + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—");
+
       if (typeof sendGlobalNotification === "function") {
-          const lieu = [document.getElementById("magasin").value, document.getElementById("etage").value, document.getElementById("zone-canton").value].filter(Boolean).join(" — ");
-          sendGlobalNotification(
-              "🔥 URGENCE INCENDIE",
-              "Permis feu " + PERMIS_NUMERO + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—"),
-              "alarme", "critique"
-          );
+          sendGlobalNotification("🔥 URGENCE INCENDIE", msgFull, "alarme", "critique");
       }
-      alert("🔥 URGENCE INCENDIE — Le PC Sécurité est notifié.");
+
+      /* Son + bannière joués LOCALEMENT, encore dans le user-gesture context.
+         L'echo realtime arrivera après les dialogues natifs (iOS), trop tard
+         pour respecter la règle du gesture → sans ce play local, la 1re alarme
+         restait muette pour l'émetteur. */
+      if (typeof playAlarmSound === "function") {
+          try {
+              playAlarmSound();
+              const mEl = document.getElementById("alarmBannerMsg");
+              if (mEl) mEl.textContent = "🔥 URGENCE INCENDIE\n" + msgFull;
+          } catch(e) { console.warn("[Urgence] playAlarmSound local:", e); }
+      }
     });
     document.getElementById("btn-urgence-svv").addEventListener("click", () => {
       if(!confirm("🚑 Confirmer : URGENCE SECOURS À VICTIME\n\nLe PC Sécurité sera notifié immédiatement.")) return;
+      const lieu = [document.getElementById("magasin").value, document.getElementById("etage").value, document.getElementById("zone-canton").value].filter(Boolean).join(" — ");
+      const msgFull = "Permis feu " + PERMIS_NUMERO + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—");
+
       if (typeof sendGlobalNotification === "function") {
-          const lieu = [document.getElementById("magasin").value, document.getElementById("etage").value, document.getElementById("zone-canton").value].filter(Boolean).join(" — ");
-          sendGlobalNotification(
-              "🚑 URGENCE SECOURS À VICTIME",
-              "Permis feu " + PERMIS_NUMERO + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—"),
-              "alarme", "critique"
-          );
+          sendGlobalNotification("🚑 URGENCE SECOURS À VICTIME", msgFull, "alarme", "critique");
       }
-      alert("🚑 URGENCE — Secours à victime. Le PC Sécurité est notifié.");
+
+      if (typeof playAlarmSound === "function") {
+          try {
+              playAlarmSound();
+              const mEl = document.getElementById("alarmBannerMsg");
+              if (mEl) mEl.textContent = "🚑 URGENCE SECOURS À VICTIME\n" + msgFull;
+          } catch(e) { console.warn("[Urgence] playAlarmSound local:", e); }
+      }
     });
 
     /* ============================================================

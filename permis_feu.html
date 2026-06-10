@@ -200,11 +200,8 @@
   <div class="card">
     <h2>Ordre de travail</h2>
 
-    <label>Ordre de travail donné par</label>
-    <input type="text" id="odt-par" placeholder="Nom de la personne">
-
-    <label>Nom</label>
-    <input type="text" id="odt-nom" placeholder="Nom complet">
+    <label>Nom complet</label>
+    <input type="text" id="odt-nom" placeholder="Nom complet de la personne donnant l'ordre">
 
     <label>Fonction</label>
     <input type="text" id="odt-fonction" placeholder="Fonction (ex : Chef de service)">
@@ -328,7 +325,7 @@
     <input type="file" id="plans-files" accept="image/*,.pdf" multiple
            style="width:100%;padding:10px;border-radius:10px;border:1px dashed #9ca3af;background:#f9fafb;color:#1f2937;font-size:.85rem;">
     <div style="font-size:.72rem;opacity:.6;margin-top:4px;">
-        Photos compressées automatiquement. Obligatoire en vigilance Orange (plan de la zone sans sprinkler) — recommandé en Rouge.
+        Photos compressées automatiquement · PDF jusqu'à 8 Mo. Obligatoire en vigilance Orange (plan de la zone sans sprinkler) — recommandé en Rouge.
     </div>
     <div id="plans-preview" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
   </div>
@@ -730,7 +727,6 @@ Inspection complète du lieu de travail et des locaux contigus.
         const moyens = document.getElementById("moyens").value.trim();
 
         // Ordre de travail
-        const odtPar = document.getElementById("odt-par").value.trim();
         const odtNom = document.getElementById("odt-nom").value.trim();
         const odtFonction = document.getElementById("odt-fonction").value.trim();
 
@@ -761,7 +757,6 @@ Inspection complète du lieu de travail et des locaux contigus.
             entreprise_concernee: entrepriseConcernee,
             ext_raison_sociale: extRaisonSociale,
             ext_representant: extRepresentant,
-            odt_par: odtPar,
             odt_nom: odtNom,
             odt_fonction: odtFonction,
             magasin, etage, zone_canton: zoneCanton,
@@ -887,8 +882,16 @@ document.getElementById("plans-files").addEventListener("change", async function
   for (const file of Array.from(this.files || [])) {
     try {
       if (_plansData.length >= 4) { showToast("⚠️ 4 plans maximum", true); break; }
+      /* Plafond global : le base64 gonfle de ~33 % et l'ensemble part dans
+         une seule requête d'insertion — au-delà de ~20 Mo cumulés, l'API
+         peut rejeter l'enregistrement. */
+      const totalActuel = _plansData.reduce((s, p) => s + (p.data ? p.data.length : 0), 0);
+      if (totalActuel + file.size * 1.34 > 20 * 1024 * 1024) {
+        showToast("⚠️ " + file.name + " : taille totale des plans dépassée (20 Mo max au total)", true);
+        continue;
+      }
       if (file.type === "application/pdf") {
-        if (file.size > 2.5 * 1024 * 1024) { showToast("⚠️ " + file.name + " : PDF trop lourd (max 2,5 Mo) — préférez une photo du plan", true); continue; }
+        if (file.size > 8 * 1024 * 1024) { showToast("⚠️ " + file.name + " : PDF trop lourd (max 8 Mo) — compressez-le ou préférez une photo du plan", true); continue; }
         const data = await new Promise((res, rej) => {
           const r = new FileReader();
           r.onload = () => res(r.result);

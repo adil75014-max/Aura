@@ -154,7 +154,17 @@ async function chargerPermisFeu(){
     const entF=document.getElementById("filtreEntreprise").value;
     const statutF=document.getElementById("filtreStatut").value;
 
-    let q=supabaseClient.from("permis_feu").select("*, profiles(nom, prenom)").order("created_at",{ascending:false});
+    /* ══ CHARGEMENT ALLÉGÉ ══
+       On NE charge PAS meta complet ici : il contient plans (PDF base64,
+       jusqu'à 8 Mo chacun) et signatures. Avec select("*"), la liste
+       deviendrait inutilisable au fil des permis. On ne prend que les
+       sous-champs de meta utiles à la liste ; le permis COMPLET est
+       récupéré à l'ouverture (ouvrirPermis). */
+    let q=supabaseClient.from("permis_feu").select(
+        "id, numero, entreprise, lieu, statut, date_debut, created_at, agent_nom, "+
+        "vigilance:meta->vigilance, magasin:meta->magasin, etage:meta->etage, zone_canton:meta->zone_canton, meta_agent:meta->agent_nom, "+
+        "profiles(nom, prenom)"
+    ).order("created_at",{ascending:false});
     if(dateF){q=q.gte("created_at",dateF+"T00:00:00").lte("created_at",dateF+"T23:59:59.999");}
     if(entF!=="all")q=q.eq("entreprise",entF);
 
@@ -166,7 +176,20 @@ async function chargerPermisFeu(){
 
     const{data,error}=await q;
     if(error){showToast("\u274c "+error.message,true);return;}
-    permisCache = data||[];
+    /* Reconstruction d'un meta partiel pour que renderList/agentName
+       continuent de lire p.meta.* sans changement. _light=true signale
+       que plans/signatures ne sont pas chargés. */
+    permisCache = (data||[]).map(p => ({
+        ...p,
+        _light: true,
+        meta: {
+            vigilance: p.vigilance || null,
+            magasin: p.magasin || null,
+            etage: p.etage || null,
+            zone_canton: p.zone_canton || null,
+            agent_nom: p.meta_agent || null
+        }
+    }));
     renderList(permisCache);
     /* Compteurs sur tous les permis */
     const{data:allPF}=await supabaseClient.from("permis_feu").select("statut");
@@ -256,9 +279,22 @@ const VIG_COLORS = {
     rouge:  { dot:"🔴", fg:"#fca5a5", bg:"rgba(220,38,38,.14)",  border:"rgba(220,38,38,.5)",  hex:"#dc2626" }
 };
 
-function ouvrirPermis(id){
-    const p=permisCache.find(x=>x.id===id);
+async function ouvrirPermis(id){
+    let p=permisCache.find(x=>x.id===id);
     if(!p){showToast("Permis introuvable.",true);return;}
+
+    /* Chargement allégé : la liste ne contient ni plans ni signatures.
+       Au premier clic on récupère la ligne complète et on remplace
+       l'entrée du cache → impression et PDF disposent de tout. */
+    if(p._light){
+        const{data,error}=await supabaseClient
+            .from("permis_feu").select("*, profiles(nom, prenom)").eq("id", id).single();
+        if(error||!data){showToast("\u274c Chargement du permis : "+(error?error.message:"introuvable"),true);return;}
+        const idx=permisCache.findIndex(x=>x.id===id);
+        if(idx!==-1)permisCache[idx]=data;
+        p=data;
+    }
+
     const m=p.meta||{};const clos=isClos(p.statut);const agent=agentName(p);
     const lieu=p.lieu||[m.magasin,m.etage,m.zone_canton].filter(Boolean).join(" \u2014 ")||"\u2014";
 

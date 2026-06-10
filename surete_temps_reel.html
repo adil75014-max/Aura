@@ -115,9 +115,10 @@ select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px
             </div>
         </div>
 
-        <div style="display:flex;justify-content:center;">
-            <div id="sureteMap" style="width:100%;max-width:820px;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#0a1120;border:2px solid #22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.08)"></div>
-        </div>
+        <!-- Carte en BANDEAU pleine largeur : hauteur fixe (pas d'aspect-ratio,
+             dont le calcul tardif sur mobile faussait le zoom des bornes et
+             découpait les tuiles aux bords) -->
+        <div id="sureteMap" style="width:100%;height:clamp(320px, 48vh, 480px);border-radius:14px;overflow:hidden;background:#0a1120;border:2px solid #22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.08)"></div>
         <div class="legend">
             <span>🔵 Commissariat</span><span>🟥 Hôpital</span><span>🟧 Caserne</span>
             <span>🟣 Transport / métro</span><span>🟡 Ambassade</span><span>⚪ Tourisme / culte</span>
@@ -426,27 +427,34 @@ function initMap(site){
     // ── Contrainte 1 km : on ne peut ni se déplacer ni dézoomer hors de la zone ──
     const bounds = circle.getBounds();
     _map.setMaxBounds(bounds);                                       // déplacement bloqué hors zone
-    let _zoom = 15;
-    try { _zoom = _map.getBoundsZoom(bounds); _map.setMinZoom(_zoom); } catch(e){}
 
     // Vider les marqueurs précédents lors d'un changement de site
     if(_markerLayer) _markerLayer.clearLayers();
     document.getElementById("cntMap").textContent = "—";
 
-    // ── Stabilisation : on recalcule la taille du conteneur puis on RÉ-AFFICHE
-    // la même vue (centre + zoom FIXE, sans animation). On ne touche jamais au
-    // zoom entre deux appels → aucune tuile ne s'accumule. Plusieurs passes le
-    // temps que la mise en page mobile se stabilise.
+    // ── Stabilisation : invalidateSize PUIS recalcul du zoom des bornes.
+    // Le zoom était auparavant figé AVANT que le conteneur ait sa taille
+    // finale (layout mobile tardif) → minZoom faux + maxBounds = tuiles
+    // découpées aux bords. En le recalculant à chaque passe, le bandeau
+    // cadre toujours exactement le cercle de 1 km, quelle que soit la
+    // largeur de l'écran.
     const _settleMap = () => {
-        try { _map.invalidateSize(false); _map.setView(center, _zoom, { animate:false, reset:true }); } catch(e){}
+        try {
+            _map.invalidateSize(false);
+            let z = 15;
+            try { z = _map.getBoundsZoom(bounds); } catch(e){}
+            _map.setMinZoom(z);
+            _map.setView(center, z, { animate:false, reset:true });
+        } catch(e){}
     };
     _settleMap();
     [80, 300, 700, 1500].forEach(ms => setTimeout(_settleMap, ms));
     if (!window._sureteResizeBound) {
         window._sureteResizeBound = true;
-        window.addEventListener("resize", () => { try { _map && _map.invalidateSize(false); } catch(e){} });
+        window.addEventListener("resize", () => { try { _map && _settleMapRef && _settleMapRef(); } catch(e){} });
         window.addEventListener("load", _settleMap);
     }
+    window._settleMapRef = _settleMap;
 }
 
 // Pose les marqueurs (ressources + points sensibles + RISQUES SÛRETÉ) sur la couche dédiée.

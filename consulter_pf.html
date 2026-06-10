@@ -536,33 +536,20 @@ async function declarerUrgence(type, permisId){
         return;
     }
 
-    /* Notification globale → le son sera joué chez agents/stationnaires/superviseurs/admins */
+    /* Notification globale → le son et la bannière d'alarme se déclenchent
+       chez les DESTINATAIRES (PC Sécurité, agents, stationnaires, admins).
+       Cette page est celle de l'INTERVENANT (accès QR) : il ne doit ni
+       entendre l'alarme ni voir la bannière plein écran — il reçoit le
+       toast de confirmation ci-dessous + le rappel téléphonique auto.
+       (le flag AURA_ALARM_SILENT posé en tête de page neutralise
+       playAlarmSound/showAlarmBanner si l'écho realtime revient ici) */
     if (typeof sendGlobalNotification === "function") {
-        // Lieu UNIQUEMENT dans le message. Le banner d'alarme concatène
-        // déjà titre + "\n" + message dans alarmBannerMsg ; le mettre aussi
-        // dans le titre le faisait apparaître deux fois (bug bannière 2024).
         sendGlobalNotification(
             label,
             "Permis : " + numero + "\n📍 Lieu : " + (lieu || "Non précisé") + "\n👤 Agent : " + (localStorage.getItem("nom") || "—"),
             "alarme",
             "critique"
         );
-    }
-
-    /* Son + bannière jouent ICI, dans le user-gesture context (juste après le
-       confirm). Sans ça, sur iOS, le son n'arrive qu'au 2e déclenchement : le
-       echo realtime arrive après les dialogues natifs et l'AudioContext est
-       suspendu hors gesture context. */
-    if (typeof playAlarmSound === "function") {
-        try {
-            playAlarmSound();
-            var msgEl = document.getElementById("alarmBannerMsg");
-            if (msgEl) {
-                msgEl.textContent = label + "\nPermis : " + numero
-                                  + "\n📍 Lieu : " + (lieu || "Non précisé")
-                                  + "\n👤 Agent : " + (localStorage.getItem("nom") || "—");
-            }
-        } catch(e) { console.warn("[Urgence] playAlarmSound local:", e); }
     }
 
     showToast(`\u2705 ${label} déclarée — PC Sécurité notifié.`);
@@ -668,6 +655,11 @@ chargerEntreprises();chargerPermisFeu();
 </script>
 <script src="security.js"></script>
 <script src="global.js"></script>
+<script>
+/* Page INTERVENANT (accès QR) : jamais d'alarme sonore ni de bannière
+   plein écran ici — réservées au PC Sécurité et aux agents. */
+window.AURA_ALARM_SILENT = true;
+</script>
 <script src="notifications_global.js"></script>
 </body>
 </html>

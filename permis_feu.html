@@ -589,7 +589,8 @@ Inspection complète du lieu de travail et des locaux contigus.
     document.getElementById("etage").addEventListener("input", updateUrgencePosition);
     document.getElementById("zone-canton").addEventListener("input", updateUrgencePosition);
 
-    /* URGENCES */
+    /* URGENCES — page intervenant : on notifie le PC Sécurité, mais aucune
+       alarme locale (ni son ni bannière) ne se joue sur ce téléphone. */
     document.getElementById("btn-urgence-feu").addEventListener("click", () => {
       if(!confirm("🔥 Confirmer : URGENCE INCENDIE\n\nLe PC Sécurité sera notifié immédiatement.")) return;
       const lieu = [document.getElementById("magasin").value, document.getElementById("etage").value, document.getElementById("zone-canton").value].filter(Boolean).join(" — ");
@@ -598,18 +599,7 @@ Inspection complète du lieu de travail et des locaux contigus.
       if (typeof sendGlobalNotification === "function") {
           sendGlobalNotification("🔥 URGENCE INCENDIE", msgFull, "alarme", "critique");
       }
-
-      /* Son + bannière joués LOCALEMENT, encore dans le user-gesture context.
-         L'echo realtime arrivera après les dialogues natifs (iOS), trop tard
-         pour respecter la règle du gesture → sans ce play local, la 1re alarme
-         restait muette pour l'émetteur. */
-      if (typeof playAlarmSound === "function") {
-          try {
-              playAlarmSound();
-              const mEl = document.getElementById("alarmBannerMsg");
-              if (mEl) mEl.textContent = "🔥 URGENCE INCENDIE\n" + msgFull;
-          } catch(e) { console.warn("[Urgence] playAlarmSound local:", e); }
-      }
+      alert("🔥 URGENCE INCENDIE — Le PC Sécurité est notifié.");
     });
     document.getElementById("btn-urgence-svv").addEventListener("click", () => {
       if(!confirm("🚑 Confirmer : URGENCE SECOURS À VICTIME\n\nLe PC Sécurité sera notifié immédiatement.")) return;
@@ -619,14 +609,7 @@ Inspection complète du lieu de travail et des locaux contigus.
       if (typeof sendGlobalNotification === "function") {
           sendGlobalNotification("🚑 URGENCE SECOURS À VICTIME", msgFull, "alarme", "critique");
       }
-
-      if (typeof playAlarmSound === "function") {
-          try {
-              playAlarmSound();
-              const mEl = document.getElementById("alarmBannerMsg");
-              if (mEl) mEl.textContent = "🚑 URGENCE SECOURS À VICTIME\n" + msgFull;
-          } catch(e) { console.warn("[Urgence] playAlarmSound local:", e); }
-      }
+      alert("🚑 URGENCE — Secours à victime. Le PC Sécurité est notifié.");
     });
 
     /* ============================================================
@@ -751,6 +734,11 @@ Inspection complète du lieu de travail et des locaux contigus.
   </script>
 <script src="security.js"></script>
 <script src="global.js"></script>
+<script>
+/* Page INTERVENANT (formulaire permis feu) : jamais d'alarme sonore ni de
+   bannière plein écran ici — réservées au PC Sécurité et aux agents. */
+window.AURA_ALARM_SILENT = true;
+</script>
 <script src="notifications_global.js"></script>
 </body>
 </html>

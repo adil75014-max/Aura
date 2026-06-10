@@ -2605,16 +2605,22 @@ function checkUrgence() {
             } else if (typeof showAlarmBanner === "function") {
                 showAlarmBanner();
             }
-            // Personnaliser le message du banner après création
+            // Écriture via l'écrivain unique (notifications_global.js) :
+            // fusionne avec ce que le handler notifications a pu écrire et
+            // déduplique ligne à ligne → l'adresse n'apparaît qu'une fois,
+            // quel que soit l'ordre d'arrivée des deux flux realtime.
             setTimeout(function () {
-                const m = document.getElementById("alarmBannerMsg");
-                if (m) {
-                    m.textContent = msg;
-                    /* Préserver les retours à la ligne (sinon ils sont
-                       rendus comme des espaces et l'adresse se mélange) */
-                    m.style.whiteSpace = "pre-line";
-                    m.style.lineHeight = "1.5";
-                    m.style.maxWidth   = "90%";
+                if (typeof window.setAlarmBanner === "function") {
+                    window.setAlarmBanner(msg);
+                } else {
+                    const m = document.getElementById("alarmBannerMsg");
+                    if (m) m.textContent = msg;
+                }
+                const m2 = document.getElementById("alarmBannerMsg");
+                if (m2) {
+                    m2.style.whiteSpace = "pre-line";
+                    m2.style.lineHeight = "1.5";
+                    m2.style.maxWidth   = "90%";
                 }
             }, 50);
         } catch (e) { console.warn("[Urgence] popup:", e); }

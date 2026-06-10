@@ -120,21 +120,19 @@ function subscribeToNotifications() {
                     // toast en plus, sinon l'adresse s'affiche deux fois).
                     if (isPermisFeuAlarm) {
                         playAlarmSound();
-                        const msgEl = document.getElementById("alarmBannerMsg");
-                        if (msgEl) msgEl.textContent = toastText;
+                        setAlarmBanner(toastText);
                     }
                     return;
                 }
 
                 // ── Agent / Superviseur / Admin / Superadmin ──
                 if (isAlarm) {
-                    // ALARME : bannière plein écran + son. Le texte (titre + lieu +
-                    // agent) va UNIQUEMENT dans la bannière. Auparavant on affichait
-                    // EN PLUS un toast avec le même texte → l'adresse apparaissait
-                    // deux fois à l'écran. Corrigé : plus de toast pour les alarmes.
+                    // ALARME : bannière plein écran + son. setAlarmBanner est
+                    // l'écrivain unique : il fusionne avec ce que checkUrgence
+                    // (index.html) a éventuellement déjà écrit, en dédupliquant
+                    // les lignes → l'adresse ne s'affiche qu'une seule fois.
                     playAlarmSound();
-                    const msgEl = document.getElementById("alarmBannerMsg");
-                    if (msgEl) msgEl.textContent = toastText;
+                    setAlarmBanner(toastText);
                 } else {
                     // Notification banale : toast + son léger.
                     playNotifSound();
@@ -549,6 +547,12 @@ if (document.readyState === "loading") {
 }
 
 function playAlarmSound() {
+    // ── Pages intervenant (QR consulter_pf / permis_feu) ──
+    // L'alarme sonore + la bannière plein écran sont réservées au PC
+    // Sécurité et aux agents. L'intervenant qui déclare l'urgence ne doit
+    // ni entendre le son ni voir la bannière : il reçoit uniquement le
+    // toast de confirmation de sa page.
+    if (window.AURA_ALARM_SILENT === true) return;
     _ensureAudioElements();
     showAlarmBanner();
 
@@ -721,6 +725,7 @@ function _playFallbackBeep(volume, duration, frequency) {
 //  connectés via UPDATE de alertes_urgence → statut='traitee'.
 // ───────────────────────────────────────
 function showAlarmBanner() {
+    if (window.AURA_ALARM_SILENT === true) return;
     if (document.getElementById("alarmBanner")) return;
 
     const banner = document.createElement("div");
@@ -760,6 +765,55 @@ function showAlarmBanner() {
     document.head.appendChild(style);
     document.body.appendChild(banner);
 }
+
+/* ───────────────────────────────────────
+   ÉCRIVAIN UNIQUE DE LA BANNIÈRE (anti-doublon)
+   Deux flux realtime concurrents écrivent dans la bannière : le handler
+   notifications (titre+message) et checkUrgence d'index.html (row
+   alertes_urgence). Chacun formate l'adresse à sa façon → selon l'ordre
+   d'arrivée, l'adresse pouvait apparaître deux fois. Cette fonction est
+   désormais le SEUL point d'écriture : elle fusionne ce qui est déjà
+   affiché avec le nouveau texte en dédupliquant ligne à ligne sur le
+   contenu utile (emojis et libellés « Lieu : », « Agent : »… ignorés).
+   ─────────────────────────────────────── */
+function _normAlarmLine(line) {
+    return String(line || "")
+        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "")   // emojis
+        .replace(/^\s*(lieu|agent|permis(\s*feu)?|position)\s*:?\s*/i, "") // libellés
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")           // accents
+        .replace(/[—–\-:,;.!]/g, " ")                               // ponctuation
+        .toLowerCase().replace(/\s+/g, " ").trim();
+}
+function setAlarmBanner(text) {
+    if (window.AURA_ALARM_SILENT === true) return;
+    showAlarmBanner(); // crée la bannière si absente (no-op sinon)
+    var msgEl = document.getElementById("alarmBannerMsg");
+    if (!msgEl) return;
+
+    // Fusion existant + nouveau, puis déduplication par INCLUSION :
+    // si le contenu utile d'une ligne est contenu dans celui d'une autre
+    // (ex. « URGENCE INCENDIE » ⊂ « URGENCE INCENDIE — PERMIS FEU »),
+    // seule la plus complète est conservée. L'adresse, le n° de permis et
+    // le nom d'agent ne peuvent donc jamais apparaître deux fois.
+    var rawLines = (msgEl.textContent || "").split("\n").concat(String(text || "").split("\n"))
+        .map(function(l){ return l.trim(); })
+        .filter(function(l){ return l.length > 0; });
+
+    var entries = rawLines.map(function(l){ return { line: l, key: _normAlarmLine(l) }; })
+        .filter(function(e){ return e.key.length > 0; });
+
+    var kept = [];
+    for (var i = 0; i < entries.length; i++) {
+        var e = entries[i], absorbed = false;
+        for (var j = 0; j < kept.length; j++) {
+            if (kept[j].key.indexOf(e.key) !== -1) { absorbed = true; break; }      // déjà couvert
+            if (e.key.indexOf(kept[j].key) !== -1) { kept[j] = e; absorbed = true; break; } // remplace par + complet
+        }
+        if (!absorbed) kept.push(e);
+    }
+    msgEl.textContent = kept.map(function(e){ return e.line; }).join("\n");
+}
+window.setAlarmBanner = setAlarmBanner;
 
 function closeAlarmBanner() {
     var banner = document.getElementById("alarmBanner");

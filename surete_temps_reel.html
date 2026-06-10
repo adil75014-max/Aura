@@ -104,7 +104,7 @@ select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px
 <div class="grid">
     <!-- CARTE -->
     <div class="section" style="grid-column:1/-1;">
-        <h2>🗺️ Carte du quartier — rayon 1 km <span class="count" id="cntMap">—</span></h2>
+        <h2>🗺️ Carte de Paris — sites LVMH & risques sûreté <span class="count" id="cntMap">—</span></h2>
 
         <!-- Bannière de risque sûreté (calculée à partir des données filtrées) -->
         <div id="riskBanner" class="riskBanner nominal">
@@ -118,8 +118,10 @@ select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px
         <!-- Carte en BANDEAU pleine largeur : hauteur fixe (pas d'aspect-ratio,
              dont le calcul tardif sur mobile faussait le zoom des bornes et
              découpait les tuiles aux bords) -->
-        <div id="sureteMap" style="width:100%;height:clamp(320px, 48vh, 480px);border-radius:14px;overflow:hidden;background:#0a1120;border:2px solid #22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.08)"></div>
+        <div id="sureteMap" style="width:100%;height:clamp(360px, 52vh, 540px);border-radius:14px;overflow:hidden;background:#0a1120;border:2px solid #22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.08)"></div>
         <div class="legend">
+            <span style="color:#7dd3fc;">🔷 Site sélectionné (+ cercle 1 km)</span>
+            <span>▪️ Autres sites LVMH</span>
             <span>🔵 Commissariat</span><span>🟥 Hôpital</span><span>🟧 Caserne</span>
             <span>🟣 Transport / métro</span><span>🟡 Ambassade</span><span>⚪ Tourisme / culte</span>
             <span style="color:#fecaca;">🔴 Risque sûreté (pulsant)</span>
@@ -396,55 +398,62 @@ function updateRiskBanner(manifs, news, site, errorMsg){
 /* ---- CARTE ---- */
 let _map=null, _baseLayer=null, _markerLayer=null;
 
-// Initialise (ou recadre) la carte sur le site, BORNÉE au rayon de 1 km.
-// Appelée au chargement et à chaque changement de site, indépendamment des
-// données → le centre + le cercle + les bornes s'affichent toujours, même si
-// la récupération des points tarde ou échoue.
+// Bornes de Paris intra-muros (avec une petite marge périphérique)
+const PARIS_BOUNDS = L.latLngBounds([48.812, 2.220], [48.905, 2.475]);
+
+// Initialise la carte sur PARIS ENTIER. Tous les sites LVMH sont affichés ;
+// le site sélectionné est mis en avant (repère + cercle de 1 km de référence).
+// Appelée au chargement et à chaque changement de site.
 function initMap(site){
     if(typeof L==="undefined"){ document.getElementById("sureteMap").innerHTML='<div class="empty">Carte indisponible (Leaflet non chargé)</div>'; return; }
     const center=[site.lat, site.lon];
 
     if(!_map){
-        // fadeAnimation/zoomAnimation désactivés : empêche Leaflet de conserver
-        // d'anciennes tuiles pendant les transitions → plus d'effet « escalier ».
         _map = L.map("sureteMap", {
             scrollWheelZoom:false,
             maxBoundsViscosity:1.0,
             fadeAnimation:false,
             zoomAnimation:false,
             markerZoomAnimation:false
-        }).setView(center, 15);
+        });
         L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(_map);
         _markerLayer = L.layerGroup().addTo(_map);
     }
 
-    // Couche de base (cercle 1 km + repère du site) : recréée à chaque (re)centrage.
+    // Couche de base : recréée à chaque changement de site.
     if(_baseLayer) _map.removeLayer(_baseLayer);
     _baseLayer = L.layerGroup().addTo(_map);
-    const circle = L.circle(center,{radius:1000,color:"#22d3ee",weight:1,fillColor:"#22d3ee",fillOpacity:0.05}).addTo(_baseLayer);
-    L.circleMarker(center,{radius:8,color:"#fff",weight:2,fillColor:"#22d3ee",fillOpacity:1}).addTo(_baseLayer).bindPopup("<b>"+esc(site.nom)+"</b>");
 
-    // ── Contrainte 1 km : on ne peut ni se déplacer ni dézoomer hors de la zone ──
-    const bounds = circle.getBounds();
-    _map.setMaxBounds(bounds);                                       // déplacement bloqué hors zone
+    // Cercle de 1 km de RÉFÉRENCE autour du site sélectionné (visuel, plus
+    // aucune contrainte de navigation dessus).
+    L.circle(center,{radius:1000,color:"#22d3ee",weight:1.5,fillColor:"#22d3ee",fillOpacity:0.06}).addTo(_baseLayer);
+
+    // Tous les sites LVMH sur la carte : petit repère pour les autres,
+    // gros repère pour le site sélectionné (renderMapMarkers ajoutera
+    // l'anneau pulsant sur le site sélectionné en cas de risque).
+    Object.keys(SITES).forEach(code => {
+        const s = SITES[code];
+        if (code === currentSite) return; // posé par renderMapMarkers (gestion risque)
+        L.circleMarker([s.lat, s.lon],{radius:5,color:"#fff",weight:1.5,fillColor:"#64748b",fillOpacity:0.9})
+            .addTo(_baseLayer).bindPopup("<b>"+esc(s.nom)+"</b>");
+    });
+    L.circleMarker(center,{radius:8,color:"#fff",weight:2,fillColor:"#22d3ee",fillOpacity:1}).addTo(_baseLayer).bindPopup("<b>"+esc(site.nom)+"</b>");
 
     // Vider les marqueurs précédents lors d'un changement de site
     if(_markerLayer) _markerLayer.clearLayers();
     document.getElementById("cntMap").textContent = "—";
 
-    // ── Stabilisation : invalidateSize PUIS recalcul du zoom des bornes.
-    // Le zoom était auparavant figé AVANT que le conteneur ait sa taille
-    // finale (layout mobile tardif) → minZoom faux + maxBounds = tuiles
-    // découpées aux bords. En le recalculant à chaque passe, le bandeau
-    // cadre toujours exactement le cercle de 1 km, quelle que soit la
-    // largeur de l'écran.
+    // ── Cadrage : Paris entier dans le bandeau. minZoom = le zoom de ce
+    // cadrage (on ne peut pas dézoomer au-delà de Paris) ; navigation
+    // bornée au Grand Paris. Recalculé à chaque passe pour absorber la
+    // mise en page tardive (mobile) sans tuiles manquantes.
     const _settleMap = () => {
         try {
             _map.invalidateSize(false);
-            let z = 15;
-            try { z = _map.getBoundsZoom(bounds); } catch(e){}
-            _map.setMinZoom(z);
-            _map.setView(center, z, { animate:false, reset:true });
+            _map.setMaxBounds(null);
+            _map.fitBounds(PARIS_BOUNDS, { animate:false });
+            _map.setMinZoom(_map.getZoom());
+            _map.setMaxBounds(PARIS_BOUNDS.pad(0.25));
         } catch(e){}
     };
     _settleMap();
@@ -498,8 +507,16 @@ function renderMapMarkers(data){
                 : '<div style="width:16px;height:16px;border-radius:50%;background:#22d3ee;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.7)"></div>',
             iconSize: [20,20], iconAnchor: [10,10]
         });
-        // Retirer l'ancien repère statique posé par initMap pour éviter le doublon
-        _baseLayer.eachLayer(l => { if (l instanceof L.CircleMarker) _baseLayer.removeLayer(l); });
+        // Retirer UNIQUEMENT le repère du site sélectionné posé par initMap
+        // (les petits points gris des 4 autres sites restent en place).
+        _baseLayer.eachLayer(l => {
+            if (l instanceof L.CircleMarker) {
+                const ll = l.getLatLng();
+                if (Math.abs(ll.lat - site.lat) < 1e-6 && Math.abs(ll.lng - site.lon) < 1e-6) {
+                    _baseLayer.removeLayer(l);
+                }
+            }
+        });
         L.marker([site.lat, site.lon], { icon: siteIcon, zIndexOffset: 2000 })
             .addTo(_baseLayer).bindPopup("<b>" + esc(site.nom) + "</b>" + (hasRisk ? "<br><span style='color:#fca5a5'>⚠ Risque sûreté à proximité</span>" : ""));
     }

@@ -293,6 +293,46 @@
     <textarea id="moyens" placeholder="Extincteurs, RIA, moyens d’alerte, etc."></textarea>
   </div>
 
+  <!-- VIGILANCE PROTECTION INCENDIE -->
+  <div class="card">
+    <h2>Vigilance — protection incendie de la zone</h2>
+
+    <label>Niveau de vigilance</label>
+    <select id="vigilance-niveau" onchange="updateVigilanceInfo()">
+        <option value="">— Sélectionner le niveau —</option>
+        <option value="verte">🟢 Vigilance — Sprinkler et détection fonctionnels</option>
+        <option value="orange">🟠 Vigilance ORANGE — Sprinkler HS zone chantier + caches détecteurs</option>
+        <option value="rouge">🔴 Vigilance ROUGE — Poste sprinkler vidangé, aucune protection</option>
+    </select>
+
+    <div id="vigilance-info" style="display:none;margin-top:10px;padding:12px 14px;border-radius:10px;font-size:.85rem;line-height:1.5;border:1px solid;"></div>
+
+    <!-- Installations impactées : visibles en vigilance Orange / Rouge -->
+    <div id="vigilance-installations" style="display:none;">
+      <div class="row">
+        <div>
+          <label>Poste(s) sprinkler impacté(s)</label>
+          <input type="text" id="vig-poste-sprinkler" placeholder="Ex : Poste 1, 92">
+        </div>
+        <div>
+          <label>Zone(s) de détection impactée(s)</label>
+          <input type="text" id="vig-zones-detection" placeholder="Ex : Z01 B">
+        </div>
+      </div>
+      <div style="font-size:.72rem;opacity:.6;margin-top:2px;">
+        Indiquer les n° de poste sprinkler et les zones de détection (ZD) concernés par le chantier.
+      </div>
+    </div>
+
+    <label style="margin-top:14px;">Plans de la zone (photo ou PDF)</label>
+    <input type="file" id="plans-files" accept="image/*,.pdf" multiple
+           style="width:100%;padding:10px;border-radius:10px;border:1px dashed #9ca3af;background:#f9fafb;color:#1f2937;font-size:.85rem;">
+    <div style="font-size:.72rem;opacity:.6;margin-top:4px;">
+        Photos compressées automatiquement. Obligatoire en vigilance Orange (plan de la zone sans sprinkler) — recommandé en Rouge.
+    </div>
+    <div id="plans-preview" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
+  </div>
+
   <!-- SIGNATURES -->
   <div class="card">
     <h2>Signatures</h2>
@@ -656,6 +696,23 @@ Inspection complète du lieu de travail et des locaux contigus.
         const extRaisonSociale = document.getElementById("ext-raison-sociale").value.trim();
         const extRepresentant = document.getElementById("ext-representant").value.trim();
 
+        // Vigilance protection incendie
+        const vigNiveau = document.getElementById("vigilance-niveau").value;
+        if (!vigNiveau) {
+            showToast("⚠️ Sélectionnez le niveau de vigilance protection incendie", true);
+            btn.disabled = false; btn.textContent = "✔️ Enregistrer le permis feu";
+            const vigEl = document.getElementById("vigilance-niveau");
+            vigEl.scrollIntoView({behavior:"smooth", block:"center"});
+            vigEl.focus();
+            return;
+        }
+        if (vigNiveau === "orange" && _plansData.length === 0) {
+            showToast("⚠️ Vigilance ORANGE : le plan de la zone sans sprinkler est obligatoire", true);
+            btn.disabled = false; btn.textContent = "✔️ Enregistrer le permis feu";
+            document.getElementById("plans-files").scrollIntoView({behavior:"smooth", block:"center"});
+            return;
+        }
+
         // Localisation
         const magasin = document.getElementById("magasin").value.trim();
         const etage = document.getElementById("etage").value.trim();
@@ -714,7 +771,16 @@ Inspection complète du lieu de travail et des locaux contigus.
             signature_intervenant: signIntervenant,
             pris_connaissance: prisConnaissance,
             passages: passages,
-            prolongations: historiqueProlongations
+            prolongations: historiqueProlongations,
+            vigilance: {
+              niveau: vigNiveau,
+              label: VIGILANCE_REF[vigNiveau].label,
+              details: VIGILANCE_REF[vigNiveau].details,
+              consignes: VIGILANCE_REF[vigNiveau].consignes,
+              poste_sprinkler: (document.getElementById("vig-poste-sprinkler").value || "").trim() || null,
+              zones_detection: (document.getElementById("vig-zones-detection").value || "").trim() || null
+            },
+            plans: _plansData
           }
         });
 
@@ -732,6 +798,116 @@ Inspection complète du lieu de travail et des locaux contigus.
       }
     });
   </script>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   VIGILANCE PROTECTION INCENDIE — référentiel des 3 niveaux
+   ═══════════════════════════════════════════════════════════════ */
+const VIGILANCE_REF = {
+  verte: {
+    label: "Vigilance",
+    couleur: "#16a34a", bg: "rgba(34,197,94,.10)", border: "rgba(34,197,94,.4)",
+    details: "Poste sprinkler EN SERVICE et détection incendie FONCTIONNELLE sur la zone de travaux.",
+    consignes: "Surveillance normale du permis feu : rondes aux heures de passage, vérification 2h après la fin des travaux."
+  },
+  orange: {
+    label: "Vigilance ORANGE",
+    couleur: "#ea580c", bg: "rgba(234,88,12,.10)", border: "rgba(234,88,12,.45)",
+    details: "Sprinkler NON FONCTIONNEL sur la zone de chantier (plan de la zone intégré au permis). Détection incendie présente mais avec CACHES DÉTECTEURS posés.",
+    consignes: "Surveillance renforcée : rondes rapprochées sur la zone, retrait des caches détecteurs OBLIGATOIRE en fin de travaux (à vérifier à la clôture), moyens d'extinction doublés à proximité immédiate."
+  },
+  rouge: {
+    label: "Vigilance ROUGE",
+    couleur: "#dc2626", bg: "rgba(220,38,38,.12)", border: "rgba(220,38,38,.5)",
+    details: "Poste sprinkler VIDANGÉ — AUCUNE protection automatique NI détection incendie sur la zone.",
+    consignes: "Surveillance humaine PERMANENTE de la zone pendant toute la durée des travaux + 2h après. Agent de sécurité incendie dédié. Moyens d'extinction renforcés sur site. Liaison directe PC Sécurité. Remise en service du poste à confirmer à la clôture."
+  }
+};
+
+function updateVigilanceInfo() {
+  const niveau = document.getElementById("vigilance-niveau").value;
+  const box = document.getElementById("vigilance-info");
+  const inst = document.getElementById("vigilance-installations");
+  // Postes/zones impactés : pertinents dès que la protection est dégradée
+  if (inst) inst.style.display = (niveau === "orange" || niveau === "rouge") ? "block" : "none";
+  if (!niveau || !VIGILANCE_REF[niveau]) { box.style.display = "none"; return; }
+  const r = VIGILANCE_REF[niveau];
+  box.style.display = "block";
+  box.style.background = r.bg;
+  box.style.borderColor = r.border;
+  box.style.color = "#1f2937"; /* page claire : texte sombre */
+  box.innerHTML = '<div style="font-weight:700;color:' + r.couleur + ';margin-bottom:6px;">' + r.label + '</div>'
+                + '<div style="margin-bottom:6px;">' + r.details + '</div>'
+                + '<div style="opacity:.85;font-size:.8rem;"><strong>Consignes :</strong> ' + r.consignes + '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PLANS DE LA ZONE — lecture, compression, prévisualisation
+   Images : recadrées à 1400 px max, JPEG qualité 0.72 (≈200-400 Ko)
+   PDF : accepté tel quel jusqu'à 2,5 Mo (base64 dans meta JSONB)
+   ═══════════════════════════════════════════════════════════════ */
+let _plansData = [];   // [{ name, type:"image"|"pdf", data:(dataURL) }]
+
+function _compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1400;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        const ratio = Math.min(MAX / w, MAX / h);
+        w = Math.round(w * ratio); h = Math.round(h * ratio);
+      }
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(cv.toDataURL("image/jpeg", 0.72));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image illisible")); };
+    img.src = url;
+  });
+}
+
+function _renderPlansPreview() {
+  const box = document.getElementById("plans-preview");
+  box.innerHTML = _plansData.map((p, i) =>
+    '<div style="position:relative;width:110px;">'
+    + (p.type === "image"
+        ? '<img src="' + p.data + '" style="width:110px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #d1d5db;">'
+        : '<div style="width:110px;height:80px;border-radius:8px;border:1px solid #d1d5db;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:1.6rem;">📄</div>')
+    + '<div style="font-size:.62rem;opacity:.7;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + p.name + '</div>'
+    + '<button type="button" onclick="_removePlan(' + i + ')" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:#dc2626;color:#fff;font-size:.8rem;cursor:pointer;line-height:1;">✕</button>'
+    + '</div>'
+  ).join("");
+}
+function _removePlan(i) { _plansData.splice(i, 1); _renderPlansPreview(); }
+
+document.getElementById("plans-files").addEventListener("change", async function () {
+  for (const file of Array.from(this.files || [])) {
+    try {
+      if (_plansData.length >= 4) { showToast("⚠️ 4 plans maximum", true); break; }
+      if (file.type === "application/pdf") {
+        if (file.size > 2.5 * 1024 * 1024) { showToast("⚠️ " + file.name + " : PDF trop lourd (max 2,5 Mo) — préférez une photo du plan", true); continue; }
+        const data = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result);
+          r.onerror = () => rej(new Error("Lecture impossible"));
+          r.readAsDataURL(file);
+        });
+        _plansData.push({ name: file.name, type: "pdf", data });
+      } else if (file.type.startsWith("image/")) {
+        const data = await _compressImage(file);
+        _plansData.push({ name: file.name, type: "image", data });
+      } else {
+        showToast("⚠️ " + file.name + " : format non pris en charge (image ou PDF)", true);
+      }
+    } catch (e) { showToast("❌ " + file.name + " : " + (e.message || e), true); }
+  }
+  this.value = "";
+  _renderPlansPreview();
+});
+</script>
 <script src="security.js"></script>
 <script src="global.js"></script>
 <script>

@@ -231,10 +231,12 @@ function renderList(list){
         const agent=agentName(p);
         const lieu=p.lieu||(p.meta?[p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" \u2014 "):"")||"\u2014";
         const date=fmtDate(p.date_debut||p.created_at);
+        const vig=(p.meta&&p.meta.vigilance)?p.meta.vigilance:null;
+        const vigBadge=vig?`<span class="pill" style="background:${VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].bg:'rgba(255,255,255,.08)'};color:${VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].fg:'#e0e4ef'};border:1px solid ${VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].border:'transparent'};">${VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].dot:''} ${esc(vig.label||vig.niveau)}</span>`:"";
         return `<div class="permit-card" onclick="ouvrirPermis('${p.id}')">
             <div class="permit-icon ${clos?'closed':'open'}">${clos?'\u2705':'\ud83d\udd25'}</div>
             <div class="permit-info">
-                <div class="permit-num">${p.numero||"Sans num\u00e9ro"}</div>
+                <div class="permit-num">${p.numero||"Sans num\u00e9ro"} ${vigBadge}</div>
                 <div class="permit-meta">
                     <span>\ud83d\udcc5 ${date}</span>
                     <span>\ud83c\udfe2 ${esc(p.entreprise||"\u2014")}</span>
@@ -246,6 +248,13 @@ function renderList(list){
         </div>`;
     }).join("");
 }
+
+/* Couleurs des niveaux de vigilance protection incendie */
+const VIG_COLORS = {
+    verte:  { dot:"🟢", fg:"#86efac", bg:"rgba(34,197,94,.12)",  border:"rgba(34,197,94,.4)",  hex:"#16a34a" },
+    orange: { dot:"🟠", fg:"#fdba74", bg:"rgba(234,88,12,.12)",  border:"rgba(234,88,12,.45)", hex:"#ea580c" },
+    rouge:  { dot:"🔴", fg:"#fca5a5", bg:"rgba(220,38,38,.14)",  border:"rgba(220,38,38,.5)",  hex:"#dc2626" }
+};
 
 function ouvrirPermis(id){
     const p=permisCache.find(x=>x.id===id);
@@ -267,6 +276,39 @@ function ouvrirPermis(id){
     html+=`<h3>Entreprise</h3><div class="detail-row">${field("Concern\u00e9e",m.entreprise_concernee||p.entreprise)}${field("Ext\u00e9rieure",m.ext_raison_sociale)}${field("Repr\u00e9sentant",m.ext_representant)}</div>`;
 
     html+=`<h3>Localisation</h3><div class="detail-row">${field("Lieu",lieu)}${field("Horaires",m.horaires)}</div>`;
+
+    /* ── VIGILANCE PROTECTION INCENDIE ── */
+    if(m.vigilance&&m.vigilance.niveau){
+        const vc=VIG_COLORS[m.vigilance.niveau]||VIG_COLORS.verte;
+        html+=`<div style="margin:14px 0;padding:14px;border-radius:12px;background:${vc.bg};border:1px solid ${vc.border};">
+            <div style="font-weight:800;color:${vc.hex};font-size:1rem;letter-spacing:.02em;margin-bottom:6px;">${vc.dot} ${esc(m.vigilance.label||m.vigilance.niveau)}</div>
+            <div style="font-size:.85rem;line-height:1.5;margin-bottom:6px;">${esc(m.vigilance.details||"")}</div>
+            ${(m.vigilance.poste_sprinkler||m.vigilance.zones_detection)?`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px;font-size:.85rem;">
+                ${m.vigilance.poste_sprinkler?`<span style="background:rgba(255,255,255,.08);border:1px solid ${vc.border};border-radius:8px;padding:4px 10px;">💧 Poste sprinkler : <strong>${esc(m.vigilance.poste_sprinkler)}</strong></span>`:""}
+                ${m.vigilance.zones_detection?`<span style="background:rgba(255,255,255,.08);border:1px solid ${vc.border};border-radius:8px;padding:4px 10px;">📡 Détection : <strong>${esc(m.vigilance.zones_detection)}</strong></span>`:""}
+            </div>`:""}
+            ${m.vigilance.consignes?`<div style="font-size:.78rem;opacity:.9;line-height:1.5;"><strong>Consignes :</strong> ${esc(m.vigilance.consignes)}</div>`:""}
+        </div>`;
+    }
+
+    /* ── PLANS DE LA ZONE ── */
+    if(m.plans&&m.plans.length){
+        html+=`<h3>Plans de la zone (${m.plans.length})</h3><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">`;
+        m.plans.forEach((pl,i)=>{
+            if(pl.type==="image"){
+                html+=`<a href="${pl.data}" download="${esc(pl.name||("plan-"+(i+1)+".jpg"))}" target="_blank" style="display:block;">
+                    <img src="${pl.data}" alt="${esc(pl.name||"Plan")}" style="width:150px;height:110px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.2);cursor:zoom-in;">
+                    <div style="font-size:.65rem;opacity:.7;margin-top:2px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(pl.name||"Plan "+(i+1))}</div>
+                </a>`;
+            } else {
+                html+=`<a href="${pl.data}" download="${esc(pl.name||("plan-"+(i+1)+".pdf"))}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:150px;height:110px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);text-decoration:none;color:#e0e4ef;">
+                    <span style="font-size:2rem;">📄</span>
+                    <span style="font-size:.65rem;opacity:.8;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(pl.name||"Plan PDF")}</span>
+                </a>`;
+            }
+        });
+        html+=`</div>`;
+    }
 
     if(m.operation||m.risques||m.mesures||m.moyens){html+=`<h3>Travaux</h3>${field("Op\u00e9ration",m.operation)}${field("Risques",m.risques)}${field("Mesures",m.mesures)}${field("Moyens",m.moyens)}`;}
     if(!m.operation&&p.description){html+=`<h3>Description</h3>${field("",p.description)}`;}
@@ -348,7 +390,7 @@ function ouvrirPermis(id){
     const roBanner = READ_ONLY ? `<div class="ro-banner">\ud83d\udd12 Consultation intervenant — mode lecture seule. Pour clôturer, s'adresser au PC Sécurité.</div>` : "";
 
     html = roBanner + html;
-    html+=`<div class="modal-actions">${cloBtn}<button class="btn-pdf" onclick="exportPDF('${p.id}')">\ud83d\udcc4 PDF</button><button class="btn-close" onclick="fermerPermis()">Fermer</button></div>`;
+    html+=`<div class="modal-actions">${cloBtn}<button class="btn-pdf" onclick="printPermis('${p.id}')">\ud83d\udda8\ufe0f Imprimer</button><button class="btn-pdf" onclick="exportPDF('${p.id}')">\ud83d\udcc4 PDF</button><button class="btn-close" onclick="fermerPermis()">Fermer</button></div>`;
 
     document.getElementById("modalPermisContent").innerHTML=html;
     document.getElementById("modalPermis").classList.add("active");
@@ -357,6 +399,105 @@ function ouvrirPermis(id){
 }
 
 function fermerPermis(){document.getElementById("modalPermis").classList.remove("active");}
+
+/* ═══════════════════════════════════════════════════════════════
+   IMPRESSION — fiche A4 pour le tableau de suivi du PC Sécurité
+   Bandeau de vigilance en tête (couleur pleine, lisible de loin),
+   infos clés en gros, QR de consultation, plans en pleine largeur.
+   ═══════════════════════════════════════════════════════════════ */
+function printPermis(id){
+    const p=permisCache.find(x=>x.id===id);
+    if(!p){showToast("Permis introuvable.",true);return;}
+    const m=p.meta||{};const clos=isClos(p.statut);
+    const lieu=p.lieu||[m.magasin,m.etage,m.zone_canton].filter(Boolean).join(" — ")||"—";
+    const vig=m.vigilance&&m.vigilance.niveau?m.vigilance:null;
+    const vigHex=vig?(VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].hex:"#16a34a"):"#64748b";
+    const vigTxt=vig?(vig.label||vig.niveau).toUpperCase():"VIGILANCE NON RENSEIGNÉE";
+    const qrData=location.origin+location.pathname+'?pf='+encodeURIComponent(p.numero||"");
+
+    function pf(lbl,val){return val&&val!=="—"?`<tr><td class="l">${lbl}</td><td class="v">${esc(val)}</td></tr>`:"";}
+
+    const plansHtml=(m.plans||[]).filter(pl=>pl.type==="image").map((pl,i)=>
+        `<div class="plan"><img src="${pl.data}" alt="Plan"><div class="plan-cap">Plan ${i+1}${pl.name?" — "+esc(pl.name):""}</div></div>`
+    ).join("");
+    const plansPdfNote=(m.plans||[]).some(pl=>pl.type==="pdf")
+        ?`<div class="pdf-note">📄 Plan(s) PDF joint(s) au permis — consultables dans Aura (QR ci-dessus)</div>`:"";
+
+    const w=window.open("","_blank");
+    if(!w){showToast("⚠️ Autorisez les pop-ups pour imprimer",true);return;}
+    w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<title>Permis feu ${esc(p.numero||"")} — fiche de suivi</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"><\/script>
+<style>
+  @page{size:A3;margin:15mm;}
+  *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;font-size:15pt;}
+  .vig-band{background:${vigHex};color:#fff;padding:20px 24px;border-radius:10px;
+            font-size:30pt;font-weight:900;letter-spacing:.05em;text-align:center;margin-bottom:16px;}
+  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:14px;}
+  .num{font-size:30pt;font-weight:900;}
+  .statut{display:inline-block;padding:6px 20px;border-radius:999px;font-weight:800;font-size:15pt;
+          background:${clos?"#16a34a":"#dc2626"};color:#fff;margin-top:8px;}
+  .installs{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0;}
+  .installs span{border:2px solid ${vigHex};border-radius:10px;padding:8px 16px;font-size:16pt;font-weight:800;}
+  table{width:100%;border-collapse:collapse;margin:10px 0;}
+  td{padding:9px 14px;border:1px solid #bbb;vertical-align:top;font-size:14pt;}
+  td.l{width:30%;font-weight:700;background:#f3f4f6;}
+  .vig-details{border:3px solid ${vigHex};border-radius:10px;padding:14px 18px;margin:12px 0;}
+  .vig-details .t{color:${vigHex};font-weight:900;font-size:17pt;margin-bottom:6px;}
+  .vig-details .c{font-size:13pt;line-height:1.5;}
+  .plan{margin:12px 0;page-break-inside:avoid;}
+  .plan img{width:100%;max-height:640px;object-fit:contain;border:1px solid #999;border-radius:8px;}
+  .plan-cap{font-size:11pt;color:#555;margin-top:3px;}
+  .pdf-note{font-size:12pt;color:#555;border:1px dashed #999;border-radius:8px;padding:10px;margin:10px 0;}
+  .foot{margin-top:18px;font-size:11pt;color:#666;display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:8px;}
+  .qr-wrap{text-align:center;}
+  .qr-wrap div{font-size:10pt;color:#555;margin-top:3px;}
+</style></head><body>
+  <div class="vig-band">${esc(vigTxt)}</div>
+  <div class="head">
+    <div>
+      <div class="num">🔥 ${esc(p.numero||"Permis feu")}</div>
+      <div class="statut">${clos?"CLÔTURÉ":"OUVERT — EN COURS"}</div>
+    </div>
+    <div class="qr-wrap"><canvas id="prqr"></canvas><div>Scanner pour consulter</div></div>
+  </div>
+  ${vig&&(vig.poste_sprinkler||vig.zones_detection)?`<div class="installs">
+      ${vig.poste_sprinkler?`<span>💧 Poste sprinkler : ${esc(vig.poste_sprinkler)}</span>`:""}
+      ${vig.zones_detection?`<span>📡 Détection : ${esc(vig.zones_detection)}</span>`:""}
+  </div>`:""}
+  <table>
+    ${pf("Date",fmtDate(p.date_debut||p.created_at))}
+    ${pf("Horaires",m.horaires)}
+    ${pf("Lieu",lieu)}
+    ${pf("Entreprise",m.ext_raison_sociale||p.entreprise)}
+    ${pf("Représentant",m.ext_representant)}
+    ${pf("Agent délivreur",agentName(p))}
+    ${pf("Opération",m.operation)}
+    ${pf("Moyens d'intervention",m.moyens)}
+    ${vig&&vig.poste_sprinkler?pf("Poste(s) sprinkler impacté(s)",vig.poste_sprinkler):""}
+    ${vig&&vig.zones_detection?pf("Zone(s) de détection impactée(s)",vig.zones_detection):""}
+  </table>
+  ${vig?`<div class="vig-details">
+      <div class="t">${esc(vig.label||"")} — protection incendie de la zone</div>
+      <div class="c">${esc(vig.details||"")}</div>
+      ${vig.consignes?`<div class="c" style="margin-top:6px;"><strong>Consignes :</strong> ${esc(vig.consignes)}</div>`:""}
+  </div>`:""}
+  ${plansHtml}
+  ${plansPdfNote}
+  <div class="foot">
+    <span>Aura — Sécurité Incendie · fiche de suivi tableau PC</span>
+    <span>Imprimé le ${new Date().toLocaleString("fr-FR")}</span>
+  </div>
+  <script>
+    window.addEventListener("load",function(){
+      try{ new QRious({element:document.getElementById("prqr"),size:170,value:${JSON.stringify(qrData)},level:"M"}); }catch(e){}
+      setTimeout(function(){ window.print(); },350);
+    });
+  <\/script>
+</body></html>`);
+    w.document.close();
+}
 
 async function cloturerPermis(id){
     if(READ_ONLY){showToast("\u26d4 Clôture réservée au PC Sécurité.",true);return;}

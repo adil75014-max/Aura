@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validation laissez-passer — Aura Sentinelle</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{ --bg:#080b14; --card:#0e1626; --line:#232c40; --ink:#e8ebf0; --muted:#94a3b8;
+         --cyan:#22d3ee; --ok:#16a34a; --warn:#ea580c; --bad:#dc2626; }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(circle at top,#0f1830,#080b14 60%);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+  header{display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line);}
+  header h1{font-size:1.15rem;margin:0;font-weight:800;flex:1;}
+  header a{color:var(--muted);text-decoration:none;font-size:.85rem;}
+  .wrap{max-width:1000px;margin:18px auto;padding:0 16px 60px;}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .tab{padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:#101a2e;color:var(--ink);cursor:pointer;font-size:.85rem;}
+  .tab.active{background:var(--cyan);color:#06222b;font-weight:700;border-color:var(--cyan);}
+  .tab .badge{background:rgba(0,0,0,.2);border-radius:999px;padding:1px 8px;margin-left:6px;font-size:.78rem;}
+  .lp{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;}
+  .lp-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px;}
+  .lp-title{font-weight:700;font-size:1rem;flex:1;}
+  .lp-sub{font-size:.8rem;color:var(--muted);margin-top:2px;}
+  .pill{font-size:.7rem;font-weight:700;border-radius:999px;padding:3px 11px;white-space:nowrap;}
+  .p-wait{background:rgba(234,179,8,.15);color:#fde047;border:1px solid rgba(234,179,8,.35);}
+  .p-ok{background:rgba(22,163,74,.15);color:#86efac;border:1px solid rgba(22,163,74,.35);}
+  .p-bad{background:rgba(220,38,38,.15);color:#fca5a5;border:1px solid rgba(220,38,38,.35);}
+  .p-exp{background:rgba(148,163,184,.15);color:#cbd5e1;border:1px solid rgba(148,163,184,.3);}
+  .p-urgent{background:rgba(234,88,12,.18);color:#fdba74;border:1px solid rgba(234,88,12,.4);}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 16px;font-size:.83rem;margin:10px 0;}
+  .grid .k{color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.03em;}
+  .acc{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;}
+  .acc span{font-size:.72rem;background:#101a2e;border:1px solid var(--line);border-radius:7px;padding:2px 9px;}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .btn{padding:10px 16px;border:none;border-radius:9px;font-size:.85rem;font-weight:600;cursor:pointer;}
+  .btn-ok{background:var(--ok);color:#fff;}
+  .btn-bad{background:var(--bad);color:#fff;}
+  .btn-ghost{background:#101a2e;color:var(--ink);border:1px solid var(--line);}
+  .empty{text-align:center;color:var(--muted);padding:30px;}
+  .urgent-motif{font-size:.8rem;background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.3);border-radius:8px;padding:8px 11px;margin:8px 0;}
+  .scan-info{font-size:.72rem;color:var(--muted);margin-top:6px;}
+
+  /* Modale QR + partage */
+  .qr-overlay{position:fixed;inset:0;background:rgba(2,6,15,.85);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px;}
+  .qr-overlay.show{display:flex;}
+  .qr-box{background:#0e1626;border:1px solid var(--line);border-radius:18px;padding:22px;max-width:380px;width:100%;text-align:center;position:relative;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+  .qr-close{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;}
+  .qr-h{font-size:.78rem;letter-spacing:.05em;color:#86efac;font-weight:700;text-transform:uppercase;}
+  .qr-title{font-size:1.05rem;font-weight:700;margin-top:6px;}
+  .qr-sub{font-size:.76rem;color:var(--muted);margin:4px 0 14px;line-height:1.4;}
+  .qr-canvas-wrap{background:#fff;border-radius:14px;padding:14px;display:inline-block;}
+  .qr-canvas-wrap canvas,.qr-canvas-wrap img{display:block;}
+  .qr-link-row{display:flex;gap:6px;margin:14px 0 10px;}
+  .qr-link-row input{flex:1;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:#0a1120;color:var(--ink);font-size:.74rem;}
+  .qr-link-row button{padding:9px 13px;border:1px solid var(--line);border-radius:9px;background:#101a2e;color:var(--ink);cursor:pointer;}
+  .qr-share-main{width:100%;padding:13px;border:none;border-radius:11px;background:var(--cyan);color:#06222b;font-size:.95rem;font-weight:800;cursor:pointer;margin-bottom:10px;}
+  .qr-channels{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .qr-channels button{padding:11px;border:1px solid var(--line);border-radius:10px;background:#101a2e;color:var(--ink);font-size:.85rem;cursor:pointer;}
+  .qr-note{font-size:.68rem;color:var(--muted);margin-top:12px;line-height:1.5;}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.4rem;">🛡️</span>
+  <h1>Validation des laissez-passer</h1>
+  <a href="index.html">← Aura Sentinelle</a>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <div class="tab active" data-f="en_attente" onclick="setFilter('en_attente')">En attente <span class="badge" id="b-wait">0</span></div>
+    <div class="tab" data-f="valide" onclick="setFilter('valide')">Validés <span class="badge" id="b-ok">0</span></div>
+    <div class="tab" data-f="refuse" onclick="setFilter('refuse')">Refusés <span class="badge" id="b-bad">0</span></div>
+    <div class="tab" data-f="all" onclick="setFilter('all')">Tous</div>
+  </div>
+  <div id="list"><div class="empty">Chargement…</div></div>
+</div>
+
+<!-- MODALE QR + PARTAGE NATIF -->
+<div id="qrModal" class="qr-overlay" onclick="if(event.target===this)fermerQR()">
+  <div class="qr-box">
+    <button class="qr-close" onclick="fermerQR()">✕</button>
+    <div class="qr-h">🪪 Laissez-passer validé</div>
+    <div class="qr-title" id="qrModalTitle"></div>
+    <div class="qr-sub" id="qrModalSub"></div>
+    <div class="qr-canvas-wrap"><canvas id="qrCanvas"></canvas></div>
+    <div class="qr-link-row">
+      <input id="qrModalLink" readonly onclick="this.select()">
+      <button onclick="copierLien()" title="Copier le lien">🔗</button>
+    </div>
+    <button class="qr-share-main" onclick="partagerQR()">📤 Partager le QR</button>
+    <div class="qr-channels">
+      <button onclick="partagerVia('whatsapp')">💬 WhatsApp</button>
+      <button onclick="partagerVia('sms')">✉️ SMS</button>
+      <button onclick="partagerVia('mail')">📧 Mail</button>
+      <button onclick="telechargerQR()">⬇️ Image</button>
+    </div>
+    <div class="qr-note">Le QR est valable uniquement sur la fenêtre horaire du LP. L'accès sera refusé hors de cette période ou si le LP est annulé.</div>
+  </div>
+</div>
+
+<script src="supabaseClient.js"></script>
+<script>
+/* ── Garde de page : réservé au service Sûreté ──
+   Cohérent avec la policy SQL (is_surete). Côté client, on bloque l'accès
+   visuel ; la sécurité réelle est assurée par la RLS côté base. */
+(function(){
+  const srv = (localStorage.getItem("service") || "").toLowerCase();
+  if (srv && srv !== "surete") {
+    document.body.innerHTML = '<div style="max-width:480px;margin:80px auto;text-align:center;font-family:system-ui;color:#e8ebf0;">'
+      + '<div style="font-size:3rem;">🛡️</div>'
+      + '<h2>Accès réservé au service Sûreté</h2>'
+      + '<p style="color:#94a3b8;">La validation des laissez-passer est gérée par le service Sûreté.</p>'
+      + '<a href="index.html" style="color:#22d3ee;">← Retour à l\'accueil</a></div>';
+    throw new Error("LP validation : accès réservé sûreté");
+  }
+})();
+/* Transmission du QR : affichage + partage natif (pas d'envoi serveur) */
+let _all = [];
+let _filter = "en_attente";
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function fmt(iso){ try{ return new Date(iso).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}); }catch(_){ return iso||"—"; } }
+
+function statutPill(p){
+  const now = new Date();
+  if(p.statut==="valide" && p.fin_intervention && new Date(p.fin_intervention)<now)
+    return '<span class="pill p-exp">EXPIRÉ</span>';
+  return ({
+    en_attente:'<span class="pill p-wait">EN ATTENTE</span>',
+    valide:'<span class="pill p-ok">VALIDÉ</span>',
+    refuse:'<span class="pill p-bad">REFUSÉ</span>',
+    expire:'<span class="pill p-exp">EXPIRÉ</span>',
+    annule:'<span class="pill p-exp">ANNULÉ</span>'
+  })[p.statut] || '';
+}
+
+function setFilter(f){
+  _filter = f;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.f===f));
+  render();
+}
+
+function counts(){
+  document.getElementById("b-wait").textContent = _all.filter(p=>p.statut==="en_attente").length;
+  document.getElementById("b-ok").textContent   = _all.filter(p=>p.statut==="valide").length;
+  document.getElementById("b-bad").textContent  = _all.filter(p=>p.statut==="refuse").length;
+}
+
+function acc(p){
+  const a=[];
+  if(p.porte_segep) a.push("Porte SEGEP");
+  if(p.quai_38_sevres) a.push("Quai 38 Sèvres");
+  if(p.ouverture_porte) a.push("Ouverture Porte");
+  if(p.horlo_jo) a.push("Horlo/JO");
+  if(p.besoin_agent_surete) a.push("👮 Agent sûreté");
+  if(p.besoin_pompier) a.push("🚒 Pompier");
+  return a;
+}
+
+function render(){
+  const box = document.getElementById("list");
+  let list = _filter==="all" ? _all : _all.filter(p=>p.statut===_filter);
+  if(!list.length){ box.innerHTML = '<div class="empty">Aucun laissez-passer.</div>'; return; }
+  box.innerHTML = list.map(p=>{
+    const accList = acc(p);
+    const isWait = p.statut==="en_attente";
+    return `<div class="lp">
+      <div class="lp-head">
+        <div class="lp-title">${esc(p.marque_zone||"LP")} — ${esc(p.societe_intervenante||"")}
+          <div class="lp-sub">Demandé par ${esc(p.nom_demandeur)}${p.departement?" · Dpt "+esc(p.departement):""}</div>
+        </div>
+        ${p.delai_inferieur_24h?'<span class="pill p-urgent">&lt;24H</span>':''}
+        ${statutPill(p)}
+      </div>
+
+      ${p.delai_inferieur_24h&&p.motif_urgence?`<div class="urgent-motif">⚠️ <strong>Motif urgence :</strong> ${esc(p.motif_urgence)}</div>`:""}
+
+      <div class="grid">
+        <div><div class="k">Début</div>${fmt(p.debut_intervention)}</div>
+        <div><div class="k">Fin</div>${fmt(p.fin_intervention)}</div>
+        <div><div class="k">Intervenants</div>${esc(p.nb_intervenants||1)}</div>
+        <div><div class="k">Contact intervenant</div>${esc(p.email_intervenant||"—")}</div>
+      </div>
+      ${p.noms_intervenants?`<div class="grid"><div style="grid-column:1/-1"><div class="k">Noms</div>${esc(p.noms_intervenants).replace(/\n/g,", ")}</div></div>`:""}
+      ${p.nature_travaux?`<div class="grid"><div style="grid-column:1/-1"><div class="k">Nature des travaux</div>${esc(p.nature_travaux)}</div></div>`:""}
+      ${accList.length?`<div class="acc">${accList.map(a=>`<span>${a}</span>`).join("")}</div>`:""}
+
+      ${p.statut==="valide"?`<div class="scan-info">📲 Scans : ${p.scan_count||0}${p.dernier_scan_le?" · dernier "+fmt(p.dernier_scan_le)+" ("+esc(p.dernier_scan_resultat||"")+")":""}${p.valide_par?" · validé par "+esc(p.valide_par):""}</div>`:""}
+      ${p.statut==="refuse"&&p.motif_refus?`<div class="scan-info">Motif refus : ${esc(p.motif_refus)}</div>`:""}
+
+      <div class="actions">
+        ${isWait?`<button class="btn btn-ok" onclick="valider('${p.id}')">✅ Valider &amp; afficher le QR</button>
+                  <button class="btn btn-bad" onclick="refuser('${p.id}')">✖️ Refuser</button>`:""}
+        ${p.statut==="valide"?`<button class="btn btn-ghost" onclick="renvoyer('${p.id}')">🪪 Afficher le QR</button>
+                  <button class="btn btn-bad" onclick="annuler('${p.id}')">🚫 Annuler</button>`:""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function valider(id){
+  const p = _all.find(x=>x.id===id);
+  if(!p) return;
+  const who = localStorage.getItem("nom") || prompt("Votre nom (agent sûreté) :") || "Sûreté";
+  const { error } = await supabaseClient.from("laissez_passer")
+    .update({ statut:"valide", valide_par:who, valide_le:new Date().toISOString() })
+    .eq("id", id);
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast("✅ LP validé");
+  // Mise à jour locale immédiate (le realtime confirmera) puis QR
+  p.statut = "valide";
+  ouvrirQR(p);
+}
+
+async function refuser(id){
+  const motif = prompt("Motif du refus :");
+  if(motif===null) return;
+  const who = localStorage.getItem("nom") || "Sûreté";
+  const { error } = await supabaseClient.from("laissez_passer")
+    .update({ statut:"refuse", motif_refus:motif||"Non précisé", valide_par:who, valide_le:new Date().toISOString() })
+    .eq("id", id);
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast("LP refusé");
+}
+
+async function annuler(id){
+  if(!confirm("Annuler ce laissez-passer ? L'accès sera refusé au prochain scan.")) return;
+  const { error } = await supabaseClient.from("laissez_passer").update({ statut:"annule" }).eq("id", id);
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast("LP annulé");
+}
+
+function renvoyer(id){
+  const p = _all.find(x=>x.id===id);
+  if(p) ouvrirQR(p);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   QR + PARTAGE NATIF
+   À la validation, on affiche le QR en grand. L'agent le transmet à
+   l'intervenant par le canal de son choix (WhatsApp, SMS, mail, etc.)
+   via l'API de partage natif, ou le télécharge / copie le lien.
+   Aucun envoi serveur, aucune dépendance email/domaine.
+   ═══════════════════════════════════════════════════════════════ */
+function scanUrlFor(p){
+  const base = location.origin + location.pathname.replace(/[^/]+$/, "");
+  return base + "lp_scan.html?t=" + encodeURIComponent(p.qr_token);
+}
+
+function ouvrirQR(p){
+  const url = scanUrlFor(p);
+  document.getElementById("qrModalTitle").textContent = (p.marque_zone||"Laissez-passer") + " — " + (p.societe_intervenante||"");
+  const sub = [
+    p.nom_demandeur ? "Demandeur : "+p.nom_demandeur : "",
+    p.email_intervenant ? "Pour : "+p.email_intervenant : "",
+    (p.debut_intervention?fmt(p.debut_intervention):"") + (p.fin_intervention?" → "+fmt(p.fin_intervention):"")
+  ].filter(Boolean).join("  ·  ");
+  document.getElementById("qrModalSub").textContent = sub;
+  document.getElementById("qrModalLink").value = url;
+
+  // Génère le QR (canvas)
+  const cv = document.getElementById("qrCanvas");
+  try{ new QRious({ element: cv, size: 260, value: url, level: "M", background:"#ffffff", foreground:"#0e1626" }); }
+  catch(e){
+    // Fallback image si la lib n'a pas chargé
+    const img = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data="+encodeURIComponent(url);
+    cv.outerHTML = '<img id="qrCanvas" src="'+img+'" width="260" height="260" alt="QR" style="border-radius:12px;background:#fff;padding:8px;">';
+  }
+
+  // Mémorise les infos pour le partage
+  _qrShare = {
+    url,
+    title: "Laissez-passer — " + (p.marque_zone||""),
+    text: "Votre laissez-passer est validé. Présentez ce QR code à l'agent à votre arrivée.\n"
+        + (p.debut_intervention?("Du "+fmt(p.debut_intervention)):"")
+        + (p.fin_intervention?(" au "+fmt(p.fin_intervention)):"")
+        + "\n" + url,
+    p
+  };
+  document.getElementById("qrModal").classList.add("show");
+}
+
+function fermerQR(){ document.getElementById("qrModal").classList.remove("show"); }
+
+let _qrShare = null;
+
+// Partage natif (ouvre la feuille de partage iOS/Android : WhatsApp, SMS, mail…)
+async function partagerQR(){
+  if(!_qrShare) return;
+  // On tente d'abord de partager l'IMAGE du QR (plus pratique pour l'intervenant)
+  try{
+    const cv = document.getElementById("qrCanvas");
+    if(navigator.canShare && cv && cv.tagName==="CANVAS"){
+      const blob = await new Promise(r => cv.toBlob(r, "image/png"));
+      if(blob){
+        const file = new File([blob], "laissez-passer-qr.png", { type:"image/png" });
+        if(navigator.canShare({ files:[file] })){
+          await navigator.share({ files:[file], title:_qrShare.title, text:_qrShare.text });
+          return;
+        }
+      }
+    }
+  }catch(e){ /* on bascule sur le partage texte/URL */ }
+
+  // Sinon : partage texte + lien
+  try{
+    if(navigator.share){ await navigator.share({ title:_qrShare.title, text:_qrShare.text, url:_qrShare.url }); return; }
+  }catch(e){ if(e && e.name==="AbortError") return; }
+
+  // Pas de partage natif (desktop) → copie du lien
+  try{ await navigator.clipboard.writeText(_qrShare.url); showToast("🔗 Lien copié — collez-le où vous voulez"); }
+  catch(_){ showToast("Partage non disponible sur cet appareil", true); }
+}
+
+// Partage ciblé par canal
+function partagerVia(canal){
+  if(!_qrShare) return;
+  const txt = encodeURIComponent(_qrShare.text);
+  const url = encodeURIComponent(_qrShare.url);
+  const p = _qrShare.p || {};
+  let href = "";
+  if(canal==="whatsapp") href = "https://wa.me/?text=" + txt;
+  else if(canal==="sms")  href = "sms:?&body=" + txt;
+  else if(canal==="mail"){
+    const to = p.email_intervenant || "";
+    href = "mailto:" + encodeURIComponent(to)
+         + "?subject=" + encodeURIComponent("Votre laissez-passer validé — QR d'accès")
+         + "&body=" + txt;
+  }
+  if(href) window.open(href, "_blank");
+}
+
+function telechargerQR(){
+  const cv = document.getElementById("qrCanvas");
+  try{
+    let dataUrl;
+    if(cv.tagName==="CANVAS") dataUrl = cv.toDataURL("image/png");
+    else dataUrl = cv.src;
+    const a = document.createElement("a");
+    a.href = dataUrl; a.download = "laissez-passer-qr.png"; a.click();
+  }catch(e){ showToast("Téléchargement impossible", true); }
+}
+
+async function copierLien(){
+  if(!_qrShare) return;
+  try{ await navigator.clipboard.writeText(_qrShare.url); showToast("🔗 Lien copié"); }
+  catch(_){ document.getElementById("qrModalLink").select(); document.execCommand("copy"); showToast("🔗 Lien copié"); }
+}
+
+async function load(){
+  const { data, error } = await supabaseClient.from("laissez_passer")
+    .select("*").order("created_at",{ascending:false});
+  if(error){ document.getElementById("list").innerHTML='<div class="empty">❌ '+esc(error.message)+'</div>'; return; }
+  _all = data||[];
+  counts(); render();
+}
+
+// Realtime : la liste se met à jour sans rechargement
+supabaseClient.channel("lp_realtime")
+  .on("postgres_changes",{ event:"*", schema:"public", table:"laissez_passer" }, ()=>{ load(); })
+  .subscribe();
+
+load();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+<script src="global.js"></script>
+</body>
+</html>

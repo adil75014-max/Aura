@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demande de laissez-passer — Aura</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{ --bg:#f3f4f6; --card:#fff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
+         --accent:#0e1626; --ok:#16a34a; --warn:#ea580c; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+  header{background:var(--accent);color:#fff;padding:18px 20px;display:flex;align-items:center;gap:12px;}
+  header h1{font-size:1.15rem;margin:0;font-weight:800;}
+  header a{margin-left:auto;color:#cbd5e1;text-decoration:none;font-size:.85rem;}
+  .wrap{max-width:760px;margin:20px auto;padding:0 16px 60px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
+  .card h2{font-size:1rem;margin:0 0 14px;color:var(--accent);}
+  label{display:block;font-size:.82rem;font-weight:600;color:#374151;margin:12px 0 5px;}
+  input,select,textarea{width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:.92rem;background:#fff;color:var(--ink);}
+  textarea{min-height:70px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:560px){.row{grid-template-columns:1fr;}}
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+  @media(max-width:560px){.checks{grid-template-columns:1fr;}}
+  .check{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:.86rem;cursor:pointer;}
+  .check input{width:auto;}
+  .hint{font-size:.74rem;color:var(--muted);margin-top:4px;}
+  .urgent-box{display:none;margin-top:10px;padding:12px 14px;border-radius:10px;background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.4);}
+  .urgent-box label{color:#9a3412;margin-top:0;}
+  .btn{width:100%;padding:14px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:8px;}
+  .btn:disabled{opacity:.6;cursor:not-allowed;}
+  .delai-banner{font-size:.82rem;padding:10px 12px;border-radius:9px;margin-top:6px;}
+  .delai-ok{background:rgba(22,163,74,.1);color:#15803d;border:1px solid rgba(22,163,74,.3);}
+  .delai-warn{background:rgba(234,88,12,.1);color:#9a3412;border:1px solid rgba(234,88,12,.35);}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.4rem;">🪪</span>
+  <h1>Demande de laissez-passer</h1>
+  <a href="index.html">← Accueil</a>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>Demandeur</h2>
+    <div class="row">
+      <div>
+        <label>Nom du demandeur *</label>
+        <input id="nom_demandeur" placeholder="Votre nom complet">
+      </div>
+      <div>
+        <label>N° de département</label>
+        <input id="departement" placeholder="Ex : 42">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Marque / Zone</label>
+        <input id="marque_zone" placeholder="Ex : Dior — RDC">
+      </div>
+      <div>
+        <label>Contact intervenant <span style="font-weight:400;color:var(--muted)">(email — optionnel)</span></label>
+        <input id="email_intervenant" type="email" placeholder="intervenant@societe.fr">
+      </div>
+    </div>
+    <label>Besoins LP</label>
+    <textarea id="besoins_lp" placeholder="Décrivez le besoin du laissez-passer"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>Intervention</h2>
+    <div class="row">
+      <div>
+        <label>Début d'intervention *</label>
+        <input id="debut_intervention" type="datetime-local">
+      </div>
+      <div>
+        <label>Fin d'intervention *</label>
+        <input id="fin_intervention" type="datetime-local">
+      </div>
+    </div>
+    <div id="delai-banner"></div>
+
+    <div class="urgent-box" id="urgent-box">
+      <label>Motif de l'urgence (demande à moins de 24h) *</label>
+      <textarea id="motif_urgence" placeholder="Justifiez pourquoi la demande est faite à moins de 24h"></textarea>
+      <div class="hint">Les demandes à moins de 24h sont soumises à validation renforcée sur l'intranet interne.</div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Société intervenante</label>
+        <input id="societe_intervenante" placeholder="Raison sociale">
+      </div>
+      <div>
+        <label>Nombre d'intervenants</label>
+        <input id="nb_intervenants" type="number" min="1" value="1">
+      </div>
+    </div>
+    <label>Nom des intervenants</label>
+    <textarea id="noms_intervenants" placeholder="Un nom par ligne"></textarea>
+    <label>Nature des travaux</label>
+    <textarea id="nature_travaux" placeholder="Décrivez les travaux"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>Accès demandés</h2>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="porte_segep"> Porte SEGEP</label>
+      <label class="check"><input type="checkbox" id="quai_38_sevres"> Quai 38 Sèvres</label>
+      <label class="check"><input type="checkbox" id="ouverture_porte"> Ouverture Porte</label>
+      <label class="check"><input type="checkbox" id="horlo_jo"> Horlo / JO</label>
+    </div>
+    <h2 style="margin-top:18px;">Accompagnement</h2>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="besoin_agent_surete"> Besoin d'un agent de sûreté</label>
+      <label class="check"><input type="checkbox" id="besoin_pompier"> Besoin d'un pompier</label>
+    </div>
+  </div>
+
+  <button class="btn" id="submitBtn" onclick="soumettre()">Envoyer la demande</button>
+</div>
+
+<script src="supabaseClient.js"></script>
+<script>
+const debutEl = document.getElementById("debut_intervention");
+const finEl   = document.getElementById("fin_intervention");
+
+function evalDelai(){
+  const banner = document.getElementById("delai-banner");
+  const urgent = document.getElementById("urgent-box");
+  if(!debutEl.value){ banner.innerHTML=""; urgent.style.display="none"; return null; }
+  const debut = new Date(debutEl.value);
+  const diffH = (debut - new Date()) / 3600000;
+  if(diffH < 24){
+    banner.className = "delai-banner delai-warn";
+    banner.textContent = "⚠️ Demande à moins de 24h (" + Math.max(0,Math.round(diffH)) + "h) — motif d'urgence requis + validation intranet renforcée.";
+    urgent.style.display = "block";
+    return true;  // <24h
+  } else {
+    banner.className = "delai-banner delai-ok";
+    banner.textContent = "✅ Délai respecté (" + Math.round(diffH/24*10)/10 + " j d'avance).";
+    urgent.style.display = "none";
+    return false;
+  }
+}
+debutEl.addEventListener("change", evalDelai);
+
+async function soumettre(){
+  const btn = document.getElementById("submitBtn");
+  const v = id => (document.getElementById(id).value||"").trim();
+  const c = id => document.getElementById(id).checked;
+
+  const nom = v("nom_demandeur");
+  const email = v("email_intervenant");
+  if(!nom){ showToast("⚠️ Nom du demandeur requis", true); return; }
+  if(email && !/.+@.+\..+/.test(email)){ showToast("⚠️ Format d'email invalide", true); return; }
+  if(!debutEl.value || !finEl.value){ showToast("⚠️ Début et fin d'intervention requis", true); return; }
+  if(new Date(finEl.value) <= new Date(debutEl.value)){ showToast("⚠️ La fin doit être après le début", true); return; }
+
+  const moins24 = evalDelai();
+  if(moins24 && !v("motif_urgence")){ showToast("⚠️ Motif d'urgence obligatoire (demande < 24h)", true); document.getElementById("motif_urgence").focus(); return; }
+
+  btn.disabled = true; btn.textContent = "Envoi…";
+
+  let userId = null;
+  try { const { data } = await supabaseClient.auth.getUser(); userId = data?.user?.id || null; } catch(_){}
+
+  const payload = {
+    nom_demandeur: nom,
+    departement: v("departement") || null,
+    marque_zone: v("marque_zone") || null,
+    besoins_lp: v("besoins_lp") || null,
+    debut_intervention: new Date(debutEl.value).toISOString(),
+    fin_intervention: new Date(finEl.value).toISOString(),
+    societe_intervenante: v("societe_intervenante") || null,
+    nb_intervenants: parseInt(v("nb_intervenants")||"1",10) || 1,
+    noms_intervenants: v("noms_intervenants") || null,
+    nature_travaux: v("nature_travaux") || null,
+    porte_segep: c("porte_segep"),
+    quai_38_sevres: c("quai_38_sevres"),
+    ouverture_porte: c("ouverture_porte"),
+    horlo_jo: c("horlo_jo"),
+    besoin_agent_surete: c("besoin_agent_surete"),
+    besoin_pompier: c("besoin_pompier"),
+    email_intervenant: email || null,
+    motif_urgence: moins24 ? v("motif_urgence") : null,
+    delai_inferieur_24h: !!moins24,
+    site_code: localStorage.getItem("site_code") || null,
+    created_by: userId,
+    statut: "en_attente"
+  };
+
+  const { error } = await supabaseClient.from("laissez_passer").insert(payload);
+  if(error){ showToast("❌ " + error.message, true); btn.disabled=false; btn.textContent="Envoyer la demande"; return; }
+
+  showToast("✅ Demande envoyée — en attente de validation sûreté");
+  btn.textContent = "✅ Demande envoyée";
+  setTimeout(()=>{ window.location.href = "index.html"; }, 1800);
+}
+</script>
+<script src="global.js"></script>
+</body>
+</html>

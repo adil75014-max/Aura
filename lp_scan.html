@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contrôle laissez-passer — Aura</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{ --bg:#080b14; --ink:#e8ebf0; --muted:#94a3b8; --line:#232c40; --cyan:#22d3ee; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh;}
+  header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);}
+  header h1{font-size:1.05rem;margin:0;font-weight:800;flex:1;}
+  header a{color:var(--muted);text-decoration:none;font-size:.82rem;}
+  .wrap{max-width:560px;margin:0 auto;padding:16px;}
+  #reader{width:100%;border-radius:14px;overflow:hidden;border:2px solid var(--line);background:#000;}
+  .manual{margin-top:14px;display:flex;gap:8px;}
+  .manual input{flex:1;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#0e1626;color:var(--ink);font-size:.9rem;}
+  .manual button{padding:11px 16px;border:none;border-radius:10px;background:var(--cyan);color:#06222b;font-weight:700;cursor:pointer;}
+  .hint{font-size:.78rem;color:var(--muted);text-align:center;margin-top:10px;}
+
+  /* Écran résultat plein écran */
+  #result{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;z-index:999;}
+  #result.show{display:flex;}
+  #result.ok{background:linear-gradient(160deg,#15803d,#052e16);}
+  #result.no{background:linear-gradient(160deg,#b91c1c,#450a0a);}
+  #result .icon{font-size:6rem;line-height:1;margin-bottom:10px;}
+  #result .verdict{font-size:2.4rem;font-weight:900;letter-spacing:.04em;margin-bottom:6px;}
+  #result .reason{font-size:1.1rem;opacity:.95;margin-bottom:22px;}
+  #result .details{background:rgba(0,0,0,.25);border-radius:14px;padding:16px 20px;text-align:left;max-width:420px;width:100%;font-size:.92rem;line-height:1.6;}
+  #result .details .k{opacity:.75;font-size:.78rem;}
+  #result .acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+  #result .acc span{font-size:.74rem;background:rgba(255,255,255,.18);border-radius:7px;padding:2px 9px;}
+  #result button{margin-top:26px;padding:15px 40px;border:none;border-radius:12px;background:#fff;color:#111;font-size:1.1rem;font-weight:800;cursor:pointer;}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.3rem;">🔎</span>
+  <h1>Contrôle d'accès — laissez-passer</h1>
+  <a href="index.html">← Accueil</a>
+</header>
+
+<div class="wrap">
+  <div id="reader"></div>
+  <div class="manual">
+    <input id="token-manual" placeholder="Ou saisir le code manuellement">
+    <button onclick="checkToken(document.getElementById('token-manual').value.trim())">Vérifier</button>
+  </div>
+  <div class="hint">Scannez le QR code présenté par l'intervenant.<br>L'écran passe automatiquement au vert ou au rouge.</div>
+</div>
+
+<!-- Écran résultat -->
+<div id="result">
+  <div class="icon" id="r-icon"></div>
+  <div class="verdict" id="r-verdict"></div>
+  <div class="reason" id="r-reason"></div>
+  <div class="details" id="r-details"></div>
+  <button onclick="resetScan()">Scanner suivant</button>
+</div>
+
+<script src="supabaseClient.js"></script>
+<script>
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function fmt(iso){ try{ return new Date(iso).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}); }catch(_){ return iso||"—"; } }
+
+let _scanner = null;
+let _busy = false;
+
+// Extrait le token d'un contenu scanné : soit une URL ...?t=XXX, soit le token brut
+function extractToken(text){
+  if(!text) return "";
+  try{
+    const u = new URL(text);
+    const t = u.searchParams.get("t");
+    if(t) return t;
+  }catch(_){ /* pas une URL */ }
+  return text.trim();
+}
+
+async function checkToken(raw){
+  const token = extractToken(raw);
+  if(!token){ showToast("Code vide", true); return; }
+  if(_busy) return;
+  _busy = true;
+
+  try{
+    const { data, error } = await supabaseClient.rpc("lp_scan", { p_token: token });
+    if(error){ showResult(false, "ERREUR", error.message, null); _busy=false; return; }
+    if(!data || !data.ok){ showResult(false, "INCONNU", (data&&data.message)||"Laissez-passer inconnu", null); _busy=false; return; }
+    showResult(data.autorise, data.autorise?"ACCÈS AUTORISÉ":"ACCÈS REFUSÉ", data.message, data.lp);
+  }catch(e){
+    showResult(false, "ERREUR", e.message, null);
+  }
+  _busy = false;
+}
+
+function showResult(ok, verdict, reason, lp){
+  const r = document.getElementById("result");
+  document.getElementById("r-icon").textContent = ok ? "✅" : "⛔";
+  document.getElementById("r-verdict").textContent = verdict;
+  document.getElementById("r-reason").textContent = reason || "";
+
+  let html = "";
+  if(lp){
+    const accs=[];
+    if(lp.porte_segep) accs.push("Porte SEGEP");
+    if(lp.quai_38_sevres) accs.push("Quai 38 Sèvres");
+    if(lp.ouverture_porte) accs.push("Ouverture Porte");
+    if(lp.horlo_jo) accs.push("Horlo/JO");
+    if(lp.besoin_agent_surete) accs.push("👮 Agent sûreté");
+    if(lp.besoin_pompier) accs.push("🚒 Pompier");
+    html = `
+      <div><span class="k">Demandeur</span><br>${esc(lp.nom_demandeur||"—")}</div>
+      <div style="margin-top:8px"><span class="k">Société</span><br>${esc(lp.societe||"—")} · ${esc(lp.nb_intervenants||1)} pers.</div>
+      ${lp.noms_intervenants?`<div style="margin-top:8px"><span class="k">Intervenant(s)</span><br>${esc(lp.noms_intervenants).replace(/\n/g,", ")}</div>`:""}
+      <div style="margin-top:8px"><span class="k">Zone / Nature</span><br>${esc(lp.marque_zone||"—")} — ${esc(lp.nature_travaux||"—")}</div>
+      <div style="margin-top:8px"><span class="k">Fenêtre</span><br>${fmt(lp.debut)} → ${fmt(lp.fin)}</div>
+      ${accs.length?`<div class="acc">${accs.map(a=>`<span>${a}</span>`).join("")}</div>`:""}
+    `;
+  }
+  document.getElementById("r-details").innerHTML = html;
+  document.getElementById("r-details").style.display = html ? "block" : "none";
+
+  r.className = "show " + (ok ? "ok" : "no");
+  // Vibration tactile (mobile) : 1 pulse OK, 3 pulses refus
+  try{ navigator.vibrate && navigator.vibrate(ok ? 200 : [120,80,120,80,120]); }catch(_){}
+}
+
+function resetScan(){
+  document.getElementById("result").className = "";
+  document.getElementById("token-manual").value = "";
+}
+
+// Caméra QR
+function onScanSuccess(decodedText){
+  if(_busy || document.getElementById("result").classList.contains("show")) return;
+  checkToken(decodedText);
+}
+window.addEventListener("load", ()=>{
+  try{
+    _scanner = new Html5Qrcode("reader");
+    _scanner.start({ facingMode:"environment" }, { fps:10, qrbox:{width:240,height:240} }, onScanSuccess)
+      .catch(err=>{ document.getElementById("reader").innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8;font-size:.85rem;">📷 Caméra indisponible — utilisez la saisie manuelle.<br><span style="opacity:.6">'+esc(err)+'</span></div>'; });
+  }catch(e){
+    document.getElementById("reader").innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8;">Lecteur QR indisponible — saisie manuelle.</div>';
+  }
+
+  // Token passé directement dans l'URL (?t=) → vérif auto (ex : ouverture du lien email)
+  const t = new URLSearchParams(location.search).get("t");
+  if(t) checkToken(t);
+});
+</script>
+</body>
+</html>

@@ -3640,6 +3640,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     renderDashboardCards();
 
+    /* ─── Card "Valider les LP" : visible pour Admin / Superviseur / Sûreté ───
+       Le dashboard est filtré par service ; la sûreté l'a déjà. On l'ajoute
+       pour les Admin/Superviseur des autres services s'ils ne l'ont pas. */
+    try {
+        const _r = (localStorage.getItem("role") || "").toLowerCase();
+        const _s = (localStorage.getItem("service") || "").toLowerCase();
+        const canValidateLP = ["admin","superadmin","superviseur"].includes(_r) || _s === "surete";
+        const container = document.getElementById("cardsContainer");
+        if (canValidateLP && container && !container.innerHTML.includes("lp_validation.html")) {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.setAttribute("style","background:linear-gradient(135deg, rgba(34,211,238,0.18), rgba(59,130,246,0.12)); border:1px solid rgba(34,211,238,0.4);");
+            card.setAttribute("onclick","window.location.href='lp_validation.html'");
+            card.innerHTML = "🪪 Valider les laissez-passer";
+            container.prepend(card);
+        }
+    } catch(_) {}
+
     /* ─── Fond radar immersif pour le service sûreté ─── */
     if (_activeService === "surete") {
         if (window.initSureteRadar) initSureteRadar();

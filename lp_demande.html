@@ -6,43 +6,98 @@
 <title>Demande de laissez-passer — Aura</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-  :root{ --bg:#f3f4f6; --card:#fff; --ink:#111827; --muted:#6b7280; --line:#e5e7eb;
-         --accent:#0e1626; --ok:#16a34a; --warn:#ea580c; }
+  :root{ --bg:#eef1f6; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+         --accent:#0e1626; --accent2:#1e3a5f; --cyan:#0891b2; --ok:#16a34a; --warn:#ea580c; --bad:#dc2626; }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
-  header{background:var(--accent);color:#fff;padding:18px 20px;display:flex;align-items:center;gap:12px;}
-  header h1{font-size:1.15rem;margin:0;font-weight:800;}
-  header a{margin-left:auto;color:#cbd5e1;text-decoration:none;font-size:.85rem;}
-  .wrap{max-width:760px;margin:20px auto;padding:0 16px 60px;}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05);}
-  .card h2{font-size:1rem;margin:0 0 14px;color:var(--accent);}
-  label{display:block;font-size:.82rem;font-weight:600;color:#374151;margin:12px 0 5px;}
-  input,select,textarea{width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:.92rem;background:#fff;color:var(--ink);}
-  textarea{min-height:70px;resize:vertical;}
+  header{background:linear-gradient(135deg,#0e1626,#1e3a5f);color:#fff;padding:22px 20px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 14px rgba(14,22,38,.25);}
+  header .logo{font-size:1.7rem;background:rgba(255,255,255,.1);width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;}
+  header h1{font-size:1.2rem;margin:0;font-weight:800;letter-spacing:-.01em;}
+  header .sub{font-size:.76rem;opacity:.7;margin-top:1px;}
+  header a{margin-left:auto;color:#cbd5e1;text-decoration:none;font-size:.85rem;padding:8px 14px;border:1px solid rgba(255,255,255,.15);border-radius:9px;}
+  header a:hover{background:rgba(255,255,255,.08);}
+  .wrap{max-width:780px;margin:0 auto;padding:18px 16px 70px;}
+
+  .tabs{display:flex;gap:8px;margin-bottom:18px;background:#fff;padding:6px;border-radius:14px;border:1px solid var(--line);box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .tab{flex:1;padding:12px;border-radius:10px;border:none;background:transparent;color:var(--muted);font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;}
+  .tab.active{background:linear-gradient(135deg,#0e1626,#1e3a5f);color:#fff;box-shadow:0 2px 8px rgba(14,22,38,.2);}
+  .tab .cnt{font-size:.72rem;background:rgba(0,0,0,.12);border-radius:999px;padding:1px 8px;}
+  .tab.active .cnt{background:rgba(255,255,255,.2);}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .card h2{font-size:.82rem;margin:0 0 16px;color:var(--cyan);text-transform:uppercase;letter-spacing:.06em;font-weight:800;display:flex;align-items:center;gap:8px;}
+  .card h2::before{content:"";width:4px;height:16px;background:var(--cyan);border-radius:2px;}
+  label{display:block;font-size:.8rem;font-weight:600;color:#334155;margin:13px 0 5px;}
+  input,select,textarea{width:100%;padding:12px 13px;border:1px solid #cbd5e1;border-radius:11px;font-size:.92rem;background:#fff;color:var(--ink);transition:border .15s,box-shadow .15s;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(8,145,178,.12);}
+  textarea{min-height:72px;resize:vertical;}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   @media(max-width:560px){.row{grid-template-columns:1fr;}}
-  .checks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:6px;}
   @media(max-width:560px){.checks{grid-template-columns:1fr;}}
-  .check{display:flex;align-items:center;gap:9px;padding:10px 12px;border:1px solid #d1d5db;border-radius:10px;font-size:.86rem;cursor:pointer;}
-  .check input{width:auto;}
+  .check{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid #cbd5e1;border-radius:11px;font-size:.86rem;cursor:pointer;transition:all .15s;}
+  .check:has(input:checked){border-color:var(--cyan);background:rgba(8,145,178,.06);font-weight:600;}
+  .check input{width:auto;accent-color:var(--cyan);}
   .hint{font-size:.74rem;color:var(--muted);margin-top:4px;}
-  .urgent-box{display:none;margin-top:10px;padding:12px 14px;border-radius:10px;background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.4);}
+  .urgent-box{display:none;margin-top:12px;padding:14px;border-radius:11px;background:rgba(234,88,12,.07);border:1px solid rgba(234,88,12,.35);}
   .urgent-box label{color:#9a3412;margin-top:0;}
-  .btn{width:100%;padding:14px;border:none;border-radius:12px;background:var(--accent);color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:8px;}
+  .btn{width:100%;padding:15px;border:none;border-radius:13px;background:linear-gradient(135deg,#0e1626,#1e3a5f);color:#fff;font-size:1rem;font-weight:800;cursor:pointer;margin-top:10px;box-shadow:0 4px 14px rgba(14,22,38,.22);transition:transform .1s;}
+  .btn:active{transform:scale(.99);}
   .btn:disabled{opacity:.6;cursor:not-allowed;}
-  .delai-banner{font-size:.82rem;padding:10px 12px;border-radius:9px;margin-top:6px;}
+  .delai-banner{font-size:.82rem;padding:11px 13px;border-radius:10px;margin-top:8px;font-weight:600;}
   .delai-ok{background:rgba(22,163,74,.1);color:#15803d;border:1px solid rgba(22,163,74,.3);}
   .delai-warn{background:rgba(234,88,12,.1);color:#9a3412;border:1px solid rgba(234,88,12,.35);}
+
+  /* Mes demandes */
+  .req-id-box{background:linear-gradient(135deg,rgba(8,145,178,.08),rgba(30,58,95,.05));border:1px solid rgba(8,145,178,.25);border-radius:13px;padding:14px 16px;margin-bottom:16px;font-size:.84rem;color:#334155;}
+  .req-id-box strong{color:var(--cyan);}
+  .lp-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .lp-item-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;}
+  .lp-item-title{font-weight:800;font-size:1rem;flex:1;}
+  .lp-item-sub{font-size:.78rem;color:var(--muted);margin-top:2px;font-weight:400;}
+  .st{font-size:.7rem;font-weight:800;border-radius:999px;padding:4px 12px;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em;}
+  .st-wait{background:rgba(234,179,8,.15);color:#a16207;border:1px solid rgba(234,179,8,.4);}
+  .st-ok{background:rgba(22,163,74,.13);color:#15803d;border:1px solid rgba(22,163,74,.4);}
+  .st-bad{background:rgba(220,38,38,.12);color:#b91c1c;border:1px solid rgba(220,38,38,.4);}
+  .st-exp{background:rgba(100,116,139,.13);color:#475569;border:1px solid rgba(100,116,139,.35);}
+  .st-anndem{background:rgba(234,88,12,.13);color:#c2410c;border:1px solid rgba(234,88,12,.4);}
+  .lp-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px 16px;font-size:.82rem;margin:8px 0;}
+  .lp-meta .k{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;}
+  .lp-item-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .btn-sm{padding:9px 15px;border:none;border-radius:9px;font-size:.82rem;font-weight:700;cursor:pointer;}
+  .btn-cancel{background:rgba(220,38,38,.1);color:#b91c1c;border:1px solid rgba(220,38,38,.3);}
+  .btn-qr{background:rgba(8,145,178,.1);color:#0e7490;border:1px solid rgba(8,145,178,.3);}
+  .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:.9rem;}
+  .empty .big{font-size:2.4rem;display:block;margin-bottom:8px;opacity:.5;}
+  .hidden{display:none!important;}
 </style>
 </head>
 <body>
 <header>
-  <span style="font-size:1.4rem;">🪪</span>
-  <h1>Demande de laissez-passer</h1>
+  <span class="logo">🪪</span>
+  <div>
+    <h1>Laissez-passer</h1>
+    <div class="sub">Demande &amp; suivi d'accès</div>
+  </div>
   <a href="index.html">← Accueil</a>
 </header>
 
 <div class="wrap">
+  <div class="tabs">
+    <button class="tab active" id="tab-new" onclick="switchTab('new')">✏️ Nouvelle demande</button>
+    <button class="tab" id="tab-mine" onclick="switchTab('mine')">📋 Mes demandes <span class="cnt" id="mineCnt">0</span></button>
+  </div>
+
+  <!-- ░░░ VUE : MES DEMANDES ░░░ -->
+  <div id="view-mine" class="hidden">
+    <div class="req-id-box">
+      👤 Demandes au nom de <strong id="mineName">—</strong>. Cette vue liste les laissez-passer demandés depuis cet appareil et ceux à votre nom.
+    </div>
+    <div id="mineList"><div class="empty"><span class="big">📭</span>Chargement…</div></div>
+  </div>
+
+  <!-- ░░░ VUE : NOUVELLE DEMANDE ░░░ -->
+  <div id="view-new">
   <div class="card">
     <h2>Demandeur</h2>
     <div class="row">
@@ -57,16 +112,63 @@
     </div>
     <div class="row">
       <div>
+        <label>Téléphone du demandeur</label>
+        <input id="tel_demandeur" type="tel" placeholder="06 00 00 00 00">
+      </div>
+      <div>
+        <label>Email du demandeur</label>
+        <input id="email_demandeur" type="email" placeholder="demandeur@lvmh.fr">
+      </div>
+    </div>
+    <label>Établissement concerné *</label>
+    <select id="etablissement">
+      <option value="">— Sélectionner l'établissement —</option>
+      <option value="bon_marche">Le Bon Marché</option>
+      <option value="grande_epicerie_rg">Grande Épicerie Rive Gauche</option>
+      <option value="grande_epicerie_rd">Grande Épicerie Rive Droite</option>
+      <option value="moet_hennessy">Moët Hennessy</option>
+      <option value="samaritaine">La Samaritaine (service sûreté indépendant)</option>
+    </select>
+    <div class="row">
+      <div>
         <label>Marque / Zone</label>
         <input id="marque_zone" placeholder="Ex : Dior — RDC">
       </div>
       <div>
-        <label>Contact intervenant <span style="font-weight:400;color:var(--muted)">(email — optionnel)</span></label>
+        <label>Besoins LP</label>
+        <input id="besoins_lp_short" placeholder="Résumé court (optionnel)">
+      </div>
+    </div>
+    <label>Détails des besoins LP</label>
+    <textarea id="besoins_lp" placeholder="Décrivez le besoin du laissez-passer"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>Intervenant</h2>
+    <div class="row">
+      <div>
+        <label>Société intervenante</label>
+        <input id="societe_intervenante" placeholder="Raison sociale">
+      </div>
+      <div>
+        <label>Nombre d'intervenants</label>
+        <input id="nb_intervenants" type="number" min="1" value="1">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Téléphone intervenant</label>
+        <input id="tel_intervenant" type="tel" placeholder="06 00 00 00 00">
+      </div>
+      <div>
+        <label>Email intervenant <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label>
         <input id="email_intervenant" type="email" placeholder="intervenant@societe.fr">
       </div>
     </div>
-    <label>Besoins LP</label>
-    <textarea id="besoins_lp" placeholder="Décrivez le besoin du laissez-passer"></textarea>
+    <label>Nom des intervenants</label>
+    <textarea id="noms_intervenants" placeholder="Un nom par ligne"></textarea>
+    <label>Nature des travaux</label>
+    <textarea id="nature_travaux" placeholder="Décrivez les travaux"></textarea>
   </div>
 
   <div class="card">
@@ -86,23 +188,8 @@
     <div class="urgent-box" id="urgent-box">
       <label>Motif de l'urgence (demande à moins de 24h) *</label>
       <textarea id="motif_urgence" placeholder="Justifiez pourquoi la demande est faite à moins de 24h"></textarea>
-      <div class="hint">Les demandes à moins de 24h sont soumises à validation renforcée sur l'intranet interne.</div>
+      <div class="hint">Les demandes à moins de 24h déclenchent une alerte aux valideurs dans Aura.</div>
     </div>
-
-    <div class="row">
-      <div>
-        <label>Société intervenante</label>
-        <input id="societe_intervenante" placeholder="Raison sociale">
-      </div>
-      <div>
-        <label>Nombre d'intervenants</label>
-        <input id="nb_intervenants" type="number" min="1" value="1">
-      </div>
-    </div>
-    <label>Nom des intervenants</label>
-    <textarea id="noms_intervenants" placeholder="Un nom par ligne"></textarea>
-    <label>Nature des travaux</label>
-    <textarea id="nature_travaux" placeholder="Décrivez les travaux"></textarea>
   </div>
 
   <div class="card">
@@ -121,6 +208,7 @@
   </div>
 
   <button class="btn" id="submitBtn" onclick="soumettre()">Envoyer la demande</button>
+  </div><!-- /view-new -->
 </div>
 
 <script src="supabaseClient.js"></script>
@@ -160,6 +248,9 @@ async function soumettre(){
   if(!debutEl.value || !finEl.value){ showToast("⚠️ Début et fin d'intervention requis", true); return; }
   if(new Date(finEl.value) <= new Date(debutEl.value)){ showToast("⚠️ La fin doit être après le début", true); return; }
 
+  const etab = v("etablissement");
+  if(!etab){ showToast("⚠️ Sélectionnez l'établissement concerné", true); document.getElementById("etablissement").focus(); return; }
+
   const moins24 = evalDelai();
   if(moins24 && !v("motif_urgence")){ showToast("⚠️ Motif d'urgence obligatoire (demande < 24h)", true); document.getElementById("motif_urgence").focus(); return; }
 
@@ -168,11 +259,19 @@ async function soumettre(){
   let userId = null;
   try { const { data } = await supabaseClient.auth.getUser(); userId = data?.user?.id || null; } catch(_){}
 
+  // Besoins LP : on concatène le résumé court + les détails si présents
+  const besoinsShort = v("besoins_lp_short");
+  const besoinsLong  = v("besoins_lp");
+  const besoins = [besoinsShort, besoinsLong].filter(Boolean).join(" — ") || null;
+
   const payload = {
     nom_demandeur: nom,
     departement: v("departement") || null,
+    tel_demandeur: v("tel_demandeur") || null,
+    email_demandeur: v("email_demandeur") || null,
+    etablissement: etab,
     marque_zone: v("marque_zone") || null,
-    besoins_lp: v("besoins_lp") || null,
+    besoins_lp: besoins,
     debut_intervention: new Date(debutEl.value).toISOString(),
     fin_intervention: new Date(finEl.value).toISOString(),
     societe_intervenante: v("societe_intervenante") || null,
@@ -185,6 +284,7 @@ async function soumettre(){
     horlo_jo: c("horlo_jo"),
     besoin_agent_surete: c("besoin_agent_surete"),
     besoin_pompier: c("besoin_pompier"),
+    tel_intervenant: v("tel_intervenant") || null,
     email_intervenant: email || null,
     motif_urgence: moins24 ? v("motif_urgence") : null,
     delai_inferieur_24h: !!moins24,
@@ -193,13 +293,144 @@ async function soumettre(){
     statut: "en_attente"
   };
 
-  const { error } = await supabaseClient.from("laissez_passer").insert(payload);
+  const { data: inserted, error } = await supabaseClient.from("laissez_passer").insert(payload).select("id").single();
   if(error){ showToast("❌ " + error.message, true); btn.disabled=false; btn.textContent="Envoyer la demande"; return; }
 
-  showToast("✅ Demande envoyée — en attente de validation sûreté");
+  // Mémorise l'id localement pour le suivi "Mes demandes" depuis cet appareil
+  try{
+    const mine = JSON.parse(localStorage.getItem("lp_mine")||"[]");
+    if(inserted && inserted.id){ mine.push(inserted.id); localStorage.setItem("lp_mine", JSON.stringify(mine)); }
+    localStorage.setItem("lp_last_name", nom);
+  }catch(_){}
+
+  showToast(moins24
+    ? "✅ Demande urgente envoyée — les valideurs sont alertés"
+    : "✅ Demande envoyée — en attente de validation sûreté");
   btn.textContent = "✅ Demande envoyée";
-  setTimeout(()=>{ window.location.href = "index.html"; }, 1800);
+  // Réinitialise et bascule vers "Mes demandes"
+  setTimeout(()=>{
+    resetForm();
+    btn.disabled=false; btn.textContent="Envoyer la demande";
+    switchTab("mine");
+  }, 1400);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   ONGLETS + MES DEMANDES
+   ═══════════════════════════════════════════════════════════════ */
+function switchTab(t){
+  document.getElementById("tab-new").classList.toggle("active", t==="new");
+  document.getElementById("tab-mine").classList.toggle("active", t==="mine");
+  document.getElementById("view-new").classList.toggle("hidden", t!=="new");
+  document.getElementById("view-mine").classList.toggle("hidden", t!=="mine");
+  if(t==="mine") chargerMesDemandes();
+}
+
+function resetForm(){
+  ["nom_demandeur","departement","tel_demandeur","email_demandeur","marque_zone","besoins_lp_short",
+   "besoins_lp","societe_intervenante","noms_intervenants","nature_travaux","tel_intervenant",
+   "email_intervenant","motif_urgence","debut_intervention","fin_intervention"].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value="";
+  });
+  const nb=document.getElementById("nb_intervenants"); if(nb) nb.value="1";
+  const etab=document.getElementById("etablissement"); if(etab) etab.value="";
+  ["porte_segep","quai_38_sevres","ouverture_porte","horlo_jo","besoin_agent_surete","besoin_pompier"].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.checked=false;
+  });
+  document.getElementById("delai-banner").innerHTML="";
+  document.getElementById("urgent-box").style.display="none";
+}
+
+const _escD = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const _fmtD = iso => { try{ return new Date(iso).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}); }catch(_){ return iso||"—"; } };
+
+const ETAB_LBL = {
+  bon_marche:"Le Bon Marché", grande_epicerie_rg:"Grande Épicerie Rive Gauche",
+  grande_epicerie_rd:"Grande Épicerie Rive Droite", moet_hennessy:"Moët Hennessy", samaritaine:"La Samaritaine"
+};
+
+function statutBadge(s){
+  const map = {
+    en_attente:['st-wait','⏳ En attente'],
+    valide:['st-ok','✅ Validé'],
+    refuse:['st-bad','✖️ Refusé'],
+    annule:['st-exp','🚫 Annulé'],
+    expire:['st-exp','⌛ Expiré'],
+    demande_annulation:['st-anndem','🔄 Annulation demandée']
+  };
+  const [cls,lbl] = map[s] || ['st-exp', s];
+  return `<span class="st ${cls}">${lbl}</span>`;
+}
+
+async function chargerMesDemandes(){
+  const box = document.getElementById("mineList");
+  const lastName = localStorage.getItem("lp_last_name") || (document.getElementById("nom_demandeur").value||"").trim();
+  document.getElementById("mineName").textContent = lastName || "—";
+
+  let ids=[];
+  try{ ids = JSON.parse(localStorage.getItem("lp_mine")||"[]"); }catch(_){}
+
+  // On récupère les LP par id (cet appareil) OU par nom du demandeur
+  let rows=[];
+  try{
+    const orParts=[];
+    if(ids.length) orParts.push("id.in.("+ids.join(",")+")");
+    if(lastName)   orParts.push("nom_demandeur.eq."+lastName);
+    if(!orParts.length){ box.innerHTML='<div class="empty"><span class="big">📭</span>Aucune demande pour le moment.<br>Vos demandes apparaîtront ici après envoi.</div>'; document.getElementById("mineCnt").textContent="0"; return; }
+    const { data, error } = await supabaseClient.from("laissez_passer")
+      .select("*").or(orParts.join(",")).order("created_at",{ascending:false});
+    if(error){ box.innerHTML='<div class="empty">❌ '+_escD(error.message)+'</div>'; return; }
+    rows = data||[];
+  }catch(e){ box.innerHTML='<div class="empty">❌ '+_escD(e.message)+'</div>'; return; }
+
+  document.getElementById("mineCnt").textContent = rows.length;
+  if(!rows.length){ box.innerHTML='<div class="empty"><span class="big">📭</span>Aucune demande trouvée.</div>'; return; }
+
+  box.innerHTML = rows.map(p=>{
+    const peutAnnuler = ["en_attente","valide"].includes(p.statut);
+    return `<div class="lp-item">
+      <div class="lp-item-head">
+        <div class="lp-item-title">${_escD(p.marque_zone||"Laissez-passer")}
+          <div class="lp-item-sub">${_escD(ETAB_LBL[p.etablissement]||p.etablissement||"—")}${p.societe_intervenante?" · "+_escD(p.societe_intervenante):""}</div>
+        </div>
+        ${statutBadge(p.statut)}
+      </div>
+      <div class="lp-meta">
+        <div><div class="k">Début</div>${_fmtD(p.debut_intervention)}</div>
+        <div><div class="k">Fin</div>${_fmtD(p.fin_intervention)}</div>
+        <div><div class="k">Demandé le</div>${_fmtD(p.created_at)}</div>
+      </div>
+      ${p.statut==="refuse"&&p.motif_refus?`<div class="hint" style="color:#b91c1c">Motif du refus : ${_escD(p.motif_refus)}</div>`:""}
+      ${p.statut==="demande_annulation"?`<div class="hint" style="color:#c2410c">Annulation demandée — en attente de confirmation par la sûreté.</div>`:""}
+      ${p.statut==="valide"&&p.arrivee_le?`<div class="hint" style="color:#15803d">Arrivée enregistrée : ${_fmtD(p.arrivee_le)}${p.depart_le?" · Départ : "+_fmtD(p.depart_le):""}</div>`:""}
+      ${peutAnnuler?`<div class="lp-item-actions">
+        <button class="btn-sm btn-cancel" onclick="demanderAnnulation('${p.id}')">🚫 Demander l'annulation</button>
+      </div>`:""}
+    </div>`;
+  }).join("");
+}
+
+async function demanderAnnulation(id){
+  const motif = prompt("Motif de la demande d'annulation (optionnel) :");
+  if(motif===null) return; // annulé
+  // On récupère le statut courant pour le mémoriser
+  const { data: cur } = await supabaseClient.from("laissez_passer").select("statut").eq("id",id).single();
+  const { error } = await supabaseClient.from("laissez_passer").update({
+    statut: "demande_annulation",
+    annulation_motif: motif || null,
+    annulation_demandee_le: new Date().toISOString(),
+    statut_avant_annulation: cur ? cur.statut : null
+  }).eq("id", id);
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast("🔄 Demande d'annulation envoyée à la sûreté");
+  chargerMesDemandes();
+}
+
+// Pré-remplit le nom si déjà connu
+(function(){
+  const n = localStorage.getItem("lp_last_name") || localStorage.getItem("nom");
+  if(n){ const el=document.getElementById("nom_demandeur"); if(el && !el.value) el.value=n; }
+})();
 </script>
 <script src="global.js"></script>
 </body>

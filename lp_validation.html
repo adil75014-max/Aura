@@ -40,6 +40,41 @@
   .empty{text-align:center;color:var(--muted);padding:30px;}
   .urgent-motif{font-size:.8rem;background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.3);border-radius:8px;padding:8px 11px;margin:8px 0;}
   .scan-info{font-size:.72rem;color:var(--muted);margin-top:6px;}
+  .cancel-req{font-size:.82rem;color:#fdba74;background:rgba(234,88,12,.1);border:1px solid rgba(234,88,12,.3);border-radius:8px;padding:8px 11px;margin-top:8px;}
+
+  /* Bannière demandes urgentes (<24h) en attente */
+  .urgent-alert{align-items:center;gap:12px;background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.45);border-radius:12px;padding:12px 16px;margin-bottom:16px;animation:uapulse 1.8s ease-in-out infinite;}
+  .urgent-alert .ua-ico{font-size:1.6rem;flex-shrink:0;}
+  .urgent-alert strong{color:#fca5a5;font-size:.92rem;}
+  .urgent-alert .ua-sub{font-size:.76rem;color:var(--muted);margin-top:2px;}
+  @keyframes uapulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}50%{box-shadow:0 0 0 8px rgba(220,38,38,0)}}
+
+  /* Toolbar recherche + filtre établissement */
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  .toolbar input{flex:1;min-width:220px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:#0e1626;color:var(--ink);font-size:.9rem;}
+  .toolbar select{padding:11px;border:1px solid var(--line);border-radius:10px;background:#0e1626;color:var(--ink);font-size:.88rem;}
+
+  /* Onglet en alerte (LP à valider) */
+  .tab-alert{background:var(--bad)!important;color:#fff!important;border-color:var(--bad)!important;animation:tabpulse 1.6s ease-in-out infinite;}
+  @keyframes tabpulse{0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}50%{box-shadow:0 0 0 7px rgba(220,38,38,0)}}
+
+  /* Groupes par établissement */
+  .etab-group{margin-bottom:22px;}
+  .etab-head{display:flex;align-items:center;gap:10px;font-size:.95rem;font-weight:800;color:#cbd5e1;padding:8px 2px;border-bottom:2px solid var(--line);margin-bottom:12px;}
+  .etab-count{font-size:.72rem;background:#1e3a5f;border-radius:999px;padding:2px 10px;font-weight:700;}
+  .etab-wait{font-size:.72rem;background:var(--bad);color:#fff;border-radius:999px;padding:2px 10px;font-weight:700;}
+  .etab-indep{font-size:.7rem;font-weight:600;color:#fdba74;background:rgba(234,88,12,.12);border:1px solid rgba(234,88,12,.35);border-radius:999px;padding:2px 9px;}
+  .etab-sam .etab-head{color:#fdba74;border-bottom-color:rgba(234,88,12,.4);}
+  .etab-sam{border-left:3px solid rgba(234,88,12,.5);padding-left:12px;border-radius:4px;}
+
+  /* Carte LP en attente = rouge (à traiter) */
+  .lp-wait{border-color:rgba(220,38,38,.45);background:linear-gradient(180deg, rgba(220,38,38,.06), var(--card));box-shadow:0 0 0 1px rgba(220,38,38,.15);}
+
+  /* Bloc accompagnement (mis en avant, au-dessus des détails) */
+  .accompagnement{background:rgba(234,88,12,.08);border:1px solid rgba(234,88,12,.3);border-radius:10px;padding:9px 12px;margin:8px 0;}
+  .accompagnement .k{color:#fdba74;}
+  .acc-need{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .acc-need span{font-size:.84rem;font-weight:700;background:rgba(234,88,12,.18);color:#fed7aa;border-radius:8px;padding:3px 11px;}
 
   /* Modale QR + partage */
   .qr-overlay{position:fixed;inset:0;background:rgba(2,6,15,.85);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px;}
@@ -68,12 +103,28 @@
 </header>
 
 <div class="wrap">
+  <div id="urgentAlert" class="urgent-alert" style="display:none"></div>
+
   <div class="tabs">
     <div class="tab active" data-f="en_attente" onclick="setFilter('en_attente')">En attente <span class="badge" id="b-wait">0</span></div>
     <div class="tab" data-f="valide" onclick="setFilter('valide')">Validés <span class="badge" id="b-ok">0</span></div>
     <div class="tab" data-f="refuse" onclick="setFilter('refuse')">Refusés <span class="badge" id="b-bad">0</span></div>
+    <div class="tab" data-f="demande_annulation" onclick="setFilter('demande_annulation')">Annulations <span class="badge" id="b-ann">0</span></div>
     <div class="tab" data-f="all" onclick="setFilter('all')">Tous</div>
   </div>
+
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="🔎 Rechercher : demandeur, intervenant, société, date, zone…" oninput="render()">
+    <select id="etabFilter" onchange="render()">
+      <option value="">Tous les établissements</option>
+      <option value="bon_marche">Le Bon Marché</option>
+      <option value="grande_epicerie_rg">Grande Épicerie Rive Gauche</option>
+      <option value="grande_epicerie_rd">Grande Épicerie Rive Droite</option>
+      <option value="moet_hennessy">Moët Hennessy</option>
+      <option value="samaritaine">La Samaritaine</option>
+    </select>
+  </div>
+
   <div id="list"><div class="empty">Chargement…</div></div>
 </div>
 
@@ -102,18 +153,21 @@
 
 <script src="supabaseClient.js"></script>
 <script>
-/* ── Garde de page : réservé au service Sûreté ──
-   Cohérent avec la policy SQL (is_surete). Côté client, on bloque l'accès
-   visuel ; la sécurité réelle est assurée par la RLS côté base. */
+/* ── Garde de page : Admin / Superviseur / Sûreté uniquement ──
+   La validation des LP est réservée à ces rôles. La Samaritaine a son
+   propre service sûreté : un valideur Samaritaine ne voit que ses LP. */
+const _role = (localStorage.getItem("role") || "").toLowerCase();
+const _service = (localStorage.getItem("service") || "").toLowerCase();
+const _isAdmin = ["admin","superadmin","superviseur"].includes(_role);
+const _isSurete = _service === "surete";
 (function(){
-  const srv = (localStorage.getItem("service") || "").toLowerCase();
-  if (srv && srv !== "surete") {
+  if(!_isAdmin && !_isSurete){
     document.body.innerHTML = '<div style="max-width:480px;margin:80px auto;text-align:center;font-family:system-ui;color:#e8ebf0;">'
       + '<div style="font-size:3rem;">🛡️</div>'
-      + '<h2>Accès réservé au service Sûreté</h2>'
-      + '<p style="color:#94a3b8;">La validation des laissez-passer est gérée par le service Sûreté.</p>'
+      + '<h2>Accès réservé</h2>'
+      + '<p style="color:#94a3b8;">La validation des laissez-passer est réservée aux administrateurs, superviseurs et au service Sûreté.</p>'
       + '<a href="index.html" style="color:#22d3ee;">← Retour à l\'accueil</a></div>';
-    throw new Error("LP validation : accès réservé sûreté");
+    throw new Error("LP validation : accès refusé");
   }
 })();
 /* Transmission du QR : affichage + partage natif (pas d'envoi serveur) */
@@ -132,7 +186,8 @@ function statutPill(p){
     valide:'<span class="pill p-ok">VALIDÉ</span>',
     refuse:'<span class="pill p-bad">REFUSÉ</span>',
     expire:'<span class="pill p-exp">EXPIRÉ</span>',
-    annule:'<span class="pill p-exp">ANNULÉ</span>'
+    annule:'<span class="pill p-exp">ANNULÉ</span>',
+    demande_annulation:'<span class="pill p-urgent">ANNULATION DEMANDÉE</span>'
   })[p.statut] || '';
 }
 
@@ -143,60 +198,149 @@ function setFilter(f){
 }
 
 function counts(){
-  document.getElementById("b-wait").textContent = _all.filter(p=>p.statut==="en_attente").length;
+  const nbWait = _all.filter(p=>p.statut==="en_attente").length;
+  document.getElementById("b-wait").textContent = nbWait;
   document.getElementById("b-ok").textContent   = _all.filter(p=>p.statut==="valide").length;
   document.getElementById("b-bad").textContent  = _all.filter(p=>p.statut==="refuse").length;
+  const nbAnn = _all.filter(p=>p.statut==="demande_annulation").length;
+  const bAnn = document.getElementById("b-ann"); if(bAnn) bAnn.textContent = nbAnn;
+  const annTab = document.querySelector('.tab[data-f="demande_annulation"]');
+  if(annTab) annTab.classList.toggle("tab-alert", nbAnn>0);
+  // Onglet "En attente" en rouge + titre d'alerte s'il y a des LP à valider
+  const waitTab = document.querySelector('.tab[data-f="en_attente"]');
+  if(waitTab) waitTab.classList.toggle("tab-alert", nbWait>0);
+  document.title = (nbWait>0 ? "("+nbWait+") " : "") + "Validation laissez-passer — Aura";
+
+  // Bannière demandes urgentes (<24h) en attente
+  const urgents = _all.filter(p=>p.statut==="en_attente" && p.delai_inferieur_24h);
+  const ua = document.getElementById("urgentAlert");
+  if(ua){
+    if(urgents.length){
+      ua.style.display = "flex";
+      ua.innerHTML = '<span class="ua-ico">⚠️</span><div><strong>'+urgents.length+' demande'+(urgents.length>1?'s':'')+' urgente'+(urgents.length>1?'s':'')+' (&lt;24h) à valider</strong>'
+        + '<div class="ua-sub">'+urgents.slice(0,3).map(p=>esc(p.nom_demandeur)+' — '+esc(ETAB_LABELS[p.etablissement]||p.etablissement||'')).join(' · ')+(urgents.length>3?' …':'')+'</div></div>';
+    } else {
+      ua.style.display = "none";
+    }
+  }
 }
 
-function acc(p){
+const ETAB_LABELS = {
+  bon_marche: "Le Bon Marché",
+  grande_epicerie_rg: "Grande Épicerie Rive Gauche",
+  grande_epicerie_rd: "Grande Épicerie Rive Droite",
+  moet_hennessy: "Moët Hennessy",
+  samaritaine: "La Samaritaine"
+};
+// Ordre d'affichage : Samaritaine en dernier, isolée (service indépendant)
+const ETAB_ORDER = ["bon_marche","grande_epicerie_rg","grande_epicerie_rd","moet_hennessy","samaritaine"];
+
+function accesList(p){
   const a=[];
   if(p.porte_segep) a.push("Porte SEGEP");
   if(p.quai_38_sevres) a.push("Quai 38 Sèvres");
   if(p.ouverture_porte) a.push("Ouverture Porte");
   if(p.horlo_jo) a.push("Horlo/JO");
-  if(p.besoin_agent_surete) a.push("👮 Agent sûreté");
-  if(p.besoin_pompier) a.push("🚒 Pompier");
   return a;
+}
+
+// Filtre texte : cherche dans demandeur, intervenant, société, zone, date, etc.
+function matchSearch(p, q){
+  if(!q) return true;
+  const hay = [
+    p.nom_demandeur, p.tel_demandeur, p.email_demandeur,
+    p.societe_intervenante, p.noms_intervenants, p.tel_intervenant, p.email_intervenant,
+    p.marque_zone, p.nature_travaux, p.besoins_lp, p.departement,
+    ETAB_LABELS[p.etablissement]||p.etablissement,
+    fmt(p.debut_intervention), fmt(p.fin_intervention),
+    new Date(p.created_at).toLocaleDateString("fr-FR")
+  ].filter(Boolean).join(" ").toLowerCase();
+  return q.toLowerCase().split(/\s+/).every(term => hay.includes(term));
+}
+
+function cardHtml(p){
+  const isWait = p.statut==="en_attente";
+  const acces = accesList(p);
+  const accompagnement = [];
+  if(p.besoin_agent_surete) accompagnement.push("👮 Agent de sûreté");
+  if(p.besoin_pompier)      accompagnement.push("🚒 Pompier");
+
+  return `<div class="lp ${isWait?'lp-wait':''}">
+    <div class="lp-head">
+      <div class="lp-title">${esc(p.marque_zone||"LP")} — ${esc(p.societe_intervenante||"")}
+        <div class="lp-sub">Demandé par ${esc(p.nom_demandeur)}${p.departement?" · Dpt "+esc(p.departement):""}</div>
+      </div>
+      ${p.delai_inferieur_24h?'<span class="pill p-urgent">&lt;24H</span>':''}
+      ${statutPill(p)}
+    </div>
+
+    ${p.delai_inferieur_24h&&p.motif_urgence?`<div class="urgent-motif">⚠️ <strong>Motif urgence :</strong> ${esc(p.motif_urgence)}</div>`:""}
+
+    ${accompagnement.length?`<div class="accompagnement"><div class="k">Accompagnement nécessaire</div><div class="acc-need">${accompagnement.map(a=>`<span>${a}</span>`).join("")}</div></div>`:""}
+
+    <div class="grid">
+      <div><div class="k">Établissement</div>${esc(ETAB_LABELS[p.etablissement]||p.etablissement||"—")}</div>
+      <div><div class="k">Début</div>${fmt(p.debut_intervention)}</div>
+      <div><div class="k">Fin</div>${fmt(p.fin_intervention)}</div>
+      <div><div class="k">Nb intervenants</div>${esc(p.nb_intervenants||1)}</div>
+    </div>
+
+    <div class="grid">
+      <div><div class="k">Tél. demandeur</div>${esc(p.tel_demandeur||"—")}</div>
+      <div><div class="k">Email demandeur</div>${esc(p.email_demandeur||"—")}</div>
+      <div><div class="k">Tél. intervenant</div>${esc(p.tel_intervenant||"—")}</div>
+      <div><div class="k">Email intervenant</div>${esc(p.email_intervenant||"—")}</div>
+    </div>
+
+    ${p.noms_intervenants?`<div class="grid"><div style="grid-column:1/-1"><div class="k">Nom des intervenants</div>${esc(p.noms_intervenants).replace(/\n/g,", ")}</div></div>`:""}
+    ${p.besoins_lp?`<div class="grid"><div style="grid-column:1/-1"><div class="k">Besoins LP</div>${esc(p.besoins_lp)}</div></div>`:""}
+    ${p.nature_travaux?`<div class="grid"><div style="grid-column:1/-1"><div class="k">Nature des travaux</div>${esc(p.nature_travaux)}</div></div>`:""}
+    ${acces.length?`<div class="acc">${acces.map(a=>`<span>${a}</span>`).join("")}</div>`:""}
+
+    ${p.statut==="valide"?`<div class="scan-info">
+        ${p.arrivee_le?`✅ Arrivée ${fmt(p.arrivee_le)}`:"⏳ Pas encore arrivé"}${p.depart_le?` · 🚪 Départ ${fmt(p.depart_le)}`:""}
+        <br>📲 Scans : ${p.scan_count||0}${p.valide_par?" · validé par "+esc(p.valide_par):""}
+      </div>`:""}
+    ${p.statut==="refuse"&&p.motif_refus?`<div class="scan-info">Motif refus : ${esc(p.motif_refus)}</div>`:""}
+    ${p.statut==="demande_annulation"?`<div class="cancel-req">🔄 <strong>Annulation demandée</strong>${p.annulation_demandee_le?" le "+fmt(p.annulation_demandee_le):""}${p.annulation_motif?` — « ${esc(p.annulation_motif)} »`:""}</div>`:""}
+
+    <div class="actions">
+      ${isWait?`<button class="btn btn-ok" onclick="valider('${p.id}')">✅ Valider &amp; afficher le QR</button>
+                <button class="btn btn-bad" onclick="refuser('${p.id}')">✖️ Refuser</button>`:""}
+      ${p.statut==="valide"?`<button class="btn btn-ghost" onclick="renvoyer('${p.id}')">🪪 Afficher le QR</button>
+                <button class="btn btn-bad" onclick="annuler('${p.id}')">🚫 Annuler</button>`:""}
+      ${p.statut==="demande_annulation"?`<button class="btn btn-bad" onclick="confirmerAnnulation('${p.id}')">✅ Confirmer l'annulation</button>
+                <button class="btn btn-ghost" onclick="rejeterAnnulation('${p.id}')">↩️ Rejeter (restaurer)</button>`:""}
+    </div>
+  </div>`;
 }
 
 function render(){
   const box = document.getElementById("list");
+  const q = (document.getElementById("search")?.value || "").trim();
+  const etabSel = document.getElementById("etabFilter")?.value || "";
+
   let list = _filter==="all" ? _all : _all.filter(p=>p.statut===_filter);
+  list = list.filter(p => matchSearch(p, q));
+  if(etabSel) list = list.filter(p => (p.etablissement||"") === etabSel);
+
   if(!list.length){ box.innerHTML = '<div class="empty">Aucun laissez-passer.</div>'; return; }
-  box.innerHTML = list.map(p=>{
-    const accList = acc(p);
-    const isWait = p.statut==="en_attente";
-    return `<div class="lp">
-      <div class="lp-head">
-        <div class="lp-title">${esc(p.marque_zone||"LP")} — ${esc(p.societe_intervenante||"")}
-          <div class="lp-sub">Demandé par ${esc(p.nom_demandeur)}${p.departement?" · Dpt "+esc(p.departement):""}</div>
-        </div>
-        ${p.delai_inferieur_24h?'<span class="pill p-urgent">&lt;24H</span>':''}
-        ${statutPill(p)}
-      </div>
 
-      ${p.delai_inferieur_24h&&p.motif_urgence?`<div class="urgent-motif">⚠️ <strong>Motif urgence :</strong> ${esc(p.motif_urgence)}</div>`:""}
+  // Regroupement par établissement, Samaritaine isolée en dernier
+  const groups = {};
+  list.forEach(p => { const e = p.etablissement || "_autre"; (groups[e] = groups[e]||[]).push(p); });
 
-      <div class="grid">
-        <div><div class="k">Début</div>${fmt(p.debut_intervention)}</div>
-        <div><div class="k">Fin</div>${fmt(p.fin_intervention)}</div>
-        <div><div class="k">Intervenants</div>${esc(p.nb_intervenants||1)}</div>
-        <div><div class="k">Contact intervenant</div>${esc(p.email_intervenant||"—")}</div>
-      </div>
-      ${p.noms_intervenants?`<div class="grid"><div style="grid-column:1/-1"><div class="k">Noms</div>${esc(p.noms_intervenants).replace(/\n/g,", ")}</div></div>`:""}
-      ${p.nature_travaux?`<div class="grid"><div style="grid-column:1/-1"><div class="k">Nature des travaux</div>${esc(p.nature_travaux)}</div></div>`:""}
-      ${accList.length?`<div class="acc">${accList.map(a=>`<span>${a}</span>`).join("")}</div>`:""}
+  const order = [...ETAB_ORDER.filter(e=>groups[e]), ...Object.keys(groups).filter(e=>!ETAB_ORDER.includes(e))];
 
-      ${p.statut==="valide"?`<div class="scan-info">📲 Scans : ${p.scan_count||0}${p.dernier_scan_le?" · dernier "+fmt(p.dernier_scan_le)+" ("+esc(p.dernier_scan_resultat||"")+")":""}${p.valide_par?" · validé par "+esc(p.valide_par):""}</div>`:""}
-      ${p.statut==="refuse"&&p.motif_refus?`<div class="scan-info">Motif refus : ${esc(p.motif_refus)}</div>`:""}
-
-      <div class="actions">
-        ${isWait?`<button class="btn btn-ok" onclick="valider('${p.id}')">✅ Valider &amp; afficher le QR</button>
-                  <button class="btn btn-bad" onclick="refuser('${p.id}')">✖️ Refuser</button>`:""}
-        ${p.statut==="valide"?`<button class="btn btn-ghost" onclick="renvoyer('${p.id}')">🪪 Afficher le QR</button>
-                  <button class="btn btn-bad" onclick="annuler('${p.id}')">🚫 Annuler</button>`:""}
-      </div>
-    </div>`;
+  box.innerHTML = order.map(e=>{
+    const isSam = e === "samaritaine";
+    const label = ETAB_LABELS[e] || "Autre / non précisé";
+    const sub = isSam ? '<span class="etab-indep">service sûreté indépendant</span>' : "";
+    const nbWait = groups[e].filter(p=>p.statut==="en_attente").length;
+    return `<div class="etab-group ${isSam?'etab-sam':''}">
+        <div class="etab-head">${esc(label)} ${sub}<span class="etab-count">${groups[e].length}</span>${nbWait?`<span class="etab-wait">${nbWait} à valider</span>`:""}</div>
+        ${groups[e].map(cardHtml).join("")}
+      </div>`;
   }).join("");
 }
 
@@ -230,6 +374,24 @@ async function annuler(id){
   const { error } = await supabaseClient.from("laissez_passer").update({ statut:"annule" }).eq("id", id);
   if(error){ showToast("❌ "+error.message, true); return; }
   showToast("LP annulé");
+}
+
+async function confirmerAnnulation(id){
+  if(!confirm("Confirmer l'annulation demandée par le demandeur ? Le LP sera annulé.")) return;
+  const { error } = await supabaseClient.from("laissez_passer").update({ statut:"annule" }).eq("id", id);
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast("✅ Annulation confirmée");
+}
+
+async function rejeterAnnulation(id){
+  const p = _all.find(x=>x.id===id);
+  // On restaure le statut d'avant la demande d'annulation (valide ou en_attente)
+  const restore = (p && p.statut_avant_annulation) ? p.statut_avant_annulation : "valide";
+  const { error } = await supabaseClient.from("laissez_passer")
+    .update({ statut: restore, annulation_motif:null, annulation_demandee_le:null, statut_avant_annulation:null })
+    .eq("id", id);
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast("↩️ Demande d'annulation rejetée — LP restauré");
 }
 
 function renvoyer(id){
@@ -353,7 +515,25 @@ async function load(){
   const { data, error } = await supabaseClient.from("laissez_passer")
     .select("*").order("created_at",{ascending:false});
   if(error){ document.getElementById("list").innerHTML='<div class="empty">❌ '+esc(error.message)+'</div>'; return; }
-  _all = data||[];
+  let rows = data||[];
+
+  /* Cloisonnement Samaritaine : son service sûreté est indépendant.
+     - Un valideur Samaritaine (service sûreté ET rattaché Samaritaine) ne
+       voit QUE les LP Samaritaine.
+     - Les valideurs des autres établissements ne voient PAS les LP
+       Samaritaine (gérés par leur propre équipe).
+     - Les admins/superviseurs voient tout.
+     Le rattachement Samaritaine est déduit de localStorage.site_code. */
+  const site = (localStorage.getItem("site_code") || localStorage.getItem("site") || "").toLowerCase();
+  const isSamAgent = _isSurete && site.includes("sam");
+  if(isSamAgent){
+    rows = rows.filter(p => (p.etablissement||"") === "samaritaine");
+  } else if(_isSurete && !_isAdmin){
+    rows = rows.filter(p => (p.etablissement||"") !== "samaritaine");
+  }
+  // Admin/superviseur : tout (aucun filtre)
+
+  _all = rows;
   counts(); render();
 }
 

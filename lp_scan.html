@@ -19,6 +19,9 @@
   .manual input{flex:1;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#0e1626;color:var(--ink);font-size:.9rem;}
   .manual button{padding:11px 16px;border:none;border-radius:10px;background:var(--cyan);color:#06222b;font-weight:700;cursor:pointer;}
   .hint{font-size:.78rem;color:var(--muted);text-align:center;margin-top:10px;}
+  .sens-switch{display:flex;gap:8px;margin-bottom:14px;}
+  .sens-btn{flex:1;padding:11px;border:1px solid var(--line);border-radius:10px;background:#0e1626;color:var(--ink);font-size:.85rem;font-weight:600;cursor:pointer;}
+  .sens-btn.active{background:var(--cyan);color:#06222b;border-color:var(--cyan);}
 
   /* Écran résultat plein écran */
   #result{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;z-index:999;}
@@ -43,12 +46,17 @@
 </header>
 
 <div class="wrap">
+  <div class="sens-switch">
+    <button class="sens-btn active" data-s="auto" onclick="setSens('auto')">🔄 Auto</button>
+    <button class="sens-btn" data-s="arrivee" onclick="setSens('arrivee')">➡️ Arrivée</button>
+    <button class="sens-btn" data-s="depart" onclick="setSens('depart')">⬅️ Départ</button>
+  </div>
   <div id="reader"></div>
   <div class="manual">
     <input id="token-manual" placeholder="Ou saisir le code manuellement">
     <button onclick="checkToken(document.getElementById('token-manual').value.trim())">Vérifier</button>
   </div>
-  <div class="hint">Scannez le QR code présenté par l'intervenant.<br>L'écran passe automatiquement au vert ou au rouge.</div>
+  <div class="hint">Scannez le QR à l'<strong>arrivée</strong> puis au <strong>départ</strong> pour l'horodatage.<br>Mode « Auto » : 1ᵉʳ scan = arrivée, 2ᵉ = départ. L'écran passe au vert ou au rouge.</div>
 </div>
 
 <!-- Écran résultat -->
@@ -62,11 +70,36 @@
 
 <script src="supabaseClient.js"></script>
 <script>
+/* ── Garde : scan réservé au service Sûreté (ou admin/superviseur) ──
+   L'agent doit être connecté à Aura. Son identité (id) est envoyée à la
+   RPC lp_scan qui revérifie côté serveur. */
+const _role = (localStorage.getItem("role") || "").toLowerCase();
+const _service = (localStorage.getItem("service") || "").toLowerCase();
+const _agentNom = localStorage.getItem("nom") || null;
+const _scanAllowed = (_service === "surete") || ["admin","superadmin","superviseur"].includes(_role);
+
+(function(){
+  if(!_scanAllowed){
+    document.body.innerHTML = '<div style="max-width:480px;margin:80px auto;text-align:center;font-family:system-ui;color:#e8ebf0;">'
+      + '<div style="font-size:3rem;">🔒</div>'
+      + '<h2>Scan réservé au service Sûreté</h2>'
+      + '<p style="color:#94a3b8;">Le contrôle des laissez-passer est réservé aux agents de sûreté connectés à Aura.</p>'
+      + '<a href="index.html" style="color:#22d3ee;">← Retour</a></div>';
+    throw new Error("LP scan : accès refusé");
+  }
+})();
+
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
 function fmt(iso){ try{ return new Date(iso).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}); }catch(_){ return iso||"—"; } }
 
 let _scanner = null;
 let _busy = false;
+let _sens = "auto"; // auto | arrivee | depart
+
+function setSens(s){
+  _sens = s;
+  document.querySelectorAll(".sens-btn").forEach(b=>b.classList.toggle("active", b.dataset.s===s));
+}
 
 // Extrait le token d'un contenu scanné : soit une URL ...?t=XXX, soit le token brut
 function extractToken(text){
@@ -86,17 +119,19 @@ async function checkToken(raw){
   _busy = true;
 
   try{
-    const { data, error } = await supabaseClient.rpc("lp_scan", { p_token: token });
+    const { data, error } = await supabaseClient.rpc("lp_scan", { p_token: token, p_agent_nom: _agentNom, p_sens: _sens });
     if(error){ showResult(false, "ERREUR", error.message, null); _busy=false; return; }
-    if(!data || !data.ok){ showResult(false, "INCONNU", (data&&data.message)||"Laissez-passer inconnu", null); _busy=false; return; }
-    showResult(data.autorise, data.autorise?"ACCÈS AUTORISÉ":"ACCÈS REFUSÉ", data.message, data.lp);
+    if(!data || !data.ok){ showResult(false, "REFUSÉ", (data&&data.message)||"Laissez-passer inconnu", null); _busy=false; return; }
+    const verdict = data.autorise ? "ACCÈS AUTORISÉ" : "ACCÈS REFUSÉ";
+    const reason = data.autorise && data.horodatage ? (data.message + " · " + data.horodatage) : data.message;
+    showResult(data.autorise, verdict, reason, data.lp, data);
   }catch(e){
     showResult(false, "ERREUR", e.message, null);
   }
   _busy = false;
 }
 
-function showResult(ok, verdict, reason, lp){
+function showResult(ok, verdict, reason, lp, full){
   const r = document.getElementById("result");
   document.getElementById("r-icon").textContent = ok ? "✅" : "⛔";
   document.getElementById("r-verdict").textContent = verdict;
@@ -117,6 +152,7 @@ function showResult(ok, verdict, reason, lp){
       ${lp.noms_intervenants?`<div style="margin-top:8px"><span class="k">Intervenant(s)</span><br>${esc(lp.noms_intervenants).replace(/\n/g,", ")}</div>`:""}
       <div style="margin-top:8px"><span class="k">Zone / Nature</span><br>${esc(lp.marque_zone||"—")} — ${esc(lp.nature_travaux||"—")}</div>
       <div style="margin-top:8px"><span class="k">Fenêtre</span><br>${fmt(lp.debut)} → ${fmt(lp.fin)}</div>
+      ${(lp.arrivee_le||lp.depart_le)?`<div style="margin-top:8px"><span class="k">Passage</span><br>${lp.arrivee_le?("Arrivée "+fmt(lp.arrivee_le)):""}${lp.depart_le?(" · Départ "+fmt(lp.depart_le)):""}</div>`:""}
       ${accs.length?`<div class="acc">${accs.map(a=>`<span>${a}</span>`).join("")}</div>`:""}
     `;
   }
@@ -124,7 +160,6 @@ function showResult(ok, verdict, reason, lp){
   document.getElementById("r-details").style.display = html ? "block" : "none";
 
   r.className = "show " + (ok ? "ok" : "no");
-  // Vibration tactile (mobile) : 1 pulse OK, 3 pulses refus
   try{ navigator.vibrate && navigator.vibrate(ok ? 200 : [120,80,120,80,120]); }catch(_){}
 }
 

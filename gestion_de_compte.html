@@ -376,6 +376,7 @@
                 <option value="GERD">La Grande Épicerie Rive Droite (GERD)</option>
                 <option value="GERG">La Grande Épicerie Rive Gauche (GERG)</option>
                 <option value="MH">Moët Hennessy (MH)</option>
+                <option value="EBAG">Entrepôt Bagneux (EBAG)</option>
             </select>
 
             <label>Service</label>
@@ -816,7 +817,7 @@ async function affecterSiteService(id, nom, currentSite, currentService) {
         sites: window.AuraTenant.sites(),
         services: window.AuraTenant.services()
     } : {
-        sites: [{code:"LBM",nom:"Le Bon Marché"},{code:"SAM",nom:"Samaritaine"},{code:"GERD",nom:"GE Rive Droite"},{code:"GERG",nom:"GE Rive Gauche"},{code:"MH",nom:"Moët Hennessy"}],
+        sites: [{code:"LBM",nom:"Le Bon Marché"},{code:"SAM",nom:"Samaritaine"},{code:"GERD",nom:"GE Rive Droite"},{code:"GERG",nom:"GE Rive Gauche"},{code:"MH",nom:"Moët Hennessy"},{code:"EBAG",nom:"Entrepôt Bagneux"}],
         services: [{code:"incendie",nom:"Sécurité Incendie"},{code:"surete",nom:"Sûreté"},{code:"technique",nom:"Technique"},{code:"services_generaux",nom:"Services Généraux"}]
     };
     const siteCodes = cat.sites.map(s => s.code);

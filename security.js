@@ -156,16 +156,24 @@ document.addEventListener("keydown", function(e) {
 });
 
 (function detectDevTools() {
-    var threshold = 160;
+    // ⚠️ CORRECTIF : l'ancienne heuristique (delta outer/inner > 160) générait
+    // des FAUX POSITIFS sur poste fixe — zoom navigateur ≠ 100 %, barre latérale
+    // (Edge/Copilot), barre de favoris ou barres d'extensions suffisent à
+    // dépasser le seuil → la session était détruite à tort. Sur mobile ce delta
+    // est ~0, d'où "ça marche sur téléphone".
+    // → On NE DÉCONNECTE PLUS sur cette base. On se contente d'un audit, et on
+    //   normalise par le zoom pour limiter le bruit. Le contrôle d'accès réel
+    //   reste Supabase + RBAC (bloc #3).
+    var threshold = 200;
     setInterval(function() {
-        if ((window.outerWidth - window.innerWidth > threshold) ||
-            (window.outerHeight - window.innerHeight > threshold)) {
-            auditLog("DEVTOOLS_OPEN");
-            document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#0a0a0a;color:#ff4444;font-family:system-ui;font-size:1.3rem;text-align:center;padding:20px;">⛔ Accès non autorisé détecté.<br>Session terminée.</div>';
-            localStorage.removeItem("nom"); localStorage.removeItem("role");
-            setTimeout(function(){ window.location.href = "login.html"; }, 3000);
+        var zoom = window.devicePixelRatio || 1;
+        var dw = window.outerWidth  - window.innerWidth;
+        var dh = window.outerHeight - window.innerHeight;
+        if ((dw > threshold * zoom) || (dh > threshold * zoom)) {
+            auditLog("DEVTOOLS_SUSPECTED", "dw=" + dw + " dh=" + dh + " zoom=" + zoom);
+            // Pas de destruction de session : heuristique non fiable côté desktop.
         }
-    }, 2000);
+    }, 4000);
 })();
 
 if (window.self !== window.top) {
@@ -273,9 +281,20 @@ function showSecurityWarning(msg) {
     var page = window.location.pathname.split("/").pop() || "index.html";
     if (page === "login.html") return;
     function computeFingerprint() {
-        var parts = [navigator.userAgent, navigator.language, screen.width + "x" + screen.height,
-            screen.colorDepth, Intl.DateTimeFormat().resolvedOptions().timeZone,
-            navigator.hardwareConcurrency || 0, navigator.platform];
+        // ⚠️ CORRECTIF : on RETIRE les signaux volatils sur poste fixe —
+        //  - screen.width/height & colorDepth → changent en branchant/débranchant
+        //    un écran externe ou une station d'accueil, ou en modifiant la mise à
+        //    l'échelle Windows (125 %/150 %).
+        //  - hardwareConcurrency → peut varier (throttling/navigateur).
+        // Ces variations déclenchaient un faux SESSION_HIJACK → localStorage.clear()
+        // → déconnexion. On supprime aussi les numéros de version de l'UA pour ne
+        // pas se déconnecter à chaque mise à jour du navigateur.
+        var parts = [
+            navigator.userAgent.replace(/[\d.]+/g, ""),
+            navigator.language,
+            Intl.DateTimeFormat().resolvedOptions().timeZone,
+            navigator.platform
+        ];
         var str = parts.join("|"); var hash = 5381;
         for (var i = 0; i < str.length; i++) { hash = ((hash << 5) + hash) + str.charCodeAt(i); hash = hash & hash; }
         return "fp_" + Math.abs(hash).toString(36);
@@ -284,8 +303,9 @@ function showSecurityWarning(msg) {
     var storedFp = localStorage.getItem("_session_fp");
     if (!storedFp) { localStorage.setItem("_session_fp", fp); }
     else if (storedFp !== fp) {
-        auditLog("SESSION_HIJACK_DETECTED", "stored=" + storedFp + " current=" + fp);
-        localStorage.clear(); window.location.href = "login.html";
+        // Non destructif : on trace et on resynchronise au lieu de déconnecter.
+        auditLog("SESSION_FP_CHANGED", "stored=" + storedFp + " current=" + fp);
+        localStorage.setItem("_session_fp", fp);
     }
 })();
 

@@ -58,7 +58,8 @@
         { code: "SAM",  nom: "Samaritaine" },
         { code: "GERD", nom: "La Grande Épicerie Rive Droite" },
         { code: "GERG", nom: "La Grande Épicerie Rive Gauche" },
-        { code: "MH",   nom: "Moët Hennessy" }
+        { code: "MH",   nom: "Moët Hennessy" },
+        { code: "EBAG", nom: "Entrepôt Bagneux" }
     ];
     var FALLBACK_SERVICES = [
         { code: "incendie",          nom: "Sécurité Incendie", couleur: "#ef4444" },

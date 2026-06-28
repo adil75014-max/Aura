@@ -144,6 +144,7 @@
     <button class="qr-share-main" onclick="genererPDF(true)">📄 Envoyer le PDF (QR)</button>
     <div class="qr-channels">
       <button onclick="genererPDF(false)">📄 Télécharger PDF</button>
+      <button onclick="mailerLP()">📧 Mail</button>
       <button onclick="partagerQR()">📤 Partager QR</button>
       <button onclick="telechargerQR()">⬇️ Image</button>
     </div>
@@ -263,8 +264,18 @@ function cardHtml(p){
   const isWait = p.statut==="en_attente";
   const acces = accesList(p);
   const accompagnement = [];
-  if(p.besoin_agent_surete) accompagnement.push("👮 Agent de sûreté");
-  if(p.besoin_pompier)      accompagnement.push("🚒 Pompier");
+  if(p.besoin_agent_surete){
+    accompagnement.push("👮 Agent de sûreté");
+    (Array.isArray(p.surete_details)?p.surete_details:[]).forEach(d=> accompagnement.push("• "+d));
+  }
+  if(p.besoin_pompier){
+    accompagnement.push("🚒 Pompier");
+    (Array.isArray(p.pompier_details)?p.pompier_details:[]).forEach(d=> accompagnement.push("• "+d));
+  }
+  if(p.besoin_technicien){
+    accompagnement.push("🔧 Technicien service technique");
+    (Array.isArray(p.technicien_details)?p.technicien_details:[]).forEach(d=> accompagnement.push("• "+d));
+  }
 
   return `<div class="lp ${isWait?'lp-wait':''}">
     <div class="lp-head">
@@ -478,8 +489,66 @@ async function partagerQR(){
   catch(_){ showToast("Partage non disponible sur cet appareil", true); }
 }
 
+// Envoi par mail : PDF téléchargé (à joindre) + mailto pré-rempli
+// (objet + corps + signature auto depuis la demande). Destinataire saisi à la main.
+async function mailerLP(){
+  if(!_qrShare || !_qrShare.p){ showToast("LP indisponible", true); return; }
+  const p = _qrShare.p;
+
+  // 1) Génère et télécharge le PDF pour pouvoir le joindre
+  try{ await genererPDF(false); }catch(_){}
+
+  // 2) Construit le texte du mail à partir de la demande
+  const etabLbl = (typeof ETAB_LABELS!=="undefined" && ETAB_LABELS[p.etablissement]) || p.etablissement || "";
+
+  const besoins = [];
+  if(p.besoin_agent_surete) besoins.push("Agent de sûreté" + (Array.isArray(p.surete_details)&&p.surete_details.length?(" ("+p.surete_details.join(", ")+")"):""));
+  if(p.besoin_pompier)      besoins.push("Pompier" + (Array.isArray(p.pompier_details)&&p.pompier_details.length?(" ("+p.pompier_details.join(", ")+")"):""));
+  if(p.besoin_technicien)   besoins.push("Technicien service technique" + (Array.isArray(p.technicien_details)&&p.technicien_details.length?(" ("+p.technicien_details.join(", ")+")"):""));
+
+  const L = [];
+  L.push("Bonjour,");
+  L.push("");
+  L.push("Veuillez trouver ci-joint votre laissez-passer d'accès (QR code en PDF) pour l'intervention suivante :");
+  L.push("");
+  if(p.societe_intervenante) L.push("• Société : " + p.societe_intervenante);
+  if(etabLbl)                L.push("• Établissement : " + etabLbl);
+  if(p.marque_zone)          L.push("• Zone : " + p.marque_zone);
+  if(p.noms_intervenants)    L.push("• Intervenant(s) : " + p.noms_intervenants.replace(/\n/g, ", ") + (p.nb_intervenants?(" ("+p.nb_intervenants+" pers.)"):""));
+  if(p.nature_travaux)       L.push("• Nature des travaux : " + p.nature_travaux);
+  if(p.debut_intervention || p.fin_intervention)
+    L.push("• Période : " + (p.debut_intervention?fmt(p.debut_intervention):"") + (p.fin_intervention?(" → "+fmt(p.fin_intervention)):""));
+  if(p.heure_debut && p.heure_fin)
+    L.push("• Plage horaire (chaque jour) : " + p.heure_debut.slice(0,5) + " – " + p.heure_fin.slice(0,5));
+  if(besoins.length)         L.push("• Accompagnement prévu : " + besoins.join(" ; "));
+  L.push("");
+  L.push("Merci de présenter le QR code joint à l'agent de sûreté à l'arrivée et au départ.");
+  L.push("L'accès n'est autorisé que sur la période (et la plage horaire) indiquée ci-dessus.");
+  L.push("");
+  L.push("Cordialement,");
+
+  // 3) Signature auto depuis l'identité de l'agent validateur
+  const agent = localStorage.getItem("nom") || "";
+  const svc = (localStorage.getItem("service") || "").toLowerCase();
+  const svcLabel = svc==="incendie" ? "Service Sécurité Incendie"
+                 : svc==="surete"   ? "Service Sûreté"
+                 : "Service Sécurité";
+  const sign = [agent, svcLabel + (etabLbl ? " — " + etabLbl : ""), "Aura Sentinelle"].filter(Boolean);
+  L.push(...sign);
+
+  const subject = "Laissez-passer d'accès" + (etabLbl ? " — " + etabLbl : (p.societe_intervenante ? " — " + p.societe_intervenante : ""));
+  const href = "mailto:"                                 // destinataire laissé vide (saisie manuelle)
+    + "?subject=" + encodeURIComponent(subject)
+    + "&body="    + encodeURIComponent(L.join("\n"));
+
+  // 4) Ouvre le client mail
+  setTimeout(()=>{ window.location.href = href; }, 400);
+  showToast("📎 PDF téléchargé — joignez-le à l'email, puis saisissez le destinataire");
+}
+
 // Partage ciblé par canal
 function partagerVia(canal){
+  if(!_qrShare) return;
   if(!_qrShare) return;
   const txt = encodeURIComponent(_qrShare.text);
   const url = encodeURIComponent(_qrShare.url);
@@ -513,11 +582,18 @@ async function genererPDF(share){
   if(!window.jspdf || !window.jspdf.jsPDF){ showToast("Librairie PDF non chargée", true); return; }
   const p = _qrShare.p, url = _qrShare.url;
 
-  // QR dédié (canvas net) pour le PDF
+  // Translittération ASCII (la police de base jsPDF ne gère pas les accents)
+  const ascii = s => String(s==null?"":s)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[’‘]/g,"'").replace(/[“”]/g,'"').replace(/[–—]/g,"-")
+    .replace(/œ/g,"oe").replace(/Œ/g,"OE").replace(/æ/g,"ae").replace(/Æ/g,"AE")
+    .replace(/[^\x00-\x7F]/g,"");
+
+  // QR net pour le PDF
   let qrDataUrl = null;
   try{
     const c = document.createElement("canvas");
-    new QRious({ element:c, size:600, value:url, level:"M", background:"#ffffff", foreground:"#000000" });
+    new QRious({ element:c, size:600, value:url, level:"M", background:"#ffffff", foreground:"#0b1220" });
     qrDataUrl = c.toDataURL("image/png");
   }catch(e){
     try{ const cv=document.getElementById("qrCanvas"); if(cv&&cv.tagName==="CANVAS") qrDataUrl=cv.toDataURL("image/png"); }catch(_){}
@@ -525,50 +601,93 @@ async function genererPDF(share){
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit:"mm", format:"a4" });
-  const W = 210, M = 18; let y;
+  const W = 210, M = 16;
 
-  doc.setFillColor(20,30,46); doc.rect(0,0,W,14,"F");
-  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(13);
-  doc.text("LAISSEZ-PASSER — Aura Sentinelle", M, 9);
+  // ── En-tête ──
+  doc.setFillColor(18,32,55); doc.rect(0,0,W,30,"F");          // bandeau navy
+  doc.setFillColor(34,184,206); doc.rect(0,30,W,1.6,"F");      // liseré cyan
+  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(20);
+  doc.text("LAISSEZ-PASSER", M, 16);
+  doc.setFont("helvetica","normal"); doc.setFontSize(8.5); doc.setTextColor(150,200,215);
+  doc.text("AURA SENTINELLE   |   CONTROLE D'ACCES", M, 23);
 
-  doc.setTextColor(20,20,20); doc.setFont("helvetica","bold"); doc.setFontSize(15);
-  doc.text(String(p.marque_zone||"Laissez-passer"), M, 26);
-  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(90,90,90);
-  doc.text(String(p.societe_intervenante||"—"), M, 33);
-  doc.setTextColor(20,20,20); y = 44;
+  // Pastille statut (coin droit)
+  const st = String(p.statut||"").toLowerCase();
+  if(st==="valide"){
+    doc.setFillColor(22,163,74); doc.roundedRect(W-M-32, 9, 32, 9, 2,2, "F");
+    doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    doc.text("VALIDE", W-M-16, 15, {align:"center"});
+  }
 
+  // ── Carte QR (colonne droite) ──
+  const cardX = 134, cardY = 40, cardW = W-M-cardX, cardH = 70;
+  doc.setDrawColor(203,213,225); doc.setLineWidth(0.4);
+  doc.setFillColor(248,250,252); doc.roundedRect(cardX, cardY, cardW, cardH, 3,3, "FD");
+  if(qrDataUrl){
+    const qs = 46, qx = cardX + (cardW-qs)/2;
+    doc.addImage(qrDataUrl, "PNG", qx, cardY+6, qs, qs);
+  }
+  doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(60,70,90);
+  doc.text(doc.splitTextToSize("Presenter ce QR a l'agent de surete a l'arrivee ET au depart", cardW-8), cardX+cardW/2, cardY+58, {align:"center"});
+
+  // ── Colonne gauche : titre + infos ──
+  let y = 42;
+  doc.setFont("helvetica","bold"); doc.setFontSize(8); doc.setTextColor(120,130,145);
+  doc.text("DETAILS DE L'INTERVENTION", M, y); y += 7;
+
+  const Lw = 110;
   function ligne(k,val){
     if(val==null||val==="") return;
-    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(110,110,110);
-    doc.text(String(k).toUpperCase(), M, y);
-    doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(20,20,20);
-    const lines = doc.splitTextToSize(String(val), 105);
+    doc.setFont("helvetica","bold"); doc.setFontSize(7.5); doc.setTextColor(130,140,155);
+    doc.text(ascii(String(k).toUpperCase()), M, y);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10.5); doc.setTextColor(25,30,40);
+    const lines = doc.splitTextToSize(ascii(val), Lw);
     doc.text(lines, M, y+5);
-    y += 6 + lines.length*5.5;
+    y += 4.5 + lines.length*5;
+    doc.setDrawColor(232,236,242); doc.setLineWidth(0.3); doc.line(M, y, M+Lw, y);
+    y += 4;
   }
   const etabLbl = (typeof ETAB_LABELS!=="undefined" && ETAB_LABELS[p.etablissement]) || p.etablissement;
   ligne("Demandeur", p.nom_demandeur);
-  ligne("Établissement", etabLbl);
-  ligne("Intervenant(s)", [p.noms_intervenants, p.nb_intervenants?("("+p.nb_intervenants+" pers.)"):""].filter(Boolean).join(" "));
+  ligne("Etablissement", etabLbl);
+  ligne("Societe", [p.societe_intervenante, p.nb_intervenants?("("+p.nb_intervenants+" pers.)"):""].filter(Boolean).join(" "));
+  ligne("Intervenant(s)", p.noms_intervenants);
   ligne("Nature des travaux", p.nature_travaux);
-  ligne("Période", (p.debut_intervention?fmt(p.debut_intervention):"") + (p.fin_intervention?("  ->  "+fmt(p.fin_intervention)):""));
-  if(p.heure_debut && p.heure_fin) ligne("Plage horaire quotidienne", p.heure_debut.slice(0,5)+" - "+p.heure_fin.slice(0,5)+" (chaque jour)");
-  const accs=[]; if(p.porte_segep)accs.push("Porte SEGEP"); if(p.quai_38_sevres)accs.push("Quai 38 Sevres"); if(p.ouverture_porte)accs.push("Ouverture Porte"); if(p.horlo_jo)accs.push("Horlo/JO"); if(p.besoin_agent_surete)accs.push("Agent surete"); if(p.besoin_pompier)accs.push("Pompier");
-  if(accs.length) ligne("Acces / besoins", accs.join(", "));
+  ligne("Periode", (p.debut_intervention?fmt(p.debut_intervention):"") + (p.fin_intervention?("  ->  "+fmt(p.fin_intervention)):""));
+  if(p.heure_debut && p.heure_fin) ligne("Plage horaire / jour", p.heure_debut.slice(0,5)+" - "+p.heure_fin.slice(0,5));
+  const accs=[]; if(p.porte_segep)accs.push("Porte SEGEP"); if(p.quai_38_sevres)accs.push("Quai 38 Sevres"); if(p.ouverture_porte)accs.push("Ouverture Porte"); if(p.horlo_jo)accs.push("Horlo/JO");
+  if(accs.length) ligne("Acces", accs.join(", "));
 
-  if(qrDataUrl){
-    const qs = 58, qx = W - M - qs;
-    doc.addImage(qrDataUrl, "PNG", qx, 40, qs, qs);
-    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(20,20,20);
-    doc.text("Presentez ce QR a l'agent", qx+qs/2, 40+qs+6, {align:"center"});
-    doc.text("a l'arrivee et au depart", qx+qs/2, 40+qs+11, {align:"center"});
+  // ── Encadré ACCOMPAGNEMENT REQUIS (rouge, bien visible) ──
+  const needs=[];
+  if(p.besoin_agent_surete) needs.push(["Agent de surete", p.surete_details]);
+  if(p.besoin_pompier)      needs.push(["Pompier", p.pompier_details]);
+  if(p.besoin_technicien)   needs.push(["Technicien service technique", p.technicien_details]);
+  if(needs.length){
+    let by = Math.max(y, cardY+cardH) + 4;
+    const linesArr=[];
+    needs.forEach(([lbl,det])=>{
+      const d = (Array.isArray(det)&&det.length)? (" : "+det.join(", ")) : "";
+      doc.setFontSize(10);
+      linesArr.push(...doc.splitTextToSize("- "+ascii(lbl)+ascii(d), W-2*M-10));
+    });
+    const boxH = 12 + linesArr.length*5.2;
+    doc.setFillColor(254,242,242); doc.setDrawColor(220,38,38); doc.setLineWidth(0.7);
+    doc.roundedRect(M, by, W-2*M, boxH, 2.5,2.5, "FD");
+    doc.setFillColor(220,38,38); doc.rect(M, by, 3, boxH, "F"); // barre rouge
+    doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(185,28,28);
+    doc.text("/!\\  ACCOMPAGNEMENT REQUIS", M+7, by+8);
+    doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(120,20,20);
+    doc.text(linesArr, M+7, by+15);
   }
 
-  doc.setDrawColor(220,220,220); doc.line(M, 272, W-M, 272);
-  doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(130,130,130);
-  doc.text("Acces valable uniquement sur la periode (et la plage horaire) indiquee. Genere par Aura Sentinelle.", M, 278);
+  // ── Pied ──
+  doc.setDrawColor(220,224,230); doc.setLineWidth(0.4); doc.line(M, 284, W-M, 284);
+  doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(140,148,160);
+  doc.text("Acces valable uniquement sur la periode (et la plage horaire) indiquee.", M, 289);
+  doc.text("Genere par Aura Sentinelle le "+ascii(fmt(new Date().toISOString())), M, 293);
 
-  const fname = "laissez-passer-" + String(p.marque_zone||"LP").replace(/[^a-z0-9]+/gi,"_").slice(0,30) + ".pdf";
+  const fname = "laissez-passer-" + ascii(String(p.marque_zone||p.nom_demandeur||"LP")).replace(/[^a-z0-9]+/gi,"_").slice(0,30) + ".pdf";
 
   if(share && navigator.canShare){
     try{

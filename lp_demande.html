@@ -39,6 +39,9 @@
   .check:has(input:checked){border-color:var(--cyan);background:rgba(8,145,178,.06);font-weight:600;}
   .check input{width:auto;accent-color:var(--cyan);}
   .hint{font-size:.74rem;color:var(--muted);margin-top:4px;}
+  .sub-list{display:none;flex-direction:column;gap:7px;margin:8px 0 4px 14px;padding-left:14px;border-left:2px solid rgba(8,145,178,.35);}
+  .sub-list.show{display:flex;}
+  .sub-list .check{font-size:.82rem;padding:9px 12px;}
   .urgent-box{display:none;margin-top:12px;padding:14px;border-radius:11px;background:rgba(234,88,12,.07);border:1px solid rgba(234,88,12,.35);}
   .urgent-box label{color:#9a3412;margin-top:0;}
   .btn{width:100%;padding:15px;border:none;border-radius:13px;background:linear-gradient(135deg,#0e1626,#1e3a5f);color:#fff;font-size:1rem;font-weight:800;cursor:pointer;margin-top:10px;box-shadow:0 4px 14px rgba(14,22,38,.22);transition:transform .1s;}
@@ -228,9 +231,31 @@
       <label class="check"><input type="checkbox" id="horlo_jo"> Horlo / JO</label>
     </div>
     <h2 style="margin-top:18px;">Accompagnement</h2>
-    <div class="checks">
-      <label class="check"><input type="checkbox" id="besoin_agent_surete"> Besoin d'un agent de sûreté</label>
-      <label class="check"><input type="checkbox" id="besoin_pompier"> Besoin d'un pompier</label>
+
+    <label class="check"><input type="checkbox" id="besoin_agent_surete"> Besoin d'un agent de sûreté</label>
+    <div class="sub-list" id="sub_surete">
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Ouverture d'une porte"> Ouverture d'une porte</label>
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Alarme à désactiver"> Alarme à désactiver</label>
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Accompagnement sur zone ou boutique"> Accompagnement sur zone ou boutique</label>
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Présence en permanence"> Présence en permanence</label>
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Soirée événements"> Soirée événements</label>
+    </div>
+
+    <label class="check" style="margin-top:9px;"><input type="checkbox" id="besoin_pompier"> Besoin d'un pompier</label>
+    <div class="sub-list" id="sub_pompier">
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Balisage d'une zone"> Balisage d'une zone</label>
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Besoin d'un permis feu"> Besoin d'un permis feu</label>
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Accompagnement en verrière ou locaux techniques à risques"> Accompagnement en verrière ou locaux techniques à risques</label>
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Présence d'une équipe de secours ou Croix-Rouge"> Présence d'une équipe de secours ou Croix-Rouge</label>
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Soirée événements"> Soirée événements</label>
+    </div>
+
+    <label class="check" style="margin-top:9px;"><input type="checkbox" id="besoin_technicien"> Besoin d'un technicien (service technique)</label>
+    <div class="sub-list" id="sub_technicien">
+      <label class="check"><input type="checkbox" class="sub-technicien" data-label="Ouverture de rideau"> Ouverture de rideau</label>
+      <label class="check"><input type="checkbox" class="sub-technicien" data-label="Escalator"> Escalator</label>
+      <label class="check"><input type="checkbox" class="sub-technicien" data-label="Besoin d'éclairage"> Besoin d'éclairage</label>
+      <label class="check"><input type="checkbox" class="sub-technicien" data-label="Soirée événements"> Soirée événements</label>
     </div>
   </div>
 
@@ -338,6 +363,13 @@ async function soumettre(){
     horlo_jo: c("horlo_jo"),
     besoin_agent_surete: c("besoin_agent_surete"),
     besoin_pompier: c("besoin_pompier"),
+    surete_details: c("besoin_agent_surete")
+      ? (Array.from(document.querySelectorAll(".sub-surete:checked")).map(e=>e.dataset.label)) : null,
+    pompier_details: c("besoin_pompier")
+      ? (Array.from(document.querySelectorAll(".sub-pompier:checked")).map(e=>e.dataset.label)) : null,
+    besoin_technicien: c("besoin_technicien"),
+    technicien_details: c("besoin_technicien")
+      ? (Array.from(document.querySelectorAll(".sub-technicien:checked")).map(e=>e.dataset.label)) : null,
     tel_intervenant: v("tel_intervenant") || null,
     email_intervenant: email || null,
     motif_urgence: moins24 ? v("motif_urgence") : null,
@@ -388,9 +420,11 @@ function resetForm(){
   });
   const nb=document.getElementById("nb_intervenants"); if(nb) nb.value="1";
   const etab=document.getElementById("etablissement"); if(etab) etab.value="";
-  ["porte_segep","quai_38_sevres","ouverture_porte","horlo_jo","besoin_agent_surete","besoin_pompier"].forEach(id=>{
+  ["porte_segep","quai_38_sevres","ouverture_porte","horlo_jo","besoin_agent_surete","besoin_pompier","besoin_technicien"].forEach(id=>{
     const el=document.getElementById(id); if(el) el.checked=false;
   });
+  document.querySelectorAll(".sub-surete, .sub-pompier, .sub-technicien").forEach(el=> el.checked=false);
+  document.querySelectorAll(".sub-list").forEach(el=> el.classList.remove("show"));
   document.getElementById("delai-banner").innerHTML="";
   document.getElementById("urgent-box").style.display="none";
 }
@@ -538,6 +572,26 @@ async function enregistrerEdition(){
   fermerEdition();
   chargerMesDemandes();
 }
+
+// ─── Accompagnement : sous-listes conditionnelles ────────────────
+(function setupAccompagnement(){
+  function wire(parentId, subClass, subListId){
+    const parent=document.getElementById(parentId);
+    const list=document.getElementById(subListId);
+    if(!parent||!list) return;
+    const subs=()=>Array.from(list.querySelectorAll("."+subClass));
+    parent.addEventListener("change", ()=>{
+      list.classList.toggle("show", parent.checked);
+      if(!parent.checked) subs().forEach(s=>s.checked=false);
+    });
+    subs().forEach(s=> s.addEventListener("change", ()=>{
+      if(s.checked && !parent.checked){ parent.checked=true; list.classList.add("show"); }
+    }));
+  }
+  wire("besoin_agent_surete","sub-surete","sub_surete");
+  wire("besoin_pompier","sub-pompier","sub_pompier");
+  wire("besoin_technicien","sub-technicien","sub_technicien");
+})();
 
 // Pré-remplit le nom si déjà connu
 (function(){

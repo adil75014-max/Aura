@@ -141,11 +141,10 @@
       <input id="qrModalLink" readonly onclick="this.select()">
       <button onclick="copierLien()" title="Copier le lien">🔗</button>
     </div>
-    <button class="qr-share-main" onclick="partagerQR()">📤 Partager le QR</button>
+    <button class="qr-share-main" onclick="genererPDF(true)">📄 Envoyer le PDF (QR)</button>
     <div class="qr-channels">
-      <button onclick="partagerVia('whatsapp')">💬 WhatsApp</button>
-      <button onclick="partagerVia('sms')">✉️ SMS</button>
-      <button onclick="partagerVia('mail')">📧 Mail</button>
+      <button onclick="genererPDF(false)">📄 Télécharger PDF</button>
+      <button onclick="partagerQR()">📤 Partager QR</button>
       <button onclick="telechargerQR()">⬇️ Image</button>
     </div>
     <div class="qr-note">Le QR est valable uniquement sur la fenêtre horaire du LP. L'accès sera refusé hors de cette période ou si le LP est annulé.</div>
@@ -419,7 +418,8 @@ function ouvrirQR(p){
   const sub = [
     p.nom_demandeur ? "Demandeur : "+p.nom_demandeur : "",
     p.email_intervenant ? "Pour : "+p.email_intervenant : "",
-    (p.debut_intervention?fmt(p.debut_intervention):"") + (p.fin_intervention?" → "+fmt(p.fin_intervention):"")
+    (p.debut_intervention?fmt(p.debut_intervention):"") + (p.fin_intervention?" → "+fmt(p.fin_intervention):""),
+    (p.heure_debut&&p.heure_fin) ? ("⏰ "+p.heure_debut.slice(0,5)+"–"+p.heure_fin.slice(0,5)+" /jour") : ""
   ].filter(Boolean).join("  ·  ");
   document.getElementById("qrModalSub").textContent = sub;
   document.getElementById("qrModalLink").value = url;
@@ -507,6 +507,82 @@ function telechargerQR(){
   }catch(e){ showToast("Téléchargement impossible", true); }
 }
 
+/* ═══ PDF avec QR pour l'intervenant (au lieu d'un simple lien) ═══ */
+async function genererPDF(share){
+  if(!_qrShare || !_qrShare.p){ showToast("QR indisponible", true); return; }
+  if(!window.jspdf || !window.jspdf.jsPDF){ showToast("Librairie PDF non chargée", true); return; }
+  const p = _qrShare.p, url = _qrShare.url;
+
+  // QR dédié (canvas net) pour le PDF
+  let qrDataUrl = null;
+  try{
+    const c = document.createElement("canvas");
+    new QRious({ element:c, size:600, value:url, level:"M", background:"#ffffff", foreground:"#000000" });
+    qrDataUrl = c.toDataURL("image/png");
+  }catch(e){
+    try{ const cv=document.getElementById("qrCanvas"); if(cv&&cv.tagName==="CANVAS") qrDataUrl=cv.toDataURL("image/png"); }catch(_){}
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:"mm", format:"a4" });
+  const W = 210, M = 18; let y;
+
+  doc.setFillColor(20,30,46); doc.rect(0,0,W,14,"F");
+  doc.setTextColor(255,255,255); doc.setFont("helvetica","bold"); doc.setFontSize(13);
+  doc.text("LAISSEZ-PASSER — Aura Sentinelle", M, 9);
+
+  doc.setTextColor(20,20,20); doc.setFont("helvetica","bold"); doc.setFontSize(15);
+  doc.text(String(p.marque_zone||"Laissez-passer"), M, 26);
+  doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(90,90,90);
+  doc.text(String(p.societe_intervenante||"—"), M, 33);
+  doc.setTextColor(20,20,20); y = 44;
+
+  function ligne(k,val){
+    if(val==null||val==="") return;
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(110,110,110);
+    doc.text(String(k).toUpperCase(), M, y);
+    doc.setFont("helvetica","normal"); doc.setFontSize(11); doc.setTextColor(20,20,20);
+    const lines = doc.splitTextToSize(String(val), 105);
+    doc.text(lines, M, y+5);
+    y += 6 + lines.length*5.5;
+  }
+  const etabLbl = (typeof ETAB_LABELS!=="undefined" && ETAB_LABELS[p.etablissement]) || p.etablissement;
+  ligne("Demandeur", p.nom_demandeur);
+  ligne("Établissement", etabLbl);
+  ligne("Intervenant(s)", [p.noms_intervenants, p.nb_intervenants?("("+p.nb_intervenants+" pers.)"):""].filter(Boolean).join(" "));
+  ligne("Nature des travaux", p.nature_travaux);
+  ligne("Période", (p.debut_intervention?fmt(p.debut_intervention):"") + (p.fin_intervention?("  ->  "+fmt(p.fin_intervention)):""));
+  if(p.heure_debut && p.heure_fin) ligne("Plage horaire quotidienne", p.heure_debut.slice(0,5)+" - "+p.heure_fin.slice(0,5)+" (chaque jour)");
+  const accs=[]; if(p.porte_segep)accs.push("Porte SEGEP"); if(p.quai_38_sevres)accs.push("Quai 38 Sevres"); if(p.ouverture_porte)accs.push("Ouverture Porte"); if(p.horlo_jo)accs.push("Horlo/JO"); if(p.besoin_agent_surete)accs.push("Agent surete"); if(p.besoin_pompier)accs.push("Pompier");
+  if(accs.length) ligne("Acces / besoins", accs.join(", "));
+
+  if(qrDataUrl){
+    const qs = 58, qx = W - M - qs;
+    doc.addImage(qrDataUrl, "PNG", qx, 40, qs, qs);
+    doc.setFont("helvetica","bold"); doc.setFontSize(9); doc.setTextColor(20,20,20);
+    doc.text("Presentez ce QR a l'agent", qx+qs/2, 40+qs+6, {align:"center"});
+    doc.text("a l'arrivee et au depart", qx+qs/2, 40+qs+11, {align:"center"});
+  }
+
+  doc.setDrawColor(220,220,220); doc.line(M, 272, W-M, 272);
+  doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(130,130,130);
+  doc.text("Acces valable uniquement sur la periode (et la plage horaire) indiquee. Genere par Aura Sentinelle.", M, 278);
+
+  const fname = "laissez-passer-" + String(p.marque_zone||"LP").replace(/[^a-z0-9]+/gi,"_").slice(0,30) + ".pdf";
+
+  if(share && navigator.canShare){
+    try{
+      const blob = doc.output("blob");
+      const file = new File([blob], fname, { type:"application/pdf" });
+      if(navigator.canShare({ files:[file] })){
+        await navigator.share({ files:[file], title:"Laissez-passer", text:"Votre laissez-passer (QR en piece jointe)." });
+        return;
+      }
+    }catch(e){ if(e&&e.name==="AbortError") return; }
+  }
+  doc.save(fname);
+}
+
 async function copierLien(){
   if(!_qrShare) return;
   try{ await navigator.clipboard.writeText(_qrShare.url); showToast("🔗 Lien copié"); }
@@ -515,7 +591,7 @@ async function copierLien(){
 
 async function load(){
   const { data, error } = await supabaseClient.from("laissez_passer")
-    .select("*").order("created_at",{ascending:false});
+    .select("*").eq("archive", false).order("created_at",{ascending:false});
   if(error){ document.getElementById("list").innerHTML='<div class="empty">❌ '+esc(error.message)+'</div>'; return; }
   let rows = data||[];
 
@@ -547,6 +623,7 @@ supabaseClient.channel("lp_realtime")
 load();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="global.js"></script>
 </body>
 </html>

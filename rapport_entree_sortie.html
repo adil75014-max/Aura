@@ -6,147 +6,136 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Intervention Entreprise Extérieure — Saisie</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Signature numérique</title>
+
+<!-- 🎨 Design global -->
 <link rel="stylesheet" href="global.css">
+
 <style>
-h1 { color:var(--accent); text-align:center; margin-bottom:25px; font-size:1.8rem; }
-.menu-return { display:flex; justify-content:flex-start; margin-bottom:20px; }
-.menu-return button {
-    background:var(--bg2); border:1px solid var(--border);
-    padding:8px 16px; border-radius:10px; color:var(--accent);
-    cursor:pointer; transition:0.25s; width:auto;
+/* Ajustements MINIMAUX pour le canvas (nécessaires) */
+.signature-container {
+    width: 100%;
+    max-width: 500px;
+    margin: auto;
+    text-align: center;
 }
-.menu-return button:hover { background:var(--accent); color:#000; }
-.card {
-    background:var(--card); border:1px solid var(--border);
-    padding:20px; border-radius:14px; margin-bottom:25px; box-shadow:var(--shadow);
+
+canvas {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    height: 220px;
+    border: 2px solid var(--border);
+    touch-action: none;
 }
-.info { margin-bottom:8px; font-size:1rem; opacity:0.9; }
-h3 { margin-top:18px; margin-bottom:6px; color:var(--accent); font-size:1.1rem; }
-input, select, textarea {
-    width:100%; padding:12px; margin-top:6px;
-    border-radius:10px; border:1px solid var(--border);
-    background:var(--bg2); color:var(--text); font-size:1rem;
-}
-select option { background:var(--card); color:var(--text); }
-textarea { height:90px; resize:vertical; }
-button {
-    margin-top:15px; padding:14px;
-    background:linear-gradient(135deg,#7ab8ff,#4d9dff);
-    border:none; border-radius:10px; color:#0a0f1c;
-    cursor:pointer; width:100%; font-size:1.1rem; font-weight:700;
-    box-shadow:0 4px 12px rgba(122,184,255,0.4); transition:0.25s;
-}
-button:hover { transform:translateY(-2px); }
-button:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
-.btn-secondary { background:var(--accent); color:#000; font-weight:600; }
-.note { font-size:0.85rem; opacity:0.7; margin-top:4px; }
 </style>
 </head>
+
 <body>
 
-<h1>Intervention Entreprise Extérieure</h1>
 
-<div class="menu-return">
-    <button onclick="location.href='index.html'">⟵ Menu</button>
-</div>
 
-<div class="card">
-    <div class="info">👤 Agent : <span id="nom"></span></div>
-    <div class="info">📅 Date : <span id="dateDuJour"></span></div>
-</div>
-
-<div class="card">
-    <h3>Entreprise</h3>
-    <input type="text" id="entreprise" placeholder="Ex : Vinci, Dalkia, Segep…">
-
-    <h3>Type de travaux</h3>
-    <input type="text" id="typeTravaux" placeholder="Ex : Maintenance électrique, Plomberie…">
-
-    <h3>Responsable / Agent extérieur</h3>
-    <input type="text" id="responsable" placeholder="Nom du responsable sur place">
-
-    <h3>Téléphone</h3>
-    <input type="tel" id="telephone" placeholder="Ex : 06 12 34 56 78">
-
-    <h3>Zone / Localisation</h3>
-    <input type="text" id="zone" placeholder="Ex : Sous-sol, RDC, Local TGBT">
-
-    <h3>Heure d'arrivée</h3>
-    <input type="time" id="heureArrivee">
-
-    <h3>Heure de départ</h3>
-    <input type="time" id="heureDepart">
-    <p class="note">💡 Laisser vide pour créer une intervention en cours, à clôturer plus tard depuis la liste journalière.</p>
-
-    <button id="save">💾 Enregistrer</button>
-    <button class="btn-secondary" onclick="location.href='intervention_exterieure_journalier.html'">📂 Voir la liste journalière</button>
-</div>
-
-<script src="vendor/supabase.js" crossorigin="anonymous"></script>
-<script src="supabaseClient.js"></script>
-<script src="tenant.js"></script>
 <script>
-// Fallback showToast si global.js pas encore chargé
-if (typeof showToast !== "function") {
-    window.showToast = function(msg, isError) { alert(msg); };
+// Sécurisation : accès uniquement si connecté
+if (!localStorage.getItem("nom")) {
+    alert("Veuillez vous connecter");
+    window.location.href = "login.html";
+}
+</script>
+
+<div class="page-container">
+
+<h1 class="title">Signature numérique</h1>
+<p style="text-align:center; opacity:0.8;">Veuillez signer ci-dessous :</p>
+
+<div class="signature-container">
+    <canvas id="sig"></canvas>
+
+    <button class="btn" onclick="clearSig()">Effacer</button>
+    <button class="btn" onclick="saveSig()">Enregistrer la signature</button>
+    <button class="btn" onclick="location.href='accueil.html'">Retour à l’accueil</button>
+</div>
+
+</div>
+
+<script>
+const canvas = document.getElementById("sig");
+const ctx = canvas.getContext("2d");
+
+let drawing = false;
+
+// Ajuste la taille réelle du canvas
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+}
+resizeCanvas();
+
+// Position relative
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (e.clientX || e.touches[0].clientX) - rect.left,
+        y: (e.clientY || e.touches[0].clientY) - rect.top
+    };
 }
 
-document.getElementById("nom").textContent = localStorage.getItem("nom") || "—";
-document.getElementById("dateDuJour").textContent = new Date().toLocaleDateString("fr-FR");
-
-function heureToTs(h) {
-    if (!h) return null;
-    const now = new Date();
-    const [hh, mm] = h.split(":");
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm).toISOString();
-}
-
-document.getElementById("save").addEventListener("click", async () => {
-    const btn = document.getElementById("save");
-    btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
-
-    try {
-        const entreprise   = document.getElementById("entreprise").value.trim();
-        const typeTravaux  = document.getElementById("typeTravaux").value.trim();
-        const responsable  = document.getElementById("responsable").value.trim();
-        const telephone    = document.getElementById("telephone").value.trim();
-        const zone         = document.getElementById("zone").value.trim();
-        const heureArrivee = document.getElementById("heureArrivee").value;
-        const heureDepart  = document.getElementById("heureDepart").value;
-
-        if (!entreprise)   throw new Error("L'entreprise est obligatoire.");
-        if (!heureArrivee) throw new Error("L'heure d'arrivée est obligatoire.");
-
-        const tsArrivee = heureToTs(heureArrivee);
-        const tsDepart  = heureToTs(heureDepart);
-
-        const { error } = await supabaseClient.from("interventions_exterieures").insert({
-            entreprise:    entreprise,
-            type_travaux:  typeTravaux || null,
-            responsable:   responsable || null,
-            telephone:     telephone || null,
-            zone:          zone || null,
-            heure_arrivee: tsArrivee,
-            heure_depart:  tsDepart,
-            statut:        tsDepart ? "termine" : "en_cours"
-        });
-
-        if (error) throw error;
-
-        showToast("✅ Intervention enregistrée !");
-        setTimeout(() => location.href = "intervention_exterieure_journalier.html", 1000);
-    } catch (e) {
-        showToast("❌ " + e.message, true);
-        btn.disabled = false; btn.textContent = "💾 Enregistrer";
-    }
+// Souris
+canvas.addEventListener("mousedown", e => {
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
 });
+canvas.addEventListener("mousemove", e => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+});
+canvas.addEventListener("mouseup", () => drawing = false);
+canvas.addEventListener("mouseleave", () => drawing = false);
+
+// Touch (Android / iPhone)
+canvas.addEventListener("touchstart", e => {
+    e.preventDefault();
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+});
+canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+});
+canvas.addEventListener("touchend", () => drawing = false);
+
+// Effacer
+function clearSig() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// Enregistrer
+function saveSig() {
+    const data = canvas.toDataURL("image/png");
+    const nom = localStorage.getItem("nom") || "inconnu";
+
+    localStorage.setItem("signature_" + nom, data);
+
+    alert("Signature enregistrée !");
+}
 </script>
 
 <script src="security.js"></script>
 <script src="global.js"></script>
 
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
 <script src="notifications_global.js"></script>
 </body>
 </html>

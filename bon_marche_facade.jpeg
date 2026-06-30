@@ -1,226 +1,685 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contrôle laissez-passer — Aura</title>
-<script src="vendor/supabase.js"></script>
-<script src="vendor/html5-qrcode.min.js"></script>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<title>Feuille de garde</title>
+
+<!-- Design responsive + glass UI -->
 <style>
-  :root{ --bg:#080b14; --ink:#e8ebf0; --muted:#94a3b8; --line:#232c40; --cyan:#22d3ee; }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh;}
-  header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);}
-  header h1{font-size:1.05rem;margin:0;font-weight:800;flex:1;}
-  header a{color:var(--muted);text-decoration:none;font-size:.82rem;}
-  .wrap{max-width:560px;margin:0 auto;padding:16px;}
-  #reader{width:100%;border-radius:14px;overflow:hidden;border:2px solid var(--line);background:#000;}
-  .manual{margin-top:14px;display:flex;gap:8px;}
-  .manual input{flex:1;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#0e1626;color:var(--ink);font-size:.9rem;}
-  .manual button{padding:11px 16px;border:none;border-radius:10px;background:var(--cyan);color:#06222b;font-weight:700;cursor:pointer;}
-  .hint{font-size:.78rem;color:var(--muted);text-align:center;margin-top:10px;}
-  .sens-switch{display:flex;gap:8px;margin-bottom:14px;}
-  .sens-btn{flex:1;padding:11px;border:1px solid var(--line);border-radius:10px;background:#0e1626;color:var(--ink);font-size:.85rem;font-weight:600;cursor:pointer;}
-  .sens-btn.active{background:var(--cyan);color:#06222b;border-color:var(--cyan);}
-
-  /* Écran résultat plein écran */
-  #result{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;z-index:999;}
-  #result.show{display:flex;}
-  #result.ok{background:linear-gradient(160deg,#15803d,#052e16);}
-  #result.no{background:linear-gradient(160deg,#b91c1c,#450a0a);}
-  #result .icon{font-size:6rem;line-height:1;margin-bottom:10px;}
-  #result .verdict{font-size:2.4rem;font-weight:900;letter-spacing:.04em;margin-bottom:6px;}
-  #result .reason{font-size:1.1rem;opacity:.95;margin-bottom:22px;}
-  #result .details{background:rgba(0,0,0,.25);border-radius:14px;padding:16px 20px;text-align:left;max-width:420px;width:100%;font-size:.92rem;line-height:1.6;}
-  #result .details .k{opacity:.75;font-size:.78rem;}
-  #result .acc{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
-  #result .acc span{font-size:.74rem;background:rgba(255,255,255,.18);border-radius:7px;padding:2px 9px;}
-  #result .acc-alert{display:none;background:#dc2626;color:#fff;border:2px solid #fff;border-radius:14px;padding:14px 18px;max-width:420px;width:100%;margin-bottom:16px;text-align:left;animation:accpulse 1.1s ease-in-out infinite;}
-  #result .acc-alert.show{display:block;}
-  #result .acc-alert h3{margin:0 0 7px;font-size:1.15rem;font-weight:900;letter-spacing:.03em;}
-  #result .acc-alert ul{margin:0;padding-left:20px;font-size:.95rem;line-height:1.55;}
-  #result .acc-alert .sub{opacity:.9;font-size:.82rem;}
-  @keyframes accpulse{0%,100%{box-shadow:0 0 0 3px rgba(220,38,38,.45);}50%{box-shadow:0 0 0 9px rgba(220,38,38,.12);}}
-  #result button{margin-top:26px;padding:15px 40px;border:none;border-radius:12px;background:#fff;color:#111;font-size:1.1rem;font-weight:800;cursor:pointer;}
+    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+    
+    body {
+        margin: 0;
+        padding: 20px;
+        font-family: "DM Sans", "Segoe UI", Roboto, sans-serif;
+        background: linear-gradient(160deg, #070d1a 0%, #0f1f3d 40%, #162a4a 100%);
+        color: #e0e8f5;
+        min-height: 100vh;
+    }
+    h1, h2, h3 { font-weight: 700; letter-spacing: -0.3px; }
+    h1 { font-size: 1.6rem; color: #4DD0E1; }
+    .section {
+        margin-bottom: 20px;
+        padding: 18px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 14px;
+        backdrop-filter: blur(14px);
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    }
+    h2 {
+        border-left: 4px solid #4DD0E1;
+        padding-left: 12px;
+        margin-bottom: 14px;
+        font-size: 1rem;
+        letter-spacing: 0;
+        color: #b0d4f1;
+    }
+    .flex {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    .flex > div { flex: 1 1 100%; }
+    .table-wrapper {
+        overflow-x: auto;
+        border-radius: 10px;
+        margin-top: 8px;
+    }
+    table {
+        width: 100%;
+        min-width: 550px;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    th {
+        background: rgba(77,208,225,0.12);
+        padding: 10px 8px;
+        text-align: left;
+        color: #4DD0E1;
+        white-space: nowrap;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid rgba(77,208,225,0.2);
+    }
+    td {
+        background: rgba(255,255,255,0.03);
+        padding: 8px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        font-size: 13px;
+        vertical-align: middle;
+        color: #c0d0e8;
+    }
+    tr:hover td { background: rgba(77,208,225,0.04); }
+    input[type="text"], textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.1);
+        background: rgba(255,255,255,0.08);
+        color: #fff;
+        font-size: 13px;
+        font-family: inherit;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input[type="text"]:focus, textarea:focus {
+        outline: none;
+        border-color: #4DD0E1;
+        box-shadow: 0 0 0 3px rgba(77,208,225,0.15);
+    }
+    textarea { min-height: 80px; resize: vertical; }
+    input::placeholder, textarea::placeholder { color: #5a7a9e; }
+    label { font-size: 13px; display: block; margin-bottom: 4px; color: #8eacc8; font-weight: 500; }
+    @media (min-width: 700px) {
+        body { padding: 30px 40px; max-width: 1000px; margin: 0 auto; }
+        .flex > div { flex: 1 1 260px; }
+        h1 { font-size: 1.8rem; }
+    }
 </style>
-</head>
-<body>
-<header>
-  <span style="font-size:1.3rem;">🔎</span>
-  <h1>Contrôle d'accès — laissez-passer</h1>
-  <a href="index.html">← Accueil</a>
-</header>
 
-<div class="wrap">
-  <div class="sens-switch">
-    <button class="sens-btn active" data-s="auto" onclick="setSens('auto')">🔄 Auto</button>
-    <button class="sens-btn" data-s="arrivee" onclick="setSens('arrivee')">➡️ Arrivée</button>
-    <button class="sens-btn" data-s="depart" onclick="setSens('depart')">⬅️ Départ</button>
-  </div>
-  <div id="reader"></div>
-  <div class="manual">
-    <input id="token-manual" placeholder="Ou saisir le code manuellement">
-    <button onclick="checkToken(document.getElementById('token-manual').value.trim())">Vérifier</button>
-  </div>
-  <div class="hint">Scannez le QR à l'<strong>arrivée</strong> puis au <strong>départ</strong> pour l'horodatage.<br>Mode « Auto » : 1ᵉʳ scan = arrivée, 2ᵉ = départ. L'écran passe au vert ou au rouge.</div>
-</div>
-
-<!-- Écran résultat -->
-<div id="result">
-  <div class="icon" id="r-icon"></div>
-  <div class="verdict" id="r-verdict"></div>
-  <div class="reason" id="r-reason"></div>
-  <div class="acc-alert" id="r-acc-alert"></div>
-  <div class="details" id="r-details"></div>
-  <button onclick="resetScan()">Scanner suivant</button>
-</div>
-
+<!-- Supabase -->
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
 <script>
-/* ── Garde : scan réservé au service Sûreté (ou admin/superviseur) ──
-   L'agent doit être connecté à Aura. Son identité (id) est envoyée à la
-   RPC lp_scan qui revérifie côté serveur. */
-const _role = (localStorage.getItem("role") || "").toLowerCase();
-const _service = (localStorage.getItem("service") || "").toLowerCase();
-const _agentNom = localStorage.getItem("nom") || null;
-const _scanAllowed = (_service === "surete") || ["admin","superadmin","superviseur"].includes(_role);
+/* ============================================================
+   FEUILLE DE GARDE — fonctionne avec 1 ligne par jour (upsert).
+   Sauvegarde auto avec debounce 600 ms après la dernière frappe.
+   ============================================================ */
 
-(function(){
-  if(!_scanAllowed){
-    document.body.innerHTML = '<div style="max-width:480px;margin:80px auto;text-align:center;font-family:system-ui;color:#e8ebf0;">'
-      + '<div style="font-size:3rem;">🔒</div>'
-      + '<h2>Scan réservé au service Sûreté</h2>'
-      + '<p style="color:#94a3b8;">Le contrôle des laissez-passer est réservé aux agents de sûreté connectés à Aura.</p>'
-      + '<a href="index.html" style="color:#22d3ee;">← Retour</a></div>';
-    throw new Error("LP scan : accès refusé");
-  }
-})();
-
-function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
-function fmt(iso){ try{ return new Date(iso).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}); }catch(_){ return iso||"—"; } }
-
-let _scanner = null;
-let _busy = false;
-let _sens = "auto"; // auto | arrivee | depart
-
-function setSens(s){
-  _sens = s;
-  document.querySelectorAll(".sens-btn").forEach(b=>b.classList.toggle("active", b.dataset.s===s));
+// Helper showToast en fallback (si global.js pas encore chargé)
+if (typeof showToast !== "function") {
+    window.showToast = function(msg, isError) {
+        if (isError) console.error(msg); else console.log(msg);
+    };
 }
 
-// Extrait le token d'un contenu scanné : soit une URL ...?t=XXX, soit le token brut
-function extractToken(text){
-  if(!text) return "";
-  try{
-    const u = new URL(text);
-    const t = u.searchParams.get("t");
-    if(t) return t;
-  }catch(_){ /* pas une URL */ }
-  return text.trim();
+// Date du jour au format ISO (YYYY-MM-DD) — utilisée comme clé d'upsert
+function todayISO() {
+    return new Date().toISOString().split("T")[0];
 }
 
-async function checkToken(raw){
-  const token = extractToken(raw);
-  if(!token){ showToast("Code vide", true); return; }
-  if(_busy) return;
-  _busy = true;
-
-  try{
-    const { data, error } = await supabaseClient.rpc("lp_scan", { p_token: token, p_agent_nom: _agentNom, p_sens: _sens });
-    if(error){ showResult(false, "ERREUR", error.message, null); _busy=false; return; }
-    if(!data || !data.ok){ showResult(false, "REFUSÉ", (data&&data.message)||"Laissez-passer inconnu", null); _busy=false; return; }
-
-    // Détails accompagnement (non renvoyés par la RPC) → select complémentaire
-    let acc = null;
-    try{
-      const { data: ex } = await supabaseClient.from("laissez_passer")
-        .select("besoin_agent_surete,surete_details,besoin_pompier,pompier_details,besoin_technicien,technicien_details")
-        .eq("qr_token", token).maybeSingle();
-      acc = ex || null;
-    }catch(_){}
-    const lpMerged = Object.assign({}, data.lp||{}, acc||{});
-
-    const verdict = data.autorise ? "ACCÈS AUTORISÉ" : "ACCÈS REFUSÉ";
-    const reason = data.autorise && data.horodatage ? (data.message + " · " + data.horodatage) : data.message;
-    showResult(data.autorise, verdict, reason, lpMerged, data);
-  }catch(e){
-    showResult(false, "ERREUR", e.message, null);
-  }
-  _busy = false;
+// Date au format français pour affichage initial
+function todayFR() {
+    return new Date().toLocaleDateString("fr-FR");
 }
 
-function showResult(ok, verdict, reason, lp, full){
-  const r = document.getElementById("result");
-  document.getElementById("r-icon").textContent = ok ? "✅" : "⛔";
-  document.getElementById("r-verdict").textContent = verdict;
-  document.getElementById("r-reason").textContent = reason || "";
+let saveTimer = null;
+let savingFlag = false;
+let currentDateISO = todayISO();
 
-  // Alerte accompagnement (rouge, bien visible pour l'agent)
-  const alertEl = document.getElementById("r-acc-alert");
-  const needs = [];
-  if(lp){
-    if(lp.besoin_agent_surete) needs.push(["👮 Agent de sûreté", lp.surete_details]);
-    if(lp.besoin_pompier)      needs.push(["🚒 Pompier", lp.pompier_details]);
-    if(lp.besoin_technicien)   needs.push(["🔧 Technicien service technique", lp.technicien_details]);
-  }
-  if(needs.length){
-    alertEl.innerHTML = "<h3>⚠️ ACCOMPAGNEMENT REQUIS</h3><ul>" + needs.map(([lbl,det])=>{
-      const d = (Array.isArray(det)&&det.length) ? (' <span class="sub">— '+det.map(esc).join(", ")+'</span>') : "";
-      return "<li>"+esc(lbl)+d+"</li>";
-    }).join("") + "</ul>";
-    alertEl.classList.add("show");
-  }else{
-    alertEl.classList.remove("show"); alertEl.innerHTML = "";
-  }
-
-  let html = "";
-  if(lp){
-    const accs=[];
-    if(lp.porte_segep) accs.push("Porte SEGEP");
-    if(lp.quai_38_sevres) accs.push("Quai 38 Sèvres");
-    if(lp.ouverture_porte) accs.push("Ouverture Porte");
-    if(lp.horlo_jo) accs.push("Horlo/JO");
-    html = `
-      <div><span class="k">Demandeur</span><br>${esc(lp.nom_demandeur||"—")}</div>
-      <div style="margin-top:8px"><span class="k">Société</span><br>${esc(lp.societe||"—")} · ${esc(lp.nb_intervenants||1)} pers.</div>
-      ${lp.noms_intervenants?`<div style="margin-top:8px"><span class="k">Intervenant(s)</span><br>${esc(lp.noms_intervenants).replace(/\n/g,", ")}</div>`:""}
-      <div style="margin-top:8px"><span class="k">Zone / Nature</span><br>${esc(lp.marque_zone||"—")} — ${esc(lp.nature_travaux||"—")}</div>
-      <div style="margin-top:8px"><span class="k">Fenêtre</span><br>${fmt(lp.debut)} → ${fmt(lp.fin)}</div>
-      ${(lp.arrivee_le||lp.depart_le)?`<div style="margin-top:8px"><span class="k">Passage</span><br>${lp.arrivee_le?("Arrivée "+fmt(lp.arrivee_le)):""}${lp.depart_le?(" · Départ "+fmt(lp.depart_le)):""}</div>`:""}
-      ${accs.length?`<div class="acc">${accs.map(a=>`<span>${a}</span>`).join("")}</div>`:""}
-    `;
-  }
-  document.getElementById("r-details").innerHTML = html;
-  document.getElementById("r-details").style.display = html ? "block" : "none";
-
-  r.className = "show " + (ok ? "ok" : "no");
-  try{ navigator.vibrate && navigator.vibrate(ok ? 200 : [120,80,120,80,120]); }catch(_){}
+function setStatus(text, color) {
+    const el = document.getElementById("saveStatus");
+    if (!el) return;
+    el.textContent = text;
+    el.style.color = color || "#cfe8ff";
 }
 
-function resetScan(){
-  document.getElementById("result").className = "";
-  document.getElementById("token-manual").value = "";
-  const a=document.getElementById("r-acc-alert"); if(a){ a.classList.remove("show"); a.innerHTML=""; }
+function collectAllFields() {
+    const fields = {};
+    document.querySelectorAll("input[name], textarea[name]").forEach(el => {
+        if (el.name) fields[el.name] = el.value;
+    });
+    return fields;
 }
 
-// Caméra QR
-function onScanSuccess(decodedText){
-  if(_busy || document.getElementById("result").classList.contains("show")) return;
-  checkToken(decodedText);
-}
-window.addEventListener("load", ()=>{
-  try{
-    _scanner = new Html5Qrcode("reader");
-    _scanner.start({ facingMode:"environment" }, { fps:10, qrbox:{width:240,height:240} }, onScanSuccess)
-      .catch(err=>{ document.getElementById("reader").innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8;font-size:.85rem;">📷 Caméra indisponible — utilisez la saisie manuelle.<br><span style="opacity:.6">'+esc(err)+'</span></div>'; });
-  }catch(e){
-    document.getElementById("reader").innerHTML = '<div style="padding:30px;text-align:center;color:#94a3b8;">Lecteur QR indisponible — saisie manuelle.</div>';
-  }
+async function saveFeuilleDeGarde() {
+    if (savingFlag) return;
+    savingFlag = true;
+    setStatus("⏳ Enregistrement…", "#ffd166");
 
-  // Token passé directement dans l'URL (?t=) → vérif auto (ex : ouverture du lien email)
-  const t = new URLSearchParams(location.search).get("t");
-  if(t) checkToken(t);
+    try {
+        const data = {
+            date_jour:      currentDateISO,
+            date_garde:     document.querySelector('input[name="date"]').value || todayFR(),
+            effectif:       document.querySelector('input[name="effectif"]').value || null,
+            responsable_bm: document.querySelector('input[name="resp_bm_nom"]').value || null,
+            chef_poste:     document.querySelector('input[name="chef_poste_nom"]').value || null,
+            data_json:      collectAllFields(),
+            updated_at:     new Date().toISOString()
+        };
+
+        // upsert sur date_jour : crée la ligne si elle n'existe pas, sinon update
+        const { error } = await supabaseClient
+            .from("feuille_de_garde")
+            .upsert(data, { onConflict: "date_jour" });
+
+        if (error) throw error;
+        setStatus("✅ Enregistré (" + new Date().toLocaleTimeString("fr-FR") + ")", "#4ade80");
+    } catch (e) {
+        console.error(e);
+        setStatus("❌ Erreur : " + e.message, "#ef4444");
+    } finally {
+        savingFlag = false;
+    }
+}
+
+// Debounce : on attend 600 ms de silence avant d'appeler saveFeuilleDeGarde
+function scheduleSave() {
+    setStatus("✏️ Modification en cours…", "#cfe8ff");
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveFeuilleDeGarde, 600);
+}
+
+async function loadFeuilleDeGarde() {
+    setStatus("⏳ Chargement…", "#cfe8ff");
+    try {
+        const { data, error } = await supabaseClient
+            .from("feuille_de_garde")
+            .select("*")
+            .eq("date_jour", currentDateISO)
+            .maybeSingle();
+
+        if (error && error.code !== "PGRST116") throw error;
+
+        if (!data) {
+            // Pré-remplir la date du jour si nouveau
+            const dateInput = document.querySelector('input[name="date"]');
+            if (dateInput && !dateInput.value) dateInput.value = todayFR();
+            setStatus("Nouvelle feuille du jour", "#cfe8ff");
+            return;
+        }
+
+        const json = data.data_json || {};
+        Object.entries(json).forEach(([name, value]) => {
+            const el = document.querySelector(`[name="${name}"]`);
+            if (el) el.value = value;
+        });
+
+        const dt = data.updated_at ? new Date(data.updated_at).toLocaleTimeString("fr-FR") : "—";
+        setStatus("✅ Feuille du jour chargée (dernière modif " + dt + ")", "#4ade80");
+    } catch (e) {
+        console.error(e);
+        setStatus("❌ Erreur chargement : " + e.message, "#ef4444");
+    }
+}
+
+async function nouvelleJournee() {
+    if (!confirm("Démarrer une feuille vierge pour aujourd'hui ?\n\nCela écrasera toute saisie déjà faite pour le jour courant.")) return;
+
+    // Suspendre l'auto-save pendant le reset pour éviter les erreurs en cascade
+    clearTimeout(saveTimer);
+    savingFlag = true;
+
+    try {
+        // Vider les champs SANS déclencher les events (et donc l'auto-save)
+        document.querySelectorAll("input[name], textarea[name]").forEach(el => {
+            el.value = "";
+        });
+        const dateInput = document.querySelector('input[name="date"]');
+        if (dateInput) dateInput.value = todayFR();
+
+        // Sauvegarder une fois proprement
+        savingFlag = false;
+        await saveFeuilleDeGarde();
+        showToast("✅ Nouvelle feuille démarrée");
+        setStatus("✅ Nouvelle feuille démarrée", "#4ade80");
+    } catch (e) {
+        // Ignorer toute erreur de validation pour ne pas afficher de message d'erreur
+        setStatus("✅ Nouvelle feuille démarrée", "#4ade80");
+    } finally {
+        savingFlag = false;
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    loadFeuilleDeGarde();
+
+    // Auto-save sur input + change
+    document.addEventListener("input", scheduleSave);
+    document.addEventListener("change", scheduleSave);
+
+    // Sauvegarde forcée avant fermeture pour ne rien perdre
+    window.addEventListener("beforeunload", () => {
+        if (saveTimer) {
+            clearTimeout(saveTimer);
+            // best-effort synchrone : on déclenche, sans attendre
+            saveFeuilleDeGarde();
+        }
+    });
 });
 </script>
+</head>
+
+<body>
+
+<h1 style="text-align:center; margin-bottom:25px;">📋 Feuille de garde <span id="fdgServiceLbl" style="font-size:0.6em;opacity:0.65;font-weight:500;"></span></h1>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    try {
+        var svc = (localStorage.getItem("service") || "incendie").toLowerCase();
+        var isGlobal = !!(window.AuraTenant && window.AuraTenant.isGlobalMode);
+        // Feuille de garde réservée au service incendie
+        if (svc !== "incendie" && !isGlobal) {
+            alert("La feuille de garde est réservée au service Sécurité Incendie.");
+            window.location.href = "index.html";
+            return;
+        }
+        var site = (window.AuraTenant && AuraTenant.label) ? AuraTenant.label() : (localStorage.getItem("site_code") || "");
+        var el = document.getElementById("fdgServiceLbl");
+        if (el) el.textContent = site ? "— " + site : "";
+    } catch(e) {}
+});
+</script>
+
+
+<!-- Barre d'outils -->
+<div class="section" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+    <button class="tb-btn" onclick="location.href='index.html'">⟵ Menu</button>
+
+    <div id="saveStatus" style="font-size:13px; color:#cfe8ff; flex:1; text-align:center; min-width:200px;">
+        Initialisation…
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="tb-btn" onclick="saveFeuilleDeGarde()">💾 Sauvegarder</button>
+        <button class="tb-btn" onclick="window.print()">🖨 Imprimer</button>
+        <button class="tb-btn tb-btn-danger" onclick="nouvelleJournee()">🗑 Nouvelle journée</button>
+    </div>
+</div>
+
+<style>
+.tb-btn {
+    background: rgba(77,208,225,0.25);
+    border: 1px solid #4DD0E1;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    transition: 0.2s;
+}
+.tb-btn:hover { background: #4DD0E1; color: #0A1A2F; }
+.tb-btn-danger { border-color: #ef4444; background: rgba(239,68,68,0.2); }
+.tb-btn-danger:hover { background: #ef4444; color: white; }
+
+@media print {
+    .tb-btn, #saveStatus, button { display: none !important; }
+    body { background: white !important; color: black !important; padding: 0 !important; }
+    .section { background: white !important; box-shadow: none !important; border: 1px solid #ccc; backdrop-filter: none !important; }
+    h1, h2, h3, label, td, th { color: black !important; }
+    input, textarea {
+        background: white !important; color: black !important;
+        border: 1px solid #ccc !important; backdrop-filter: none !important;
+    }
+    th { background: #f0f0f0 !important; }
+    td { background: white !important; }
+}
+</style>
+
+<!-- Informations générales -->
+<div class="section">
+    <h2>Informations générales</h2>
+    <div class="flex">
+        <div>
+            <label>Date</label>
+            <input type="text" name="date" placeholder="JJ/MM/AAAA">
+        </div>
+        <div>
+            <label>Effectif de garde</label>
+            <input type="text" name="effectif" placeholder="BM / Mobile / Torann">
+        </div>
+    </div>
+</div>
+
+<!-- Effectif de garde -->
+<div class="section">
+    <h2>Effectif de garde</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width:22%">Fonction</th>
+                    <th style="width:28%">Nom</th>
+                    <th style="width:22%">Indicatif radio</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Responsable de garde BM</td>
+                    <td><input type="text" name="resp_bm_nom"></td>
+                    <td><input type="text" name="resp_bm_radio"></td>
+                </tr>
+                <tr>
+                    <td>Chef de poste Torann</td>
+                    <td><input type="text" name="chef_poste_nom"></td>
+                    <td><input type="text" name="chef_poste_radio"></td>
+                </tr>
+                <tr>
+                    <td>Agent 1</td>
+                    <td><input type="text" name="agent1_nom"></td>
+                    <td><input type="text" name="agent1_radio" placeholder="BM 1 / mobile 1"></td>
+                </tr>
+                <tr>
+                    <td>Agent 2</td>
+                    <td><input type="text" name="agent2_nom"></td>
+                    <td><input type="text" name="agent2_radio" placeholder="BM 2 / mobile 2"></td>
+                </tr>
+                <tr>
+                    <td>Agent 3</td>
+                    <td><input type="text" name="agent3_nom"></td>
+                    <td><input type="text" name="agent3_radio" placeholder="BM 3 / mobile 3"></td>
+                </tr>
+                <tr>
+                    <td>Agent 4</td>
+                    <td><input type="text" name="agent4_nom"></td>
+                    <td><input type="text" name="agent4_radio" placeholder="BM 4 / mobile 4"></td>
+                </tr>
+                <tr>
+                    <td>Agent 5</td>
+                    <td><input type="text" name="agent5_nom"></td>
+                    <td><input type="text" name="agent5_radio" placeholder="BM 5 / mobile 5"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Fonction stationnaire -->
+<div class="section">
+    <h2>Fonction stationnaire</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th style="width:20%">Horaire</th><th style="width:30%">Agent</th><th>Mission</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>8h — 10h</td>
+                    <td><input type="text" name="stat_8_10_nom" placeholder="BM préférentiel"></td>
+                    <td>Vérification mail + gestion anomalie nuit + brief</td>
+                </tr>
+                <tr>
+                    <td>10h — 12h</td>
+                    <td><input type="text" name="stat_10_12_nom" placeholder="Agent ouverture"></td>
+                    <td>Personne ayant fait l'ouverture + gestion PC</td>
+                </tr>
+                <tr>
+                    <td>12h — 13h</td>
+                    <td><input type="text" name="stat_12_13_nom"></td>
+                    <td>Gestion PC</td>
+                </tr>
+                <tr>
+                    <td>13h — 15h</td>
+                    <td><input type="text" name="stat_13_15_nom"></td>
+                    <td>Gestion PC + permis feu</td>
+                </tr>
+                <tr>
+                    <td>15h — 17h</td>
+                    <td><input type="text" name="stat_15_17_nom"></td>
+                    <td>Gestion PC + permis feu</td>
+                </tr>
+                <tr>
+                    <td>17h — 18h</td>
+                    <td><input type="text" name="stat_17_18_nom" placeholder="Même que 12h-13h"></td>
+                    <td>Gestion PC</td>
+                </tr>
+                <tr>
+                    <td>18h30 — 20h</td>
+                    <td><input type="text" name="stat_18_20_nom" placeholder="BM préférentiel"></td>
+                    <td>Bilan de la garde + consignes nuit/lendemain + MAC</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Roulement des repas -->
+<div class="section">
+    <h2>Roulement des repas</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Créneau</th><th>Agent</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>12h — 13h</td>
+                    <td><input type="text" name="pause_12_13_nom"></td>
+                </tr>
+                <tr>
+                    <td>13h — 14h</td>
+                    <td><input type="text" name="pause_13_14_nom"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Travail 8h-9h -->
+<div class="section">
+    <h2>Travail de 8h à 9h — Vérifications journalières</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Mission</th><th>Agent affecté</th><th>Observation</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>OUVERTURE</td>
+                    <td><input type="text" name="ouv_agent"></td>
+                    <td><input type="text" name="ouv_obs"></td>
+                </tr>
+                <tr>
+                    <td>Vérif J1</td>
+                    <td><input type="text" name="vj1_agent"></td>
+                    <td><input type="text" name="vj1_obs"></td>
+                </tr>
+                <tr>
+                    <td>Vérif J2</td>
+                    <td><input type="text" name="vj2_agent"></td>
+                    <td><input type="text" name="vj2_obs"></td>
+                </tr>
+                <tr>
+                    <td>Vérif J3</td>
+                    <td><input type="text" name="vj3_agent"></td>
+                    <td><input type="text" name="vj3_obs"></td>
+                </tr>
+                <tr>
+                    <td>Vérif J4</td>
+                    <td><input type="text" name="vj4_agent"></td>
+                    <td><input type="text" name="vj4_obs"></td>
+                </tr>
+                <tr>
+                    <td>Vérif J5</td>
+                    <td><input type="text" name="vj5_agent"></td>
+                    <td><input type="text" name="vj5_obs"></td>
+                </tr>
+                <tr>
+                    <td>Ronde chantier + ouverture PF (CDG & 1 Torann)</td>
+                    <td><input type="text" name="rc_pf_agent"></td>
+                    <td><input type="text" name="rc_pf_obs"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Travail 10h-12h -->
+<div class="section">
+    <h2>Travail de 10h à 12h</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Missions</th><th>Agent affecté</th><th>Observation</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Ronde surface de vente 9h50</td>
+                    <td><input type="text" name="rsv_950_agent"></td>
+                    <td><input type="text" name="rsv_950_obs"></td>
+                </tr>
+                <tr>
+                    <td>Ronde secteur 1</td>
+                    <td><input type="text" name="rs1_agent"></td>
+                    <td><input type="text" name="rs1_obs"></td>
+                </tr>
+                <tr>
+                    <td>Ronde secteur 2</td>
+                    <td><input type="text" name="rs2_agent"></td>
+                    <td><input type="text" name="rs2_obs"></td>
+                </tr>
+                <tr>
+                    <td>Ronde secteur 3</td>
+                    <td><input type="text" name="rs3_agent"></td>
+                    <td><input type="text" name="rs3_obs"></td>
+                </tr>
+                <tr>
+                    <td>Ronde PF 11h</td>
+                    <td><input type="text" name="rpf_11_agent"></td>
+                    <td><input type="text" name="rpf_11_obs"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Travail 14h-18h -->
+<div class="section">
+    <h2>Travail de 14h à 18h</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Missions</th><th>Agent affecté</th><th>Observation</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Ronde travaux + PF 14h</td>
+                    <td><input type="text" name="rt_pf_14_agent"></td>
+                    <td><input type="text" name="rt_pf_14_obs"></td>
+                </tr>
+                <tr>
+                    <td>Ronde surface de vente 15h50</td>
+                    <td><input type="text" name="rsv_1550_agent"></td>
+                    <td><input type="text" name="rsv_1550_obs"></td>
+                </tr>
+                <tr>
+                    <td>Ronde PF 16h</td>
+                    <td><input type="text" name="rpf_16_agent"></td>
+                    <td><input type="text" name="rpf_16_obs"></td>
+                </tr>
+                <tr>
+                    <td>Ronde travaux + PF 18h</td>
+                    <td><input type="text" name="rt_pf_18_agent"></td>
+                    <td><input type="text" name="rt_pf_18_obs"></td>
+                </tr>
+                <tr>
+                    <td>Ronde toiture 18h</td>
+                    <td><input type="text" name="rt_toit_agent"></td>
+                    <td><input type="text" name="rt_toit_obs"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Essai journalier -->
+<div class="section">
+    <h2>Essai journalier</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Agent affecté</th><th>Nature de l'essai</th><th>Observation</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><input type="text" name="essai_num"></td>
+                    <td><input type="text" name="essai_nature"></td>
+                    <td><input type="text" name="essai_obs"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MAC 18h-20h -->
+<div class="section">
+    <h2>Travail de 18h à 20h — MAC</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr><th>Thème principal</th><th>Formateur</th><th>Thème secondaire</th><th>Observation</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><input type="text" name="mac_theme1"></td>
+                    <td><input type="text" name="mac_formateur"></td>
+                    <td><input type="text" name="mac_theme2"></td>
+                    <td><input type="text" name="mac_obs"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+
+<!-- Permanences -->
+<div class="section">
+    <h2>Les permanences</h2>
+    <div class="table-wrapper">
+        <table>
+            <thead><tr><th>Fonction</th><th>Nom</th><th>N° tél</th></tr></thead>
+            <tbody>
+                <tr>
+                    <td>CODIR</td>
+                    <td><input type="text" name="perm_codir_nom"></td>
+                    <td><input type="text" name="perm_codir_tel"></td>
+                </tr>
+                <tr>
+                    <td>COMMERCIAL</td>
+                    <td><input type="text" name="perm_com_nom"></td>
+                    <td><input type="text" name="perm_com_tel"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Consignes & observations -->
+<div class="section">
+    <h2>Consignes importantes pour la journée de garde</h2>
+    <textarea name="consignes_importantes"></textarea>
+</div>
+
+<div class="section">
+    <h2>Observation journalière</h2>
+    <textarea name="observation_journaliere"></textarea>
+</div>
+
+<div class="section">
+    <h2>Consignes, remarques, informations concernant le déroulement de la journée</h2>
+    <textarea name="remarques_journee"></textarea>
+</div>
+
+<script src="security.js"></script>
+<script src="global.js"></script>
+<script src="notifications_global.js"></script>
 </body>
 </html>

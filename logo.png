@@ -1,41 +1,1043 @@
--- ═══════════════════════════════════════════════════════════════
--- MIGRATION : Table service_menus
--- ----------------------------------------------------------------
--- À exécuter dans Supabase Dashboard → SQL Editor
--- ----------------------------------------------------------------
--- Permet à chaque admin d'éditer le menu de son service / site.
--- Si aucune entrée n'existe pour un service, le code retombe
--- automatiquement sur le menu hardcodé (default).
--- ═══════════════════════════════════════════════════════════════
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<title>Gestion des comptes</title>
 
-CREATE TABLE IF NOT EXISTS service_menus (
-    id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    site_code   TEXT NOT NULL,
-    service     TEXT NOT NULL,
-    menu_json   JSONB NOT NULL,
-    updated_at  TIMESTAMPTZ DEFAULT NOW(),
-    updated_by  TEXT,
-    UNIQUE (site_code, service)
-);
+<style>
+    :root {
+        --bg:#050712;
+        --card-bg:rgba(15,20,35,0.9);
+        --accent:#7ab8ff;
+        --accent-soft:rgba(122,184,255,0.25);
+        --danger:#ff4d6a;
+        --success:#4dff88;
+        --text:#f5f7ff;
+    }
 
--- Index pour lookup rapide
-CREATE INDEX IF NOT EXISTS idx_service_menus_lookup
-    ON service_menus(site_code, service);
+    * {
+        box-sizing:border-box;
+    }
 
--- Trigger : maintien automatique de updated_at
-CREATE OR REPLACE FUNCTION update_service_menus_timestamp()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+    body {
+        background:radial-gradient(circle at top, #1b2740 0, #050712 55%);
+        color:var(--text);
+        font-family:system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", Arial;
+        padding:24px;
+        margin:0;
+        min-height:100vh;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+    }
 
-DROP TRIGGER IF EXISTS trigger_service_menus_timestamp ON service_menus;
-CREATE TRIGGER trigger_service_menus_timestamp
-    BEFORE UPDATE ON service_menus
-    FOR EACH ROW
-    EXECUTE FUNCTION update_service_menus_timestamp();
+    h1 {
+        color:var(--accent);
+        text-align:center;
+        margin-bottom:10px;
+        font-size:2.2rem;
+        letter-spacing:1px;
+        text-shadow:0 0 18px rgba(122,184,255,0.6);
+    }
 
--- Vérification
-SELECT 'Table service_menus créée' AS status;
+    .subtitle {
+        opacity:0.8;
+        margin-bottom:24px;
+        font-size:0.95rem;
+    }
+
+    .layout {
+        width:100%;
+        max-width:1100px;
+        display:grid;
+        grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+        gap:20px;
+    }
+
+    .card {
+        background:var(--card-bg);
+        padding:20px 18px;
+        border-radius:20px;
+        margin-bottom:10px;
+        box-shadow:0 18px 45px rgba(0,0,0,0.55);
+        border:1px solid rgba(255,255,255,0.06);
+        backdrop-filter:blur(18px) saturate(140%);
+        position:relative;
+        overflow:hidden;
+    }
+
+    .card::before {
+        content:"";
+        position:absolute;
+        inset:-40%;
+        background:radial-gradient(circle at top left, rgba(122,184,255,0.12), transparent 55%);
+        opacity:0.7;
+        pointer-events:none;
+    }
+
+    .card > * {
+        position:relative;
+        z-index:1;
+    }
+
+    .card-title {
+        font-size:1.1rem;
+        margin-bottom:10px;
+        font-weight:600;
+        display:flex;
+        align-items:center;
+        gap:8px;
+    }
+
+    .pill {
+        font-size:0.7rem;
+        padding:3px 8px;
+        border-radius:999px;
+        background:rgba(255,255,255,0.06);
+        border:1px solid rgba(255,255,255,0.12);
+        text-transform:uppercase;
+        letter-spacing:0.06em;
+        opacity:0.8;
+    }
+
+    label {
+        display:block;
+        margin-top:12px;
+        font-size:0.95rem;
+        opacity:0.9;
+    }
+
+    input, select {
+        width:100%;
+        padding:12px 13px;
+        margin-top:6px;
+        border-radius:12px;
+        border:1px solid rgba(255,255,255,0.12);
+        background:rgba(5,8,20,0.85);
+        color:var(--text);
+        font-size:0.95rem;
+        transition:0.2s;
+    }
+
+    input:focus, select:focus {
+        background:rgba(10,14,30,0.95);
+        outline:none;
+        border-color:var(--accent);
+        box-shadow:0 0 0 1px rgba(122,184,255,0.4);
+    }
+
+    button {
+        margin-top:18px;
+        padding:12px 16px;
+        background:linear-gradient(135deg, #7ab8ff, #4d9dff);
+        border:none;
+        border-radius:999px;
+        color:#050712;
+        cursor:pointer;
+        width:100%;
+        font-size:0.98rem;
+        font-weight:600;
+        box-shadow:0 10px 25px rgba(122,184,255,0.45);
+        transition:0.25s ease;
+    }
+
+    button:hover {
+        transform:translateY(-1px) translateZ(0);
+        box-shadow:0 14px 32px rgba(122,184,255,0.7);
+    }
+
+    button:active {
+        transform:translateY(0);
+        box-shadow:0 6px 18px rgba(122,184,255,0.5);
+    }
+
+    .btn-secondary {
+        background:rgba(255,255,255,0.04);
+        color:var(--text);
+        box-shadow:none;
+        border:1px solid rgba(255,255,255,0.12);
+    }
+
+    .btn-secondary:hover {
+        box-shadow:0 10px 26px rgba(0,0,0,0.6);
+    }
+
+    .btn-danger {
+        background:linear-gradient(135deg, #ff4d6a, #ff7b6b);
+        color:#fff;
+        box-shadow:0 10px 26px rgba(255,77,106,0.55);
+    }
+
+    .top-row {
+        display:flex;
+        gap:10px;
+        align-items:center;
+        margin-bottom:10px;
+    }
+
+    .top-row input {
+        flex:1;
+    }
+
+    .top-row small {
+        opacity:0.7;
+        font-size:0.8rem;
+    }
+
+    .user-list {
+        max-height:520px;
+        overflow:auto;
+        padding-right:4px;
+    }
+
+    .user {
+        padding:12px 0;
+        border-bottom:1px solid rgba(255,255,255,0.06);
+        animation:fadeInUp 0.25s ease;
+    }
+
+    .user:last-child {
+        border-bottom:none;
+    }
+
+    .row {
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:10px;
+    }
+
+    .user-main strong {
+        font-size:0.98rem;
+    }
+
+    .role-badge {
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        padding:3px 9px;
+        border-radius:999px;
+        font-size:0.75rem;
+        margin-top:3px;
+        border:1px solid rgba(255,255,255,0.12);
+        background:rgba(255,255,255,0.03);
+    }
+
+    .role-Agent { color:#9be7ff; border-color:rgba(155,231,255,0.4); }
+    .role-Stationnaire { color:#ffd27b; border-color:rgba(255,210,123,0.4); }
+    .role-Superviseur { color:#b5ff9b; border-color:rgba(181,255,155,0.4); }
+    .role-Admin { color:#ff9bb5; border-color:rgba(255,155,181,0.5); }
+
+    .badge-status {
+        font-size:0.8rem;
+        margin-top:4px;
+    }
+
+    .badge-ok { color:var(--success); }
+    .badge-none { color:var(--danger); }
+
+    .actions {
+        display:flex;
+        flex-wrap:wrap;
+        gap:6px;
+        justify-content:flex-end;
+    }
+
+    .actions button {
+        margin-top:0;
+        padding:7px 11px;
+        font-size:0.78rem;
+        border-radius:999px;
+        width:auto;
+        box-shadow:none;
+    }
+
+    .nfc-inline {
+        margin-top:8px;
+        padding:8px 10px;
+        background:rgba(255,255,255,0.03);
+        border-radius:12px;
+        display:none;
+        font-size:0.8rem;
+        border:1px dashed rgba(255,255,255,0.18);
+    }
+
+    .nfc-inline small {
+        opacity:0.85;
+    }
+
+    .status-bar {
+        margin-top:6px;
+        font-size:0.8rem;
+        opacity:0.8;
+    }
+
+    .status-bar span {
+        margin-right:10px;
+    }
+
+    .pagination {
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        margin-top:10px;
+        font-size:0.8rem;
+        opacity:0.85;
+    }
+
+    .pagination-controls {
+        display:flex;
+        gap:6px;
+    }
+
+    .pagination-controls button {
+        width:auto;
+        padding:5px 10px;
+        font-size:0.78rem;
+        margin-top:0;
+        box-shadow:none;
+    }
+
+    .log-list {
+        max-height:180px;
+        overflow:auto;
+        font-size:0.8rem;
+        opacity:0.85;
+    }
+
+    .log-item {
+        padding:4px 0;
+        border-bottom:1px solid rgba(255,255,255,0.06);
+    }
+
+    .log-item:last-child {
+        border-bottom:none;
+    }
+
+    .log-action {
+        color:var(--accent);
+        font-weight:500;
+    }
+
+    .log-date {
+        opacity:0.7;
+        font-size:0.75rem;
+    }
+
+    @keyframes fadeInUp {
+        from { opacity:0; transform:translateY(4px); }
+        to { opacity:1; transform:translateY(0); }
+    }
+
+    @media (max-width:900px) {
+        .layout {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+</style>
+</head>
+
+<body>
+
+<h1>Gestion des comptes</h1>
+<div class="subtitle">Création, rôles, badges NFC, logs d’activité</div>
+
+<div class="layout">
+    <!-- COLONNE GAUCHE : CREATION + LOGS -->
+    <div>
+        <div class="card">
+            <div class="card-title">
+                Création de compte
+                <span class="pill">Secure • SHA‑256</span>
+            </div>
+
+            <label>Nom d'utilisateur</label>
+            <input type="text" id="username" placeholder="Ex : Dupont J.">
+
+            <label>Mot de passe</label>
+            <input type="password" id="password" placeholder="Mot de passe provisoire">
+
+            <label>Rôle</label>
+            <select id="roleUser">
+                <option value="Agent">Agent</option>
+                <option value="Stationnaire">Stationnaire</option>
+                <option value="Superviseur">Superviseur</option>
+                <option value="Admin">Admin</option>
+            </select>
+
+            <label>Site</label>
+            <select id="siteUser">
+                <option value="LBM">Le Bon Marché (LBM)</option>
+                <option value="SAM">Samaritaine (SAM)</option>
+                <option value="GERD">La Grande Épicerie Rive Droite (GERD)</option>
+                <option value="GERG">La Grande Épicerie Rive Gauche (GERG)</option>
+                <option value="MH">Moët Hennessy (MH)</option>
+                <option value="EBAG">Entrepôt Bagneux (EBAG)</option>
+            </select>
+
+            <label>Service</label>
+            <select id="serviceUser">
+                <option value="incendie">Sécurité Incendie</option>
+                <option value="surete">Sûreté</option>
+                <option value="technique">Technique</option>
+                <option value="services_generaux">Services Généraux</option>
+            </select>
+
+            <button onclick="creerCompte()">Créer le compte</button>
+
+            <div class="status-bar" id="statusGlobal"></div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">
+                Logs d’activité
+                <span class="pill">Audit</span>
+            </div>
+            <div class="log-list" id="logList"></div>
+        </div>
+    </div>
+
+    <!-- COLONNE DROITE : LISTE COMPTES -->
+    <div class="card">
+        <div class="card-title">
+            Comptes existants
+            <span class="pill" id="compteCount">0</span>
+        </div>
+
+        <div class="top-row">
+            <input type="text" id="searchInput" placeholder="Rechercher par nom ou rôle…" oninput="appliquerFiltre()">
+            <small>Filtre instantané</small>
+        </div>
+
+        <div class="user-list" id="listeComptes"></div>
+
+        <div class="pagination">
+            <div>
+                <span id="pageInfo"></span>
+            </div>
+            <div class="pagination-controls">
+                <button class="btn-secondary" onclick="pagePrecedente()">Précédent</button>
+                <button class="btn-secondary" onclick="pageSuivante()">Suivant</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SUPABASE -->
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+
+<script>
+/* ============================================================
+   CONFIG SUPABASE
+============================================================ */
+// Config from supabaseClient.js
+
+
+const client = supabaseClient;
+
+/* ============================================================
+   ETAT LOCAL
+============================================================ */
+let comptesBruts = [];
+let comptesFiltres = [];
+let pageCourante = 1;
+const TAILLE_PAGE = 50;
+
+/* ============================================================
+   LOGS → table audit_log
+============================================================ */
+async function ajouterLog(action, details) {
+    try {
+        const agentNom = localStorage.getItem("nom") || "admin";
+        await client.from("audit_log").insert([{
+            action,
+            details,
+            agent_nom: agentNom
+        }]);
+        chargerLogs();
+    } catch (e) {
+        console.warn("Log non enregistré :", e);
+    }
+}
+
+async function chargerLogs() {
+    try {
+        const { data, error } = await client
+            .from("audit_log")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+
+        const logList = document.getElementById("logList");
+        logList.innerHTML = "";
+
+        if (!data || data.length === 0) {
+            logList.innerHTML = '<div class="log-item"><div style="opacity:0.5">Aucun log pour le moment.</div></div>';
+            return;
+        }
+
+        data.forEach(log => {
+            const d = new Date(log.created_at);
+            const dateStr = d.toLocaleString("fr-FR", { hour12: false });
+            const agent = log.agent_nom ? `<strong>[${log.agent_nom}]</strong> ` : "";
+
+            logList.innerHTML += `
+                <div class="log-item">
+                    <div>${agent}<span class="log-action">${log.action}</span> — ${log.details || ""}</div>
+                    <div class="log-date">${dateStr}</div>
+                </div>
+            `;
+        });
+    } catch (e) {
+        console.warn("Erreur chargement logs :", e);
+        const logList = document.getElementById("logList");
+        if (logList) logList.innerHTML = '<div class="log-item" style="color:#ff9ba8">Erreur chargement logs</div>';
+    }
+}
+
+/* ============================================================
+   CHARGER COMPTES
+   --------------------------------------------------------------
+   Cloisonnement par site_code + service de l'admin connecté.
+   La table `users` est exclue du filtrage automatique de tenant.js
+   (elle est dans GLOBAL_TABLES), donc on filtre explicitement ici.
+   EXCEPTION : un super-admin voit TOUS les comptes, sans filtre.
+============================================================ */
+async function chargerComptes() {
+    const isSuperAdmin = (localStorage.getItem("role") || "").toLowerCase() === "superadmin";
+
+    // Colonnes explicites — JAMAIS password_hash (protégé aussi côté BDD
+    // par REVOKE SELECT, le select("*") échouerait désormais de toute façon).
+    let q = client.from("users").select("id, nom, role, statut, mission, lieu, badgeuid, site_code, service, created_at");
+
+    if (!isSuperAdmin) {
+        const monSite    = (localStorage.getItem("site_code") || "LBM").toUpperCase();
+        const monService = (localStorage.getItem("service")   || "incendie").toLowerCase();
+        q = q.eq("site_code", monSite).eq("service", monService);
+    }
+
+    const { data, error } = await q.order("nom", { ascending:true });
+
+    if (error) {
+        console.error(error);
+        setStatus("Erreur chargement comptes : " + error.message, true);
+        return;
+    }
+
+    comptesBruts = data || [];
+    document.getElementById("compteCount").textContent = comptesBruts.length;
+
+    appliquerFiltre();
+}
+
+/* ============================================================
+   FILTRE + PAGINATION
+============================================================ */
+function appliquerFiltre() {
+    const q = document.getElementById("searchInput").value.trim().toLowerCase();
+
+    comptesFiltres = !q
+        ? [...comptesBruts]
+        : comptesBruts.filter(c =>
+            (c.nom || "").toLowerCase().includes(q) ||
+            (c.role || "").toLowerCase().includes(q)
+        );
+
+    pageCourante = 1;
+    afficherPage();
+}
+
+function afficherPage() {
+    const liste = document.getElementById("listeComptes");
+    liste.innerHTML = "";
+
+    const total = comptesFiltres.length;
+    const totalPages = Math.max(1, Math.ceil(total / TAILLE_PAGE));
+
+    if (pageCourante > totalPages) pageCourante = totalPages;
+
+    const start = (pageCourante - 1) * TAILLE_PAGE;
+    const end = start + TAILLE_PAGE;
+    const pageData = comptesFiltres.slice(start, end);
+
+    pageData.forEach(c => {
+        const badgeOK = !!c.badgeuid;
+        const roleClass = "role-" + (c.role || "").replace(/\s+/g, "");
+
+        const sitePill = c.site_code
+            ? `<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.4);color:#a07a18;font-size:0.72rem;font-weight:600;margin-right:4px;">🏢 ${c.site_code}</span>`
+            : `<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:rgba(220,38,38,0.1);color:#dc2626;font-size:0.72rem;">🏢 —</span>`;
+
+        const serviceColors = {
+            "incendie": "#ef4444",
+            "surete": "#3b82f6",
+            "technique": "#f59e0b",
+            "services_generaux": "#10b981"
+        };
+        const serviceLabels = {
+            "incendie": "Incendie",
+            "surete": "Sûreté",
+            "technique": "Technique",
+            "services_generaux": "Services Gén."
+        };
+        const svcColor = serviceColors[c.service] || "#6b7280";
+        const svcLabel = serviceLabels[c.service] || (c.service || "—");
+        const servicePill = `<span style="display:inline-block;padding:2px 8px;border-radius:8px;background:${svcColor}1a;color:${svcColor};font-size:0.72rem;font-weight:600;border:1px solid ${svcColor}55;">⚙ ${svcLabel}</span>`;
+
+        liste.innerHTML += `
+            <div class="user">
+                <div class="row">
+                    <div class="user-main">
+                        <strong>${c.nom}</strong><br>
+                        <span class="role-badge ${roleClass}">
+                            ${c.role || "—"}
+                        </span>
+                        ${sitePill}${servicePill}<br>
+                        ${
+                            badgeOK
+                            ? `<span class="badge-status badge-ok">🟢 Badge : ${c.badgeuid}</span>`
+                            : `<span class="badge-status badge-none">🔴 Aucun badge</span>`
+                        }
+                    </div>
+
+                    <div class="actions">
+                        <button class="btn-secondary" onclick="toggleNFC('${c.id}')">Badge NFC</button>
+                        ${badgeOK ? `<button class="btn-secondary" onclick="supprimerBadge('${c.id}')">Supprimer badge</button>` : ""}
+                        <button class="btn-secondary" onclick="modifierCompte('${c.id}')">Modifier</button>
+                        <button class="btn-secondary" onclick="affecterSiteService('${c.id}', '${c.nom}', '${c.site_code || ''}', '${c.service || ''}')">Site / Service</button>
+                        <button class="btn-secondary" onclick="resetPassword('${c.id}')">Reset MDP</button>
+                        <button class="btn-danger" onclick="supprimerCompte('${c.id}')">Supprimer</button>
+                    </div>
+                </div>
+
+                <div class="nfc-inline" id="nfc-${c.id}">
+                    <small id="nfcStatus-${c.id}">Approchez un badge…</small>
+                </div>
+            </div>
+        `;
+    });
+
+    document.getElementById("pageInfo").textContent =
+        `Page ${pageCourante} / ${totalPages} — ${total} compte(s)`;
+}
+
+function pagePrecedente() {
+    if (pageCourante > 1) {
+        pageCourante--;
+        afficherPage();
+    }
+}
+
+function pageSuivante() {
+    const totalPages = Math.max(1, Math.ceil(comptesFiltres.length / TAILLE_PAGE));
+    if (pageCourante < totalPages) {
+        pageCourante++;
+        afficherPage();
+    }
+}
+
+/* ============================================================
+   NFC
+============================================================ */
+function toggleNFC(id) {
+    const box = document.getElementById("nfc-" + id);
+    if (!box) return;
+
+    box.style.display = box.style.display === "block" ? "none" : "block";
+    if (box.style.display === "block") lancerNFC(id);
+}
+
+async function lancerNFC(id) {
+    const status = document.getElementById("nfcStatus-" + id);
+
+    if ("NDEFReader" in window) {
+        // Mode NFC natif (Chrome Android uniquement)
+        try {
+            const ndef = new NDEFReader();
+            await ndef.scan();
+            status.textContent = "📡 Approchez un badge NFC…";
+
+            ndef.onreading = async event => {
+                const uid = event.serialNumber;
+                status.textContent = "Badge détecté : " + uid + " — Enregistrement…";
+                await associerBadge(id, uid);
+            };
+        } catch (err) {
+            status.textContent = "Erreur NFC : " + err.message;
+        }
+    } else {
+        // Fallback : saisie manuelle (iPhone, Safari desktop, Firefox, etc.)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+        const helpText = isIOS
+            ? "📱 <b>L'iPhone ne sait pas lire l'UID brut d'un badge</b> (limitation Apple)." +
+              " Pour récupérer le UID :" +
+              "<ol style=\"margin:6px 0 6px 18px; padding:0; font-size:0.85rem;\">" +
+              "<li>Avec un Android + NFC Tools (gratuit), onglet <i>Lire</i>, pose sur le badge → copie le UID.</li>" +
+              "<li>Ou avec l'app iOS <i>NFC TagWriter by NXP</i> (gratuite App Store), même principe.</li>" +
+              "<li>Ou regarde si le UID est imprimé sur le badge (parfois en tout petit ou en QR code).</li>" +
+              "</ol>"
+            : "📋 NFC non disponible sur ce navigateur. Saisis le UID à la main :";
+
+        status.innerHTML = `
+            <div style="font-size:0.88rem; line-height:1.4;">${helpText}</div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+                <input type="text" id="manualUID-${id}"
+                       placeholder="UID (ex: 04:a2:b3:c4:d5:e6 ou 04a2b3c4d5e6)"
+                       style="flex:1; padding:9px 10px; border-radius:6px;
+                              border:1px solid var(--border); background:var(--bg2);
+                              color:var(--text); font-family:monospace;">
+                <button onclick="saisirBadgeManuel('${id}')"
+                        style="padding:9px 14px; border-radius:6px; background:var(--accent);
+                               color:#000; border:none; cursor:pointer; font-weight:700;">
+                    ✅ Valider
+                </button>
+            </div>
+        `;
+    }
+}
+
+async function saisirBadgeManuel(id) {
+    const input = document.getElementById("manualUID-" + id);
+    const uid = input ? input.value.trim() : "";
+    if (!uid) { alert("Veuillez saisir l'UID du badge."); return; }
+    await associerBadge(id, uid);
+}
+
+// ─── Opérations admin sensibles sur les comptes (via edge function vérifiée) ───
+//  Le mot de passe admin est demandé une fois par session (en mémoire, jamais
+//  stocké) et redemandé si le serveur le refuse. Effacé au rechargement.
+let _adminPass = null;
+async function adminUserOp(action, payload) {
+    const adminUser = localStorage.getItem("nom") || "";
+    async function call() {
+        const res = await fetch(FUNCTIONS_BASE + "/admin-user-ops", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(Object.assign({ adminUser, adminPass: _adminPass, action }, payload))
+        });
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, status: res.status, data };
+    }
+    if (!_adminPass) {
+        _adminPass = prompt("Confirmez VOTRE mot de passe administrateur :");
+        if (!_adminPass) return { cancelled: true };
+    }
+    let r = await call();
+    if (r.status === 401) {            // mot de passe refusé → on réessaie une fois
+        _adminPass = prompt("Mot de passe incorrect. Reconfirmez votre mot de passe administrateur :");
+        if (!_adminPass) return { cancelled: true };
+        r = await call();
+    }
+    return r;
+}
+
+async function associerBadge(id, uid) {
+    const r = await adminUserOp("assignBadge", { targetId: id, badgeuid: uid });
+    if (r.cancelled) { setStatus("Association annulée.", true); return; }
+    if (!r.ok) { setStatus("❌ Erreur association badge : " + (r.data.error || "échec"), true); return; }
+    await ajouterLog("Badge NFC associé", `Compte ID: ${id}, UID: ${uid}`);
+    setStatus("✅ Badge " + uid + " associé avec succès.");
+    chargerComptes();
+}
+
+/* ============================================================
+   STATUS
+============================================================ */
+function setStatus(msg, isError = false) {
+    const el = document.getElementById("statusGlobal");
+    el.textContent = msg;
+    el.style.color = isError ? "#ff9ba8" : "#9be7ff";
+}
+
+/* ============================================================
+   CREATION DE COMPTE — via Edge Function create-user
+============================================================ */
+async function creerCompte() {
+    const nom = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value.trim();
+    const role = document.getElementById("roleUser").value;
+    const siteCode = (document.getElementById("siteUser") || {}).value || "LBM";
+    const service  = (document.getElementById("serviceUser") || {}).value || "incendie";
+
+    if (!nom || !password) {
+        setStatus("Champs manquants.", true);
+        return;
+    }
+
+    // Validation de la force du mot de passe
+    if (typeof validatePasswordStrength === "function") {
+        var pwCheck = validatePasswordStrength(password);
+        if (!pwCheck.valid) {
+            setStatus("⚠️ Mot de passe trop faible : " + pwCheck.errors.join(", "), true);
+            return;
+        }
+    }
+
+    setStatus("Création du compte…");
+
+    // ── Authentification de l'appelant : confirmation du mot de passe admin ──
+    // (vérifié côté serveur par l'edge function ; ferme la création de compte
+    //  non autorisée via l'URL publique).
+    const adminUser = localStorage.getItem("nom") || "";
+    const adminPass = prompt("Confirmez VOTRE mot de passe administrateur pour créer ce compte :");
+    if (!adminPass) { setStatus("Création annulée.", true); return; }
+
+    try {
+        const res = await fetch(FUNCTIONS_BASE + "/bright-function", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                adminUser: adminUser,
+                adminPass: adminPass,
+                username: nom,
+                password: password,
+                role: role,
+                site_code: siteCode,
+                service: service
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            setStatus("Erreur : " + (data.error || "Création impossible"), true);
+            return;
+        }
+
+        // (Le rôle, le site et le service sont désormais posés par l'edge
+        //  function en service_role — plus besoin d'UPDATE côté client.)
+
+        await ajouterLog("Création compte", `Nom: ${nom}, Rôle: ${role}, Site: ${siteCode}, Service: ${service}`);
+        setStatus("Compte créé avec succès.");
+
+        document.getElementById("username").value = "";
+        document.getElementById("password").value = "";
+
+        chargerComptes();
+    } catch (e) {
+        setStatus("Erreur réseau lors de la création.", true);
+    }
+}
+
+/* ============================================================
+   AFFECTATION SITE / SERVICE
+============================================================ */
+async function affecterSiteService(id, nom, currentSite, currentService) {
+    // Sites/services depuis le catalogue tenant (BDD ou fallback)
+    const cat = (window.AuraTenant && window.AuraTenant.sites) ? {
+        sites: window.AuraTenant.sites(),
+        services: window.AuraTenant.services()
+    } : {
+        sites: [{code:"LBM",nom:"Le Bon Marché"},{code:"SAM",nom:"Samaritaine"},{code:"GERD",nom:"GE Rive Droite"},{code:"GERG",nom:"GE Rive Gauche"},{code:"MH",nom:"Moët Hennessy"},{code:"EBAG",nom:"Entrepôt Bagneux"}],
+        services: [{code:"incendie",nom:"Sécurité Incendie"},{code:"surete",nom:"Sûreté"},{code:"technique",nom:"Technique"},{code:"services_generaux",nom:"Services Généraux"}]
+    };
+    const siteCodes = cat.sites.map(s => s.code);
+    const svcCodes  = cat.services.map(s => s.code);
+    const serviceLabels = {};
+    cat.services.forEach(s => { serviceLabels[s.code] = s.nom; });
+
+    const sitePrompt = `Affecter "${nom}" à quel SITE ?\n\n` +
+        cat.sites.map((s,i) => `${i+1}. ${s.code} — ${s.nom}`).join("\n") +
+        `\n\n(Tapez le code ou le numéro. Actuel : ${currentSite || "—"})`;
+    const siteAnswer = prompt(sitePrompt, currentSite || siteCodes[0]);
+    if (!siteAnswer) return;
+    let newSite = siteAnswer.toUpperCase().trim();
+    const numSite = parseInt(siteAnswer, 10);
+    if (numSite >= 1 && numSite <= siteCodes.length) newSite = siteCodes[numSite - 1];
+    if (siteCodes.indexOf(newSite) === -1) {
+        alert("Code site invalide : " + newSite);
+        return;
+    }
+
+    const svcPrompt = `Affecter "${nom}" à quel SERVICE ?\n\n` +
+        cat.services.map((s,i) => `${i+1}. ${s.nom}`).join("\n") +
+        `\n\n(Tapez le numéro ou le code. Actuel : ${currentService || "—"})`;
+    const svcAnswer = prompt(svcPrompt, currentService || svcCodes[0]);
+    if (!svcAnswer) return;
+    let newService = svcAnswer.toLowerCase().trim();
+    const numSvc = parseInt(svcAnswer, 10);
+    if (numSvc >= 1 && numSvc <= svcCodes.length) newService = svcCodes[numSvc - 1];
+    if (svcCodes.indexOf(newService) === -1) {
+        alert("Service invalide : " + newService);
+        return;
+    }
+
+    const { error } = await client
+        .from("users")
+        .update({ site_code: newSite, service: newService })
+        .eq("id", id);
+
+    if (error) {
+        setStatus("Erreur affectation : " + error.message, true);
+        return;
+    }
+
+    await ajouterLog("Affectation site/service", `${nom} → ${newSite} / ${newService}`);
+    setStatus(`✅ ${nom} affecté à ${newSite} / ${serviceLabels[newService] || newService}.`);
+    chargerComptes();
+}
+
+/* ============================================================
+   SUPPRESSION COMPTE
+============================================================ */
+async function supprimerCompte(id) {
+    if (!confirm("Supprimer ce compte ?")) return;
+
+    const r = await adminUserOp("deleteUser", { targetId: id });
+    if (r.cancelled) { setStatus("Suppression annulée.", true); return; }
+    if (!r.ok) { setStatus("Erreur suppression : " + (r.data.error || "échec"), true); return; }
+
+    await ajouterLog("Suppression compte", `ID: ${id}`);
+    chargerComptes();
+}
+
+/* ============================================================
+   MODIFIER COMPTE
+============================================================ */
+async function modifierCompte(id) {
+    const nom = prompt("Nouveau nom :");
+    if (!nom) return;
+
+    const role = prompt("Nouveau rôle (Agent / Stationnaire / Superviseur / Admin) :");
+    if (!role) return;
+
+    const r = await adminUserOp("updateUser", { targetId: id, nom, role });
+    if (r.cancelled) { setStatus("Modification annulée.", true); return; }
+    if (!r.ok) { setStatus("Erreur modification : " + (r.data.error || "échec"), true); return; }
+
+    await ajouterLog("Modification compte", `ID: ${id}, Nom: ${nom}, Rôle: ${role}`);
+    chargerComptes();
+}
+
+/* ============================================================
+   RESET MOT DE PASSE — via Edge Function reset-password
+============================================================ */
+async function resetPassword(id) {
+    var mdp = prompt("Nouveau mot de passe (min 8 car., 1 maj., 1 min., 1 chiffre, 1 spécial) :");
+    if (!mdp) return;
+
+    // Validation de la force du mot de passe
+    if (typeof validatePasswordStrength === "function") {
+        var pwCheck = validatePasswordStrength(mdp);
+        if (!pwCheck.valid) {
+            alert("⚠️ Mot de passe trop faible :\n• " + pwCheck.errors.join("\n• "));
+            return;
+        }
+    }
+
+    try {
+        const adminUser = localStorage.getItem("nom") || "";
+        const adminPass = prompt("Confirmez VOTRE mot de passe administrateur pour réinitialiser ce compte :");
+        if (!adminPass) { setStatus("Réinitialisation annulée.", true); return; }
+
+        const res = await fetch(FUNCTIONS_BASE + "/clever-function", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                adminUser: adminUser,
+                adminPass: adminPass,
+                user_id: id,
+                new_password: mdp
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            setStatus("Erreur : " + (data.error || "Reset impossible"), true);
+            return;
+        }
+
+        await ajouterLog("Reset mot de passe", `ID: ${id}`);
+        setStatus("Mot de passe réinitialisé.");
+        chargerComptes();
+    } catch (e) {
+        setStatus("Erreur réseau lors du reset.", true);
+    }
+}
+
+/* ============================================================
+   SUPPRIMER BADGE
+============================================================ */
+async function supprimerBadge(id) {
+    if (!confirm("Supprimer le badge ?")) return;
+
+    const r = await adminUserOp("clearBadge", { targetId: id });
+    if (r.cancelled) { setStatus("Annulé.", true); return; }
+    if (!r.ok) { setStatus("❌ Erreur suppression badge : " + (r.data.error || "échec"), true); return; }
+
+    await ajouterLog("Suppression badge", `ID: ${id}`);
+    setStatus("Badge supprimé.");
+    chargerComptes();
+}
+
+/* ============================================================
+   LANCEMENT
+============================================================ */
+/* ============================================================
+   LANCEMENT — chargement indépendant (l'un ne bloque pas l'autre)
+============================================================ */
+(async function init() {
+    // ─── Remplir dynamiquement les selects depuis le catalogue tenant ───
+    try {
+        if (window.AuraTenant && typeof window.AuraTenant.loadCatalogues === "function") {
+            await window.AuraTenant.loadCatalogues();
+            const sites = window.AuraTenant.sites();
+            const srvs  = window.AuraTenant.services();
+            const siteSel = document.getElementById("siteUser");
+            const srvSel  = document.getElementById("serviceUser");
+            if (siteSel && sites.length) {
+                siteSel.innerHTML = sites.map(s =>
+                    `<option value="${s.code}">${s.nom} (${s.code})</option>`
+                ).join("");
+            }
+            if (srvSel && srvs.length) {
+                srvSel.innerHTML = srvs.map(s =>
+                    `<option value="${s.code}">${s.nom}</option>`
+                ).join("");
+            }
+        }
+    } catch (e) { console.warn("[Init] catalogues:", e); }
+
+    // ─── Si super-admin, ajouter le rôle "SuperAdmin" au select ───
+    try {
+        const isSuperAdmin = (localStorage.getItem("role") || "").toLowerCase() === "superadmin";
+        if (isSuperAdmin) {
+            const roleSel = document.getElementById("roleUser");
+            if (roleSel && !Array.from(roleSel.options).some(o => o.value === "superadmin")) {
+                const opt = document.createElement("option");
+                opt.value = "superadmin";
+                opt.textContent = "SuperAdmin (accès global)";
+                roleSel.appendChild(opt);
+            }
+            // Bandeau visuel pour rappeler le mode
+            const banner = document.createElement("div");
+            banner.style.cssText = "background:linear-gradient(90deg,#a855f7,#7c3aed);color:#fff;padding:10px 16px;border-radius:10px;margin-bottom:16px;font-weight:600;font-size:0.88rem;display:flex;align-items:center;gap:10px;";
+            banner.innerHTML = '<span>🌐</span><span>Mode super-admin : tous les comptes de tous les sites/services sont visibles.</span>';
+            const main = document.querySelector(".grid, main, body");
+            if (main && main.firstChild) main.insertBefore(banner, main.firstChild);
+        }
+    } catch (e) { console.warn("[Init] super-admin role:", e); }
+
+    // Charger les comptes en priorité
+    await chargerComptes();
+    // Puis les logs (non bloquant)
+    chargerLogs();
+})();
+</script>
+
+<script src="security.js"></script>
+<script src="global.js"></script>
+<script src="notifications_global.js"></script>
+</body>
+</html>

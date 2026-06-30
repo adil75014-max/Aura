@@ -1,66 +1,85 @@
--- ═══════════════════════════════════════════════════════════════
--- MIGRATION TENANT v2 — Cloisonnement site_code + service
--- ----------------------------------------------------------------
--- À exécuter dans Supabase Dashboard → SQL Editor
--- ----------------------------------------------------------------
--- Ajoute les colonnes site_code + service à toutes les tables
--- opérationnelles, avec defaults LBM / incendie.
--- Crée les index pour des SELECT rapides.
--- Idempotent : peut être ré-exécuté sans risque.
--- ═══════════════════════════════════════════════════════════════
+body {
+  margin: 0;
+}
 
-DO $$
-DECLARE
-    t TEXT;
-    tables_tenant TEXT[] := ARRAY[
-        'rapports','permis_feu','dai_hors_service','ssiap2_chantier',
-        'feuille_de_garde','consignes_permanentes','consignes_journalieres',
-        'notifications','audit_log','verifications','verifications_types',
-        'rondes','interventions_exterieures','suivi_travaux','interventions',
-        -- v2 additions
-        'rapport_modeles','rapports_entree_sortie','interventions_syope',
-        'plan_prevention','plans','alertes_urgence','ssiap'
-    ];
-BEGIN
-    FOREACH t IN ARRAY tables_tenant LOOP
-        IF EXISTS (SELECT 1 FROM information_schema.tables
-                   WHERE table_schema='public' AND table_name=t) THEN
-            -- Ajoute les colonnes si elles n'existent pas
-            EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS site_code TEXT DEFAULT ''LBM''', t);
-            EXECUTE format('ALTER TABLE %I ADD COLUMN IF NOT EXISTS service   TEXT DEFAULT ''incendie''', t);
+.game-canvas {
+  width: 100%;
+  height: 100vw;
+  max-width: 500px;
+  max-height:500px;
+  margin-left: auto;
+  margin-right: auto;
+}
 
-            -- Remplit les NULL avec les defaults (sinon invisibles dans les SELECT filtrés)
-            EXECUTE format('UPDATE %I SET site_code = ''LBM''      WHERE site_code IS NULL', t);
-            EXECUTE format('UPDATE %I SET service   = ''incendie'' WHERE service   IS NULL', t);
+.keys {
+  font-family: 'Lato', sans-serif;
+  text-align: center;
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  height: 200px;
+  margin: auto;
+}
 
-            -- Index composite pour SELECT rapides
-            EXECUTE format(
-                'CREATE INDEX IF NOT EXISTS idx_%I_tenant ON %I(site_code, service)',
-                t, t
-            );
+.up {
+  position: relative;
+  top: -4px;
+}
 
-            RAISE NOTICE '✓ Table % migrée', t;
-        ELSE
-            RAISE NOTICE '⚠ Table % introuvable (skipping)', t;
-        END IF;
-    END LOOP;
-END $$;
+.chevron::before {
+  border-style: solid;
+  border-width: 8px 8px 0 0;
+  content: '';
+  display: inline-block;
+  height: 20px;
+  width: 20px;
+  top: -10px;
+  position: relative;
+  transform: rotate(-45deg);
+}
 
--- ═══════════════════════════════════════════════════════════════
--- VÉRIFICATION POST-MIGRATION
--- ═══════════════════════════════════════════════════════════════
+.chevron.down::before {
+  transform: rotate(135deg);
+  top: -22px;
+}
 
--- Liste toutes les tables qui ont maintenant site_code + service
-SELECT
-    table_name,
-    BOOL_OR(column_name = 'site_code') AS has_site_code,
-    BOOL_OR(column_name = 'service')   AS has_service
-FROM information_schema.columns
-WHERE table_schema = 'public'
-  AND column_name IN ('site_code', 'service')
-GROUP BY table_name
-ORDER BY table_name;
+.chevron.right::before {
+  transform: rotate(45deg);
+  top: -18px;
+  left: -5px;
+}
 
--- Compte les enregistrements par service (vérifie la répartition)
--- Décommenter et adapter pour chaque table :
--- SELECT service, site_code, COUNT(*) FROM rapports GROUP BY service, site_code;
+.chevron.left::before {
+  transform: rotate(225deg);
+  top: -18px;
+  left: 5px;
+}
+
+.arr {
+  cursor: pointer;
+  width: 70px;
+  height: 70px;
+  text-align: center;
+  line-height: 100px;
+  background: gray;
+  color: white;
+  font-size: 50px;
+  border-right: 10px solid #ccc;
+  border-bottom: 10px solid #ccc;
+  border-left: 10px solid #ddd;
+  border-top: 10px solid #eee;
+  display: inline-block;
+  margin: 5px;
+  transition: all .05s linear;
+  user-select: none;
+}
+
+.arr:active {
+  background: #555;
+}
+
+#game-container {
+  display: flex;
+  flex-direction: column;
+  background-color: rgba(220, 220, 220, 0.6);
+}

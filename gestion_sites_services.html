@@ -6,678 +6,314 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Feuille de garde</title>
-
-<!-- Design responsive + glass UI -->
+<title>Gestion des rondes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-    
-    body {
-        margin: 0;
-        padding: 20px;
-        font-family: "DM Sans", "Segoe UI", Roboto, sans-serif;
-        background: linear-gradient(160deg, #070d1a 0%, #0f1f3d 40%, #162a4a 100%);
-        color: #e0e8f5;
-        min-height: 100vh;
-    }
-    h1, h2, h3 { font-weight: 700; letter-spacing: -0.3px; }
-    h1 { font-size: 1.6rem; color: #4DD0E1; }
-    .section {
-        margin-bottom: 20px;
-        padding: 18px;
-        background: rgba(255,255,255,0.06);
-        border-radius: 14px;
-        backdrop-filter: blur(14px);
-        border: 1px solid rgba(255,255,255,0.08);
-        box-shadow: 0 4px 24px rgba(0,0,0,0.3);
-    }
-    h2 {
-        border-left: 4px solid #4DD0E1;
-        padding-left: 12px;
-        margin-bottom: 14px;
-        font-size: 1rem;
-        letter-spacing: 0;
-        color: #b0d4f1;
-    }
-    .flex {
-        display: flex;
-        gap: 15px;
-        flex-wrap: wrap;
-    }
-    .flex > div { flex: 1 1 100%; }
-    .table-wrapper {
-        overflow-x: auto;
-        border-radius: 10px;
-        margin-top: 8px;
-    }
-    table {
-        width: 100%;
-        min-width: 550px;
-        border-collapse: collapse;
-        table-layout: fixed;
-    }
-    th {
-        background: rgba(77,208,225,0.12);
-        padding: 10px 8px;
-        text-align: left;
-        color: #4DD0E1;
-        white-space: nowrap;
-        font-size: 12px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 2px solid rgba(77,208,225,0.2);
-    }
-    td {
-        background: rgba(255,255,255,0.03);
-        padding: 8px;
-        border-bottom: 1px solid rgba(255,255,255,0.06);
-        font-size: 13px;
-        vertical-align: middle;
-        color: #c0d0e8;
-    }
-    tr:hover td { background: rgba(77,208,225,0.04); }
-    input[type="text"], textarea {
-        width: 100%;
-        padding: 8px 10px;
-        border-radius: 8px;
-        border: 1px solid rgba(255,255,255,0.1);
-        background: rgba(255,255,255,0.08);
-        color: #fff;
-        font-size: 13px;
-        font-family: inherit;
-        transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    input[type="text"]:focus, textarea:focus {
-        outline: none;
-        border-color: #4DD0E1;
-        box-shadow: 0 0 0 3px rgba(77,208,225,0.15);
-    }
-    textarea { min-height: 80px; resize: vertical; }
-    input::placeholder, textarea::placeholder { color: #5a7a9e; }
-    label { font-size: 13px; display: block; margin-bottom: 4px; color: #8eacc8; font-weight: 500; }
-    @media (min-width: 700px) {
-        body { padding: 30px 40px; max-width: 1000px; margin: 0 auto; }
-        .flex > div { flex: 1 1 260px; }
-        h1 { font-size: 1.8rem; }
-    }
-</style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
 
-<!-- Supabase -->
+/* HEADER */
+.header{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.back-btn{background:rgba(77,163,255,0.12);border:1px solid rgba(77,163,255,0.3);color:#4da3ff;padding:8px 14px;border-radius:10px;cursor:pointer;font:600 0.9rem 'DM Sans';transition:.2s}
+.back-btn:hover{background:#4da3ff;color:#0b0e17}
+.header h1{font-size:1.5rem;color:#4da3ff;letter-spacing:-0.5px;flex:1}
+
+/* SECTIONS */
+.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;margin-bottom:20px}
+.card h2{font-size:1.1rem;color:#4da3ff;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card h2 .icon{font-size:1.3rem}
+
+/* FORMS */
+label{display:block;font-size:.85rem;font-weight:600;color:#8899bb;margin:12px 0 4px;letter-spacing:.3px}
+input,textarea,select{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:0.95rem 'DM Sans';transition:.2s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#4da3ff;box-shadow:0 0 0 3px rgba(77,163,255,0.15)}
+textarea{min-height:70px;resize:vertical}
+select option{background:#1a1e2e;color:#e0e4ef}
+
+/* BUTTONS */
+.btn{padding:12px 16px;border:none;border-radius:10px;font:600 0.95rem 'DM Sans';cursor:pointer;width:100%;transition:.2s;margin-top:12px}
+.btn-primary{background:linear-gradient(135deg,#4da3ff,#2b7de9);color:#fff;box-shadow:0 4px 16px rgba(77,163,255,0.25)}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(77,163,255,0.35)}
+.btn-danger{background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3)}
+.btn-danger:hover{background:#ef4444;color:#fff}
+.btn-secondary{background:rgba(255,255,255,0.08);color:#8899bb;border:1px solid rgba(255,255,255,0.12)}
+.btn-secondary:hover{background:rgba(255,255,255,0.15);color:#fff}
+.btn-sm{padding:6px 12px;font-size:.85rem;width:auto;margin:0;border-radius:8px}
+
+/* TAG TYPE SELECTOR */
+.tag-type-row{display:flex;gap:8px;margin:8px 0 12px}
+.tag-opt{flex:1;padding:10px;border-radius:10px;text-align:center;cursor:pointer;font-weight:600;font-size:.9rem;border:2px solid rgba(255,255,255,0.1);transition:.2s}
+.tag-opt.active{border-color:#4da3ff;background:rgba(77,163,255,0.12);color:#4da3ff}
+.tag-opt:hover{border-color:rgba(77,163,255,0.4)}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;margin-top:12px}
+th,td{padding:10px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06);font-size:.9rem}
+th{color:#4da3ff;font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px}
+tr:hover td{background:rgba(255,255,255,0.03)}
+
+/* RONDE LIST */
+.ronde-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.ronde-card .info{flex:1;min-width:200px}
+.ronde-card .info strong{color:#e0e4ef;font-size:.95rem}
+.ronde-card .info small{display:block;color:#6b7a99;margin-top:2px;font-size:.8rem}
+.ronde-card .badges{display:flex;gap:6px;flex-wrap:wrap}
+.pill{padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:600}
+.pill-type{background:rgba(77,163,255,0.15);color:#4da3ff}
+.pill-pts{background:rgba(0,200,120,0.15);color:#00c878}
+.pill-status{background:rgba(255,180,50,0.15);color:#ffb432}
+
+/* EMPTY */
+.empty{text-align:center;padding:30px;color:#4a5578;font-size:.95rem}
+
+/* RESPONSIVE */
+@media(max-width:500px){.header h1{font-size:1.2rem}.ronde-card{flex-direction:column;align-items:flex-start}}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <button class="back-btn" onclick="location.href='index.html'">⟵</button>
+    <h1>Gestion des rondes</h1>
+</div>
+
+<!-- ZONES DE PASSAGE -->
+<div class="card">
+    <h2><span class="icon">📍</span> Zones de passage</h2>
+    <div style="display:flex;gap:8px">
+        <input type="text" id="zoneInput" placeholder="Ex : Escalier A, Local TGBT, Parking -1" style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="ajouterZone()" style="width:auto;margin:0">+ Ajouter</button>
+    </div>
+    <table id="zonesTableWrap"><thead><tr><th>Zone</th><th style="width:60px"></th></tr></thead>
+    <tbody id="zonesTable"></tbody></table>
+</div>
+
+<!-- CRÉER UNE RONDE -->
+<div class="card">
+    <h2><span class="icon">🛡</span> Créer une ronde</h2>
+
+    <label>Nom de la ronde</label>
+    <input type="text" id="nomRonde" placeholder="Ex : Ronde ouverture matin">
+
+    <label>Type</label>
+    <select id="typeRonde">
+        <option value="ronde_ouverture">🌅 Ronde d'ouverture</option>
+        <option value="ronde_travaux">🏗 Ronde Travaux</option>
+        <option value="ronde_permis_feu">🔥 Ronde Permis feu</option>
+        <option value="ronde_issues_secours">🚪 Ronde Issues de secours</option>
+        <option value="ronde_surface_vente">🛍 Ronde Surface de vente</option>
+        <option value="ronde_technique">⚙️ Ronde Technique</option>
+        <option value="ronde_fermeture">🌙 Ronde de fermeture</option>
+    </select>
+
+    <label>Description</label>
+    <textarea id="descRonde" placeholder="Instructions pour l'agent…"></textarea>
+
+    <button class="btn btn-primary" onclick="creerRonde()">Créer la ronde →</button>
+</div>
+
+<!-- POINTS DE PASSAGE -->
+<div class="card" id="sectionPoints" style="display:none">
+    <h2><span class="icon">📡</span> Points de passage — <span id="rondeNomDisplay"></span></h2>
+
+    <label>Zone</label>
+    <select id="zoneSelect"></select>
+
+    <label>Type de pointeau</label>
+    <div class="tag-type-row">
+        <div class="tag-opt active" id="optNFC" onclick="setTagType('nfc')">📱 NFC</div>
+        <div class="tag-opt" id="optBLE" onclick="setTagType('ble')">📡 BLE</div>
+    </div>
+
+    <label id="labelTagId">UID du tag NFC</label>
+    <input type="text" id="tagId" placeholder="Ex : 04:A2:B3:C4:D5:E6:F7">
+
+    <button class="btn btn-secondary" onclick="ajouterPoint()">+ Ajouter ce point</button>
+
+    <table><thead><tr><th>#</th><th>Zone</th><th>Type</th><th>ID Tag</th><th></th></tr></thead>
+    <tbody id="tablePoints"></tbody></table>
+
+    <button class="btn btn-primary" onclick="sauvegarderRonde()" style="margin-top:16px">💾 Enregistrer la ronde</button>
+</div>
+
+<!-- RONDES EXISTANTES -->
+<div class="card">
+    <h2><span class="icon">📋</span> Rondes enregistrées</h2>
+    <div id="listeRondes"><div class="empty">Chargement…</div></div>
+</div>
+
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
 <script>
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+if(typeof showToast!=="function") window.showToast=function(m,e){alert(m)};
+
 /* ============================================================
-   FEUILLE DE GARDE — fonctionne avec 1 ligne par jour (upsert).
-   Sauvegarde auto avec debounce 600 ms après la dernière frappe.
-   ============================================================ */
+   ZONES (localStorage pour persistance locale)
+============================================================ */
+let zones = JSON.parse(localStorage.getItem("ronde_zones") || "[]");
 
-// Helper showToast en fallback (si global.js pas encore chargé)
-if (typeof showToast !== "function") {
-    window.showToast = function(msg, isError) {
-        if (isError) console.error(msg); else console.log(msg);
-    };
-}
+function saveZones() { localStorage.setItem("ronde_zones", JSON.stringify(zones)); }
 
-// Date du jour au format ISO (YYYY-MM-DD) — utilisée comme clé d'upsert
-function todayISO() {
-    return new Date().toISOString().split("T")[0];
-}
-
-// Date au format français pour affichage initial
-function todayFR() {
-    return new Date().toLocaleDateString("fr-FR");
-}
-
-let saveTimer = null;
-let savingFlag = false;
-let currentDateISO = todayISO();
-
-function setStatus(text, color) {
-    const el = document.getElementById("saveStatus");
-    if (!el) return;
-    el.textContent = text;
-    el.style.color = color || "#cfe8ff";
-}
-
-function collectAllFields() {
-    const fields = {};
-    document.querySelectorAll("input[name], textarea[name]").forEach(el => {
-        if (el.name) fields[el.name] = el.value;
+function afficherZones() {
+    const tbody = document.getElementById("zonesTable");
+    tbody.innerHTML = "";
+    if (zones.length === 0) { tbody.innerHTML = '<tr><td colspan="2" style="color:#4a5578;text-align:center">Aucune zone</td></tr>'; }
+    zones.forEach((z, i) => {
+        tbody.innerHTML += `<tr>
+            <td>${z}</td>
+            <td><button class="btn-danger btn-sm" onclick="supprimerZone(${i})">✕</button></td>
+        </tr>`;
     });
-    return fields;
+    remplirZonesSelect();
 }
 
-async function saveFeuilleDeGarde() {
-    if (savingFlag) return;
-    savingFlag = true;
-    setStatus("⏳ Enregistrement…", "#ffd166");
+function ajouterZone() {
+    const z = document.getElementById("zoneInput").value.trim();
+    if (!z) return;
+    zones.push(z);
+    saveZones();
+    document.getElementById("zoneInput").value = "";
+    afficherZones();
+}
 
+function supprimerZone(i) { zones.splice(i, 1); saveZones(); afficherZones(); }
+
+function remplirZonesSelect() {
+    const s = document.getElementById("zoneSelect");
+    s.innerHTML = "";
+    zones.forEach(z => { const o = document.createElement("option"); o.value = z; o.textContent = z; s.appendChild(o); });
+}
+
+afficherZones();
+
+/* ============================================================
+   TAG TYPE (NFC / BLE)
+============================================================ */
+let tagType = "nfc";
+
+function setTagType(t) {
+    tagType = t;
+    document.getElementById("optNFC").classList.toggle("active", t === "nfc");
+    document.getElementById("optBLE").classList.toggle("active", t === "ble");
+    document.getElementById("labelTagId").textContent = t === "nfc" ? "UID du tag NFC" : "ID Balise BLE";
+    document.getElementById("tagId").placeholder = t === "nfc" ? "Ex : 04:A2:B3:C4:D5:E6:F7" : "Ex : BEACON-TGBT-002";
+}
+
+/* ============================================================
+   CRÉATION DE RONDE
+============================================================ */
+let ronde = { nom: "", description: "", type: "", points: [] };
+
+function creerRonde() {
+    const nom = document.getElementById("nomRonde").value.trim();
+    if (!nom) { alert("Nom requis."); return; }
+    if (zones.length === 0) { alert("Ajoutez au moins une zone d'abord."); return; }
+    ronde = { nom, description: document.getElementById("descRonde").value.trim(), type: document.getElementById("typeRonde").value, points: [] };
+    document.getElementById("sectionPoints").style.display = "block";
+    document.getElementById("rondeNomDisplay").textContent = nom;
+    afficherPoints();
+}
+
+function ajouterPoint() {
+    const zone = document.getElementById("zoneSelect").value;
+    const id = document.getElementById("tagId").value.trim();
+    if (!zone) { alert("Sélectionnez une zone."); return; }
+    if (!id) { alert("Saisissez l'ID du tag."); return; }
+    ronde.points.push({ nom: zone, tagType: tagType, tagId: id, valide: false, horodatage: null });
+    document.getElementById("tagId").value = "";
+    afficherPoints();
+}
+
+function afficherPoints() {
+    const tbody = document.getElementById("tablePoints");
+    tbody.innerHTML = "";
+    ronde.points.forEach((p, i) => {
+        const icon = p.tagType === "nfc" ? "📱" : "📡";
+        tbody.innerHTML += `<tr>
+            <td>${i + 1}</td>
+            <td>${p.nom}</td>
+            <td>${icon} ${p.tagType.toUpperCase()}</td>
+            <td style="font-family:monospace;font-size:.85rem">${p.tagId}</td>
+            <td><button class="btn-danger btn-sm" onclick="supprimerPoint(${i})">✕</button></td>
+        </tr>`;
+    });
+}
+
+function supprimerPoint(i) { ronde.points.splice(i, 1); afficherPoints(); }
+
+async function sauvegarderRonde() {
+    if (ronde.points.length === 0) { alert("Ajoutez au moins un point de passage."); return; }
     try {
-        const data = {
-            date_jour:      currentDateISO,
-            date_garde:     document.querySelector('input[name="date"]').value || todayFR(),
-            effectif:       document.querySelector('input[name="effectif"]').value || null,
-            responsable_bm: document.querySelector('input[name="resp_bm_nom"]').value || null,
-            chef_poste:     document.querySelector('input[name="chef_poste_nom"]').value || null,
-            data_json:      collectAllFields(),
-            updated_at:     new Date().toISOString()
-        };
-
-        // upsert sur date_jour : crée la ligne si elle n'existe pas, sinon update
-        const { error } = await supabaseClient
-            .from("feuille_de_garde")
-            .upsert(data, { onConflict: "date_jour" });
-
+        const { error } = await supabaseClient.from("rondes").insert({
+            type: ronde.type,
+            statut: "en_cours",
+            observations: ronde.description,
+            debut_at: new Date().toISOString(),
+            meta: {
+                nom: ronde.nom,
+                points: ronde.points
+            }
+        });
         if (error) throw error;
-        setStatus("✅ Enregistré (" + new Date().toLocaleTimeString("fr-FR") + ")", "#4ade80");
+        showToast("✅ Ronde « " + ronde.nom + " » enregistrée !");
+        document.getElementById("sectionPoints").style.display = "none";
+        document.getElementById("nomRonde").value = "";
+        document.getElementById("descRonde").value = "";
+        ronde = { nom: "", description: "", type: "", points: [] };
+        chargerRondes();
     } catch (e) {
-        console.error(e);
-        setStatus("❌ Erreur : " + e.message, "#ef4444");
-    } finally {
-        savingFlag = false;
+        showToast("❌ " + (e.message || e), true);
     }
 }
 
-// Debounce : on attend 600 ms de silence avant d'appeler saveFeuilleDeGarde
-function scheduleSave() {
-    setStatus("✏️ Modification en cours…", "#cfe8ff");
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(saveFeuilleDeGarde, 600);
-}
+/* ============================================================
+   RONDES EXISTANTES
+============================================================ */
+async function chargerRondes() {
+    const { data, error } = await supabaseClient.from("rondes").select("*").order("created_at", { ascending: false }).limit(30);
+    const div = document.getElementById("listeRondes");
 
-async function loadFeuilleDeGarde() {
-    setStatus("⏳ Chargement…", "#cfe8ff");
-    try {
-        const { data, error } = await supabaseClient
-            .from("feuille_de_garde")
-            .select("*")
-            .eq("date_jour", currentDateISO)
-            .maybeSingle();
+    if (error) { div.innerHTML = '<div class="empty">Erreur : ' + error.message + '</div>'; return; }
+    if (!data || data.length === 0) { div.innerHTML = '<div class="empty">Aucune ronde enregistrée.</div>'; return; }
 
-        if (error && error.code !== "PGRST116") throw error;
+    div.innerHTML = "";
+    data.forEach(r => {
+        const dt = new Date(r.created_at).toLocaleString("fr-FR");
+        const nom = (r.meta && r.meta.nom) || r.type || "Ronde";
+        const pts = (r.meta && r.meta.points) ? r.meta.points.length : 0;
+        const valides = (r.meta && r.meta.points) ? r.meta.points.filter(p => p.valide).length : 0;
+        const statusLabel = r.statut === "terminee" ? "Terminée" : "En cours";
 
-        if (!data) {
-            // Pré-remplir la date du jour si nouveau
-            const dateInput = document.querySelector('input[name="date"]');
-            if (dateInput && !dateInput.value) dateInput.value = todayFR();
-            setStatus("Nouvelle feuille du jour", "#cfe8ff");
-            return;
-        }
-
-        const json = data.data_json || {};
-        Object.entries(json).forEach(([name, value]) => {
-            const el = document.querySelector(`[name="${name}"]`);
-            if (el) el.value = value;
-        });
-
-        const dt = data.updated_at ? new Date(data.updated_at).toLocaleTimeString("fr-FR") : "—";
-        setStatus("✅ Feuille du jour chargée (dernière modif " + dt + ")", "#4ade80");
-    } catch (e) {
-        console.error(e);
-        setStatus("❌ Erreur chargement : " + e.message, "#ef4444");
-    }
-}
-
-async function nouvelleJournee() {
-    if (!confirm("Démarrer une feuille vierge pour aujourd'hui ?\n\nCela écrasera toute saisie déjà faite pour le jour courant.")) return;
-
-    // Suspendre l'auto-save pendant le reset pour éviter les erreurs en cascade
-    clearTimeout(saveTimer);
-    savingFlag = true;
-
-    try {
-        // Vider les champs SANS déclencher les events (et donc l'auto-save)
-        document.querySelectorAll("input[name], textarea[name]").forEach(el => {
-            el.value = "";
-        });
-        const dateInput = document.querySelector('input[name="date"]');
-        if (dateInput) dateInput.value = todayFR();
-
-        // Sauvegarder une fois proprement
-        savingFlag = false;
-        await saveFeuilleDeGarde();
-        showToast("✅ Nouvelle feuille démarrée");
-        setStatus("✅ Nouvelle feuille démarrée", "#4ade80");
-    } catch (e) {
-        // Ignorer toute erreur de validation pour ne pas afficher de message d'erreur
-        setStatus("✅ Nouvelle feuille démarrée", "#4ade80");
-    } finally {
-        savingFlag = false;
-    }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    loadFeuilleDeGarde();
-
-    // Auto-save sur input + change
-    document.addEventListener("input", scheduleSave);
-    document.addEventListener("change", scheduleSave);
-
-    // Sauvegarde forcée avant fermeture pour ne rien perdre
-    window.addEventListener("beforeunload", () => {
-        if (saveTimer) {
-            clearTimeout(saveTimer);
-            // best-effort synchrone : on déclenche, sans attendre
-            saveFeuilleDeGarde();
-        }
+        const el = document.createElement("div");
+        el.className = "ronde-card";
+        el.innerHTML = `
+            <div class="info">
+                <strong>${esc(nom)}</strong>
+                <small>${dt} — ${esc(r.observations)}</small>
+            </div>
+            <div class="badges">
+                <span class="pill pill-type">${esc(r.type)||"—"}</span>
+                <span class="pill pill-pts">${valides}/${pts} pts</span>
+                <span class="pill pill-status">${statusLabel}</span>
+                <button class="btn-danger btn-sm" onclick="supprimerRonde('${r.id}')">🗑</button>
+            </div>
+        `;
+        div.appendChild(el);
     });
-});
-</script>
-</head>
-
-<body>
-
-<h1 style="text-align:center; margin-bottom:25px;">📋 Feuille de garde <span id="fdgServiceLbl" style="font-size:0.6em;opacity:0.65;font-weight:500;"></span></h1>
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    try {
-        var svc = (localStorage.getItem("service") || "incendie").toLowerCase();
-        var isGlobal = !!(window.AuraTenant && window.AuraTenant.isGlobalMode);
-        // Feuille de garde réservée au service incendie
-        if (svc !== "incendie" && !isGlobal) {
-            alert("La feuille de garde est réservée au service Sécurité Incendie.");
-            window.location.href = "index.html";
-            return;
-        }
-        var site = (window.AuraTenant && AuraTenant.label) ? AuraTenant.label() : (localStorage.getItem("site_code") || "");
-        var el = document.getElementById("fdgServiceLbl");
-        if (el) el.textContent = site ? "— " + site : "";
-    } catch(e) {}
-});
-</script>
-
-
-<!-- Barre d'outils -->
-<div class="section" style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
-    <button class="tb-btn" onclick="location.href='index.html'">⟵ Menu</button>
-
-    <div id="saveStatus" style="font-size:13px; color:#cfe8ff; flex:1; text-align:center; min-width:200px;">
-        Initialisation…
-    </div>
-
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button class="tb-btn" onclick="saveFeuilleDeGarde()">💾 Sauvegarder</button>
-        <button class="tb-btn" onclick="window.print()">🖨 Imprimer</button>
-        <button class="tb-btn tb-btn-danger" onclick="nouvelleJournee()">🗑 Nouvelle journée</button>
-    </div>
-</div>
-
-<style>
-.tb-btn {
-    background: rgba(77,208,225,0.25);
-    border: 1px solid #4DD0E1;
-    color: #fff;
-    padding: 8px 14px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
-    transition: 0.2s;
 }
-.tb-btn:hover { background: #4DD0E1; color: #0A1A2F; }
-.tb-btn-danger { border-color: #ef4444; background: rgba(239,68,68,0.2); }
-.tb-btn-danger:hover { background: #ef4444; color: white; }
 
-@media print {
-    .tb-btn, #saveStatus, button { display: none !important; }
-    body { background: white !important; color: black !important; padding: 0 !important; }
-    .section { background: white !important; box-shadow: none !important; border: 1px solid #ccc; backdrop-filter: none !important; }
-    h1, h2, h3, label, td, th { color: black !important; }
-    input, textarea {
-        background: white !important; color: black !important;
-        border: 1px solid #ccc !important; backdrop-filter: none !important;
-    }
-    th { background: #f0f0f0 !important; }
-    td { background: white !important; }
+async function supprimerRonde(id) {
+    if (!confirm("Supprimer cette ronde ?")) return;
+    await supabaseClient.from("rondes").delete().eq("id", id);
+    chargerRondes();
 }
-</style>
 
-<!-- Informations générales -->
-<div class="section">
-    <h2>Informations générales</h2>
-    <div class="flex">
-        <div>
-            <label>Date</label>
-            <input type="text" name="date" placeholder="JJ/MM/AAAA">
-        </div>
-        <div>
-            <label>Effectif de garde</label>
-            <input type="text" name="effectif" placeholder="BM / Mobile / Torann">
-        </div>
-    </div>
-</div>
-
-<!-- Effectif de garde -->
-<div class="section">
-    <h2>Effectif de garde</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:22%">Fonction</th>
-                    <th style="width:28%">Nom</th>
-                    <th style="width:22%">Indicatif radio</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Responsable de garde BM</td>
-                    <td><input type="text" name="resp_bm_nom"></td>
-                    <td><input type="text" name="resp_bm_radio"></td>
-                </tr>
-                <tr>
-                    <td>Chef de poste Torann</td>
-                    <td><input type="text" name="chef_poste_nom"></td>
-                    <td><input type="text" name="chef_poste_radio"></td>
-                </tr>
-                <tr>
-                    <td>Agent 1</td>
-                    <td><input type="text" name="agent1_nom"></td>
-                    <td><input type="text" name="agent1_radio" placeholder="BM 1 / mobile 1"></td>
-                </tr>
-                <tr>
-                    <td>Agent 2</td>
-                    <td><input type="text" name="agent2_nom"></td>
-                    <td><input type="text" name="agent2_radio" placeholder="BM 2 / mobile 2"></td>
-                </tr>
-                <tr>
-                    <td>Agent 3</td>
-                    <td><input type="text" name="agent3_nom"></td>
-                    <td><input type="text" name="agent3_radio" placeholder="BM 3 / mobile 3"></td>
-                </tr>
-                <tr>
-                    <td>Agent 4</td>
-                    <td><input type="text" name="agent4_nom"></td>
-                    <td><input type="text" name="agent4_radio" placeholder="BM 4 / mobile 4"></td>
-                </tr>
-                <tr>
-                    <td>Agent 5</td>
-                    <td><input type="text" name="agent5_nom"></td>
-                    <td><input type="text" name="agent5_radio" placeholder="BM 5 / mobile 5"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Fonction stationnaire -->
-<div class="section">
-    <h2>Fonction stationnaire</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr><th style="width:20%">Horaire</th><th style="width:30%">Agent</th><th>Mission</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>8h — 10h</td>
-                    <td><input type="text" name="stat_8_10_nom" placeholder="BM préférentiel"></td>
-                    <td>Vérification mail + gestion anomalie nuit + brief</td>
-                </tr>
-                <tr>
-                    <td>10h — 12h</td>
-                    <td><input type="text" name="stat_10_12_nom" placeholder="Agent ouverture"></td>
-                    <td>Personne ayant fait l'ouverture + gestion PC</td>
-                </tr>
-                <tr>
-                    <td>12h — 13h</td>
-                    <td><input type="text" name="stat_12_13_nom"></td>
-                    <td>Gestion PC</td>
-                </tr>
-                <tr>
-                    <td>13h — 15h</td>
-                    <td><input type="text" name="stat_13_15_nom"></td>
-                    <td>Gestion PC + permis feu</td>
-                </tr>
-                <tr>
-                    <td>15h — 17h</td>
-                    <td><input type="text" name="stat_15_17_nom"></td>
-                    <td>Gestion PC + permis feu</td>
-                </tr>
-                <tr>
-                    <td>17h — 18h</td>
-                    <td><input type="text" name="stat_17_18_nom" placeholder="Même que 12h-13h"></td>
-                    <td>Gestion PC</td>
-                </tr>
-                <tr>
-                    <td>18h30 — 20h</td>
-                    <td><input type="text" name="stat_18_20_nom" placeholder="BM préférentiel"></td>
-                    <td>Bilan de la garde + consignes nuit/lendemain + MAC</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Roulement des repas -->
-<div class="section">
-    <h2>Roulement des repas</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr><th>Créneau</th><th>Agent</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>12h — 13h</td>
-                    <td><input type="text" name="pause_12_13_nom"></td>
-                </tr>
-                <tr>
-                    <td>13h — 14h</td>
-                    <td><input type="text" name="pause_13_14_nom"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Travail 8h-9h -->
-<div class="section">
-    <h2>Travail de 8h à 9h — Vérifications journalières</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr><th>Mission</th><th>Agent affecté</th><th>Observation</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>OUVERTURE</td>
-                    <td><input type="text" name="ouv_agent"></td>
-                    <td><input type="text" name="ouv_obs"></td>
-                </tr>
-                <tr>
-                    <td>Vérif J1</td>
-                    <td><input type="text" name="vj1_agent"></td>
-                    <td><input type="text" name="vj1_obs"></td>
-                </tr>
-                <tr>
-                    <td>Vérif J2</td>
-                    <td><input type="text" name="vj2_agent"></td>
-                    <td><input type="text" name="vj2_obs"></td>
-                </tr>
-                <tr>
-                    <td>Vérif J3</td>
-                    <td><input type="text" name="vj3_agent"></td>
-                    <td><input type="text" name="vj3_obs"></td>
-                </tr>
-                <tr>
-                    <td>Vérif J4</td>
-                    <td><input type="text" name="vj4_agent"></td>
-                    <td><input type="text" name="vj4_obs"></td>
-                </tr>
-                <tr>
-                    <td>Vérif J5</td>
-                    <td><input type="text" name="vj5_agent"></td>
-                    <td><input type="text" name="vj5_obs"></td>
-                </tr>
-                <tr>
-                    <td>Ronde chantier + ouverture PF (CDG & 1 Torann)</td>
-                    <td><input type="text" name="rc_pf_agent"></td>
-                    <td><input type="text" name="rc_pf_obs"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Travail 10h-12h -->
-<div class="section">
-    <h2>Travail de 10h à 12h</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr><th>Missions</th><th>Agent affecté</th><th>Observation</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Ronde surface de vente 9h50</td>
-                    <td><input type="text" name="rsv_950_agent"></td>
-                    <td><input type="text" name="rsv_950_obs"></td>
-                </tr>
-                <tr>
-                    <td>Ronde secteur 1</td>
-                    <td><input type="text" name="rs1_agent"></td>
-                    <td><input type="text" name="rs1_obs"></td>
-                </tr>
-                <tr>
-                    <td>Ronde secteur 2</td>
-                    <td><input type="text" name="rs2_agent"></td>
-                    <td><input type="text" name="rs2_obs"></td>
-                </tr>
-                <tr>
-                    <td>Ronde secteur 3</td>
-                    <td><input type="text" name="rs3_agent"></td>
-                    <td><input type="text" name="rs3_obs"></td>
-                </tr>
-                <tr>
-                    <td>Ronde PF 11h</td>
-                    <td><input type="text" name="rpf_11_agent"></td>
-                    <td><input type="text" name="rpf_11_obs"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Travail 14h-18h -->
-<div class="section">
-    <h2>Travail de 14h à 18h</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr><th>Missions</th><th>Agent affecté</th><th>Observation</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Ronde travaux + PF 14h</td>
-                    <td><input type="text" name="rt_pf_14_agent"></td>
-                    <td><input type="text" name="rt_pf_14_obs"></td>
-                </tr>
-                <tr>
-                    <td>Ronde surface de vente 15h50</td>
-                    <td><input type="text" name="rsv_1550_agent"></td>
-                    <td><input type="text" name="rsv_1550_obs"></td>
-                </tr>
-                <tr>
-                    <td>Ronde PF 16h</td>
-                    <td><input type="text" name="rpf_16_agent"></td>
-                    <td><input type="text" name="rpf_16_obs"></td>
-                </tr>
-                <tr>
-                    <td>Ronde travaux + PF 18h</td>
-                    <td><input type="text" name="rt_pf_18_agent"></td>
-                    <td><input type="text" name="rt_pf_18_obs"></td>
-                </tr>
-                <tr>
-                    <td>Ronde toiture 18h</td>
-                    <td><input type="text" name="rt_toit_agent"></td>
-                    <td><input type="text" name="rt_toit_obs"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Essai journalier -->
-<div class="section">
-    <h2>Essai journalier</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr><th>Agent affecté</th><th>Nature de l'essai</th><th>Observation</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><input type="text" name="essai_num"></td>
-                    <td><input type="text" name="essai_nature"></td>
-                    <td><input type="text" name="essai_obs"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- MAC 18h-20h -->
-<div class="section">
-    <h2>Travail de 18h à 20h — MAC</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead>
-                <tr><th>Thème principal</th><th>Formateur</th><th>Thème secondaire</th><th>Observation</th></tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><input type="text" name="mac_theme1"></td>
-                    <td><input type="text" name="mac_formateur"></td>
-                    <td><input type="text" name="mac_theme2"></td>
-                    <td><input type="text" name="mac_obs"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-
-<!-- Permanences -->
-<div class="section">
-    <h2>Les permanences</h2>
-    <div class="table-wrapper">
-        <table>
-            <thead><tr><th>Fonction</th><th>Nom</th><th>N° tél</th></tr></thead>
-            <tbody>
-                <tr>
-                    <td>CODIR</td>
-                    <td><input type="text" name="perm_codir_nom"></td>
-                    <td><input type="text" name="perm_codir_tel"></td>
-                </tr>
-                <tr>
-                    <td>COMMERCIAL</td>
-                    <td><input type="text" name="perm_com_nom"></td>
-                    <td><input type="text" name="perm_com_tel"></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Consignes & observations -->
-<div class="section">
-    <h2>Consignes importantes pour la journée de garde</h2>
-    <textarea name="consignes_importantes"></textarea>
-</div>
-
-<div class="section">
-    <h2>Observation journalière</h2>
-    <textarea name="observation_journaliere"></textarea>
-</div>
-
-<div class="section">
-    <h2>Consignes, remarques, informations concernant le déroulement de la journée</h2>
-    <textarea name="remarques_journee"></textarea>
-</div>
-
+chargerRondes();
+</script>
 <script src="security.js"></script>
 <script src="global.js"></script>
 <script src="notifications_global.js"></script>

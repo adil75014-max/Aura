@@ -2,839 +2,511 @@
 <html lang="fr">
 <head>
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-Frame-Options" content="DENY">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Permis Feu — Consultation</title>
+<title>Contrôle d'accès — Sûreté</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="vendor/qrious.min.js" crossorigin="anonymous"></script>
-<script src="vendor/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="global.css">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
-
-.header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
-.back-btn{background:rgba(239,100,50,0.12);border:1px solid rgba(239,100,50,0.3);color:#ef6432;padding:8px 14px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';transition:.2s}
-.back-btn:hover{background:#ef6432;color:#fff}
-.header h1{font-size:1.4rem;color:#ef6432;flex:1;letter-spacing:-.5px}
-
-.filters{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;margin-bottom:20px;display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
-.filter-group{flex:1;min-width:140px}
-.filter-group label{display:block;font-size:.8rem;font-weight:600;color:#8899bb;margin-bottom:4px}
-.filter-group input,.filter-group select{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:.9rem 'DM Sans'}
-.filter-group input:focus,.filter-group select:focus{outline:none;border-color:#ef6432;box-shadow:0 0 0 3px rgba(239,100,50,0.15)}
-.btn-search{padding:10px 20px;border:none;border-radius:10px;background:linear-gradient(135deg,#ef6432,#d44a1a);color:#fff;font:600 .9rem 'DM Sans';cursor:pointer;height:42px;white-space:nowrap}
-.btn-search:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(239,100,50,0.3)}
-
-.stats{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
-.stat{flex:1;min-width:100px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;text-align:center}
-.stat-num{font-size:1.6rem;font-weight:700;color:#ef6432}
-.stat-label{font-size:.75rem;color:#6b7a99;margin-top:2px}
-
-.permits-list{display:flex;flex-direction:column;gap:10px}
-.permit-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:16px;display:flex;align-items:center;gap:14px;transition:.2s;cursor:pointer}
-.permit-card:hover{border-color:rgba(239,100,50,0.3);background:rgba(239,100,50,0.04)}
-.permit-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0}
-.permit-icon.open{background:rgba(239,100,50,0.12);border:1px solid rgba(239,100,50,0.25)}
-.permit-icon.closed{background:rgba(0,200,120,0.12);border:1px solid rgba(0,200,120,0.25)}
-.permit-info{flex:1;min-width:0}
-.permit-info .permit-num{font-weight:700;font-size:.95rem;color:#e0e4ef}
-.permit-info .permit-meta{font-size:.8rem;color:#6b7a99;margin-top:3px;display:flex;flex-wrap:wrap;gap:8px}
-.pill{padding:4px 12px;border-radius:999px;font-size:.75rem;font-weight:600}
-.pill-open{background:rgba(239,100,50,0.15);color:#ef6432}
-.pill-closed{background:rgba(0,200,120,0.15);color:#00c878}
-.empty{text-align:center;padding:40px;color:#4a5578;font-size:.95rem}
-
-.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);backdrop-filter:blur(10px);display:none;justify-content:center;align-items:flex-start;padding:20px;z-index:999;overflow-y:auto}
-.modal-bg.active{display:flex}
-.modal-box{background:#131824;border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:28px;width:100%;max-width:720px;margin:20px auto;color:white}
-.modal-box h2{color:#ef6432;margin-bottom:18px;font-size:1.3rem;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:12px}
-.modal-box h3{color:#ff9966;margin:20px 0 8px;font-size:.95rem;letter-spacing:.3px}
-.detail-row{display:flex;gap:16px;margin-bottom:8px;flex-wrap:wrap}
-.detail-field{flex:1;min-width:200px;margin-bottom:10px}
-.detail-label{color:#8899bb;font-weight:600;font-size:.8rem;display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
-.detail-value{color:#e0e4ef;white-space:pre-wrap;word-break:break-word;line-height:1.5;font-size:.95rem}
-.qr-block{text-align:center;margin:16px 0;padding:16px;background:white;border-radius:12px;display:inline-block}
-.signature-block img{max-width:280px;width:100%;border:1px solid rgba(255,255,255,0.1);border-radius:10px;background:#f9fafb}
-.passage-list{display:flex;flex-wrap:wrap;gap:6px}
-.passage-tag{padding:4px 10px;border-radius:8px;background:rgba(239,100,50,0.1);color:#ef6432;font-size:.85rem;font-weight:600}
-.modal-actions{display:flex;gap:10px;margin-top:24px;flex-wrap:wrap}
-.modal-actions button{padding:10px 18px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';border:1px solid;transition:.2s}
-.btn-close{border-color:rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#8899bb}
-.btn-close:hover{background:rgba(255,255,255,0.12);color:#fff}
-.btn-cloturer{border-color:#00c878;background:rgba(0,200,120,0.1);color:#00c878}
-.btn-cloturer:hover{background:#00c878;color:#fff}
-.btn-pdf{border-color:#ef6432;background:rgba(239,100,50,0.1);color:#ef6432}
-.btn-pdf:hover{background:#ef6432;color:#fff}
-
-/* URGENCES */
-.urgence-block{margin:20px 0 16px;padding:14px;border-radius:14px;background:rgba(255,60,30,0.08);border:1px solid rgba(255,60,30,0.25)}
-.urgence-block h3{color:#ff4d2e !important;margin:0 0 10px !important;font-size:.9rem;letter-spacing:.3px}
-.urgence-btn{width:100%;border-radius:999px;padding:12px 16px;border:none;font:600 .95rem 'DM Sans';cursor:pointer;color:#fff;margin-top:8px;transition:.2s;display:flex;align-items:center;justify-content:center;gap:8px}
-.urgence-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,0.3)}
-.btn-urgence-feu{background:linear-gradient(135deg,#ff6d00,#dd2c00)}
-.btn-urgence-svv{background:linear-gradient(135deg,#ff1744,#c62828)}
-.btn-urgence-call{background:linear-gradient(135deg,#2563eb,#1d4ed8)}
-
-/* Bandeau lecture seule (accès QR code intervenant) */
-.ro-banner{background:linear-gradient(135deg,rgba(37,99,235,0.15),rgba(29,78,216,0.1));border:1px solid rgba(37,99,235,0.4);border-radius:10px;padding:10px 14px;margin-bottom:14px;color:#93c5fd;font-size:.85rem;font-weight:600;display:flex;align-items:center;gap:8px}
-
-/* Sections réservées au PC Sécurité (passages / prolongation) */
-.admin-block{margin-top:20px;padding:14px;border-radius:12px;background:rgba(239,100,50,0.05);border:1px solid rgba(239,100,50,0.2)}
-.admin-block h3{color:#ef6432!important;margin:0 0 10px!important;font-size:.9rem;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
-.admin-block .admin-form{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
-.admin-block .admin-field{flex:1;min-width:140px}
-.admin-block label{display:block;font-size:.75rem;font-weight:600;color:#8899bb;margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
-.admin-block input{width:100%;padding:9px 11px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:.9rem 'DM Sans';outline:none;transition:.15s}
-.admin-block input:focus{border-color:#ef6432;box-shadow:0 0 0 3px rgba(239,100,50,0.15)}
-.admin-block .admin-btn{padding:10px 18px;border-radius:8px;border:none;background:linear-gradient(135deg,#ef6432,#d44a1a);color:#fff;font:600 .85rem 'DM Sans';cursor:pointer;white-space:nowrap;transition:.2s}
-.admin-block .admin-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(239,100,50,0.35)}
-.admin-block .admin-btn:disabled{opacity:.6;cursor:wait}
-.admin-block .passages-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:10px}
-.admin-block .passage-tag{padding:4px 10px;border-radius:8px;background:rgba(239,100,50,0.15);color:#ef6432;font-size:.8rem;font-weight:600}
-.admin-block .empty-note{font-size:.8rem;color:#6b7a99;font-style:italic;margin-bottom:8px}
-.admin-block .hint{font-size:.75rem;color:#6b7a99;margin-top:6px;line-height:1.35}
-
-@media(max-width:500px){.permit-card{flex-direction:column;align-items:flex-start}.detail-row{flex-direction:column}.admin-block .admin-form{flex-direction:column}.admin-block .admin-btn{width:100%}}
+:root { --acc:#3b82f6; --acc2:#06b6d4; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; }
+body { margin:0; padding:16px; background:radial-gradient(circle at top,#0f1830,#080b14 60%); color:#e8ebf0; font-family:system-ui,sans-serif; }
+.bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+.bar h1 { font-size:1.3rem; margin:0; flex:1; min-width:200px; display:flex; align-items:center; gap:8px; }
+.btn { background:#16203a; border:1px solid #283042; color:#e8ebf0; border-radius:8px; padding:8px 13px; cursor:pointer; font-size:.85rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+.btn:hover { background:#1d2942; }
+.btn.acc2 { background:linear-gradient(135deg,var(--acc2),#0e7490); border:none; color:#fff; font-weight:700; }
+.postes { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.poste { flex:1; min-width:120px; padding:12px; border-radius:10px; border:1px solid #283042; background:#0e1626; cursor:pointer; text-align:center; }
+.poste.active { background:linear-gradient(135deg,var(--acc),#1e40af); border-color:var(--acc); }
+.poste .pn { font-weight:800; font-size:1.05rem; }
+.poste .ps { font-size:.72rem; opacity:.8; }
+.card { background:#0e1626; border:1px solid #232c40; border-radius:14px; padding:16px; margin-bottom:16px; }
+.card h2 { font-size:1rem; margin:0 0 12px; color:#9ec5ff; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:880px){ .grid{ grid-template-columns:1fr; } }
+.cats { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.cat { flex:1; min-width:80px; padding:9px 6px; border-radius:8px; border:1px solid #283042; background:#111b2e; cursor:pointer; font-size:.82rem; text-align:center; font-weight:600; }
+.cat.active { background:#1e3a5f; border-color:var(--acc); color:#fff; }
+label { display:block; font-size:.82rem; margin-top:10px; font-weight:600; opacity:.9; }
+input, select, textarea { width:100%; box-sizing:border-box; padding:9px; margin-top:4px; background:#0a1120; border:1px solid #283042; border-radius:8px; color:#e8ebf0; font-size:.9rem; }
+.sens-row { display:flex; gap:8px; margin-top:14px; }
+.sens-row .btn { flex:1; justify-content:center; }
+.sens-row .btn.sel-in { background:linear-gradient(135deg,var(--ok),#047857); border:none; color:#fff; font-weight:700; }
+.sens-row .btn.sel-out { background:linear-gradient(135deg,var(--bad),#b91c1c); border:none; color:#fff; font-weight:700; }
+.consigne-head { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.consigne-chip { background:#0a1120; border:1px solid #232c40; border-radius:10px; padding:8px 14px; text-align:center; }
+.consigne-chip .n { font-size:1.5rem; font-weight:800; }
+.consigne-chip .l { font-size:.7rem; opacity:.75; }
+.consigne-chip.ko .n { color:var(--warn); }
+.consigne-chip.ok .n { color:var(--ok); }
+.badge-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:8px; }
+.bdg { border-radius:10px; padding:9px; border:1px solid #232c40; background:#0a1120; cursor:pointer; transition:.15s; position:relative; }
+.bdg .id { font-weight:800; font-size:.95rem; }
+.bdg .who { font-size:.72rem; opacity:.85; margin-top:3px; line-height:1.25; min-height:1.2em; }
+.bdg .since { font-size:.66rem; opacity:.6; margin-top:2px; }
+.bdg.free { border-color:#1f3a2e; }
+.bdg.free .id { color:var(--ok); }
+.bdg.free:hover { background:#0d1a14; }
+.bdg.out { border-color:#3a2330; background:#1a1016; }
+.bdg.out .id { color:var(--bad); }
+.bdg.out:hover { background:#241218; }
+.bdg.overstay { border-color:var(--warn); box-shadow:0 0 0 1px var(--warn) inset; }
+.bdg .dot { position:absolute; top:8px; right:8px; width:8px; height:8px; border-radius:50%; }
+.bdg.free .dot { background:var(--ok); }
+.bdg.out .dot { background:var(--bad); }
+.presence { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.pchip { flex:1; min-width:70px; background:#0a1120; border:1px solid #232c40; border-radius:10px; padding:8px; text-align:center; }
+.pchip .n { font-size:1.4rem; font-weight:800; color:var(--acc2); }
+.pchip .l { font-size:.7rem; opacity:.75; }
+.logsearch { display:flex; gap:8px; margin-bottom:10px; }
+.logsearch input { margin-top:0; }
+.log { max-height:340px; overflow-y:auto; }
+.entry { padding:9px 11px; border-radius:9px; margin-bottom:7px; background:#0a1120; border:1px solid #1d2740; border-left:3px solid #283042; font-size:.85rem; }
+.entry.in { border-left-color:var(--ok); }
+.entry.out { border-left-color:var(--bad); }
+.entry .top { display:flex; justify-content:space-between; gap:8px; }
+.entry .nm { font-weight:700; }
+.entry .meta { font-size:.74rem; opacity:.7; margin-top:3px; display:flex; gap:10px; flex-wrap:wrap; }
+.entry .badge-cat { font-size:.68rem; padding:1px 7px; border-radius:999px; background:#1e3a5f; }
+.empty { opacity:.6; text-align:center; padding:20px; font-size:.85rem; }
+.scan { background:#0a1120; border:1px dashed var(--acc2); border-radius:8px; padding:10px; margin-bottom:10px; }
+.scan input { border-style:dashed; }
+.intg { font-size:.75rem; opacity:.8; background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.3); border-radius:8px; padding:8px 11px; margin-top:10px; line-height:1.5; }
+#toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#111; padding:12px 22px; border-radius:10px; opacity:0; transition:.3s; pointer-events:none; z-index:999; max-width:90%; text-align:center; }
+#toast.show { opacity:1; }
 </style>
 </head>
 <body>
-
-<div class="header">
-    <button class="back-btn" onclick="location.href='index.html'">⟵</button>
-    <h1>🔥 Permis Feu</h1>
+<div class="bar">
+    <h1>🛂 Contrôle d'accès <span style="font-size:.8rem;opacity:.65;font-weight:500" id="siteLbl"></span></h1>
+    <button class="btn" onclick="configBadges()">🎫 Lot de badges</button>
+    <button class="btn" onclick="fichePassation()">🖨️ Fiche de passation</button>
+    <button class="btn acc2" onclick="ouvrirParametres()">⚙️ Laisser-passer</button>
+    <button class="btn" onclick="exportCSV()">⬇️ Export</button>
+    <a class="btn" href="index.html">← Retour</a>
 </div>
-
-<div class="stats">
-    <div class="stat"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Total</div></div>
-    <div class="stat"><div class="stat-num" id="statOuvert" style="color:#ef6432">0</div><div class="stat-label">Ouverts</div></div>
-    <div class="stat"><div class="stat-num" id="statClos" style="color:#00c878">0</div><div class="stat-label">Clôturés</div></div>
+<div class="postes" id="postes">
+    <div class="poste" data-poste="porte5"   onclick="setPoste('porte5')">  <div class="pn">Porte 5</div>  <div class="ps">Accès employés</div></div>
+    <div class="poste" data-poste="porte115" onclick="setPoste('porte115')"><div class="pn">Porte 115</div><div class="ps">Sociétés · Visiteurs · Livreurs</div></div>
+    <div class="poste" data-poste="porte16"  onclick="setPoste('porte16')"> <div class="pn">Porte 16</div> <div class="ps">Accès mixte</div></div>
 </div>
-
-<div class="filters">
-    <div class="filter-group"><label>Date</label><input type="date" id="filtreDate"></div>
-    <div class="filter-group"><label>Entreprise</label><select id="filtreEntreprise"><option value="all">Toutes</option></select></div>
-    <div class="filter-group"><label>Statut</label><select id="filtreStatut" onchange="chargerPermisFeu()">
-        <option value="all">Tous</option>
-        <option value="ouvert">Ouverts seulement</option>
-        <option value="cloture">Clôturés seulement</option>
-        <option value="all">Tous</option>
-    </select></div>
-    <button class="btn-search" onclick="chargerPermisFeu()">🔍 Rechercher</button>
+<div class="card">
+    <h2>🎫 Badges visiteurs — consigne pièce d'identité
+        <span style="font-size:.72rem;font-weight:500;opacity:.7" id="consigneRappel"></span></h2>
+    <div id="consigneAlert" style="display:none; margin-bottom:12px; padding:10px 14px; border-radius:10px; font-size:.86rem; font-weight:600;"></div>
+    <div class="consigne-head">
+        <div class="consigne-chip ok"><div class="n" id="cFree">–</div><div class="l">Badges dispo</div></div>
+        <div class="consigne-chip ko"><div class="n" id="cOut">–</div><div class="l">Badges sortis</div></div>
+        <div class="consigne-chip ko"><div class="n" id="cPieces">–</div><div class="l">Pièces en consigne</div></div>
+    </div>
+    <div class="badge-grid" id="badgeGrid"></div>
+    <div class="intg" style="margin-top:12px;">
+        💡 <b>Remettre un badge</b> : catégorie « Visiteur » ci-dessous, attribue un badge libre et indique la pièce gardée en consigne. Un <b>ticket avec QR</b> s'imprime automatiquement.
+        <b>Restituer</b> : scanne le QR du ticket (ou clique le badge rouge) → la sortie est enregistrée et le rappel de rendre la pièce s'affiche.
+    </div>
 </div>
-
-<div class="permits-list" id="permitsList"><div class="empty">Chargement…</div></div>
-
-<div class="modal-bg" id="modalPermis" onclick="if(event.target===this)fermerPermis()">
-    <div class="modal-box" id="modalPermisContent"></div>
+<div class="grid">
+    <div class="card">
+        <h2>➕ Enregistrer un passage</h2>
+        <div class="scan">
+            <label style="margin-top:0">🔖 Scan badge / laisser-passer</label>
+            <input type="text" id="scanField" placeholder="Scanner ou saisir un code, puis Entrée" autocomplete="off">
+        </div>
+        <div class="cats" id="cats">
+            <div class="cat active" data-cat="employe"  onclick="setCat('employe')">👤 Employé</div>
+            <div class="cat" data-cat="societe"  onclick="setCat('societe')">🏢 Société</div>
+            <div class="cat" data-cat="visiteur" onclick="setCat('visiteur')">🎫 Visiteur</div>
+            <div class="cat" data-cat="livreur"  onclick="setCat('livreur')">📦 Livreur</div>
+        </div>
+        <div id="fields"></div>
+        <div class="sens-row">
+            <button class="btn sel-in"  onclick="enregistrer('entree')">↓ ENTRÉE</button>
+            <button class="btn sel-out" onclick="enregistrer('sortie')">↑ SORTIE</button>
+        </div>
+        <div class="intg" id="intgNote"></div>
+    </div>
+    <div class="card">
+        <h2>📊 Présence en cours</h2>
+        <div class="presence" id="presence"></div>
+        <h2 style="margin-top:14px">📋 Journal — traçabilité</h2>
+        <div class="logsearch">
+            <input type="text" id="searchField" placeholder="🔍 Rechercher…" oninput="renderLog()">
+            <select id="filterPoste" onchange="renderLog()" style="max-width:130px;margin-top:0">
+                <option value="">Tous postes</option>
+                <option value="porte5">Porte 5</option>
+                <option value="porte115">Porte 115</option>
+                <option value="porte16">Porte 16</option>
+            </select>
+        </div>
+        <div class="log" id="log"><div class="empty">Chargement…</div></div>
+    </div>
 </div>
-
+<div id="toast"></div>
+<div id="qrStage" style="display:none"></div>
+<div id="caModalOv" style="position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px" onclick="if(event.target===this)closeCaModal()">
+    <div id="caModal" style="background:#0e1626;border:1px solid #2a3550;border-radius:16px;max-width:420px;width:100%;max-height:88vh;overflow-y:auto;padding:22px"></div>
+</div>
+<script src="vendor/qrcodejs.min.js"></script>
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
-<script>
-if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
-
-let permisCache = [];
-/* MODE LECTURE SEULE : accès via QR code (paramètre ?pf=... dans l'URL)
-   → l'intervenant peut consulter + télécharger le PDF mais ne peut pas clôturer,
-   et ne voit pas les autres permis (confidentialité) */
-const READ_ONLY = new URLSearchParams(location.search).has("pf");
-
-function fmtDate(iso){if(!iso)return"\u2014";const d=new Date(iso);return d.toLocaleDateString("fr-FR")+" "+d.toLocaleTimeString("fr-FR").slice(0,5);}
-function agentName(p){if(p.profiles){const n=[p.profiles.prenom,p.profiles.nom].filter(Boolean).join(" ");if(n)return n;}return p.agent_nom||(p.meta&&p.meta.agent_nom)||"\u2014";}
-function isClos(s){if(!s)return false;var l=s.toLowerCase();return l==="cloture"||l.includes("clos");}
-function esc(s){if(!s)return"\u2014";const d=document.createElement("div");d.textContent=s;return d.innerHTML;}
-
-async function chargerPermisFeu(){
-    const dateF=document.getElementById("filtreDate").value;
-    const entF=document.getElementById("filtreEntreprise").value;
-    const statutF=document.getElementById("filtreStatut").value;
-
-    /* ══ CHARGEMENT ALLÉGÉ ══
-       On NE charge PAS meta complet ici : il contient plans (PDF base64,
-       jusqu'à 8 Mo chacun) et signatures. Avec select("*"), la liste
-       deviendrait inutilisable au fil des permis. On ne prend que les
-       sous-champs de meta utiles à la liste ; le permis COMPLET est
-       récupéré à l'ouverture (ouvrirPermis). */
-    let q=supabaseClient.from("permis_feu").select(
-        "id, numero, entreprise, lieu, statut, date_debut, created_at, agent_nom, "+
-        "vigilance:meta->vigilance, magasin:meta->magasin, etage:meta->etage, zone_canton:meta->zone_canton, meta_agent:meta->agent_nom, "+
-        "profiles(nom, prenom)"
-    ).order("created_at",{ascending:false});
-    if(dateF){q=q.gte("created_at",dateF+"T00:00:00").lte("created_at",dateF+"T23:59:59.999");}
-    if(entF!=="all")q=q.eq("entreprise",entF);
-
-    /* ══ FILTRE SERVEUR : ne pas recevoir les clôturés quand on veut les ouverts ══
-       C'est ça qui empêche le permis de revenir fantôme après clôture.
-       Avant, on filtrait seulement côté client → race condition possible. */
-    if(statutF==="ouvert")  q=q.neq("statut","cloture");
-    if(statutF==="cloture") q=q.eq("statut","cloture");
-
-    const{data,error}=await q;
-    if(error){showToast("\u274c "+error.message,true);return;}
-    /* Reconstruction d'un meta partiel pour que renderList/agentName
-       continuent de lire p.meta.* sans changement. _light=true signale
-       que plans/signatures ne sont pas chargés. */
-    permisCache = (data||[]).map(p => ({
-        ...p,
-        _light: true,
-        meta: {
-            vigilance: p.vigilance || null,
-            magasin: p.magasin || null,
-            etage: p.etage || null,
-            zone_canton: p.zone_canton || null,
-            agent_nom: p.meta_agent || null
-        }
-    }));
-    renderList(permisCache);
-    /* Compteurs sur tous les permis */
-    const{data:allPF}=await supabaseClient.from("permis_feu").select("statut");
-    const allP=allPF||[];
-    document.getElementById("statTotal").textContent=allP.length;
-    document.getElementById("statOuvert").textContent=allP.filter(function(p){return !isClos(p.statut);}).length;
-    document.getElementById("statClos").textContent=allP.filter(function(p){return isClos(p.statut);}).length;
-
-    const sp = new URLSearchParams(location.search);
-    const urlNum = sp.get("pf") || sp.get("numero");  // ?pf= (existant) ou ?numero= (depuis QR du PDF)
-    const autoUrgence = sp.get("urgence") === "1";    // ?urgence=1 → ouvre directement le panneau d'urgence
-    if (urlNum) {
-        const match = permisCache.find(p => p.numero === urlNum || p.id === urlNum);
-        if (match) {
-            ouvrirPermis(match.id);
-            if (autoUrgence) {
-                // Petit délai pour laisser le modal se rendre, puis surligner les boutons urgence
-                setTimeout(function() {
-                    const modal = document.getElementById("permisModal");
-                    if (modal) {
-                        const btns = modal.querySelectorAll(".urgence-btn");
-                        btns.forEach(b => {
-                            b.style.animation = "pulse-urgence 1s ease-in-out infinite alternate";
-                            b.style.outline = "3px solid #ef4444";
-                            b.style.outlineOffset = "3px";
-                        });
-                        // Scrolle automatiquement vers les boutons d'urgence
-                        const firstBtn = btns[0];
-                        if (firstBtn) firstBtn.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }
-                    // Injecte l'animation CSS si absente
-                    if (!document.getElementById("urgence-pulse-css")) {
-                        const st = document.createElement("style");
-                        st.id = "urgence-pulse-css";
-                        st.textContent = "@keyframes pulse-urgence { from { box-shadow: 0 0 0 0 rgba(239,68,68,0.7); } to { box-shadow: 0 0 0 16px rgba(239,68,68,0); } }";
-                        document.head.appendChild(st);
-                    }
-                }, 350);
-            }
-        } else {
-            // Permis pas dans le cache (ex: clos et le filtre actuel ne le montre pas)
-            console.warn("[QR-URGENCE] Permis non trouvé dans le cache pour numero:", urlNum);
-        }
-    }
-}
-
-function renderList(list){
-    const div=document.getElementById("permitsList");
-
-    /* ══ SÉCURITÉ : toujours respecter le filtre statut actif ══
-       Même si un permis clôturé se retrouve dans le cache (race condition,
-       re-fetch trop rapide, etc.), il ne sera JAMAIS affiché quand le
-       filtre est sur "Ouverts seulement". */
-    const statutF = (document.getElementById("filtreStatut") || {}).value || "ouvert";
-    let filtered = list;
-    if (statutF === "ouvert")       filtered = list.filter(p => !isClos(p.statut));
-    else if (statutF === "cloture") filtered = list.filter(p => isClos(p.statut));
-
-    if(!filtered.length){div.innerHTML='<div class="empty">Aucun permis feu trouv\u00e9.</div>';return;}
-    div.innerHTML=filtered.map(p=>{
-        const clos=isClos(p.statut);
-        const agent=agentName(p);
-        const lieu=p.lieu||(p.meta?[p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" \u2014 "):"")||"\u2014";
-        const date=fmtDate(p.date_debut||p.created_at);
-        const vig=(p.meta&&p.meta.vigilance)?p.meta.vigilance:null;
-        const vigBadge=vig?`<span class="pill" style="background:${VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].bg:'rgba(255,255,255,.08)'};color:${VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].fg:'#e0e4ef'};border:1px solid ${VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].border:'transparent'};">${VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].dot:''} ${esc(vig.label||vig.niveau)}</span>`:"";
-        return `<div class="permit-card" onclick="ouvrirPermis('${p.id}')">
-            <div class="permit-icon ${clos?'closed':'open'}">${clos?'\u2705':'\ud83d\udd25'}</div>
-            <div class="permit-info">
-                <div class="permit-num">${p.numero||"Sans num\u00e9ro"} ${vigBadge}</div>
-                <div class="permit-meta">
-                    <span>\ud83d\udcc5 ${date}</span>
-                    <span>\ud83c\udfe2 ${esc(p.entreprise||"\u2014")}</span>
-                    <span>\ud83d\udccd ${esc(lieu).substring(0,30)}</span>
-                    <span>\ud83d\udc64 ${esc(agent)}</span>
-                </div>
-            </div>
-            <span class="pill ${clos?'pill-closed':'pill-open'}">${clos?"Cl\u00f4tur\u00e9":"Ouvert"}</span>
-        </div>`;
-    }).join("");
-}
-
-/* Couleurs des niveaux de vigilance protection incendie */
-const VIG_COLORS = {
-    verte:  { dot:"🟢", fg:"#86efac", bg:"rgba(34,197,94,.12)",  border:"rgba(34,197,94,.4)",  hex:"#16a34a" },
-    orange: { dot:"🟠", fg:"#fdba74", bg:"rgba(234,88,12,.12)",  border:"rgba(234,88,12,.45)", hex:"#ea580c" },
-    rouge:  { dot:"🔴", fg:"#fca5a5", bg:"rgba(220,38,38,.14)",  border:"rgba(220,38,38,.5)",  hex:"#dc2626" }
-};
-
-async function ouvrirPermis(id){
-    let p=permisCache.find(x=>x.id===id);
-    if(!p){showToast("Permis introuvable.",true);return;}
-
-    /* Chargement allégé : la liste ne contient ni plans ni signatures.
-       Au premier clic on récupère la ligne complète et on remplace
-       l'entrée du cache → impression et PDF disposent de tout. */
-    if(p._light){
-        const{data,error}=await supabaseClient
-            .from("permis_feu").select("*, profiles(nom, prenom)").eq("id", id).single();
-        if(error||!data){showToast("\u274c Chargement du permis : "+(error?error.message:"introuvable"),true);return;}
-        const idx=permisCache.findIndex(x=>x.id===id);
-        if(idx!==-1)permisCache[idx]=data;
-        p=data;
-    }
-
-    const m=p.meta||{};const clos=isClos(p.statut);const agent=agentName(p);
-    const lieu=p.lieu||[m.magasin,m.etage,m.zone_canton].filter(Boolean).join(" \u2014 ")||"\u2014";
-
-    function field(lbl,val){return(val&&val!=="\u2014")?`<div class="detail-field"><span class="detail-label">${lbl}</span><div class="detail-value">${esc(val)}</div></div>`:"";}
-
-    const qrId="qr-"+p.id.slice(0,8);
-    let html=`<h2>\ud83d\udd25 ${esc(p.numero||"Permis Feu")}</h2>`;
-
-    html+=`<div class="detail-row">${field("Statut",clos?"\u2705 Cl\u00f4tur\u00e9":"\ud83d\udd34 Ouvert")}${field("Date",fmtDate(p.date_debut||p.created_at))}${field("Agent",agent)}</div>`;
-
-    html+=`<div style="text-align:center;margin:16px 0"><div class="qr-block"><canvas id="${qrId}"></canvas><div style="color:#333;font-size:.75rem;margin-top:6px">${esc(p.numero)}</div></div></div>`;
-
-    if(m.odt_par||m.odt_nom||m.odt_fonction){html+=`<h3>Ordre de travail</h3><div class="detail-row">${field("Donn\u00e9 par",m.odt_par)}${field("Nom",m.odt_nom)}${field("Fonction",m.odt_fonction)}</div>`;}
-
-    html+=`<h3>Entreprise</h3><div class="detail-row">${field("Concern\u00e9e",m.entreprise_concernee||p.entreprise)}${field("Ext\u00e9rieure",m.ext_raison_sociale)}${field("Repr\u00e9sentant",m.ext_representant)}</div>`;
-
-    html+=`<h3>Localisation</h3><div class="detail-row">${field("Lieu",lieu)}${field("Horaires",m.horaires)}</div>`;
-
-    /* ── VIGILANCE PROTECTION INCENDIE ── */
-    if(m.vigilance&&m.vigilance.niveau){
-        const vc=VIG_COLORS[m.vigilance.niveau]||VIG_COLORS.verte;
-        html+=`<div style="margin:14px 0;padding:14px;border-radius:12px;background:${vc.bg};border:1px solid ${vc.border};">
-            <div style="font-weight:800;color:${vc.hex};font-size:1rem;letter-spacing:.02em;margin-bottom:6px;">${vc.dot} ${esc(m.vigilance.label||m.vigilance.niveau)}</div>
-            <div style="font-size:.85rem;line-height:1.5;margin-bottom:6px;">${esc(m.vigilance.details||"")}</div>
-            ${(m.vigilance.poste_sprinkler||m.vigilance.zones_detection)?`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:6px;font-size:.85rem;">
-                ${m.vigilance.poste_sprinkler?`<span style="background:rgba(255,255,255,.08);border:1px solid ${vc.border};border-radius:8px;padding:4px 10px;">💧 Poste sprinkler : <strong>${esc(m.vigilance.poste_sprinkler)}</strong></span>`:""}
-                ${m.vigilance.zones_detection?`<span style="background:rgba(255,255,255,.08);border:1px solid ${vc.border};border-radius:8px;padding:4px 10px;">📡 Détection : <strong>${esc(m.vigilance.zones_detection)}</strong></span>`:""}
-            </div>`:""}
-            ${m.vigilance.consignes?`<div style="font-size:.78rem;opacity:.9;line-height:1.5;"><strong>Consignes :</strong> ${esc(m.vigilance.consignes)}</div>`:""}
-        </div>`;
-    }
-
-    /* ── PLANS DE LA ZONE ── */
-    if(m.plans&&m.plans.length){
-        html+=`<h3>Plans de la zone (${m.plans.length})</h3><div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;">`;
-        m.plans.forEach((pl,i)=>{
-            if(pl.type==="image"){
-                html+=`<a href="${pl.data}" download="${esc(pl.name||("plan-"+(i+1)+".jpg"))}" target="_blank" style="display:block;">
-                    <img src="${pl.data}" alt="${esc(pl.name||"Plan")}" style="width:150px;height:110px;object-fit:cover;border-radius:10px;border:1px solid rgba(255,255,255,.2);cursor:zoom-in;">
-                    <div style="font-size:.65rem;opacity:.7;margin-top:2px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(pl.name||"Plan "+(i+1))}</div>
-                </a>`;
-            } else {
-                html+=`<a href="${pl.data}" download="${esc(pl.name||("plan-"+(i+1)+".pdf"))}" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:150px;height:110px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);text-decoration:none;color:#e0e4ef;">
-                    <span style="font-size:2rem;">📄</span>
-                    <span style="font-size:.65rem;opacity:.8;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(pl.name||"Plan PDF")}</span>
-                </a>`;
-            }
-        });
-        html+=`</div>`;
-    }
-
-    if(m.operation||m.risques||m.mesures||m.moyens){html+=`<h3>Travaux</h3>${field("Op\u00e9ration",m.operation)}${field("Risques",m.risques)}${field("Mesures",m.mesures)}${field("Moyens",m.moyens)}`;}
-    if(!m.operation&&p.description){html+=`<h3>Description</h3>${field("",p.description)}`;}
-
-    if(m.signature_delivreur||m.signature_intervenant){
-        html+=`<h3>Signatures</h3><div class="detail-row">`;
-        if(m.signature_delivreur)html+=`<div class="detail-field signature-block"><span class="detail-label">D\u00e9livreur</span><img src="${m.signature_delivreur}" alt="Signature"></div>`;
-        if(m.signature_intervenant)html+=`<div class="detail-field signature-block"><span class="detail-label">Intervenant</span><img src="${m.signature_intervenant}" alt="Signature"></div>`;
-        html+=`</div>`;
-        if(m.pris_connaissance)html+=`<div style="color:#00c878;font-weight:600;margin-top:4px">\u2705 PRIS CONNAISSANCE</div>`;
-    }
-
-    if(m.passages&&m.passages.length){html+=`<h3>Heures de passage</h3><div class="passage-list">${m.passages.map(h=>`<span class="passage-tag">\ud83d\udd50 ${h}</span>`).join("")}</div>`;}
-
-    if(m.prolongations&&m.prolongations.length){html+=`<h3>Prolongations</h3>`;m.prolongations.forEach(pr=>{html+=`<div class="detail-value" style="margin-bottom:4px">\ud83d\udd04 ${esc(pr.ancienne_date||pr.date)} (${esc(pr.ancien_horaire||pr.horaire)}) \u2192 ${esc(pr.horodatage)}</div>`;});}
-
-    /* BLOC ADMIN : gestion des passages + prolongation
-       Visible UNIQUEMENT pour le PC Sécurité (pas en mode QR intervenant)
-       et seulement sur les permis non clôturés */
-    if(!clos && !READ_ONLY){
-        const passagesHtml = (m.passages && m.passages.length)
-            ? m.passages.map(h => `<span class="passage-tag">\ud83d\udd50 ${esc(h)}</span>`).join("")
-            : `<span class="empty-note">Aucun passage enregistré.</span>`;
-
-        /* Date actuelle en ISO pour le min du <input type=date> */
-        const todayIso = new Date().toISOString().slice(0, 10);
-        /* Date de validité actuelle du permis (pour pré-remplir) */
-        const currentDate = p.date_debut ? p.date_debut.slice(0, 10) : todayIso;
-        const currentHoraire = m.horaires || "";
-
-        /* ── Heures de passage ── */
-        html += `<div class="admin-block">
-            <h3>\ud83d\udd50 Heures de passage</h3>
-            <div class="passages-grid">${passagesHtml}</div>
-            <button type="button" class="admin-btn" onclick="ajouterPassage('${p.id}')">
-                ➕ Ajouter un passage (maintenant)
-            </button>
-            <div class="hint">Enregistre l'heure actuelle (${new Date().toLocaleTimeString("fr-FR").slice(0,5)}) comme passage effectué sur le chantier.</div>
-        </div>`;
-
-        /* ── Prolongation ── */
-        html += `<div class="admin-block">
-            <h3>\ud83d\udd04 Prolonger le permis feu</h3>
-            <div class="admin-form">
-                <div class="admin-field">
-                    <label>Nouvelle date de fin</label>
-                    <input type="date" id="prolong-date-${p.id}" min="${todayIso}" value="${currentDate}">
-                </div>
-                <div class="admin-field">
-                    <label>Nouvel horaire</label>
-                    <input type="text" id="prolong-horaire-${p.id}" placeholder="Ex : 08h00 - 18h00" value="${esc(currentHoraire)}">
-                </div>
-                <button type="button" class="admin-btn" onclick="prolongerPermis('${p.id}')">
-                    \ud83d\udd04 Prolonger
-                </button>
-            </div>
-            <div class="hint">L'ancienne date/horaire sera conservée dans l'historique des prolongations.</div>
-        </div>`;
-    }
-
-    /* BLOC URGENCES — visible pour tout le monde (intervenant comme PC Sécurité) */
-    if(!clos){
-        const lieuUrg = lieu && lieu !== "\u2014" ? esc(lieu) : "Position non renseignée";
-        html+=`<div class="urgence-block">
-            <h3>\ud83d\udea8 EN CAS D'URGENCE SUR LE CHANTIER</h3>
-            <div style="font-size:.85rem;color:#e0e4ef;margin-bottom:10px">
-                \ud83d\udccd <strong>${lieuUrg}</strong>
-            </div>
-            <a href="tel:0145484794" class="urgence-btn btn-urgence-call">\ud83d\udcde Appeler PC Sécurité — 01 45 48 47 94</a>
-            <button class="urgence-btn btn-urgence-feu" onclick="declarerUrgence('feu','${p.id}')">\ud83d\udd25 Déclarer une urgence incendie</button>
-            <button class="urgence-btn btn-urgence-svv" onclick="declarerUrgence('svv','${p.id}')">\ud83d\ude91 Déclarer une urgence — Secours à victime</button>
-        </div>`;
-    }
-
-    /* Bouton Clôturer UNIQUEMENT pour le PC Sécurité (pas en mode lecture seule / QR code) */
-    const cloBtn = (clos || READ_ONLY) ? "" : `<button class="btn-cloturer" onclick="cloturerPermis('${p.id}')">\u2705 Clôturer</button>`;
-
-    /* Bandeau d'information en mode lecture seule */
-    const roBanner = READ_ONLY ? `<div class="ro-banner">\ud83d\udd12 Consultation intervenant — mode lecture seule. Pour clôturer, s'adresser au PC Sécurité.</div>` : "";
-
-    html = roBanner + html;
-    html+=`<div class="modal-actions">${cloBtn}<button class="btn-pdf" onclick="printPermis('${p.id}')">\ud83d\udda8\ufe0f Imprimer</button><button class="btn-pdf" onclick="exportPDF('${p.id}')">\ud83d\udcc4 PDF</button><button class="btn-close" onclick="fermerPermis()">Fermer</button></div>`;
-
-    document.getElementById("modalPermisContent").innerHTML=html;
-    document.getElementById("modalPermis").classList.add("active");
-
-    setTimeout(()=>{const c=document.getElementById(qrId);if(c)new QRious({element:c,size:140,value:location.origin+location.pathname+'?pf='+encodeURIComponent(p.numero),foreground:'#1d4ed8',background:'#ffffff',level:'M'});},100);
-}
-
-function fermerPermis(){document.getElementById("modalPermis").classList.remove("active");}
-
-/* ═══════════════════════════════════════════════════════════════
-   IMPRESSION — fiche A4 pour le tableau de suivi du PC Sécurité
-   Bandeau de vigilance en tête (couleur pleine, lisible de loin),
-   infos clés en gros, QR de consultation, plans en pleine largeur.
-   ═══════════════════════════════════════════════════════════════ */
-function printPermis(id){
-    const p=permisCache.find(x=>x.id===id);
-    if(!p){showToast("Permis introuvable.",true);return;}
-    const m=p.meta||{};const clos=isClos(p.statut);
-    const lieu=p.lieu||[m.magasin,m.etage,m.zone_canton].filter(Boolean).join(" — ")||"—";
-    const vig=m.vigilance&&m.vigilance.niveau?m.vigilance:null;
-    const vigHex=vig?(VIG_COLORS[vig.niveau]?VIG_COLORS[vig.niveau].hex:"#16a34a"):"#64748b";
-    const vigTxt=vig?(vig.label||vig.niveau).toUpperCase():"VIGILANCE NON RENSEIGNÉE";
-    const qrData=location.origin+location.pathname+'?pf='+encodeURIComponent(p.numero||"");
-
-    function pf(lbl,val){return val&&val!=="—"?`<tr><td class="l">${lbl}</td><td class="v">${esc(val)}</td></tr>`:"";}
-
-    const plansHtml=(m.plans||[]).filter(pl=>pl.type==="image").map((pl,i)=>
-        `<div class="plan"><img src="${pl.data}" alt="Plan"><div class="plan-cap">Plan ${i+1}${pl.name?" — "+esc(pl.name):""}</div></div>`
-    ).join("");
-    const plansPdfNote=(m.plans||[]).some(pl=>pl.type==="pdf")
-        ?`<div class="pdf-note">📄 Plan(s) PDF joint(s) au permis — consultables dans Aura (QR ci-dessus)</div>`:"";
-
-    const w=window.open("","_blank");
-    if(!w){showToast("⚠️ Autorisez les pop-ups pour imprimer",true);return;}
-    w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><base href="${location.origin+location.pathname.replace(/[^/]*$/,'')}">
-<title>Permis feu ${esc(p.numero||"")} — fiche de suivi</title>
-<script src="vendor/qrious.min.js"><\/script>
-<style>
-  @page{size:A3;margin:15mm;}
-  *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;font-size:15pt;}
-  .vig-band{background:${vigHex};color:#fff;padding:20px 24px;border-radius:10px;
-            font-size:30pt;font-weight:900;letter-spacing:.05em;text-align:center;margin-bottom:16px;}
-  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:14px;}
-  .num{font-size:30pt;font-weight:900;}
-  .statut{display:inline-block;padding:6px 20px;border-radius:999px;font-weight:800;font-size:15pt;
-          background:${clos?"#16a34a":"#dc2626"};color:#fff;margin-top:8px;}
-  .installs{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0;}
-  .installs span{border:2px solid ${vigHex};border-radius:10px;padding:8px 16px;font-size:16pt;font-weight:800;}
-  table{width:100%;border-collapse:collapse;margin:10px 0;}
-  td{padding:9px 14px;border:1px solid #bbb;vertical-align:top;font-size:14pt;}
-  td.l{width:30%;font-weight:700;background:#f3f4f6;}
-  .vig-details{border:3px solid ${vigHex};border-radius:10px;padding:14px 18px;margin:12px 0;}
-  .vig-details .t{color:${vigHex};font-weight:900;font-size:17pt;margin-bottom:6px;}
-  .vig-details .c{font-size:13pt;line-height:1.5;}
-  .plan{margin:12px 0;page-break-inside:avoid;}
-  .plan img{width:100%;max-height:640px;object-fit:contain;border:1px solid #999;border-radius:8px;}
-  .plan-cap{font-size:11pt;color:#555;margin-top:3px;}
-  .pdf-note{font-size:12pt;color:#555;border:1px dashed #999;border-radius:8px;padding:10px;margin:10px 0;}
-  .foot{margin-top:18px;font-size:11pt;color:#666;display:flex;justify-content:space-between;border-top:1px solid #ccc;padding-top:8px;}
-  .qr-wrap{text-align:center;}
-  .qr-wrap div{font-size:10pt;color:#555;margin-top:3px;}
-</style></head><body>
-  <div class="vig-band">${esc(vigTxt)}</div>
-  <div class="head">
-    <div>
-      <div class="num">🔥 ${esc(p.numero||"Permis feu")}</div>
-      <div class="statut">${clos?"CLÔTURÉ":"OUVERT — EN COURS"}</div>
-    </div>
-    <div class="qr-wrap"><canvas id="prqr"></canvas><div>Scanner pour consulter</div></div>
-  </div>
-  ${vig&&(vig.poste_sprinkler||vig.zones_detection)?`<div class="installs">
-      ${vig.poste_sprinkler?`<span>💧 Poste sprinkler : ${esc(vig.poste_sprinkler)}</span>`:""}
-      ${vig.zones_detection?`<span>📡 Détection : ${esc(vig.zones_detection)}</span>`:""}
-  </div>`:""}
-  <table>
-    ${pf("Date",fmtDate(p.date_debut||p.created_at))}
-    ${pf("Horaires",m.horaires)}
-    ${pf("Lieu",lieu)}
-    ${pf("Entreprise",m.ext_raison_sociale||p.entreprise)}
-    ${pf("Représentant",m.ext_representant)}
-    ${pf("Agent délivreur",agentName(p))}
-    ${pf("Opération",m.operation)}
-    ${pf("Moyens d'intervention",m.moyens)}
-    ${vig&&vig.poste_sprinkler?pf("Poste(s) sprinkler impacté(s)",vig.poste_sprinkler):""}
-    ${vig&&vig.zones_detection?pf("Zone(s) de détection impactée(s)",vig.zones_detection):""}
-  </table>
-  ${vig?`<div class="vig-details">
-      <div class="t">${esc(vig.label||"")} — protection incendie de la zone</div>
-      <div class="c">${esc(vig.details||"")}</div>
-      ${vig.consignes?`<div class="c" style="margin-top:6px;"><strong>Consignes :</strong> ${esc(vig.consignes)}</div>`:""}
-  </div>`:""}
-  ${plansHtml}
-  ${plansPdfNote}
-  <div class="foot">
-    <span>Aura — Sécurité Incendie · fiche de suivi tableau PC</span>
-    <span>Imprimé le ${new Date().toLocaleString("fr-FR")}</span>
-  </div>
-  <script>
-    window.addEventListener("load",function(){
-      try{ new QRious({element:document.getElementById("prqr"),size:170,value:${JSON.stringify(qrData)},level:"M"}); }catch(e){}
-      setTimeout(function(){ window.print(); },350);
-    });
-  <\/script>
-</body></html>`);
-    w.document.close();
-}
-
-async function cloturerPermis(id){
-    if(READ_ONLY){showToast("\u26d4 Clôture réservée au PC Sécurité.",true);return;}
-    if(!confirm("Cl\u00f4turer d\u00e9finitivement ce permis feu ?"))return;
-
-    console.log("[Clôture PF] début — id :", id);
-
-    const nowIso = new Date().toISOString();
-
-    const { data, error } = await supabaseClient
-        .from("permis_feu")
-        .update({ statut: "cloture", date_fin: nowIso })
-        .eq("id", id)
-        .select();
-
-    console.log("[Clôture PF] réponse Supabase :", { data, error });
-
-    if(error){
-        showToast("\u274c " + error.message, true);
-        return;
-    }
-    if(!data || data.length === 0){
-        showToast("\u26a0\ufe0f Aucune ligne mise à jour — permis non clôturé.", true);
-        return;
-    }
-
-    console.log("[Clôture PF] \u2705 Ligne clôturée :", data[0].statut);
-
-    /* ══ 1) Fermer le modal IMMÉDIATEMENT ══ */
-    fermerPermis();
-
-    /* ══ 2) Basculer sur "Clôturés" et recharger depuis le serveur ══ */
-    const filtreStatutEl = document.getElementById("filtreStatut");
-    if (filtreStatutEl) filtreStatutEl.value = "cloture";
-
-    await chargerPermisFeu();
-
-    showToast("\u2705 Permis " + (data[0].numero || "") + " clôturé.");
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   AJOUTER UN PASSAGE au permis feu (heure actuelle horodatée)
-   Réservé au PC Sécurité — double-verrou côté fonction
-═══════════════════════════════════════════════════════════════ */
-async function ajouterPassage(permisId){
-    if(READ_ONLY){showToast("\u26d4 Action réservée au PC Sécurité.", true); return;}
-
-    /* Récupère le permis à jour depuis Supabase pour éviter les écrasements
-       si plusieurs postes PC Sécurité modifient en parallèle (meta = jsonb,
-       pas d'opérateur atomique côté client → re-fetch + merge) */
-    const { data: fresh, error: fetchErr } = await supabaseClient
-        .from("permis_feu").select("meta").eq("id", permisId).single();
-    if(fetchErr){ showToast("\u274c " + fetchErr.message, true); return; }
-
-    const newMeta = fresh.meta || {};
-    const passages = Array.isArray(newMeta.passages) ? newMeta.passages.slice() : [];
-
-    /* Format passage : JJ/MM HH:MM (lisible) */
-    const now = new Date();
-    const passageStr = now.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })
-                     + " " + now.toLocaleTimeString("fr-FR").slice(0, 5);
-    passages.push(passageStr);
-    newMeta.passages = passages;
-
-    const { data, error } = await supabaseClient
-        .from("permis_feu").update({ meta: newMeta }).eq("id", permisId).select();
-    if(error){ showToast("\u274c " + error.message, true); return; }
-    if(!data || data.length === 0){
-        showToast("\u26a0\ufe0f Aucune ligne mise à jour (RLS ?)", true); return;
-    }
-
-    /* Synchro du cache local + re-rendu du modal */
-    const cached = permisCache.find(x => x.id === permisId);
-    if(cached) cached.meta = newMeta;
-    showToast("\u2705 Passage " + passageStr + " enregistré.");
-    ouvrirPermis(permisId);     // re-render le modal avec le nouveau passage
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   PROLONGER LE PERMIS FEU
-   → Change date_debut + meta.horaires et archive l'ancien
-     dans meta.prolongations[] avec horodatage
-═══════════════════════════════════════════════════════════════ */
-async function prolongerPermis(permisId){
-    if(READ_ONLY){showToast("\u26d4 Action réservée au PC Sécurité.", true); return;}
-
-    const newDate    = document.getElementById("prolong-date-"    + permisId).value;
-    const newHoraire = document.getElementById("prolong-horaire-" + permisId).value.trim();
-    if(!newDate)    { showToast("\u26a0\ufe0f Renseignez la nouvelle date.", true); return; }
-    if(!newHoraire) { showToast("\u26a0\ufe0f Renseignez le nouvel horaire.", true); return; }
-
-    if(!confirm(`Prolonger le permis feu jusqu'au ${new Date(newDate).toLocaleDateString("fr-FR")} (${newHoraire}) ?`)) return;
-
-    /* Re-fetch pour éviter d'écraser des prolongations concurrentes */
-    const { data: fresh, error: fetchErr } = await supabaseClient
-        .from("permis_feu").select("date_debut, meta").eq("id", permisId).single();
-    if(fetchErr){ showToast("\u274c " + fetchErr.message, true); return; }
-
-    const oldDate = fresh.date_debut ? fresh.date_debut.slice(0, 10) : "";
-    const newMeta = fresh.meta || {};
-    const prolongations = Array.isArray(newMeta.prolongations) ? newMeta.prolongations.slice() : [];
-
-    /* Trace l'ancienne date/horaire + horodatage de la prolongation */
-    prolongations.push({
-        ancienne_date:   oldDate,
-        ancien_horaire:  newMeta.horaires || "",
-        nouvelle_date:   newDate,
-        nouvel_horaire:  newHoraire,
-        horodatage:      new Date().toLocaleString("fr-FR"),
-        par:             localStorage.getItem("nom") || null
-    });
-
-    newMeta.prolongations = prolongations;
-    newMeta.horaires      = newHoraire;
-
-    /* UPDATE atomique : date_debut + meta en une seule requête */
-    const { data, error } = await supabaseClient
-        .from("permis_feu")
-        .update({
-            date_debut: newDate + "T00:00:00",
-            meta: newMeta
-        })
-        .eq("id", permisId)
-        .select();
-
-    if(error){ showToast("\u274c " + error.message, true); return; }
-    if(!data || data.length === 0){
-        showToast("\u26a0\ufe0f Aucune ligne mise à jour (RLS ?)", true); return;
-    }
-
-    /* Synchro cache local */
-    const cached = permisCache.find(x => x.id === permisId);
-    if(cached){
-        cached.date_debut = data[0].date_debut;
-        cached.meta       = newMeta;
-    }
-    showToast("\u2705 Permis prolongé jusqu'au " + new Date(newDate).toLocaleDateString("fr-FR"));
-    ouvrirPermis(permisId);     // re-render le modal
-}
-
-/* Déclaration d'urgence depuis un permis feu (incendie ou secours à victime)
-   → Alerte le PC Sécurité via une insertion dans la table d'urgences */
-async function declarerUrgence(type, permisId){
-    const label = type === 'feu' ? 'URGENCE INCENDIE \ud83d\udd25' : 'URGENCE SECOURS À VICTIME \ud83d\ude91';
-    if(!confirm(`Confirmer : ${label}\n\nLe PC Sécurité sera notifié immédiatement.`)) return;
-
-    const p = permisCache.find(x=>x.id===permisId);
-    const lieu = p ? (p.lieu || (p.meta ? [p.meta.magasin,p.meta.etage,p.meta.zone_canton].filter(Boolean).join(" — ") : "")) : "";
-    const numero = p ? p.numero : "";
-
-    /* Insertion dans la table alertes_urgence si elle existe ; sinon fallback via permis_feu.meta */
-    try {
-        const payload = {
-            type_urgence: type,                 // 'feu' ou 'svv'
-            source: 'permis_feu',
-            permis_id: permisId,
-            permis_numero: numero,
-            lieu: lieu || null,
-            declared_at: new Date().toISOString(),
-            agent_nom: localStorage.getItem("nom") || null,
-            statut: 'active'
-        };
-        const { error } = await supabaseClient.from("alertes_urgence").insert(payload);
-        if(error && error.code !== "42P01"){ // 42P01 = table n'existe pas, on tombe en fallback
-            throw error;
-        }
-        if(error && error.code === "42P01"){
-            /* Fallback : on trace l'urgence dans la meta du permis */
-            const meta = p.meta || {};
-            meta.urgences = meta.urgences || [];
-            meta.urgences.push({ type, horodatage: new Date().toISOString(), agent: localStorage.getItem("nom") || null });
-            await supabaseClient.from("permis_feu").update({ meta }).eq("id", permisId);
-        }
-    } catch(e){
-        console.error(e);
-        showToast("\u274c Erreur : " + e.message, true);
-        return;
-    }
-
-    /* Notification globale → le son et la bannière d'alarme se déclenchent
-       chez les DESTINATAIRES (PC Sécurité, agents, stationnaires, admins).
-       Cette page est celle de l'INTERVENANT (accès QR) : il ne doit ni
-       entendre l'alarme ni voir la bannière plein écran — il reçoit le
-       toast de confirmation ci-dessous + le rappel téléphonique auto.
-       (le flag AURA_ALARM_SILENT posé en tête de page neutralise
-       playAlarmSound/showAlarmBanner si l'écho realtime revient ici) */
-    if (typeof sendGlobalNotification === "function") {
-        sendGlobalNotification(
-            label,
-            "Permis : " + numero + "\n📍 Lieu : " + (lieu || "Non précisé") + "\n👤 Agent : " + (localStorage.getItem("nom") || "—"),
-            "alarme",
-            "critique"
-        );
-    }
-
-    showToast(`\u2705 ${label} déclarée — PC Sécurité notifié.`);
-    /* Appel téléphonique automatique en renfort si sur mobile */
-    if(/Android|iPhone|iPad/.test(navigator.userAgent)){
-        setTimeout(()=>{ location.href = "tel:0145484794"; }, 1200);
-    }
-}
-
-async function exportPDF(id){
-    const p=permisCache.find(x=>x.id===id);if(!p)return;
-    const m=p.meta||{};const clos=isClos(p.statut);const agent=agentName(p);
-    const lieu=p.lieu||[m.magasin,m.etage,m.zone_canton].filter(Boolean).join(" - ")||"";
-
-    const{jsPDF}=window.jspdf;const pdf=new jsPDF('p','mm','a4');
-    const M=15,PW=180,BOT=275;let y=0,pg=0;
-    function np(){if(pg>0)pdf.addPage();pg++;y=18;}
-    function ft(){pdf.setDrawColor(180);pdf.setLineWidth(.2);pdf.line(M,283,M+PW,283);pdf.setFontSize(7);pdf.setTextColor(140);pdf.text('Le Bon Marche - SEGEP RG - Document confidentiel',M,288);pdf.text('Page '+pg,M+PW,288,{align:'right'});}
-    function es(n){if(y+n>BOT){ft();np();}}
-    function row(lbl,val){if(!val)return;es(8);pdf.setFontSize(8);pdf.setTextColor(100);pdf.text(lbl,M+2,y);pdf.setFontSize(10);pdf.setTextColor(30);const lines=pdf.splitTextToSize(String(val),PW-42);lines.forEach((l,i)=>{if(i>0)es(5);pdf.text(l,M+40,y);y+=5;});if(lines.length<=1)y+=1;}
-    function sec(txt){es(12);pdf.setFontSize(11);pdf.setTextColor(200,100,30);pdf.setFont(undefined,'bold');pdf.text(txt,M,y);y+=7;pdf.setFont(undefined,'normal');}
-
-    np();
-    pdf.setFillColor(15,25,50);pdf.rect(0,0,210,48,'F');
-    pdf.setFillColor(200,170,50);pdf.rect(0,48,210,1.5,'F');
-    pdf.setFontSize(18);pdf.setTextColor(255);pdf.text('PERMIS FEU',M,22);
-    pdf.setFontSize(12);pdf.setTextColor(200,170,50);pdf.text(p.numero||'Sans numero',M,32);
-    pdf.setFontSize(8);pdf.setTextColor(160);pdf.text('Le Bon Marche - SEGEP RG - Batiment 3',M,42);
-    y=58;
-
-    es(24);pdf.setFillColor(245,247,252);pdf.setDrawColor(200);pdf.roundedRect(M,y,PW,20,3,3,'FD');
-    pdf.setFontSize(8);pdf.setTextColor(100);pdf.text('Statut',M+6,y+7);pdf.text('Date',M+45,y+7);pdf.text('Agent',M+100,y+7);
-    pdf.setFontSize(10);pdf.setTextColor(20);pdf.setFont(undefined,'bold');
-    pdf.text(clos?'Cloture':'Ouvert',M+6,y+15);pdf.text(fmtDate(p.date_debut||p.created_at),M+45,y+15);pdf.text(agent,M+100,y+15);
-    pdf.setFont(undefined,'normal');y+=28;
-
-    if(m.odt_par||m.odt_nom){sec('Ordre de travail');row('Donne par',m.odt_par);row('Nom',m.odt_nom);row('Fonction',m.odt_fonction);}
-    sec('Entreprise');row('Concernee',m.entreprise_concernee||p.entreprise);row('Exterieure',m.ext_raison_sociale);row('Representant',m.ext_representant);
-    sec('Localisation');row('Lieu',lieu);row('Horaires',m.horaires);
-    if(m.operation||m.risques){sec('Travaux');row('Operation',m.operation);row('Risques',m.risques);row('Mesures',m.mesures);row('Moyens',m.moyens);}
-    if(!m.operation&&p.description){sec('Description');row('',p.description);}
-    if(m.passages&&m.passages.length){sec('Passages');row('Heures',m.passages.join(', '));}
-    if(m.prolongations&&m.prolongations.length){sec('Prolongations');m.prolongations.forEach(pr=>{row('',`${pr.ancienne_date||pr.date} (${pr.ancien_horaire||pr.horaire}) - ${pr.horodatage}`);});}
-
-    // ─── QR CODE DE DÉCLENCHEMENT D'URGENCE ──────────────────────
-    // Permet à l'agent sur place de scanner le permis papier avec son
-    // téléphone → ouvre directement la page urgence pour CE permis.
-    // L'URL inclut le numéro du permis et le flag urgence=1.
-    try {
-        const baseUrl = window.location.origin + window.location.pathname;
-        const urgenceUrl = baseUrl + "?numero=" + encodeURIComponent(p.numero || p.id) + "&urgence=1";
-        if (typeof QRious !== "undefined") {
-            const _qc = document.createElement("canvas");
-            new QRious({ element:_qc, value:urgenceUrl, size:240, level:"M", background:"#FFFFFF", foreground:"#000000" });
-            const qrDataUrl = _qc.toDataURL("image/png");
-            // Encadré QR en bas de page 1 si la place le permet, sinon nouvelle page
-            es(48);
-            pdf.setDrawColor(220, 38, 38); pdf.setLineWidth(0.6);
-            pdf.roundedRect(M, y, PW, 42, 3, 3, "S");
-            pdf.addImage(qrDataUrl, "PNG", M + 3, y + 3, 36, 36);
-            pdf.setFontSize(11); pdf.setTextColor(220, 38, 38); pdf.setFont(undefined, "bold");
-            pdf.text("🚨 EN CAS D'URGENCE — SCANNER LE QR", M + 44, y + 10);
-            pdf.setFont(undefined, "normal"); pdf.setFontSize(9); pdf.setTextColor(60);
-            pdf.text("Scanne ce code avec ton téléphone pour ouvrir", M + 44, y + 18);
-            pdf.text("immédiatement la fiche d'urgence de ce permis feu.", M + 44, y + 23);
-            pdf.text("Tu pourras déclencher l'alarme depuis ton mobile,", M + 44, y + 28);
-            pdf.text("même sans accès au poste central.", M + 44, y + 33);
-            pdf.setFontSize(7); pdf.setTextColor(140);
-            pdf.text(p.numero || "", M + 44, y + 39);
-            y += 46;
-        }
-    } catch(e) {
-        console.warn("[PDF] QR urgence non généré :", e && e.message);
-    }
-
-    ft();
-    pdf.save('Permis_Feu_'+(p.numero||'').replace(/[^a-zA-Z0-9-]/g,'_')+'.pdf');
-    showToast('\ud83d\udcc4 PDF export\u00e9 (avec QR code urgence)');
-}
-
-async function chargerEntreprises(){
-    const{data}=await supabaseClient.from("permis_feu").select("entreprise");if(!data)return;
-    const sel=document.getElementById("filtreEntreprise");
-    [...new Set(data.map(e=>e.entreprise).filter(Boolean))].sort().forEach(ent=>{const opt=document.createElement("option");opt.value=ent;opt.textContent=ent;sel.appendChild(opt);});
-}
-
-/* MODE LECTURE SEULE : arrivée via QR code → on cache l'interface de filtrage/liste
-   et on ouvre directement le permis concerné. L'intervenant ne voit pas les autres
-   permis (confidentialité) et ne peut ni les clôturer ni les modifier. */
-if(READ_ONLY){
-    document.querySelector(".filters").style.display = "none";
-    document.querySelector(".stats").style.display = "none";
-    document.querySelector(".permits-list").style.display = "none";
-    const h1 = document.querySelector(".header h1");
-    if(h1) h1.textContent = "🔥 Permis Feu — Consultation";
-    /* Retirer le bouton retour vers index en mode intervenant */
-    const backBtn = document.querySelector(".back-btn");
-    if(backBtn) backBtn.style.display = "none";
-}
-
-chargerEntreprises();chargerPermisFeu();
-</script>
-<script src="security.js"></script>
 <script src="global.js"></script>
 <script>
-/* Page INTERVENANT (accès QR) : jamais d'alarme sonore ni de bannière
-   plein écran ici — réservées au PC Sécurité et aux agents. */
-window.AURA_ALARM_SILENT = true;
+let poste = localStorage.getItem("ca_poste") || "porte5";
+let categorie = "employe";
+let journal = [];
+const OVERSTAY_H = 4;
+function showToast(m){ const t=document.getElementById("toast"); t.innerHTML=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),3500); }
+function getBadgePool(){
+    const raw=localStorage.getItem("ca_badges");
+    if(raw){ try{ return JSON.parse(raw); }catch(e){} }
+    const def=[]; for(let i=1;i<=20;i++) def.push("V"+String(i).padStart(2,"0"));
+    return def;
+}
+function configBadges(){
+    const cur=getBadgePool().join(", ");
+    const v=prompt("Lot de badges visiteurs (séparés par des virgules).\nEx : V01, V02, … ou ACCUEIL-1, ACCUEIL-2 :", cur);
+    if(v===null) return;
+    const arr=v.split(",").map(s=>s.trim()).filter(Boolean);
+    if(!arr.length){ showToast("Lot inchangé"); return; }
+    localStorage.setItem("ca_badges", JSON.stringify(arr));
+    render(); showToast("🎫 Lot de "+arr.length+" badges enregistré");
+}
+const CHAMPS = {
+    employe:  [["nom","Nom de l'employé",true],["badge","N° badge",false],["destination","Destination / service",false]],
+    societe:  [["societe","Société",true],["nom","Intervenant",true],["motif","Motif intervention",false],["laissez_passer","N° laisser-passer",false],["destination","Zone / contact",false]],
+    visiteur: [],
+    livreur:  [["societe","Transporteur",true],["nom","Livreur",false],["destination","Destinataire",false],["motif","Nb colis / nature",false]]
+};
+function setPoste(p){
+    poste=p; localStorage.setItem("ca_poste",p);
+    document.querySelectorAll(".poste").forEach(el=>el.classList.toggle("active",el.dataset.poste===p));
+    if(p==="porte5") setCat("employe"); else if(p==="porte115") setCat("societe");
+}
+function setCat(c){
+    categorie=c;
+    document.querySelectorAll(".cat").forEach(el=>el.classList.toggle("active",el.dataset.cat===c));
+    renderFields();
+}
+function getBadgeStatus(){
+    const status={};
+    getBadgePool().forEach(b=>status[b]={out:false});
+    [...journal].reverse().forEach(r=>{
+        if(r.categorie!=="visiteur" || !r.badge) return;
+        if(!(r.badge in status)) status[r.badge]={out:false};
+        if(r.sens==="entree") status[r.badge]={out:true, nom:r.nom, societe:r.societe, since:r.created_at, piece:(r.meta&&r.meta.piece_consigne)||null, entryId:r.id};
+        else if(r.sens==="sortie") status[r.badge]={out:false};
+    });
+    return status;
+}
+function renderFields(){
+    const wrap=document.getElementById("fields");
+    if(categorie==="visiteur"){
+        const status=getBadgeStatus();
+        const libres=getBadgePool().filter(b=>!status[b] || !status[b].out);
+        wrap.innerHTML = `
+            <label>Nom du visiteur *</label>
+            <input type="text" id="f_nom" autocomplete="off">
+            <label>Société / personne visitée (hôte)</label>
+            <input type="text" id="f_societe" autocomplete="off">
+            <label>Motif de la visite</label>
+            <input type="text" id="f_motif" autocomplete="off">
+            <label>🎫 Badge attribué * <span style="opacity:.6;font-weight:400">(${libres.length} libre(s))</span></label>
+            <select id="f_badge">
+                <option value="">— Choisir un badge libre —</option>
+                ${libres.map(b=>`<option value="${escapeAttr(b)}">${escapeHtml(b)}</option>`).join("")}
+            </select>
+            <label>🪪 Pièce d'identité gardée en consigne *</label>
+            <select id="f_piece">
+                <option value="">— Type de pièce —</option>
+                <option>Carte nationale d'identité</option>
+                <option>Passeport</option>
+                <option>Permis de conduire</option>
+                <option>Titre de séjour</option>
+                <option>Badge entreprise externe</option>
+                <option>Autre</option>
+            </select>
+            <div class="intg" style="margin-top:10px">
+                ⚖️ La pièce est conservée le temps de la visite et <b>restituée au retour du badge</b>. Aucune photocopie n'est stockée (RGPD) — seule la traçabilité de l'échange est enregistrée.
+            </div>`;
+        return;
+    }
+    wrap.innerHTML = CHAMPS[categorie].map(([id,label,req])=>`
+        <label>${escapeHtml(label)}${req?' *':''}</label>
+        <input type="text" id="f_${id}" autocomplete="off">`).join("");
+}
+async function enregistrer(sens){
+    const agent = localStorage.getItem("nom") || "—";
+    if(categorie==="visiteur"){
+        const nom=(document.getElementById("f_nom").value||"").trim();
+        const badge=document.getElementById("f_badge").value;
+        const piece=document.getElementById("f_piece").value;
+        if(sens==="entree"){
+            if(!nom){ showToast("⚠️ Nom du visiteur requis"); return; }
+            if(!badge){ showToast("⚠️ Attribue un badge"); return; }
+            if(!piece){ showToast("⚠️ Indique la pièce gardée en consigne"); return; }
+        }
+        const row={ poste, categorie:"visiteur", sens, service:"surete", agent,
+            nom, societe:(document.getElementById("f_societe").value||"").trim(),
+            motif:(document.getElementById("f_motif").value||"").trim(),
+            badge: badge||null, meta: sens==="entree" ? { piece_consigne:piece } : {} };
+        const ins = await _insert(row, sens==="entree"
+            ? "↓ Visiteur entré — badge "+badge+" remis (pièce : "+piece+" en consigne)"
+            : "↑ Visiteur sorti");
+        if(ins && sens==="entree") genererTicketVisiteur(ins);
+        return;
+    }
+    const data={};
+    CHAMPS[categorie].forEach(([id])=>{ const el=document.getElementById("f_"+id); if(el) data[id]=el.value.trim(); });
+    const manquants=CHAMPS[categorie].filter(([id,l,req])=>req && !data[id]);
+    if(manquants.length){ showToast("⚠️ Champ requis : "+manquants[0][1]); return; }
+    await _insert({ poste, categorie, sens, service:"surete", agent,
+        nom:data.nom||null, societe:data.societe||null, badge:data.badge||null,
+        laissez_passer:data.laissez_passer||null, motif:data.motif||null, destination:data.destination||null, meta:{} },
+        (sens==="entree"?"↓ Entrée":"↑ Sortie")+" enregistrée");
+}
+async function _insert(row, msg){
+    try{
+        const { data:ins, error } = await supabaseClient.from("controle_acces").insert(row).select().single();
+        if(error) throw error;
+        showToast(msg);
+        document.querySelectorAll("#fields input, #fields select").forEach(el=>el.value="");
+        document.getElementById("scanField").value="";
+        pushToLaisserPasser(ins||row);
+        await charger();
+        return ins||row;
+    }catch(e){ console.error(e); showToast("❌ "+(e.message||e)); return null; }
+}
+async function restituerBadge(badge){
+    const status=getBadgeStatus()[badge];
+    if(!status || !status.out){ showToast("Ce badge est déjà disponible"); return; }
+    const piece = status.piece || "pièce d'identité";
+    if(!confirm("Restituer le badge "+badge+" ?\n\nVisiteur : "+(status.nom||"—")+"\nÀ rendre : "+piece+"\n\nLa sortie sera enregistrée.")) return;
+    await _insert({ poste, categorie:"visiteur", sens:"sortie", service:"surete",
+        agent: localStorage.getItem("nom")||"—",
+        nom:status.nom||null, societe:status.societe||null, badge,
+        lie_a: status.entryId||null, meta:{ piece_restituee: status.piece||null } },
+        "✅ Badge "+badge+" restitué — <b>rends la "+piece+"</b> au visiteur");
+}
+function render(){ renderBadgeBoard(); renderPresence(); renderLog(); if(categorie==="visiteur") renderFields(); }
+let _badgesOut = [];
+function renderBadgeBoard(){
+    const status=getBadgeStatus();
+    const pool=getBadgePool();
+    let free=0,out=0,pieces=0,over=0;
+    _badgesOut=[];
+    document.getElementById("badgeGrid").innerHTML = pool.map(b=>{
+        const s=status[b]||{out:false};
+        if(s.out){
+            out++; if(s.piece) pieces++;
+            const mins=s.since?Math.floor((Date.now()-new Date(s.since))/60000):0;
+            const isOver = mins >= OVERSTAY_H*60;
+            if(isOver) over++;
+            const dur = mins<60?(mins+" min"):(Math.floor(mins/60)+"h"+String(mins%60).padStart(2,"0"));
+            _badgesOut.push({ badge:b, nom:s.nom, societe:s.societe, piece:s.piece, since:s.since, dur, over:isOver });
+            return `<div class="bdg out ${isOver?'overstay':''}" onclick="restituerBadge('${escapeAttr(b)}')" title="Cliquer pour restituer">
+                <span class="dot"></span><div class="id">${escapeHtml(b)}</div>
+                <div class="who">${escapeHtml(s.nom||"—")}</div>
+                <div class="since">${isOver?'⚠️ ':''}sorti depuis ${dur}${s.piece?' · '+escapeHtml(pieceCourt(s.piece)):''}</div></div>`;
+        }
+        free++;
+        return `<div class="bdg free" title="Badge disponible"><span class="dot"></span>
+            <div class="id">${escapeHtml(b)}</div><div class="who">Disponible</div><div class="since">&nbsp;</div></div>`;
+    }).join("");
+    document.getElementById("cFree").textContent=free;
+    document.getElementById("cOut").textContent=out;
+    document.getElementById("cPieces").textContent=pieces;
+    document.getElementById("consigneRappel").textContent = pieces>0 ? (pieces+" pièce(s) à rendre dans le tiroir") : "Aucune pièce en consigne";
+    updateConsigneAlert(out, pieces, over);
+}
+function updateConsigneAlert(out, pieces, over){
+    const el=document.getElementById("consigneAlert");
+    if(!el) return;
+    const h=new Date().getHours();
+    const finDeService = h>=19 || h<7; // rappel renforcé en fin de journée / nuit
+    if(out===0){ el.style.display="none"; return; }
+    el.style.display="block";
+    if(over>0){
+        el.style.background="rgba(245,158,11,.12)"; el.style.border="1px solid var(--warn)"; el.style.color="#fcd34d";
+        el.innerHTML="⚠️ <b>"+over+" badge(s) en dépassement</b> ("+OVERSTAY_H+"h+) — visiteur(s) toujours présent(s). "+pieces+" pièce(s) en consigne.";
+    } else if(finDeService){
+        el.style.background="rgba(239,68,68,.12)"; el.style.border="1px solid var(--bad)"; el.style.color="#fca5a5";
+        el.innerHTML="🔔 <b>Fin de service :</b> "+out+" badge(s) non rendu(s), "+pieces+" pièce(s) encore dans le tiroir. Vérifie avant la passation.";
+    } else {
+        el.style.background="rgba(6,182,212,.10)"; el.style.border="1px solid rgba(6,182,212,.4)"; el.style.color="#67e8f9";
+        el.innerHTML="🪪 "+out+" visiteur(s) présent(s) · "+pieces+" pièce(s) en consigne.";
+    }
+}
+/* Fiche de passation imprimable — l'innovation pour les huissiers :
+   recense les pièces encore dans le tiroir au moment de la relève d'équipe. */
+function closeCaModal(){ document.getElementById("caModalOv").style.display="none"; }
+function openCaModal(html){ document.getElementById("caModal").innerHTML=html; document.getElementById("caModalOv").style.display="flex"; }
+
+function fichePassation(){
+    const posteLbl={porte5:"Porte 5",porte115:"Porte 115",porte16:"Porte 16"}[poste]||poste;
+    const agent=localStorage.getItem("nom")||"—";
+    const site=(window.AuraTenant&&AuraTenant.label)?AuraTenant.label():(localStorage.getItem("site_code")||"");
+    const now=new Date().toLocaleString("fr-FR");
+    const rows=_badgesOut.length ? _badgesOut.map(b=>`
+        <tr style="border-top:1px solid #232c40">
+            <td style="padding:7px 4px;font-weight:700">${escapeHtml(b.badge)}</td>
+            <td style="padding:7px 4px">${escapeHtml(b.nom||"—")}</td>
+            <td style="padding:7px 4px">${escapeHtml(b.piece?pieceCourt(b.piece):"—")}</td>
+            <td style="padding:7px 4px;white-space:nowrap">${escapeHtml(b.dur)}${b.over?' ⚠️':''}</td>
+        </tr>`).join("") : `<tr><td colspan="4" style="text-align:center;color:#67e8f9;padding:16px">Aucun badge sorti — tiroir vide ✔</td></tr>`;
+    openCaModal(`
+        <h2 style="color:#9ec5ff;margin:0 0 4px;font-size:1.1rem">📋 Passation — pièces en consigne</h2>
+        <div style="font-size:12px;color:#9aa7bd;margin-bottom:14px">${escapeHtml(site)} · ${escapeHtml(posteLbl)} · ${escapeHtml(now)} · ${escapeHtml(agent)}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="color:#9aa7bd;font-size:11px;text-transform:uppercase">
+                <th style="text-align:left;padding-bottom:4px">Badge</th><th style="text-align:left">Visiteur</th><th style="text-align:left">Pièce</th><th style="text-align:left">Depuis</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <p style="font-size:13px;margin-top:14px"><b>${_badgesOut.length} badge(s) sorti(s)</b> — autant de pièces d'identité à transmettre dans le tiroir de consigne.</p>
+        <div style="font-size:11px;color:#7c8aa5;line-height:1.5">RGPD : aucune copie des pièces n'est conservée, seule la traçabilité de l'échange l'est. Les pièces listées doivent être physiquement présentes dans le tiroir.</div>
+        <button class="btn primary" onclick="closeCaModal()" style="margin-top:16px;width:100%">Fermer</button>
+    `);
+}
+function pieceCourt(p){
+    return ({"Carte nationale d'identité":"CNI","Passeport":"Passeport","Permis de conduire":"Permis","Titre de séjour":"Titre séj.","Badge entreprise externe":"Badge ext."})[p]||p;
+}
+function renderPresence(){
+    const dedans={ employe:0, societe:0, visiteur:0, livreur:0 };
+    const cle=r=>(r.categorie||"")+"|"+((r.nom||r.societe||r.badge||"")+"").toLowerCase();
+    const etat={};
+    [...journal].reverse().forEach(r=>{ const k=cle(r); if(r.sens==="entree") etat[k]={cat:r.categorie}; else if(r.sens==="sortie") delete etat[k]; });
+    Object.values(etat).forEach(e=>{ if(dedans[e.cat]!==undefined) dedans[e.cat]++; });
+    const labels={employe:"Employés",societe:"Sociétés",visiteur:"Visiteurs",livreur:"Livreurs"};
+    document.getElementById("presence").innerHTML=Object.keys(labels).map(c=>`
+        <div class="pchip"><div class="n">${dedans[c]}</div><div class="l">${labels[c]}</div></div>`).join("");
+}
+function renderLog(){
+    const q=(document.getElementById("searchField").value||"").toLowerCase();
+    const fp=document.getElementById("filterPoste").value;
+    const cats={employe:"👤 Employé",societe:"🏢 Société",visiteur:"🎫 Visiteur",livreur:"📦 Livreur"};
+    const posteLbl={porte5:"Porte 5",porte115:"Porte 115",porte16:"Porte 16"};
+    let list=journal;
+    if(fp) list=list.filter(r=>r.poste===fp);
+    if(q) list=list.filter(r=>[r.nom,r.societe,r.badge,r.laissez_passer,r.motif,r.destination,r.agent].some(v=>(v||"").toLowerCase().includes(q)));
+    const el=document.getElementById("log");
+    if(!list.length){ el.innerHTML='<div class="empty">Aucun passage.</div>'; return; }
+    el.innerHTML=list.map(r=>{
+        const h=new Date(r.created_at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+        const titre=r.nom||r.societe||"—";
+        const sub=[r.societe&&r.nom?r.societe:null,r.destination,r.motif].filter(Boolean).join(" · ");
+        const piece=(r.meta&&(r.meta.piece_consigne||r.meta.piece_restituee))||null;
+        return `<div class="entry ${r.sens==='entree'?'in':'out'}">
+            <div class="top"><span class="nm">${escapeHtml(titre)}</span>
+                <span>${r.sens==='entree'?'↓ Entrée':'↑ Sortie'} · ${escapeHtml(h)}</span></div>
+            <div class="meta">
+                <span class="badge-cat">${cats[r.categorie]||r.categorie}</span>
+                <span>📍 ${escapeHtml(posteLbl[r.poste]||r.poste)}</span>
+                ${r.badge?`<span>🎫 ${escapeHtml(r.badge)}</span>`:''}
+                ${piece?`<span>🪪 ${escapeHtml(pieceCourt(piece))}</span>`:''}
+                ${r.laissez_passer?`<span>LP ${escapeHtml(r.laissez_passer)}</span>`:''}
+                ${sub?`<span>${escapeHtml(sub)}</span>`:''}
+                <span>👮 ${escapeHtml(r.agent||'—')}</span></div></div>`;
+    }).join("");
+}
+function pushToLaisserPasser(row){
+    const url=localStorage.getItem("ca_webhook"); if(!url) return;
+    try{ fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({source:"AuraSentinelle",evenement:"controle_acces",poste:row.poste,categorie:row.categorie,sens:row.sens,nom:row.nom,societe:row.societe,badge:row.badge,laissez_passer:row.laissez_passer,piece:(row.meta&&row.meta.piece_consigne)||null,motif:row.motif,destination:row.destination,agent:row.agent,horodatage:new Date().toISOString()})}).catch(()=>{}); }catch(e){}
+}
+function ouvrirParametres(){
+    const cur=localStorage.getItem("ca_webhook")||"";
+    const v=prompt("URL du logiciel de laisser-passer (webhook POST JSON).\nLaisser vide pour désactiver :",cur);
+    if(v===null) return;
+    if(v.trim()==="") localStorage.removeItem("ca_webhook"); else localStorage.setItem("ca_webhook",v.trim());
+    updateIntgNote(); showToast("⚙️ Paramètre mis à jour");
+}
+function updateIntgNote(){
+    const url=localStorage.getItem("ca_webhook");
+    document.getElementById("intgNote").innerHTML = url
+        ? "🔗 Connecté au logiciel laisser-passer — chaque passage est transmis automatiquement."
+        : "ℹ️ Aucun logiciel laisser-passer connecté. Branche-le via « ⚙️ Laisser-passer » ou exporte en CSV.";
+}
+async function charger(){
+    const todayStart=new Date(); todayStart.setHours(0,0,0,0);
+    try{
+        const { data, error } = await supabaseClient.from("controle_acces")
+            .select("*").gte("created_at",todayStart.toISOString()).order("created_at",{ascending:false});
+        if(error) throw error;
+        journal=data||[];
+    }catch(e){ console.error(e); journal=[]; }
+    render();
+}
+function exportCSV(){
+    if(!journal.length){ showToast("Rien à exporter"); return; }
+    const cols=["created_at","poste","categorie","sens","nom","societe","badge","laissez_passer","motif","destination","agent"];
+    const esc=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+    const rows=journal.map(r=>{ const o={...r, piece:(r.meta&&(r.meta.piece_consigne||r.meta.piece_restituee))||""}; return cols.concat(["piece"]).map(c=>esc(o[c])).join(";"); });
+    const csv=[cols.concat(["piece"]).join(";")].concat(rows).join("\n");
+    const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="controle_acces_"+new Date().toISOString().split("T")[0]+".csv"; a.click();
+    showToast("⬇️ Export CSV généré");
+}
+document.getElementById("scanField").addEventListener("keydown",e=>{
+    if(e.key!=="Enter") return;
+    let code=e.target.value.trim(); if(!code) return;
+    // QR ticket visiteur : "AURACA|<badge>|<entryId>" → restitution directe
+    if(code.indexOf("AURACA|")===0){
+        const badge=code.split("|")[1];
+        e.target.value="";
+        if(badge){ restituerBadge(badge); return; }
+    }
+    const st=getBadgeStatus()[code];
+    if(st && st.out){ restituerBadge(code); e.target.value=""; return; }
+    const t=document.getElementById("f_badge")||document.getElementById("f_laissez_passer");
+    if(t){ t.value=code; showToast("🔖 "+code+" — choisis Entrée/Sortie"); }
+});
+
+/* Ticket visiteur imprimable avec QR — scanné au retour pour restituer le badge */
+function genererTicketVisiteur(ins){
+    const token = "AURACA|"+(ins.badge||"")+"|"+(ins.id||"");
+    let dataUrl="";
+    try{
+        if(window.QRCode){
+            const stage=document.getElementById("qrStage");
+            stage.innerHTML="";
+            new QRCode(stage,{ text:token, width:220, height:220, correctLevel:QRCode.CorrectLevel.M });
+            const cv=stage.querySelector("canvas");
+            if(cv) dataUrl=cv.toDataURL("image/png");
+            else { const img=stage.querySelector("img"); if(img) dataUrl=img.src; }
+        }
+    }catch(e){ console.warn("QR:",e); }
+
+    const posteLbl={porte5:"Porte 5",porte115:"Porte 115",porte16:"Porte 16"}[ins.poste]||ins.poste||"";
+    const site=(window.AuraTenant&&AuraTenant.label)?AuraTenant.label():(localStorage.getItem("site_code")||"");
+    const dt=new Date(ins.created_at||Date.now()).toLocaleString("fr-FR");
+    const piece=(ins.meta&&ins.meta.piece_consigne)?pieceCourt(ins.meta.piece_consigne):"—";
+
+    openCaModal(`
+        <div style="text-align:center">
+            <div style="font-size:12px;letter-spacing:.5px;color:#9ec5ff;text-transform:uppercase">${escapeHtml(site)} · Ticket visiteur</div>
+            <div style="font-size:36px;font-weight:800;margin:6px 0 2px">🎫 ${escapeHtml(ins.badge||"—")}</div>
+            <div style="font-size:18px;font-weight:700">${escapeHtml(ins.nom||"—")}</div>
+            ${ins.societe?`<div style="font-size:13px;color:#9aa7bd;margin-top:3px">${escapeHtml(ins.societe)}</div>`:""}
+            ${ins.motif?`<div style="font-size:13px;color:#9aa7bd">Motif : ${escapeHtml(ins.motif)}</div>`:""}
+            <div style="font-size:13px;color:#9aa7bd;margin-top:3px">${escapeHtml(posteLbl)} · ${escapeHtml(dt)}</div>
+            <div style="font-size:13px;color:#9aa7bd">Pièce en consigne : <b style="color:#e8ebf0">${escapeHtml(piece)}</b></div>
+            <div style="margin:16px auto 8px;background:#fff;display:inline-block;padding:12px;border-radius:12px">
+                ${dataUrl?`<img src="${dataUrl}" alt="QR" style="width:190px;height:190px;display:block">`:'<span style="color:#b91c1c">QR indisponible</span>'}
+            </div>
+            <div style="font-size:12px;color:#fca5a5;font-weight:700">⚠️ Présenter ce QR au retour pour récupérer la pièce</div>
+            <div style="font-size:11px;color:#7c8aa5;margin-top:8px;line-height:1.5">Le visiteur peut en faire une capture d'écran. Au retour, on scanne ce QR au poste → restitution automatique. Aucune donnée personnelle stockée hors traçabilité (RGPD).</div>
+            <button class="btn primary" onclick="closeCaModal()" style="margin-top:14px;width:100%">Fermer</button>
+        </div>
+    `);
+}
+document.addEventListener("DOMContentLoaded",()=>{
+    try{ document.getElementById("siteLbl").textContent="· "+(window.AuraTenant?AuraTenant.label():(localStorage.getItem("site_code")||"")); }catch(e){}
+    setPoste(poste); renderFields(); updateIntgNote(); charger();
+    setInterval(charger,60000);
+});
 </script>
-<script src="notifications_global.js"></script>
 </body>
 </html>

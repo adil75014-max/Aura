@@ -1,661 +1,534 @@
-/* required styles */
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta charset="UTF-8">
+<title>Éditeur de menu — Aura Sentinelle</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    * { box-sizing: border-box; }
+    :root {
+        --bg-main: #f6f5f0;
+        --bg-card: #fff;
+        --border: #e5e0d3;
+        --text-main: #1a1a1a;
+        --text-dim: #6b7280;
+        --accent: #d4af37;
+        --accent-dark: #a07a18;
+        --danger: #dc2626;
+        --success: #10b981;
+    }
+    [data-theme="dark"] {
+        --bg-main: #0f0e0c;
+        --bg-card: #1a1816;
+        --border: #2d2924;
+        --text-main: #f5f3ed;
+        --text-dim: #9ca3af;
+    }
 
-.leaflet-pane,
-.leaflet-tile,
-.leaflet-marker-icon,
-.leaflet-marker-shadow,
-.leaflet-tile-container,
-.leaflet-pane > svg,
-.leaflet-pane > canvas,
-.leaflet-zoom-box,
-.leaflet-image-layer,
-.leaflet-layer {
-	position: absolute;
-	left: 0;
-	top: 0;
-	}
-.leaflet-container {
-	overflow: hidden;
-	}
-.leaflet-tile,
-.leaflet-marker-icon,
-.leaflet-marker-shadow {
-	-webkit-user-select: none;
-	   -moz-user-select: none;
-	        user-select: none;
-	  -webkit-user-drag: none;
-	}
-/* Prevents IE11 from highlighting tiles in blue */
-.leaflet-tile::selection {
-	background: transparent;
+    body {
+        margin: 0;
+        background: var(--bg-main);
+        color: var(--text-main);
+        font-family: system-ui, -apple-system, sans-serif;
+        padding: 80px 20px 40px;
+        min-height: 100vh;
+    }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    h1 {
+        font-size: 1.5rem;
+        margin: 0 0 6px;
+        color: var(--accent-dark);
+    }
+    .subtitle {
+        color: var(--text-dim);
+        font-size: 0.9rem;
+        margin-bottom: 24px;
+    }
+
+    .toolbar {
+        display: flex; gap: 12px; flex-wrap: wrap;
+        align-items: center;
+        padding: 14px 16px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 20px;
+    }
+
+    label {
+        font-size: 0.85rem;
+        color: var(--text-dim);
+        font-weight: 600;
+    }
+
+    select, input[type="text"] {
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg-card);
+        color: var(--text-main);
+        font-size: 0.9rem;
+        min-width: 0;
+    }
+
+    button {
+        padding: 8px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg-card);
+        color: var(--text-main);
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    button:hover { background: var(--accent); color: #000; }
+    .btn-primary {
+        background: var(--accent);
+        color: #000;
+        border-color: var(--accent-dark);
+    }
+    .btn-primary:hover { background: var(--accent-dark); color: #fff; }
+    .btn-danger {
+        background: var(--danger);
+        color: #fff;
+        border-color: var(--danger);
+    }
+    .btn-danger:hover { background: #b91c1c; color: #fff; }
+    .btn-small { padding: 4px 10px; font-size: 0.75rem; }
+
+    .info {
+        padding: 12px 16px;
+        background: rgba(59, 130, 246, 0.1);
+        border-left: 4px solid #3b82f6;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        margin-bottom: 20px;
+    }
+
+    .section {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        margin-bottom: 16px;
+        overflow: hidden;
+    }
+    .section-header {
+        display: flex; gap: 10px; align-items: center;
+        padding: 12px 16px;
+        background: rgba(212, 175, 55, 0.08);
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+    }
+    .section-header input { flex: 1; min-width: 120px; }
+    .section-header .drag-handle {
+        cursor: move;
+        color: var(--text-dim);
+        font-size: 1.2rem;
+        user-select: none;
+    }
+    .section-body {
+        padding: 12px 16px;
+    }
+    .roles-row {
+        display: flex; gap: 12px; flex-wrap: wrap;
+        margin: 8px 0 12px;
+        font-size: 0.78rem;
+    }
+    .roles-row label {
+        display: inline-flex; gap: 4px; align-items: center;
+        font-weight: 500;
+        cursor: pointer;
+    }
+    .item {
+        display: grid;
+        grid-template-columns: auto 60px 1fr 1.5fr auto auto;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 0;
+        border-bottom: 1px dashed var(--border);
+    }
+    .item:last-child { border-bottom: none; }
+    .item input { padding: 6px 10px; font-size: 0.85rem; }
+    .item .ext-cell {
+        display: flex; align-items: center; gap: 4px;
+        font-size: 0.72rem;
+        color: var(--text-dim);
+    }
+
+    .log {
+        margin-top: 20px;
+        padding: 12px 16px;
+        background: var(--bg-card);
+        border-left: 4px solid var(--success);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-family: ui-monospace, monospace;
+        white-space: pre-wrap;
+        min-height: 1.5em;
+    }
+    .log.err { border-left-color: var(--danger); color: var(--danger); }
+
+    @media (max-width: 700px) {
+        .item { grid-template-columns: 1fr; }
+        .section-header { flex-direction: column; align-items: stretch; }
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+    <h1>🎛️ Éditeur de menu</h1>
+    <div class="subtitle">Personnalisez le menu affiché aux utilisateurs de votre service.</div>
+
+    <div class="info">
+        ℹ️ Les modifications s'appliquent à <strong>tous les utilisateurs de votre site + service</strong>.
+        Si le menu n'est pas défini en base, le menu par défaut s'affiche (codé en dur).
+        Vous pouvez <strong>réinitialiser</strong> à tout moment.
+    </div>
+
+    <div class="toolbar">
+        <label>Site :</label>
+        <select id="siteSelect">
+            <option value="LBM">Le Bon Marché (LBM)</option>
+            <option value="SAM">Samaritaine (SAM)</option>
+            <option value="GERD">La Grande Épicerie Rive Droite (GERD)</option>
+            <option value="GERG">La Grande Épicerie Rive Gauche (GERG)</option>
+            <option value="MH">Moët Hennessy (MH)</option>
+            <option value="EBAG">Entrepôt Bagneux (EBAG)</option>
+        </select>
+
+        <label>Service :</label>
+        <select id="serviceSelect">
+            <option value="incendie">Sécurité Incendie</option>
+            <option value="surete">Sûreté</option>
+            <option value="technique">Technique</option>
+            <option value="services_generaux">Services Généraux</option>
+        </select>
+
+        <button onclick="loadMenu()">🔄 Charger</button>
+        <button onclick="addSection()">➕ Ajouter section</button>
+        <div style="flex:1;"></div>
+        <button class="btn-primary" onclick="saveMenu()">💾 Enregistrer</button>
+        <button class="btn-danger" onclick="resetMenu()">↩ Réinitialiser</button>
+    </div>
+
+    <div id="sectionsContainer"></div>
+
+    <div class="log" id="log">En attente…</div>
+
+</div>
+
+<!-- Scripts -->
+<script src="vendor/supabase.js"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script src="security.js"></script>
+<script src="global.js"></script>
+
+<script>
+// ════════════════════════════════════════════════════════════
+//  GARDE ADMIN
+// ════════════════════════════════════════════════════════════
+(function() {
+    var role = (localStorage.getItem("role") || "").toLowerCase();
+    if (role !== "admin" && role !== "superviseur") {
+        alert("Accès réservé aux administrateurs.");
+        window.location.href = "index.html";
+    }
+})();
+
+// ════════════════════════════════════════════════════════════
+//  MENU PAR DÉFAUT (fallback si rien en BDD)
+//  Importé / synchro avec MENUS_BY_SERVICE de index.html
+// ════════════════════════════════════════════════════════════
+const DEFAULT_MENUS = {
+    incendie: [
+        { category: "Exploitation", icon: "📄", visibleFor: ["admin","superviseur","stationnaire","agent"], items: [
+            { icon: "📄", label: "Feuille de garde", link: "feuille_de_garde.html" },
+            { icon: "🕒", label: "Permanence", link: "permanence.html" },
+            { icon: "📋", label: "Plan de prévention", link: "plan_de_prevention_import.html" },
+            { icon: "📊", label: "Fils de l'eau", link: "dashboard_admin.html" },
+            { icon: "🧯", label: "Compte rendu", link: "compte_rendu.html" }
+        ]},
+        { category: "Interventions", icon: "🚨", visibleFor: ["admin","superviseur","stationnaire","agent"], items: [
+            { icon: "🔥", label: "Détection incendie", link: "report.html?type=incendie" },
+            { icon: "💧", label: "Fuite d'eau", link: "report.html?type=fuite" }
+        ]},
+        { category: "Administration", icon: "🤖", visibleFor: ["admin","superviseur"], items: [
+            { icon: "👤", label: "Gestion des comptes", link: "gestion_de_compte.html" },
+            { icon: "🎛️", label: "Éditeur de menu", link: "menu_admin.html" }
+        ]}
+    ],
+    surete: [
+        { category: "Interventions Sûreté", icon: "🛡️", visibleFor: ["admin","superviseur","stationnaire","agent"], items: [
+            { icon: "🚨", label: "Vol", link: "report.html?type=vol" },
+            { icon: "⚔️", label: "Conflit", link: "report.html?type=conflit" }
+        ]},
+        { category: "Administration", icon: "🤖", visibleFor: ["admin","superviseur"], items: [
+            { icon: "🎛️", label: "Éditeur de menu", link: "menu_admin.html" }
+        ]}
+    ],
+    technique: [
+        { category: "Pannes", icon: "🛠", visibleFor: ["admin","superviseur","stationnaire","agent"], items: [
+            { icon: "⚡", label: "Panne électrique", link: "report.html?type=panne_elec" }
+        ]},
+        { category: "Administration", icon: "🤖", visibleFor: ["admin","superviseur"], items: [
+            { icon: "🎛️", label: "Éditeur de menu", link: "menu_admin.html" }
+        ]}
+    ],
+    services_generaux: [
+        { category: "Logistique", icon: "📦", visibleFor: ["admin","superviseur","stationnaire","agent"], items: [
+            { icon: "🚚", label: "Livraison", link: "report.html?type=livraison_in" }
+        ]},
+        { category: "Administration", icon: "🤖", visibleFor: ["admin","superviseur"], items: [
+            { icon: "🎛️", label: "Éditeur de menu", link: "menu_admin.html" }
+        ]}
+    ]
+};
+
+// État local
+let currentMenu = [];
+
+// ════════════════════════════════════════════════════════════
+//  Initialisation : pré-sélectionne le site+service de l'admin
+// ════════════════════════════════════════════════════════════
+window.addEventListener("DOMContentLoaded", function() {
+    const mySite = localStorage.getItem("site_code") || "LBM";
+    const mySvc  = (localStorage.getItem("service") || "incendie").toLowerCase();
+    const siteSel = document.getElementById("siteSelect");
+    const svcSel  = document.getElementById("serviceSelect");
+    if (siteSel.querySelector('option[value="' + mySite + '"]')) siteSel.value = mySite;
+    if (svcSel.querySelector('option[value="' + mySvc + '"]'))    svcSel.value = mySvc;
+    loadMenu();
+});
+
+// ════════════════════════════════════════════════════════════
+//  LOG
+// ════════════════════════════════════════════════════════════
+function log(msg, isError) {
+    const el = document.getElementById("log");
+    el.textContent = "[" + new Date().toLocaleTimeString() + "] " + msg;
+    el.className = "log" + (isError ? " err" : "");
 }
-/* Safari renders non-retina tile on retina better with this, but Chrome is worse */
-.leaflet-safari .leaflet-tile {
-	image-rendering: -webkit-optimize-contrast;
-	}
-/* hack that prevents hw layers "stretching" when loading new tiles */
-.leaflet-safari .leaflet-tile-container {
-	width: 1600px;
-	height: 1600px;
-	-webkit-transform-origin: 0 0;
-	}
-.leaflet-marker-icon,
-.leaflet-marker-shadow {
-	display: block;
-	}
-/* .leaflet-container svg: reset svg max-width decleration shipped in Joomla! (joomla.org) 3.x */
-/* .leaflet-container img: map is broken in FF if you have max-width: 100% on tiles */
-.leaflet-container .leaflet-overlay-pane svg {
-	max-width: none !important;
-	max-height: none !important;
-	}
-.leaflet-container .leaflet-marker-pane img,
-.leaflet-container .leaflet-shadow-pane img,
-.leaflet-container .leaflet-tile-pane img,
-.leaflet-container img.leaflet-image-layer,
-.leaflet-container .leaflet-tile {
-	max-width: none !important;
-	max-height: none !important;
-	width: auto;
-	padding: 0;
-	}
 
-.leaflet-container img.leaflet-tile {
-	/* See: https://bugs.chromium.org/p/chromium/issues/detail?id=600120 */
-	mix-blend-mode: plus-lighter;
+// ════════════════════════════════════════════════════════════
+//  CHARGEMENT
+// ════════════════════════════════════════════════════════════
+async function loadMenu() {
+    const site = document.getElementById("siteSelect").value;
+    const srv  = document.getElementById("serviceSelect").value;
+    log("Chargement " + site + "/" + srv + "…");
+
+    try {
+        // service_menus est une table de config, pas tenant — on bypasse
+        const { data, error } = await supabaseClient
+            .fromAll("service_menus")
+            .select("menu_json")
+            .eq("site_code", site)
+            .eq("service", srv)
+            .maybeSingle();
+
+        if (error) {
+            log("⚠ Erreur Supabase : " + error.message + " — menu par défaut chargé.");
+            currentMenu = JSON.parse(JSON.stringify(DEFAULT_MENUS[srv] || []));
+        } else if (data && data.menu_json) {
+            currentMenu = data.menu_json;
+            log("✓ Menu chargé depuis la BDD (" + currentMenu.length + " sections).");
+        } else {
+            currentMenu = JSON.parse(JSON.stringify(DEFAULT_MENUS[srv] || []));
+            log("ℹ Pas d'entrée en BDD — menu par défaut chargé (" + currentMenu.length + " sections).");
+        }
+
+        render();
+    } catch (e) {
+        log("❌ " + e.message, true);
+    }
 }
 
-.leaflet-container.leaflet-touch-zoom {
-	-ms-touch-action: pan-x pan-y;
-	touch-action: pan-x pan-y;
-	}
-.leaflet-container.leaflet-touch-drag {
-	-ms-touch-action: pinch-zoom;
-	/* Fallback for FF which doesn't support pinch-zoom */
-	touch-action: none;
-	touch-action: pinch-zoom;
-}
-.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom {
-	-ms-touch-action: none;
-	touch-action: none;
-}
-.leaflet-container {
-	-webkit-tap-highlight-color: transparent;
-}
-.leaflet-container a {
-	-webkit-tap-highlight-color: rgba(51, 181, 229, 0.4);
-}
-.leaflet-tile {
-	filter: inherit;
-	visibility: hidden;
-	}
-.leaflet-tile-loaded {
-	visibility: inherit;
-	}
-.leaflet-zoom-box {
-	width: 0;
-	height: 0;
-	-moz-box-sizing: border-box;
-	     box-sizing: border-box;
-	z-index: 800;
-	}
-/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
-.leaflet-overlay-pane svg {
-	-moz-user-select: none;
-	}
+// ════════════════════════════════════════════════════════════
+//  RENDU
+// ════════════════════════════════════════════════════════════
+function render() {
+    const c = document.getElementById("sectionsContainer");
+    c.innerHTML = "";
 
-.leaflet-pane         { z-index: 400; }
+    currentMenu.forEach((sec, si) => {
+        const sd = document.createElement("div");
+        sd.className = "section";
+        sd.innerHTML = `
+            <div class="section-header">
+                <span class="drag-handle" title="Glisser pour réordonner">≡</span>
+                <input type="text" value="${escapeAttr(sec.icon || "")}" style="width:50px;text-align:center;font-size:1.2rem;"
+                       onchange="updateSection(${si}, 'icon', this.value)" placeholder="🎯">
+                <input type="text" value="${escapeAttr(sec.category || "")}"
+                       onchange="updateSection(${si}, 'category', this.value)" placeholder="Nom de la section">
+                <button class="btn-small" onclick="moveSection(${si}, -1)">↑</button>
+                <button class="btn-small" onclick="moveSection(${si}, 1)">↓</button>
+                <button class="btn-small btn-danger" onclick="removeSection(${si})">✕ Section</button>
+            </div>
+            <div class="section-body">
+                <div class="roles-row">
+                    <span style="color:var(--text-dim);font-weight:600;">Visible pour :</span>
+                    ${["admin","superviseur","stationnaire","agent"].map(r => `
+                        <label>
+                            <input type="checkbox" ${(sec.visibleFor||[]).indexOf(r) !== -1 ? "checked" : ""}
+                                   onchange="toggleRole(${si}, '${r}', this.checked)">
+                            ${r}
+                        </label>
+                    `).join("")}
+                </div>
 
-.leaflet-tile-pane    { z-index: 200; }
-.leaflet-overlay-pane { z-index: 400; }
-.leaflet-shadow-pane  { z-index: 500; }
-.leaflet-marker-pane  { z-index: 600; }
-.leaflet-tooltip-pane   { z-index: 650; }
-.leaflet-popup-pane   { z-index: 700; }
+                <div id="items-${si}"></div>
 
-.leaflet-map-pane canvas { z-index: 100; }
-.leaflet-map-pane svg    { z-index: 200; }
+                <button class="btn-small" style="margin-top:8px;" onclick="addItem(${si})">➕ Item</button>
+            </div>
+        `;
+        c.appendChild(sd);
 
-.leaflet-vml-shape {
-	width: 1px;
-	height: 1px;
-	}
-.lvml {
-	behavior: url(#default#VML);
-	display: inline-block;
-	position: absolute;
-	}
+        const ic = sd.querySelector("#items-" + si);
+        (sec.items || []).forEach((it, ii) => {
+            const itd = document.createElement("div");
+            itd.className = "item";
+            itd.innerHTML = `
+                <span class="drag-handle">≡</span>
+                <input type="text" value="${escapeAttr(it.icon || "")}" style="text-align:center;font-size:1.1rem;"
+                       onchange="updateItem(${si}, ${ii}, 'icon', this.value)" placeholder="📌">
+                <input type="text" value="${escapeAttr(it.label || "")}"
+                       onchange="updateItem(${si}, ${ii}, 'label', this.value)" placeholder="Nom de l'item">
+                <input type="text" value="${escapeAttr(it.link || "")}"
+                       onchange="updateItem(${si}, ${ii}, 'link', this.value)" placeholder="page.html ou https://…">
+                <span class="ext-cell">
+                    <input type="checkbox" ${it.external ? "checked" : ""}
+                           onchange="updateItem(${si}, ${ii}, 'external', this.checked)" id="ext-${si}-${ii}">
+                    <label for="ext-${si}-${ii}">ext.</label>
+                </span>
+                <button class="btn-small btn-danger" onclick="removeItem(${si}, ${ii})">✕</button>
+            `;
+            ic.appendChild(itd);
+        });
+    });
 
-
-/* control positioning */
-
-.leaflet-control {
-	position: relative;
-	z-index: 800;
-	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
-	pointer-events: auto;
-	}
-.leaflet-top,
-.leaflet-bottom {
-	position: absolute;
-	z-index: 1000;
-	pointer-events: none;
-	}
-.leaflet-top {
-	top: 0;
-	}
-.leaflet-right {
-	right: 0;
-	}
-.leaflet-bottom {
-	bottom: 0;
-	}
-.leaflet-left {
-	left: 0;
-	}
-.leaflet-control {
-	float: left;
-	clear: both;
-	}
-.leaflet-right .leaflet-control {
-	float: right;
-	}
-.leaflet-top .leaflet-control {
-	margin-top: 10px;
-	}
-.leaflet-bottom .leaflet-control {
-	margin-bottom: 10px;
-	}
-.leaflet-left .leaflet-control {
-	margin-left: 10px;
-	}
-.leaflet-right .leaflet-control {
-	margin-right: 10px;
-	}
-
-
-/* zoom and fade animations */
-
-.leaflet-fade-anim .leaflet-popup {
-	opacity: 0;
-	-webkit-transition: opacity 0.2s linear;
-	   -moz-transition: opacity 0.2s linear;
-	        transition: opacity 0.2s linear;
-	}
-.leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
-	opacity: 1;
-	}
-.leaflet-zoom-animated {
-	-webkit-transform-origin: 0 0;
-	    -ms-transform-origin: 0 0;
-	        transform-origin: 0 0;
-	}
-svg.leaflet-zoom-animated {
-	will-change: transform;
+    if (currentMenu.length === 0) {
+        c.innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim);">Aucune section. Cliquez sur "Ajouter section" pour commencer.</div>';
+    }
 }
 
-.leaflet-zoom-anim .leaflet-zoom-animated {
-	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
-	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
-	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
-	}
-.leaflet-zoom-anim .leaflet-tile,
-.leaflet-pan-anim .leaflet-tile {
-	-webkit-transition: none;
-	   -moz-transition: none;
-	        transition: none;
-	}
-
-.leaflet-zoom-anim .leaflet-zoom-hide {
-	visibility: hidden;
-	}
-
-
-/* cursors */
-
-.leaflet-interactive {
-	cursor: pointer;
-	}
-.leaflet-grab {
-	cursor: -webkit-grab;
-	cursor:    -moz-grab;
-	cursor:         grab;
-	}
-.leaflet-crosshair,
-.leaflet-crosshair .leaflet-interactive {
-	cursor: crosshair;
-	}
-.leaflet-popup-pane,
-.leaflet-control {
-	cursor: auto;
-	}
-.leaflet-dragging .leaflet-grab,
-.leaflet-dragging .leaflet-grab .leaflet-interactive,
-.leaflet-dragging .leaflet-marker-draggable {
-	cursor: move;
-	cursor: -webkit-grabbing;
-	cursor:    -moz-grabbing;
-	cursor:         grabbing;
-	}
-
-/* marker & overlays interactivity */
-.leaflet-marker-icon,
-.leaflet-marker-shadow,
-.leaflet-image-layer,
-.leaflet-pane > svg path,
-.leaflet-tile-container {
-	pointer-events: none;
-	}
-
-.leaflet-marker-icon.leaflet-interactive,
-.leaflet-image-layer.leaflet-interactive,
-.leaflet-pane > svg path.leaflet-interactive,
-svg.leaflet-image-layer.leaflet-interactive path {
-	pointer-events: visiblePainted; /* IE 9-10 doesn't have auto */
-	pointer-events: auto;
-	}
-
-/* visual tweaks */
-
-.leaflet-container {
-	background: #ddd;
-	outline-offset: 1px;
-	}
-.leaflet-container a {
-	color: #0078A8;
-	}
-.leaflet-zoom-box {
-	border: 2px dotted #38f;
-	background: rgba(255,255,255,0.5);
-	}
-
-
-/* general typography */
-.leaflet-container {
-	font-family: "Helvetica Neue", Arial, Helvetica, sans-serif;
-	font-size: 12px;
-	font-size: 0.75rem;
-	line-height: 1.5;
-	}
-
-
-/* general toolbar styles */
-
-.leaflet-bar {
-	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
-	border-radius: 4px;
-	}
-.leaflet-bar a {
-	background-color: #fff;
-	border-bottom: 1px solid #ccc;
-	width: 26px;
-	height: 26px;
-	line-height: 26px;
-	display: block;
-	text-align: center;
-	text-decoration: none;
-	color: black;
-	}
-.leaflet-bar a,
-.leaflet-control-layers-toggle {
-	background-position: 50% 50%;
-	background-repeat: no-repeat;
-	display: block;
-	}
-.leaflet-bar a:hover,
-.leaflet-bar a:focus {
-	background-color: #f4f4f4;
-	}
-.leaflet-bar a:first-child {
-	border-top-left-radius: 4px;
-	border-top-right-radius: 4px;
-	}
-.leaflet-bar a:last-child {
-	border-bottom-left-radius: 4px;
-	border-bottom-right-radius: 4px;
-	border-bottom: none;
-	}
-.leaflet-bar a.leaflet-disabled {
-	cursor: default;
-	background-color: #f4f4f4;
-	color: #bbb;
-	}
-
-.leaflet-touch .leaflet-bar a {
-	width: 30px;
-	height: 30px;
-	line-height: 30px;
-	}
-.leaflet-touch .leaflet-bar a:first-child {
-	border-top-left-radius: 2px;
-	border-top-right-radius: 2px;
-	}
-.leaflet-touch .leaflet-bar a:last-child {
-	border-bottom-left-radius: 2px;
-	border-bottom-right-radius: 2px;
-	}
-
-/* zoom control */
-
-.leaflet-control-zoom-in,
-.leaflet-control-zoom-out {
-	font: bold 18px 'Lucida Console', Monaco, monospace;
-	text-indent: 1px;
-	}
-
-.leaflet-touch .leaflet-control-zoom-in, .leaflet-touch .leaflet-control-zoom-out  {
-	font-size: 22px;
-	}
-
-
-/* layers control */
-
-.leaflet-control-layers {
-	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
-	background: #fff;
-	border-radius: 5px;
-	}
-.leaflet-control-layers-toggle {
-	background-image: url(images/layers.png);
-	width: 36px;
-	height: 36px;
-	}
-.leaflet-retina .leaflet-control-layers-toggle {
-	background-image: url(images/layers-2x.png);
-	background-size: 26px 26px;
-	}
-.leaflet-touch .leaflet-control-layers-toggle {
-	width: 44px;
-	height: 44px;
-	}
-.leaflet-control-layers .leaflet-control-layers-list,
-.leaflet-control-layers-expanded .leaflet-control-layers-toggle {
-	display: none;
-	}
-.leaflet-control-layers-expanded .leaflet-control-layers-list {
-	display: block;
-	position: relative;
-	}
-.leaflet-control-layers-expanded {
-	padding: 6px 10px 6px 6px;
-	color: #333;
-	background: #fff;
-	}
-.leaflet-control-layers-scrollbar {
-	overflow-y: scroll;
-	overflow-x: hidden;
-	padding-right: 5px;
-	}
-.leaflet-control-layers-selector {
-	margin-top: 2px;
-	position: relative;
-	top: 1px;
-	}
-.leaflet-control-layers label {
-	display: block;
-	font-size: 13px;
-	font-size: 1.08333em;
-	}
-.leaflet-control-layers-separator {
-	height: 0;
-	border-top: 1px solid #ddd;
-	margin: 5px -10px 5px -6px;
-	}
-
-/* Default icon URLs */
-.leaflet-default-icon-path { /* used only in path-guessing heuristic, see L.Icon.Default */
-	background-image: url(images/marker-icon.png);
-	}
-
-
-/* attribution and scale controls */
-
-.leaflet-container .leaflet-control-attribution {
-	background: #fff;
-	background: rgba(255, 255, 255, 0.8);
-	margin: 0;
-	}
-.leaflet-control-attribution,
-.leaflet-control-scale-line {
-	padding: 0 5px;
-	color: #333;
-	line-height: 1.4;
-	}
-.leaflet-control-attribution a {
-	text-decoration: none;
-	}
-.leaflet-control-attribution a:hover,
-.leaflet-control-attribution a:focus {
-	text-decoration: underline;
-	}
-.leaflet-attribution-flag {
-	display: inline !important;
-	vertical-align: baseline !important;
-	width: 1em;
-	height: 0.6669em;
-	}
-.leaflet-left .leaflet-control-scale {
-	margin-left: 5px;
-	}
-.leaflet-bottom .leaflet-control-scale {
-	margin-bottom: 5px;
-	}
-.leaflet-control-scale-line {
-	border: 2px solid #777;
-	border-top: none;
-	line-height: 1.1;
-	padding: 2px 5px 1px;
-	white-space: nowrap;
-	-moz-box-sizing: border-box;
-	     box-sizing: border-box;
-	background: rgba(255, 255, 255, 0.8);
-	text-shadow: 1px 1px #fff;
-	}
-.leaflet-control-scale-line:not(:first-child) {
-	border-top: 2px solid #777;
-	border-bottom: none;
-	margin-top: -2px;
-	}
-.leaflet-control-scale-line:not(:first-child):not(:last-child) {
-	border-bottom: 2px solid #777;
-	}
-
-.leaflet-touch .leaflet-control-attribution,
-.leaflet-touch .leaflet-control-layers,
-.leaflet-touch .leaflet-bar {
-	box-shadow: none;
-	}
-.leaflet-touch .leaflet-control-layers,
-.leaflet-touch .leaflet-bar {
-	border: 2px solid rgba(0,0,0,0.2);
-	background-clip: padding-box;
-	}
-
-
-/* popup */
-
-.leaflet-popup {
-	position: absolute;
-	text-align: center;
-	margin-bottom: 20px;
-	}
-.leaflet-popup-content-wrapper {
-	padding: 1px;
-	text-align: left;
-	border-radius: 12px;
-	}
-.leaflet-popup-content {
-	margin: 13px 24px 13px 20px;
-	line-height: 1.3;
-	font-size: 13px;
-	font-size: 1.08333em;
-	min-height: 1px;
-	}
-.leaflet-popup-content p {
-	margin: 17px 0;
-	margin: 1.3em 0;
-	}
-.leaflet-popup-tip-container {
-	width: 40px;
-	height: 20px;
-	position: absolute;
-	left: 50%;
-	margin-top: -1px;
-	margin-left: -20px;
-	overflow: hidden;
-	pointer-events: none;
-	}
-.leaflet-popup-tip {
-	width: 17px;
-	height: 17px;
-	padding: 1px;
-
-	margin: -10px auto 0;
-	pointer-events: auto;
-
-	-webkit-transform: rotate(45deg);
-	   -moz-transform: rotate(45deg);
-	    -ms-transform: rotate(45deg);
-	        transform: rotate(45deg);
-	}
-.leaflet-popup-content-wrapper,
-.leaflet-popup-tip {
-	background: white;
-	color: #333;
-	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
-	}
-.leaflet-container a.leaflet-popup-close-button {
-	position: absolute;
-	top: 0;
-	right: 0;
-	border: none;
-	text-align: center;
-	width: 24px;
-	height: 24px;
-	font: 16px/24px Tahoma, Verdana, sans-serif;
-	color: #757575;
-	text-decoration: none;
-	background: transparent;
-	}
-.leaflet-container a.leaflet-popup-close-button:hover,
-.leaflet-container a.leaflet-popup-close-button:focus {
-	color: #585858;
-	}
-.leaflet-popup-scrolled {
-	overflow: auto;
-	}
-
-.leaflet-oldie .leaflet-popup-content-wrapper {
-	-ms-zoom: 1;
-	}
-.leaflet-oldie .leaflet-popup-tip {
-	width: 24px;
-	margin: 0 auto;
-
-	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
-	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
-	}
-
-.leaflet-oldie .leaflet-control-zoom,
-.leaflet-oldie .leaflet-control-layers,
-.leaflet-oldie .leaflet-popup-content-wrapper,
-.leaflet-oldie .leaflet-popup-tip {
-	border: 1px solid #999;
-	}
-
-
-/* div icon */
-
-.leaflet-div-icon {
-	background: #fff;
-	border: 1px solid #666;
-	}
-
-
-/* Tooltip */
-/* Base styles for the element that has a tooltip */
-.leaflet-tooltip {
-	position: absolute;
-	padding: 6px;
-	background-color: #fff;
-	border: 1px solid #fff;
-	border-radius: 3px;
-	color: #222;
-	white-space: nowrap;
-	-webkit-user-select: none;
-	-moz-user-select: none;
-	-ms-user-select: none;
-	user-select: none;
-	pointer-events: none;
-	box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-	}
-.leaflet-tooltip.leaflet-interactive {
-	cursor: pointer;
-	pointer-events: auto;
-	}
-.leaflet-tooltip-top:before,
-.leaflet-tooltip-bottom:before,
-.leaflet-tooltip-left:before,
-.leaflet-tooltip-right:before {
-	position: absolute;
-	pointer-events: none;
-	border: 6px solid transparent;
-	background: transparent;
-	content: "";
-	}
-
-/* Directions */
-
-.leaflet-tooltip-bottom {
-	margin-top: 6px;
+// ════════════════════════════════════════════════════════════
+//  ÉDITION
+// ════════════════════════════════════════════════════════════
+function updateSection(si, field, value) {
+    currentMenu[si][field] = value;
 }
-.leaflet-tooltip-top {
-	margin-top: -6px;
-}
-.leaflet-tooltip-bottom:before,
-.leaflet-tooltip-top:before {
-	left: 50%;
-	margin-left: -6px;
-	}
-.leaflet-tooltip-top:before {
-	bottom: 0;
-	margin-bottom: -12px;
-	border-top-color: #fff;
-	}
-.leaflet-tooltip-bottom:before {
-	top: 0;
-	margin-top: -12px;
-	margin-left: -6px;
-	border-bottom-color: #fff;
-	}
-.leaflet-tooltip-left {
-	margin-left: -6px;
-}
-.leaflet-tooltip-right {
-	margin-left: 6px;
-}
-.leaflet-tooltip-left:before,
-.leaflet-tooltip-right:before {
-	top: 50%;
-	margin-top: -6px;
-	}
-.leaflet-tooltip-left:before {
-	right: 0;
-	margin-right: -12px;
-	border-left-color: #fff;
-	}
-.leaflet-tooltip-right:before {
-	left: 0;
-	margin-left: -12px;
-	border-right-color: #fff;
-	}
 
-/* Printing */
+function toggleRole(si, role, on) {
+    const arr = currentMenu[si].visibleFor || [];
+    const idx = arr.indexOf(role);
+    if (on && idx === -1) arr.push(role);
+    if (!on && idx !== -1) arr.splice(idx, 1);
+    currentMenu[si].visibleFor = arr;
+}
 
-@media print {
-	/* Prevent printers from removing background-images of controls. */
-	.leaflet-control {
-		-webkit-print-color-adjust: exact;
-		print-color-adjust: exact;
-		}
-	}
+function addSection() {
+    currentMenu.push({
+        category: "Nouvelle section",
+        icon: "📁",
+        visibleFor: ["admin","superviseur","stationnaire","agent"],
+        items: []
+    });
+    render();
+}
+
+function removeSection(si) {
+    if (!confirm("Supprimer la section \"" + currentMenu[si].category + "\" ?")) return;
+    currentMenu.splice(si, 1);
+    render();
+}
+
+function moveSection(si, dir) {
+    const ni = si + dir;
+    if (ni < 0 || ni >= currentMenu.length) return;
+    const tmp = currentMenu[si];
+    currentMenu[si] = currentMenu[ni];
+    currentMenu[ni] = tmp;
+    render();
+}
+
+function addItem(si) {
+    if (!currentMenu[si].items) currentMenu[si].items = [];
+    currentMenu[si].items.push({ icon: "🔹", label: "Nouvel item", link: "#" });
+    render();
+}
+
+function updateItem(si, ii, field, value) {
+    currentMenu[si].items[ii][field] = value;
+}
+
+function removeItem(si, ii) {
+    currentMenu[si].items.splice(ii, 1);
+    render();
+}
+
+// ════════════════════════════════════════════════════════════
+//  SAUVEGARDE
+// ════════════════════════════════════════════════════════════
+async function saveMenu() {
+    const site = document.getElementById("siteSelect").value;
+    const srv  = document.getElementById("serviceSelect").value;
+    const me   = localStorage.getItem("nom") || "unknown";
+
+    log("Enregistrement en cours…");
+
+    try {
+        const { error } = await supabaseClient
+            .fromAll("service_menus")
+            .upsert({
+                site_code: site,
+                service: srv,
+                menu_json: currentMenu,
+                updated_by: me
+            }, { onConflict: "site_code,service" });
+
+        if (error) {
+            log("❌ Erreur : " + error.message, true);
+            return;
+        }
+
+        log("✅ Menu enregistré pour " + site + "/" + srv + ". Les utilisateurs verront la nouvelle version à leur prochaine connexion ou rafraîchissement.");
+    } catch (e) {
+        log("❌ Réseau : " + e.message, true);
+    }
+}
+
+async function resetMenu() {
+    const site = document.getElementById("siteSelect").value;
+    const srv  = document.getElementById("serviceSelect").value;
+    if (!confirm("Réinitialiser le menu " + site + "/" + srv + " au menu par défaut ?")) return;
+
+    try {
+        await supabaseClient
+            .fromAll("service_menus")
+            .delete()
+            .eq("site_code", site)
+            .eq("service", srv);
+
+        currentMenu = JSON.parse(JSON.stringify(DEFAULT_MENUS[srv] || []));
+        render();
+        log("↩ Menu réinitialisé au défaut pour " + site + "/" + srv + ".");
+    } catch (e) {
+        log("❌ " + e.message, true);
+    }
+}
+
+function escapeAttr(s) {
+    return String(s || "").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+</script>
+
+</body>
+</html>

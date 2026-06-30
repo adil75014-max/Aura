@@ -1,85 +1,657 @@
-body {
-  margin: 0;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<title>Aura Sentinelle LBM – Login</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+    body {
+        background: radial-gradient(circle at top left, #2b1b1b, #120b0b 50%, #050305);
+        color: white;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .login-box {
+        width: 90%;
+        max-width: 360px;
+        background: rgba(10, 5, 5, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        box-shadow: 0 3px 18px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(14px);
+        overflow: hidden;
+        padding-bottom: 12px;
+    }
+
+    .content {
+        padding: 0;
+        text-align: center;
+    }
+
+    .logo {
+        width: 65%;
+        max-width: 140px;
+        margin: 12px auto 6px auto;
+        display: block;
+        border-radius: 10px;
+        padding: 4px;
+        box-shadow: 0 0 14px rgba(255, 140, 0, 0.4);
+    }
+
+    .header-photo {
+        width: 100%;
+        height: 90px;
+        background: url('https://upload.wikimedia.org/wikipedia/commons/4/4c/Le_Bon_March%C3%A9_Paris.jpg');
+        background-size: cover;
+        background-position: center;
+        filter: brightness(0.8) saturate(1.1);
+    }
+
+    .app-name {
+        font-size: 0.75rem;
+        opacity: 0.9;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        color: #ffd27f;
+        margin-top: 8px;
+    }
+
+    .secure {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        margin-bottom: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
+
+    label {
+        display: block;
+        margin-top: 8px;
+        font-size: 0.8rem;
+        opacity: 0.9;
+        text-align: left;
+        width: 86%;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    input {
+        width: 86%;
+        padding: 8px 10px;
+        margin-top: 4px;
+        border-radius: 7px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+        color: white;
+        font-size: 0.85rem;
+    }
+
+    button {
+        margin-top: 14px;
+        width: 86%;
+        padding: 10px;
+        background: linear-gradient(135deg, #ffb347, #ff7b47);
+        border: none;
+        border-radius: 8px;
+        color: #1b0f08;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 700;
+        box-shadow: 0 3px 12px rgba(255, 140, 0, 0.55);
+    }
+
+    .badge-hint {
+        margin-top: 10px;
+        font-size: 0.85rem;
+        opacity: 0.8;
+    }
+
+    .error {
+        margin-top: 10px;
+        color: #ff6b6b;
+        text-align: center;
+        font-size: 0.8rem;
+        display: none;
+    }
+
+    .footer {
+        margin-top: 10px;
+        font-size: 0.65rem;
+        opacity: 0.6;
+        padding-bottom: 8px;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="login-box">
+    <div class="content">
+
+        <!-- Logo Groupe Bon Marché -->
+        <div style="
+            display: flex;
+            justify-content: center;
+            padding: 18px 0 6px;
+            background: rgba(0,0,0,0.3);
+        ">
+            <img src="le_bon_marche_logo.jpeg" alt="Groupe Bon Marché" style="
+                width: 100px;
+                height: auto;
+                border-radius: 8px;
+            ">
+        </div>
+
+        <img src="logo.png" class="logo">
+
+        <div class="header-photo"></div>
+
+        <div class="app-name">Aura Sentinelle – Main courante électronique</div>
+        <div class="secure">Authentification requise</div>
+
+        <label for="username">Nom d'utilisateur</label>
+        <input type="text" id="username" placeholder="Votre identifiant" autocomplete="off">
+
+        <!-- Honeypot anti-bot — invisible pour les humains -->
+        <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+            <label for="website">Website</label>
+            <input type="text" id="hp_field" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" placeholder="Votre mot de passe" autocomplete="off">
+
+        <button id="loginBtn" onclick="login()">Se connecter</button>
+
+        <!-- Bouton scan badge NFC -->
+        <button id="nfcBtn" onclick="startNFCLogin()" style="
+            margin-top: 10px;
+            width: 86%;
+            padding: 10px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,210,127,0.35);
+            border-radius: 8px;
+            color: #ffd27f;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        ">
+            🪪 Se connecter avec le badge NFC
+        </button>
+
+        <div id="nfcStatus" class="badge-hint" style="min-height:1.2em;"></div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="footer">© <span id="year"></span> Aura Sentinelle LBM</div>
+    </div>
+</div>
+
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   AUTO-REDIRECT si déjà connecté
+   --------------------------------------------------------
+   Si un utilisateur arrive sur login.html alors qu'il a déjà
+   une session valide (nom + role + loginTime non expiré),
+   on le renvoie direct vers index.html. Ça évite que le bouton
+   retour du navigateur le coince sur une page de login en
+   apparence déconnecté alors qu'il l'est toujours.
+   ═══════════════════════════════════════════════════════ */
+(function () {
+    function _checkAlreadyLogged() {
+        try {
+            var nom = localStorage.getItem("nom");
+            var role = localStorage.getItem("role");
+            var loginTime = parseInt(localStorage.getItem("loginTime") || "0", 10);
+            var MAX_MS = 8 * 60 * 60 * 1000;
+            if (nom && role && loginTime && (Date.now() - loginTime) < MAX_MS) {
+                // Session valide → on retourne sur l'app
+                window.location.replace("index.html");
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
+
+    /* ─── Auto-login depuis ?badge=UID ─────────────────────────────
+       Contournement iOS : Safari iOS n'a pas accès au NFC via Web NFC,
+       mais depuis iOS 14, un iPhone qui détecte un tag NFC contenant un
+       record URL (NDEF URI) ouvre Safari automatiquement sur cette URL.
+       Si chaque badge est programmé avec
+         https://app/login.html?badge=SON_UID
+       on récupère le UID ici et on déclenche un login badge identique
+       à celui d'Android. Marche aussi sur Android (au passage). */
+    function _handleBadgeURLParam() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var badge = params.get("badge");
+            if (!badge) return false;
+
+            badge = badge.trim();
+            // Format raisonnable : alphanum + :, -, _, longueur 4..64
+            if (!/^[A-Za-z0-9:_-]{4,64}$/.test(badge)) return false;
+
+            // Vire le paramètre de l'URL → pas de UID dans l'historique
+            // du navigateur ni dans un partage de lien.
+            try { history.replaceState(null, "", window.location.pathname); } catch(e) {}
+
+            // Attend que supabaseClient et loginWithBadge soient prêts
+            // (les <script src=…> sont chargés après cette IIFE).
+            var tries = 0;
+            (function tryLogin() {
+                if (typeof window.supabaseClient !== "undefined"
+                    && typeof window.loginWithBadge === "function") {
+                    var statusEl = document.getElementById("nfcStatus");
+                    if (statusEl) {
+                        statusEl.innerHTML = "📡 Badge détecté via URL — connexion…";
+                        statusEl.style.color = "#9be7ff";
+                    }
+                    window.loginWithBadge(badge);
+                } else if (tries++ < 50) {
+                    setTimeout(tryLogin, 100);
+                }
+            })();
+            return true;
+        } catch (e) { return false; }
+    }
+
+    // Ordre important : on traite le paramètre badge AVANT le check de
+    // session, pour qu'un tap badge puisse écraser une session existante
+    // (passation de poste, changement d'agent…).
+    if (_handleBadgeURLParam()) return;
+
+    // 1. Check immédiat au chargement initial (utilise replace pour ne pas
+    //    polluer l'historique).
+    _checkAlreadyLogged();
+
+    // 2. Check sur 'pageshow' : ce listener se déclenche aussi quand la
+    //    page est servie depuis le back-forward cache (bfcache) lors d'un
+    //    "Retour" navigateur, où les scripts inline ne sont PAS ré-exécutés.
+    //    Sans ça, l'utilisateur croit être déconnecté alors que sa session
+    //    est intacte en localStorage.
+    window.addEventListener("pageshow", function (e) {
+        // e.persisted = true si la page vient du bfcache
+        if (e.persisted) _checkAlreadyLogged();
+    });
+})();
+
+document.getElementById("year").textContent = new Date().getFullYear();
+
+// Audit log local (security.js n'est pas chargé sur login)
+function auditLog(action, detail) {
+    try {
+        if (typeof supabaseClient !== "undefined") {
+            supabaseClient.from("security_audit").insert({
+                action: action, detail: String(detail || "").substring(0, 500),
+                agent: "login_page", page: "login.html",
+                user_agent: navigator.userAgent.substring(0, 200),
+                created_at: new Date().toISOString()
+            }).then(function(){}).catch(function(){});
+        }
+    } catch(e) {}
 }
 
-.game-canvas {
-  width: 100%;
-  height: 100vw;
-  max-width: 500px;
-  max-height:500px;
-  margin-left: auto;
-  margin-right: auto;
+/* ═══════════════════════════════════════════════════════
+   ANTI-BRUTEFORCE — Côté client + serveur
+═══════════════════════════════════════════════════════ */
+var MAX_ATTEMPTS = 5;
+var LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+var DELAY_BASE_MS = 1000; // Délai progressif
+
+function getLoginAttempts() {
+    try {
+        var data = JSON.parse(localStorage.getItem("_login_attempts") || "{}");
+        return data;
+    } catch(e) { return {}; }
 }
 
-.keys {
-  font-family: 'Lato', sans-serif;
-  text-align: center;
-  width: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-  height: 200px;
-  margin: auto;
+function saveLoginAttempts(data) {
+    localStorage.setItem("_login_attempts", JSON.stringify(data));
 }
 
-.up {
-  position: relative;
-  top: -4px;
+function isLockedOut() {
+    var data = getLoginAttempts();
+    if (data.count >= MAX_ATTEMPTS && data.lockedUntil) {
+        if (Date.now() < data.lockedUntil) {
+            var remaining = Math.ceil((data.lockedUntil - Date.now()) / 60000);
+            return remaining;
+        }
+        // Lock expiré → reset
+        saveLoginAttempts({});
+    }
+    return 0;
 }
 
-.chevron::before {
-  border-style: solid;
-  border-width: 8px 8px 0 0;
-  content: '';
-  display: inline-block;
-  height: 20px;
-  width: 20px;
-  top: -10px;
-  position: relative;
-  transform: rotate(-45deg);
+function recordFailedAttempt() {
+    var data = getLoginAttempts();
+    data.count = (data.count || 0) + 1;
+    data.lastAttempt = Date.now();
+    if (data.count >= MAX_ATTEMPTS) {
+        data.lockedUntil = Date.now() + LOCKOUT_MS;
+    }
+    saveLoginAttempts(data);
+    return data.count;
 }
 
-.chevron.down::before {
-  transform: rotate(135deg);
-  top: -22px;
+function resetAttempts() {
+    saveLoginAttempts({});
 }
 
-.chevron.right::before {
-  transform: rotate(45deg);
-  top: -18px;
-  left: -5px;
+/* ═══════════════════════════════════════════════════════
+   SANITISATION — Anti-injection SQL/XSS
+═══════════════════════════════════════════════════════ */
+function sanitizeInput(str) {
+    if (!str) return "";
+    return str.replace(/[<>"'`;\\\/\{\}\[\]]/g, "").trim().substring(0, 128);
 }
 
-.chevron.left::before {
-  transform: rotate(225deg);
-  top: -18px;
-  left: 5px;
+/* ═══════════════════════════════════════════════════════
+   LOGIN
+═══════════════════════════════════════════════════════ */
+async function login() {
+    var username = sanitizeInput(document.getElementById("username").value);
+    var password = document.getElementById("password").value.trim();
+    var errorMsg = document.getElementById("errorMsg");
+    var loginBtn = document.getElementById("loginBtn");
+
+    errorMsg.style.display = "none";
+
+    // Anti-bot honeypot
+    var hp = document.getElementById("hp_field");
+    if (hp && hp.value.length > 0) {
+        auditLog("BOT_DETECTED", "honeypot filled");
+        errorMsg.textContent = "Erreur de sécurité.";
+        errorMsg.style.display = "block";
+        return;
+    }
+
+    // Vérifier le verrouillage anti-bruteforce
+    var lockMin = isLockedOut();
+    if (lockMin > 0) {
+        errorMsg.textContent = "⛔ Compte verrouillé. Réessayez dans " + lockMin + " minute(s).";
+        errorMsg.style.display = "block";
+        return;
+    }
+
+    if (!username || !password) {
+        errorMsg.textContent = "Veuillez remplir tous les champs.";
+        errorMsg.style.display = "block";
+        return;
+    }
+
+    // Délai progressif anti-bruteforce
+    var attempts = getLoginAttempts();
+    var delay = (attempts.count || 0) * DELAY_BASE_MS;
+    if (delay > 0) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Patientez...";
+        await new Promise(function(r){ setTimeout(r, delay); });
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Connexion...";
+
+    var form = new URLSearchParams();
+    form.append("username", username);
+    form.append("password", password);
+
+    try {
+        var res = await fetch(FUNCTIONS_BASE + "/super-action", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: form.toString()
+        });
+
+        var raw = await res.text();
+        var data = null;
+        try { data = JSON.parse(raw); } catch(e) {}
+
+        if (!res.ok || !data || !data.user) {
+            var failCount = recordFailedAttempt();
+            var remaining = MAX_ATTEMPTS - failCount;
+
+            // (Les tentatives sont désormais enregistrées côté serveur par
+            //  l'edge function — plus d'insertion client dans login_attempts.)
+
+            if (res.status === 429) {
+                errorMsg.textContent = (data && data.error) || "⛔ Trop de tentatives. Réessayez plus tard.";
+            } else if (remaining <= 0) {
+                errorMsg.textContent = "⛔ Trop de tentatives. Compte verrouillé 15 minutes.";
+            } else {
+                errorMsg.textContent = (data && data.error) || "Identifiants incorrects. " + remaining + " tentative(s) restante(s).";
+            }
+            errorMsg.style.display = "block";
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Se connecter";
+            return;
+        }
+
+        // Succès → reset compteur
+        resetAttempts();
+
+        // (Connexion réussie : enregistrée côté serveur par l'edge function.)
+
+        // Stockage session
+        localStorage.setItem("nom", data.user.nom);
+        localStorage.setItem("role", data.user.role);
+        localStorage.setItem("loginTime", Date.now().toString());
+
+        // ─── Multi-tenant : récupérer site + service depuis la BDD ───
+        try {
+            var tenantRes = await supabaseClient
+                .from("users")
+                .select("site_code, service")
+                .ilike("nom", username)
+                .limit(1)
+                .maybeSingle();
+
+            if (tenantRes && tenantRes.data) {
+                localStorage.setItem("site_code", tenantRes.data.site_code || "LBM");
+                localStorage.setItem("service", (tenantRes.data.service || "incendie").toLowerCase());
+            } else {
+                // Valeurs par défaut si pas trouvé
+                localStorage.setItem("site_code", "LBM");
+                localStorage.setItem("service", "incendie");
+            }
+        } catch(e) {
+            localStorage.setItem("site_code", "LBM");
+            localStorage.setItem("service", "incendie");
+        }
+
+        window.location.href = "index.html";
+
+    } catch(err) {
+        errorMsg.textContent = "Erreur réseau.";
+        errorMsg.style.display = "block";
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Se connecter";
+    }
 }
 
-.arr {
-  cursor: pointer;
-  width: 70px;
-  height: 70px;
-  text-align: center;
-  line-height: 100px;
-  background: gray;
-  color: white;
-  font-size: 50px;
-  border-right: 10px solid #ccc;
-  border-bottom: 10px solid #ccc;
-  border-left: 10px solid #ddd;
-  border-top: 10px solid #eee;
-  display: inline-block;
-  margin: 5px;
-  transition: all .05s linear;
-  user-select: none;
+/* ═══════════════════════════════════════════════════════
+   LOGIN PAR BADGE NFC (Web NFC API — Chrome Android, HTTPS)
+═══════════════════════════════════════════════════════ */
+var _nfcScanning = false;
+var _nfcReader = null;
+
+async function startNFCLogin() {
+    var statusEl = document.getElementById("nfcStatus");
+    var btn = document.getElementById("nfcBtn");
+    var errorMsg = document.getElementById("errorMsg");
+    errorMsg.style.display = "none";
+
+    // 1. Vérifier le verrouillage anti-bruteforce
+    var lockMin = isLockedOut();
+    if (lockMin > 0) {
+        errorMsg.textContent = "⛔ Verrouillé. Réessayez dans " + lockMin + " minute(s).";
+        errorMsg.style.display = "block";
+        return;
+    }
+
+    // 2. Vérifier le support Web NFC
+    if (!("NDEFReader" in window)) {
+        // Détection iOS (iPhone, iPad ou iPad reportant comme Mac)
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        if (isIOS) {
+            statusEl.innerHTML =
+                "📱 <b>Sur iPhone, pas besoin de cliquer ici.</b><br>" +
+                "Pose simplement ton téléphone sur ton badge — iOS ouvrira " +
+                "automatiquement la page de connexion.<br>" +
+                "<small style=\"opacity:0.75\">" +
+                "Requiert iPhone XS ou plus récent + iOS 14+, et un badge " +
+                "programmé avec l'URL de l'application. " +
+                "Si rien ne se passe, demande à un admin de re-programmer ton badge." +
+                "</small>";
+        } else {
+            statusEl.innerHTML =
+                "ℹ️ Web NFC non supporté sur ce navigateur.<br>" +
+                "Utilise Chrome sur Android (HTTPS requis), ou pose ton " +
+                "téléphone sur ton badge si celui-ci est programmé en URL.";
+        }
+        statusEl.style.color = "#ff9ba8";
+        return;
+    }
+
+    // 3. Si déjà en scan, ne pas relancer
+    if (_nfcScanning) {
+        statusEl.innerHTML = "📡 Déjà en scan… présentez un badge.";
+        return;
+    }
+
+    try {
+        _nfcReader = new NDEFReader();
+        await _nfcReader.scan();
+        _nfcScanning = true;
+
+        btn.disabled = true;
+        btn.textContent = "📡 En attente du badge…";
+        statusEl.innerHTML = "Approchez votre badge NFC de l'appareil.";
+        statusEl.style.color = "#9be7ff";
+
+        _nfcReader.onreading = async function(event) {
+            var uid = event.serialNumber;
+            statusEl.innerHTML = "✅ Badge détecté : " + uid + " — vérification…";
+            await loginWithBadge(uid);
+        };
+
+        _nfcReader.onreadingerror = function() {
+            statusEl.innerHTML = "❌ Erreur de lecture, réessayez.";
+            statusEl.style.color = "#ff9ba8";
+        };
+
+    } catch(err) {
+        _nfcScanning = false;
+        btn.disabled = false;
+        btn.textContent = "🪪 Se connecter avec le badge NFC";
+        statusEl.innerHTML = "⚠️ NFC : " + (err.message || err.name || "indisponible") + ".";
+        statusEl.style.color = "#ff9ba8";
+
+        // Messages d'aide selon l'erreur
+        if (err.name === "NotAllowedError") {
+            statusEl.innerHTML += " (Permission refusée — autorisez le NFC dans les paramètres du site.)";
+        } else if (err.name === "NotSupportedError") {
+            statusEl.innerHTML += " (Appareil incompatible.)";
+        } else if (err.name === "SecurityError") {
+            statusEl.innerHTML += " (HTTPS requis — pas accessible en HTTP.)";
+        }
+    }
 }
 
-.arr:active {
-  background: #555;
-}
+async function loginWithBadge(uid) {
+    var statusEl = document.getElementById("nfcStatus");
+    var errorMsg = document.getElementById("errorMsg");
+    var btn = document.getElementById("nfcBtn");
 
-#game-container {
-  display: flex;
-  flex-direction: column;
-  background-color: rgba(220, 220, 220, 0.6);
+    if (!uid) {
+        statusEl.innerHTML = "❌ UID vide.";
+        return;
+    }
+
+    // Anti-bruteforce check
+    var lockMin = isLockedOut();
+    if (lockMin > 0) {
+        statusEl.innerHTML = "⛔ Verrouillé. Réessayez dans " + lockMin + " minute(s).";
+        return;
+    }
+
+    try {
+        // Recherche du badge dans la table users
+        var { data, error } = await supabaseClient
+            .from("users")
+            .select("id, nom, role, site_code, service, badgeuid")
+            .eq("badgeuid", uid)
+            .maybeSingle();
+
+        if (error) {
+            statusEl.innerHTML = "❌ Erreur Supabase : " + error.message;
+            statusEl.style.color = "#ff9ba8";
+            return;
+        }
+
+        if (!data) {
+            recordFailedAttempt();
+            statusEl.innerHTML = "❌ Badge inconnu (UID : " + uid + "). Inscrivez-le dans 'Gestion des comptes' d'abord.";
+            statusEl.style.color = "#ff9ba8";
+
+            // Audit de la tentative échouée
+            try {
+                supabaseClient.from("login_attempts").insert({
+                    username: "BADGE:" + uid.substring(0, 30),
+                    success: false,
+                    ip_hint: "badge_unknown",
+                    created_at: new Date().toISOString()
+                });
+            } catch(e) {}
+            return;
+        }
+
+        // ✅ Badge trouvé → ouvrir la session
+        resetAttempts();
+        statusEl.innerHTML = "✅ Bienvenue " + data.nom + " — connexion…";
+        statusEl.style.color = "#4ade80";
+
+        localStorage.setItem("nom", data.nom);
+        localStorage.setItem("role", data.role || "agent");
+        localStorage.setItem("loginTime", Date.now().toString());
+        localStorage.setItem("site_code", data.site_code || "LBM");
+        localStorage.setItem("service", (data.service || "incendie").toLowerCase());
+
+        // Audit de connexion réussie
+        try {
+            supabaseClient.from("login_attempts").insert({
+                username: data.nom,
+                success: true,
+                ip_hint: "BADGE:" + uid.substring(0, 30),
+                created_at: new Date().toISOString()
+            });
+        } catch(e) {}
+
+        setTimeout(function() {
+            window.location.href = "index.html";
+        }, 600);
+
+    } catch(e) {
+        statusEl.innerHTML = "❌ Erreur réseau : " + e.message;
+        statusEl.style.color = "#ff9ba8";
+    }
 }
+</script>
+
+</body>
+</html>

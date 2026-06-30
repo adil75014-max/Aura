@@ -6,280 +6,1108 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
     <meta charset="UTF-8">
-    <title>Permanence - LBM Sécurité</title>
+    <title>Suivi des travaux - LBM Sécurité</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- 🎨 Design global -->
-    <link rel="stylesheet" href="global.css">
+    <style>
+        body {
+            background: radial-gradient(circle at top left, #2b3350, #111522 50%, #05060a);
+            color: #fff;
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+        }
 
-<style>
-/* 🎨 Styles spécifiques à cette page */
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #6fb3ff;
+            font-size: 1.7rem;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
 
-h1 {
-    text-align: center;
-    margin-bottom: 25px;
-    color: var(--accent);
-    font-size: 1.7rem;
-    letter-spacing: 1px;
-    font-weight: 600;
-}
+        .menu-return button {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 8px 16px;
+            border-radius: 10px;
+            color: #6fb3ff;
+            cursor: pointer;
+            transition: 0.25s;
+        }
 
-/* Bouton menu */
-.menu-return {
-    display: flex;
-    justify-content: flex-start;
-    margin-bottom: 20px;
-}
+        .menu-return button:hover {
+            background: rgba(255,255,255,0.18);
+        }
 
-.menu-return button {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 8px 16px;
-    border-radius: 10px;
-    color: var(--accent);
-    font-size: 0.9rem;
-    cursor: pointer;
-    font-weight: 500;
-    transition: 0.25s;
-}
+        .mode-tabs {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
 
-.menu-return button:hover {
-    background: var(--accent);
-    color: #000;
-}
+        .mode-tab {
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.25s;
+        }
 
-/* Boutons PDF */
-.pdf-buttons {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-bottom: 25px;
-}
+        .mode-tab.active {
+            background: #6fb3ff;
+            color: #000;
+            font-weight: 600;
+        }
 
-.pdf-buttons button {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 7px 12px;
-    border-radius: 10px;
-    color: var(--text);
-    font-size: 0.85rem;
-    cursor: pointer;
-    font-weight: 500;
-    transition: 0.25s;
-}
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
 
-.pdf-buttons button:hover {
-    background: var(--accent);
-    color: #000;
-}
+        .tab {
+            padding: 10px 18px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.25s;
+        }
 
-/* Upload box */
-.upload-box {
-    background: var(--card);
-    padding: 18px;
-    border-radius: 14px;
-    text-align: center;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    max-width: 600px;
-    margin: 0 auto;
-}
+        .tab.active {
+            background: #6fb3ff;
+            color: #000;
+            font-weight: 600;
+        }
 
-input[type="file"] {
-    margin-top: 10px;
-    padding: 8px;
-    background: var(--bg2);
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    cursor: pointer;
-    color: var(--text);
-    font-size: 0.85rem;
-}
+        .section {
+            display: none;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(14px);
+            padding: 18px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+        }
 
-/* PDF viewer */
-#pdfContainer {
-    margin-top: 25px;
-    background: var(--card);
-    border-radius: 14px;
-    padding: 10px;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-    animation: fadeIn 0.4s ease;
-}
+        .section.active {
+            display: block;
+        }
 
-iframe {
-    width: 100%;
-    height: 78vh;
-    border-radius: 12px;
-    border: none;
-    background: rgba(0,0,0,0.25);
-    transform-origin: center center;
-    transition: transform 0.25s ease;
-}
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            border-radius: 10px;
+            color: #fff;
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
 
-/* Fullscreen overlay */
-#pdfFullscreen {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.92);
-    z-index: 9999;
-    padding: 20px;
-}
+        textarea {
+            min-height: 80px;
+        }
 
-#pdfFullscreen iframe {
-    width: 100%;
-    height: 90vh;
-    border-radius: 12px;
-    border: none;
-    background: rgba(0,0,0,0.25);
-}
+        .btn {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 8px 14px;
+            border-radius: 10px;
+            color: #fff;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.25s;
+            margin-top: 10px;
+        }
 
-#pdfFullscreen button {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 8px 14px;
-    border-radius: 10px;
-    color: var(--text);
-    font-size: 0.9rem;
-    cursor: pointer;
-    font-weight: 500;
-    margin-bottom: 15px;
-    transition: 0.25s;
-}
+        .btn:hover {
+            background: rgba(255,255,255,0.18);
+        }
 
-#pdfFullscreen button:hover {
-    background: var(--accent);
-    color: #000;
-}
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
 
-/* Animation */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-</style>
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+            font-size: 0.9rem;
+        }
+
+        th {
+            color: #6fb3ff;
+            text-align: left;
+        }
+
+        pre {
+            background: rgba(255,255,255,0.06);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            overflow-x: auto;
+        }
+    </style>
 </head>
 
 <body>
 
-<!-- 🔐 LOGIN -->
+<h1>Suivi des travaux et stockage temporaire</h1>
 
-
-<h1>Permanence</h1>
-
-<!-- Bouton menu -->
-<div class="menu-return">
-    <button onclick="goMenu()">⟵ Menu</button>
+<div class="mode-tabs">
+    <div class="mode-tab active" onclick="selectMode('mode-travaux')">🛠 Suivi Travaux</div>
+    <div class="mode-tab" onclick="selectMode('mode-stockage')">📦 Zones de Stockage</div>
+    <div class="mode-tab" onclick="selectMode('mode-plans')">🗺 Plans</div>
 </div>
 
-<!-- Boutons PDF -->
-<div class="pdf-buttons">
-    <button onclick="fullscreenPDF()">⛶ Plein écran</button>
-    <button onclick="deletePDF()">🗑 Supprimer</button>
-    <button onclick="zoomIn()">＋ Zoom</button>
-    <button onclick="zoomOut()">－ Zoom</button>
+<div class="section active" id="mode-travaux">
+    <div class="tabs">
+        <div class="tab active" onclick="showTab('travaux')">🛠 Travaux</div>
+        <div class="tab" onclick="showTab('archives')">📦 Archives</div>
+        <div class="tab" onclick="showTab('stats')">📊 Statistiques</div>
+    </div>
+
+    <div class="section active" id="travaux">
+        <h2>Ajouter un travail</h2>
+
+        <input type="text" id="travailTitre" placeholder="Titre du travail">
+        <textarea id="travailDesc" placeholder="Description du travail"></textarea>
+
+        <select id="travailStatut">
+            <option value="en-cours">En cours</option>
+            <option value="attente">En attente</option>
+            <option value="termine">Terminé</option>
+        </select>
+
+        <button class="btn" onclick="ajouterTravail()">➕ Ajouter</button>
+
+        <h2 style="margin-top:25px;">Travaux en cours</h2>
+
+        <div style="display:flex; gap:10px; margin-bottom:10px; flex-wrap:wrap;">
+            <button class="btn" onclick="exporterCSV()">📥 Exporter CSV</button>
+            <button class="btn" style="background:#ef4444;" onclick="effacerJournee()">🗑 Effacer la journée</button>
+        </div>
+
+        <table id="tableTravaux">
+            <thead>
+                <tr>
+                    <th>Titre</th>
+                    <th>Description</th>
+                    <th>Statut</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="section" id="archives">
+        <h2>Archives</h2>
+
+        <table id="tableArchives">
+            <thead>
+                <tr>
+                    <th>Titre</th>
+                    <th>Description</th>
+                    <th>Date archivage</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="section" id="stats">
+        <h2>Statistiques</h2>
+
+        <p id="resume"></p>
+        <p id="statut"></p>
+
+        <h3>Travaux ajoutés par mois</h3>
+        <pre id="graph"></pre>
+    </div>
 </div>
 
-<div class="upload-box">
-    <p>Importer un PDF :</p>
-    <input type="file" id="pdfInput" accept="application/pdf">
+<div class="section" id="mode-stockage">
+    <h2>Zones de stockage</h2>
+
+    <label style="margin-top:10px;">Date de début</label>
+    <input type="date" id="zoneDebut">
+    <label style="margin-top:10px;">Date de fin</label>
+    <input type="date" id="zoneFin">
+    <input type="file" id="zonePlan" accept="image/*,application/pdf">
+    <input type="text" id="zoneNom" placeholder="Nom de la zone">
+    <textarea id="zoneDesc" placeholder="Description / remarques"></textarea>
+
+    <button class="btn" onclick="ajouterZone()">➕ Ajouter une zone</button>
+
+    <h2 style="margin-top:25px;">Liste des zones</h2>
+
+    <table id="tableZones">
+        <thead>
+            <tr>
+                <th>Zone</th>
+                <th>Description</th>
+                <th>Début</th>
+                <th>Fin</th>
+                <th>Plan</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 </div>
 
-<div id="pdfContainer">
-    <iframe id="pdfViewer" src=""></iframe>
+<div class="section" id="mode-plans">
+    <h2>Plans du site</h2>
+
+    <input type="file" id="planFile" accept="image/*,application/pdf">
+    <button class="btn" onclick="ajouterPlan()">📤 Ajouter un plan</button>
+
+    <h2 style="margin-top:25px;">Plans enregistrés</h2>
+
+    <div id="listePlans"></div>
 </div>
-
-<!-- Fullscreen overlay -->
-<div id="pdfFullscreen">
-    <button onclick="closeFullscreen()">⟵ Quitter le plein écran</button>
-    <iframe id="pdfFullscreenViewer"></iframe>
-</div><script>
-/* ============================================================
-   VARIABLES
-============================================================ */
-const input = document.getElementById("pdfInput");
-const viewer = document.getElementById("pdfViewer");
-const fullViewer = document.getElementById("pdfFullscreenViewer");
-
-let zoomLevel = 1;
-
-/* ============================================================
-   CHARGER PDF SAUVEGARDÉ
-============================================================ */
-const savedPDF = localStorage.getItem("permanencePDF");
-if (savedPDF) viewer.src = savedPDF;
-
-/* ============================================================
-   UPLOAD PDF
-============================================================ */
-input.addEventListener("change", function() {
-    const file = this.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const pdfURL = e.target.result;
-        viewer.src = pdfURL;
-        localStorage.setItem("permanencePDF", pdfURL);
-    };
-    reader.readAsDataURL(file);
-});
-
-/* ============================================================
-   BOUTON MENU
-============================================================ */
-function goMenu() {
-    window.location.href = "index.html";
-}
-
-/* ============================================================
-   PLEIN ÉCRAN
-============================================================ */
-function fullscreenPDF() {
-    if (!viewer.src) return;
-    fullViewer.src = viewer.src;
-    document.getElementById("pdfFullscreen").style.display = "block";
-}
-
-function closeFullscreen() {
-    fullViewer.src = "";
-    document.getElementById("pdfFullscreen").style.display = "none";
-}
-
-/* ============================================================
-   SUPPRESSION PDF
-============================================================ */
-function deletePDF() {
-    localStorage.removeItem("permanencePDF");
-    viewer.src = "";
-    alert("PDF supprimé.");
-}
-
-/* ============================================================
-   ZOOM
-============================================================ */
-function zoomIn() {
-    zoomLevel += 0.1;
-    viewer.style.transform = `scale(${zoomLevel})`;
-}
-
-function zoomOut() {
-    zoomLevel = Math.max(0.3, zoomLevel - 0.1);
-    viewer.style.transform = `scale(${zoomLevel})`;
-}
-</script>
-
-<!-- 🔐 Sécurité -->
-<script src="security.js"></script>
-
-<!-- 🎨 Thème global -->
-<script src="global.js"></script>
-
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="app-config.js"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
+
+<script>
+/* ----------------------------------------------------------
+   🔵 CONNEXION SUPABASE
+---------------------------------------------------------- */
+// supabaseClient loaded from supabaseClient.js
+
+/* ----------------------------------------------------------
+   🔵 MODE (TRAVAUX / STOCKAGE / PLANS)
+---------------------------------------------------------- */
+function selectMode(modeId) {
+    document.querySelectorAll(".mode-tab").forEach(t => t.classList.remove("active"));
+    document.querySelector(`.mode-tab[onclick="selectMode('${modeId}')"]`).classList.add("active");
+
+    document.querySelectorAll("body > .section").forEach(s => s.classList.remove("active"));
+    document.getElementById(modeId).classList.add("active");
+
+    if (modeId === "mode-stockage") chargerZones();
+    if (modeId === "mode-plans") chargerPlans();
+}
+
+/* ----------------------------------------------------------
+   🔵 ONGLET INTERNE TRAVAUX
+---------------------------------------------------------- */
+function showTab(id) {
+    document.querySelectorAll("#mode-travaux .tab").forEach(t => t.classList.remove("active"));
+    document.querySelector(`#mode-travaux .tab[onclick="showTab('${id}')"]`).classList.add("active");
+
+    document.querySelectorAll("#mode-travaux .section").forEach(s => s.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+
+    if (id === "archives") chargerArchives();
+    if (id === "stats") chargerStats();
+}
+
+/* ----------------------------------------------------------
+   🔵 HELPERS
+---------------------------------------------------------- */
+const BUCKET = window.APP_CONFIG.BUCKETS.suiviTravaux;
+/* Échappement HTML anti-XSS stocké */
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+async function uploadFile(file) {
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const path = `${Date.now()}_${safeName}`;
+    const { error } = await supabaseClient.storage.from(BUCKET).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: false
+    });
+    if (error) throw error;
+    const url = supabaseClient.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+    return { url, path };
+}
+
+async function deleteFile(path) {
+    if (!path) return;
+    const { error } = await supabaseClient.storage.from(BUCKET).remove([path]);
+    if (error) console.warn("Erreur suppression fichier (on continue) :", error);
+}
+
+/* ----------------------------------------------------------
+   🔵 TRAVAUX — AJOUT
+---------------------------------------------------------- */
+async function ajouterTravail() {
+    const titre = document.getElementById("travailTitre").value.trim();
+    const description = document.getElementById("travailDesc").value.trim();
+    const statut = document.getElementById("travailStatut").value;
+
+    if (!titre) return alert("Merci d'indiquer un titre.");
+
+    const { error } = await supabaseClient.from("suivi_travaux").insert({
+        kind: "travail",
+        titre,
+        description,
+        statut,
+        archive: false
+    });
+
+    if (error) {
+        console.error(error);
+        return alert("Erreur Supabase lors de l'ajout : " + error.message);
+    }
+
+    document.getElementById("travailTitre").value = "";
+    document.getElementById("travailDesc").value = "";
+
+    chargerTravaux();
+}
+
+/* ----------------------------------------------------------
+   🔵 TRAVAUX — CHARGEMENT (non archivés)
+---------------------------------------------------------- */
+async function chargerTravaux() {
+    const { data, error } = await supabaseClient
+        .from("suivi_travaux")
+        .select("*")
+        .eq("kind", "travail")
+        .eq("archive", false)
+        .order("created_at", { ascending: false });
+
+    if (error) return console.error(error);
+
+    const tbody = document.querySelector("#tableTravaux tbody");
+    tbody.innerHTML = "";
+
+    (data || []).forEach(t => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${esc(t.titre)}</td>
+            <td>${esc(t.description)}</td>
+            <td>
+                <select onchange="changerStatut('${t.id}', this.value)">
+                    <option value="en-cours" ${t.statut === "en-cours" ? "selected" : ""}>En cours</option>
+                    <option value="attente" ${t.statut === "attente" ? "selected" : ""}>En attente</option>
+                    <option value="termine" ${t.statut === "termine" ? "selected" : ""}>Terminé</option>
+                </select>
+            </td>
+            <td>
+                <button class="btn" onclick="archiverTravail('${t.id}')">📦 Archiver</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+/* ----------------------------------------------------------
+   🔵 TRAVAUX — CHANGER STATUT
+---------------------------------------------------------- */
+async function changerStatut(id, statut) {
+    const { error } = await supabaseClient
+        .from("suivi_travaux")
+        .update({ statut })
+        .eq("id", id);
+    if (error) console.error(error);
+}
+
+/* ----------------------------------------------------------
+   🔵 TRAVAUX — ARCHIVER (flag, pas de duplication)
+---------------------------------------------------------- */
+async function archiverTravail(id) {
+    const { error } = await supabaseClient
+        .from("suivi_travaux")
+        .update({ archive: true, date_archive: new Date().toISOString() })
+        .eq("id", id);
+
+    if (error) {
+        console.error(error);
+        return alert("Erreur archivage : " + error.message);
+    }
+    chargerTravaux();
+}
+
+/* ----------------------------------------------------------
+   🔵 ARCHIVES — CHARGEMENT
+---------------------------------------------------------- */
+async function chargerArchives() {
+    const { data, error } = await supabaseClient
+        .from("suivi_travaux")
+        .select("*")
+        .eq("kind", "travail")
+        .eq("archive", true)
+        .order("date_archive", { ascending: false });
+
+    if (error) return console.error(error);
+
+    const tbody = document.querySelector("#tableArchives tbody");
+    tbody.innerHTML = "";
+
+    (data || []).forEach(a => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${esc(a.titre)}</td>
+            <td>${esc(a.description)}</td>
+            <td>${a.date_archive ? new Date(a.date_archive).toLocaleDateString("fr-FR") : "-"}</td>
+            <td>
+                <button class="btn" onclick="restaurer('${a.id}')">↩ Restaurer</button>
+                <button class="btn" onclick="supprimer('${a.id}')">🗑 Supprimer</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+/* ----------------------------------------------------------
+   🔵 ARCHIVES — RESTAURER (désarchivage)
+---------------------------------------------------------- */
+async function restaurer(id) {
+    const { error } = await supabaseClient
+        .from("suivi_travaux")
+        .update({ archive: false, date_archive: null })
+        .eq("id", id);
+
+    if (error) return console.error(error);
+    chargerArchives();
+}
+
+/* ----------------------------------------------------------
+   🔵 ARCHIVES — SUPPRIMER
+---------------------------------------------------------- */
+async function supprimer(id) {
+    if (!confirm("Supprimer définitivement cet archivage ?")) return;
+    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
+    chargerArchives();
+}
+
+/* ----------------------------------------------------------
+   🟧 ZONES — AJOUT (upload Storage)
+---------------------------------------------------------- */
+async function ajouterZone() {
+    const nom = zoneNom.value.trim();
+    const description = zoneDesc.value.trim();
+    const debut = zoneDebut.value;
+    const fin = zoneFin.value;
+    const file = zonePlan.files[0];
+
+    if (!nom) return alert("Merci d'indiquer un nom de zone.");
+
+    try {
+        let fileInfo = { url: null, path: null, mime: null };
+        if (file) {
+            const up = await uploadFile(file);
+            fileInfo = { url: up.url, path: up.path, mime: file.type };
+        }
+
+        const { error } = await supabaseClient.from("suivi_travaux").insert({
+            kind: "zone",
+            nom,
+            description,
+            date_debut: debut || null,
+            date_fin: fin || null,
+            file_url: fileInfo.url,
+            file_path: fileInfo.path,
+            mime_type: fileInfo.mime
+        });
+
+        if (error) throw error;
+
+        zoneNom.value = "";
+        zoneDesc.value = "";
+        zoneDebut.value = "";
+        zoneFin.value = "";
+        zonePlan.value = "";
+
+        chargerZones();
+    } catch (e) {
+        console.error(e);
+        alert("Erreur Supabase lors de l'ajout de la zone : " + (e.message || e));
+    }
+}
+
+/* ----------------------------------------------------------
+   🟧 ZONES — CHARGEMENT
+---------------------------------------------------------- */
+async function chargerZones() {
+    const { data, error } = await supabaseClient
+        .from("suivi_travaux")
+        .select("*")
+        .eq("kind", "zone")
+        .order("date_debut", { ascending: false, nullsFirst: false });
+
+    if (error) return console.error(error);
+
+    const tbody = document.querySelector("#tableZones tbody");
+    tbody.innerHTML = "";
+
+    (data || []).forEach(z => {
+        let affichagePlan = "-";
+        if (z.file_url) {
+            const isImage = (z.mime_type || "").startsWith("image/");
+            affichagePlan = isImage
+                ? `<img src="${z.file_url}" style="width:80px;border-radius:6px;cursor:pointer"
+                       onclick="window.open('${z.file_url}', '_blank')">
+                   <br><button class="btn" onclick="window.open('${z.file_url}', '_blank')">🖼 Agrandir</button>`
+                : `<button class="btn" onclick="window.open('${z.file_url}', '_blank')">📄 Ouvrir</button>`;
+        }
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${esc(z.nom)}</td>
+            <td>${esc(z.description)}</td>
+            <td>${esc(z.date_debut)||"-"}</td>
+            <td>${esc(z.date_fin)||"-"}</td>
+            <td>${affichagePlan}</td>
+            <td><button class="btn" onclick="supprimerZone('${z.id}', '${z.file_path || ""}')">🗑</button></td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+/* ----------------------------------------------------------
+   🟧 ZONES — SUPPRESSION
+---------------------------------------------------------- */
+async function supprimerZone(id, path) {
+    if (!confirm("Supprimer cette zone ?")) return;
+    await deleteFile(path);
+    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
+    chargerZones();
+}
+
+/* ----------------------------------------------------------
+   🟪 PLANS — AJOUT
+---------------------------------------------------------- */
+async function ajouterPlan() {
+    const file = planFile.files[0];
+    if (!file) return alert("Merci de sélectionner un fichier.");
+
+    try {
+        const up = await uploadFile(file);
+        const { error } = await supabaseClient.from("suivi_travaux").insert({
+            kind: "plan",
+            nom: file.name,
+            mime_type: file.type,
+            file_url: up.url,
+            file_path: up.path
+        });
+
+        if (error) throw error;
+        planFile.value = "";
+        chargerPlans();
+    } catch (e) {
+        console.error(e);
+        alert("Erreur Supabase lors de l'ajout du plan : " + (e.message || e));
+    }
+}
+
+/* ----------------------------------------------------------
+   🟪 PLANS — CHARGEMENT AVEC ANNOTATIONS
+   --------------------------------------------------------------
+   Chaque plan affiche :
+   - L'image avec overlay SVG montrant les zones grisées (annotations)
+   - Des boutons de filtre par catégorie (au-dessus du plan)
+   - Un bouton "Annoter" pour entrer en mode dessin (clic + drag)
+   - Les annotations sont stockées dans suivi_travaux.meta.annotations[]
+     Format : { id, type, commentaire, x, y, w, h, createdAt, createdBy }
+     Les coordonnées sont en fraction (0..1) de l'image pour rester
+     responsive aux zooms et tailles d'écran.
+---------------------------------------------------------- */
+
+/* Catégories par défaut. L'utilisateur peut taper du libre dans le prompt. */
+const ANNOTATION_CATEGORIES = [
+    { code: "stockage",       label: "📦 Stockage",          couleur: "#f59e0b" },
+    { code: "travaux",        label: "🏗 Travaux en cours",  couleur: "#ef4444" },
+    { code: "risque",         label: "⚠️ Risque",            couleur: "#dc2626" },
+    { code: "zone_interdite", label: "🚫 Zone interdite",    couleur: "#7c3aed" },
+    { code: "echafaudage",    label: "🪜 Échafaudage",       couleur: "#0ea5e9" },
+    { code: "autre",          label: "📝 Autre",             couleur: "#6b7280" }
+];
+
+/* État global du mode annotation par plan (un seul actif à la fois) */
+let _annotMode = { planId: null, filter: null }; // filter = null = toutes catégories
+
+function _categoryColor(code) {
+    const c = ANNOTATION_CATEGORIES.find(x => x.code === code);
+    return c ? c.couleur : "#6b7280";
+}
+function _categoryLabel(code) {
+    const c = ANNOTATION_CATEGORIES.find(x => x.code === code);
+    return c ? c.label : (code || "—");
+}
+function _annotationsOf(plan) {
+    try {
+        return (plan.meta && Array.isArray(plan.meta.annotations))
+            ? plan.meta.annotations : [];
+    } catch (e) { return []; }
+}
+
+async function chargerPlans() {
+    const { data, error } = await supabaseClient
+        .from("suivi_travaux")
+        .select("*")
+        .eq("kind", "plan")
+        .order("created_at", { ascending: false });
+
+    if (error) return console.error(error);
+
+    const container = document.getElementById("listePlans");
+    container.innerHTML = "";
+
+    (data || []).forEach(p => {
+        const isImage = (p.mime_type || "").startsWith("image/");
+        const annotations = _annotationsOf(p);
+
+        // Comptage par catégorie pour les boutons de filtre
+        const countByCat = {};
+        annotations.forEach(a => {
+            countByCat[a.type] = (countByCat[a.type] || 0) + 1;
+        });
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "plan-wrapper";
+        wrapper.style.cssText = "margin-bottom:30px; padding:15px; background:rgba(255,255,255,0.04); border-radius:12px;";
+
+        // En-tête : nom + actions
+        const header = `
+            <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:12px;">
+                <b style="flex:1; min-width:200px;">${(p.nom || "").replace(/[<>]/g,"")}</b>
+                ${isImage
+                    ? `<button class="btn" onclick="toggleAnnotationMode('${p.id}')" id="annotBtn-${p.id}">✏️ Annoter</button>`
+                    : ""}
+                <button class="btn" onclick="window.open('${p.file_url}', '_blank')">🔗 Ouvrir</button>
+                <button class="btn" onclick="supprimerPlan('${p.id}', '${p.file_path || ""}')">🗑 Supprimer</button>
+            </div>
+        `;
+
+        // Boutons de filtre par catégorie (visibles si des annotations existent)
+        let filterBar = "";
+        if (isImage && annotations.length > 0) {
+            const isActive = (cat) => _annotMode.filter === cat && _annotMode.planId === p.id;
+            const btnStyle = (active, col) =>
+                `padding:5px 10px; border-radius:16px; border:1px solid ${col};` +
+                ` background:${active ? col : "transparent"};` +
+                ` color:${active ? "#fff" : col}; font-size:0.78rem;` +
+                ` cursor:pointer; margin:0 4px 4px 0;`;
+            const cats = Object.keys(countByCat).map(code => {
+                const col = _categoryColor(code);
+                return `<button onclick="filterAnnotations('${p.id}','${code}')" style="${btnStyle(isActive(code), col)}">
+                    ${_categoryLabel(code)} (${countByCat[code]})
+                </button>`;
+            }).join("");
+            filterBar = `
+                <div style="margin-bottom:10px; font-size:0.8rem; opacity:0.85;">
+                    <span style="margin-right:8px;">🔍 Filtre :</span>
+                    <button onclick="filterAnnotations('${p.id}', null)" style="${btnStyle(_annotMode.filter===null && _annotMode.planId===p.id, '#9ca3af')}">
+                        Tout (${annotations.length})
+                    </button>
+                    ${cats}
+                </div>
+            `;
+        }
+
+        // Image avec overlay SVG (si image)
+        let body = "";
+        if (isImage) {
+            body = `
+                <div id="planBox-${p.id}" class="plan-box" style="position:relative; display:inline-block; max-width:100%; line-height:0;">
+                    <img id="planImg-${p.id}" src="${p.file_url}"
+                         style="max-width:100%; border-radius:10px; display:block; user-select:none;"
+                         onload="renderAnnotations('${p.id}')"
+                         draggable="false">
+                    <svg id="planSvg-${p.id}" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"
+                         preserveAspectRatio="none" viewBox="0 0 1 1"></svg>
+                    <div id="planDraw-${p.id}" style="position:absolute; inset:0; cursor:crosshair; display:none;"
+                         onmousedown="startDraw(event, '${p.id}')"
+                         ontouchstart="startDraw(event, '${p.id}')"></div>
+                </div>
+            `;
+        } else {
+            body = `<button class="btn" onclick="window.open('${p.file_url}', '_blank')">📄 Ouvrir le document</button>`;
+        }
+
+        wrapper.innerHTML = header + filterBar + body;
+        container.appendChild(wrapper);
+
+        // Stocker les annotations sur le DOM pour accès rapide pendant le drag
+        const box = document.getElementById(`planBox-${p.id}`);
+        if (box) {
+            box._planData = p;
+        }
+    });
+}
+
+/* ----------------------------------------------------------
+   🟪 ANNOTATIONS — RENDU (rectangles SVG)
+---------------------------------------------------------- */
+function renderAnnotations(planId) {
+    const box = document.getElementById(`planBox-${planId}`);
+    const svg = document.getElementById(`planSvg-${planId}`);
+    if (!box || !svg || !box._planData) return;
+
+    const p = box._planData;
+    const annotations = _annotationsOf(p);
+    const filterCat = (_annotMode.planId === planId) ? _annotMode.filter : null;
+
+    let html = "";
+    annotations.forEach(a => {
+        const shown = (filterCat === null || a.type === filterCat);
+        if (!shown) return;
+        const col = _categoryColor(a.type);
+        const x = Math.max(0, a.x);
+        const y = Math.max(0, a.y);
+        const w = Math.max(0.005, a.w);
+        const h = Math.max(0.005, a.h);
+
+        html += `
+            <g style="pointer-events:auto; cursor:pointer;" onclick="ouvrirAnnotation('${planId}','${a.id}')">
+                <rect x="${x}" y="${y}" width="${w}" height="${h}"
+                      fill="${col}" fill-opacity="0.45"
+                      stroke="${col}" stroke-opacity="0.95" stroke-width="0.004">
+                    <title>${(a.type ? _categoryLabel(a.type) + " : " : "") + (a.commentaire || "").replace(/[<>"&]/g, "")}</title>
+                </rect>
+            </g>
+        `;
+    });
+    svg.innerHTML = html;
+    // Le SVG doit recevoir les clics sur les rects (annotations)
+    svg.style.pointerEvents = "none";
+    // Mais les <g> internes ont pointer-events:auto → ça marche
+}
+
+/* ----------------------------------------------------------
+   🟪 ANNOTATIONS — MODE DESSIN
+---------------------------------------------------------- */
+function toggleAnnotationMode(planId) {
+    const drawZone = document.getElementById(`planDraw-${planId}`);
+    const btn = document.getElementById(`annotBtn-${planId}`);
+    if (!drawZone) return;
+
+    const isActive = drawZone.style.display === "block";
+    // Désactiver tout autre mode actif sur d'autres plans
+    document.querySelectorAll("[id^='planDraw-']").forEach(d => d.style.display = "none");
+    document.querySelectorAll("[id^='annotBtn-']").forEach(b => {
+        b.textContent = "✏️ Annoter";
+        b.style.background = "";
+    });
+
+    if (!isActive) {
+        drawZone.style.display = "block";
+        if (btn) {
+            btn.textContent = "✖ Quitter le mode annotation";
+            btn.style.background = "#ef4444";
+            btn.style.color = "#fff";
+        }
+    }
+}
+
+let _drawState = null;
+
+function startDraw(event, planId) {
+    event.preventDefault();
+    const box = document.getElementById(`planBox-${planId}`);
+    if (!box) return;
+
+    const rect = box.getBoundingClientRect();
+    const isTouch = event.type === "touchstart";
+    const pt = isTouch ? event.touches[0] : event;
+    const x0 = (pt.clientX - rect.left) / rect.width;
+    const y0 = (pt.clientY - rect.top) / rect.height;
+
+    _drawState = { planId, x0, y0, x1: x0, y1: y0, rect };
+
+    // Créer un rect temporaire visible pendant le drag
+    const svg = document.getElementById(`planSvg-${planId}`);
+    let tmp = document.getElementById("draw-tmp");
+    if (!tmp) {
+        tmp = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        tmp.id = "draw-tmp";
+        tmp.setAttribute("fill", "#fbbf24");
+        tmp.setAttribute("fill-opacity", "0.4");
+        tmp.setAttribute("stroke", "#fbbf24");
+        tmp.setAttribute("stroke-width", "0.005");
+        svg.appendChild(tmp);
+    }
+    tmp.setAttribute("x", x0); tmp.setAttribute("y", y0);
+    tmp.setAttribute("width", 0); tmp.setAttribute("height", 0);
+
+    const moveEv = isTouch ? "touchmove" : "mousemove";
+    const upEv   = isTouch ? "touchend" : "mouseup";
+    window.addEventListener(moveEv, moveDraw);
+    window.addEventListener(upEv, endDraw);
+}
+
+function moveDraw(event) {
+    if (!_drawState) return;
+    const isTouch = event.type === "touchmove";
+    const pt = isTouch ? event.touches[0] : event;
+    const x1 = (pt.clientX - _drawState.rect.left) / _drawState.rect.width;
+    const y1 = (pt.clientY - _drawState.rect.top) / _drawState.rect.height;
+    _drawState.x1 = Math.max(0, Math.min(1, x1));
+    _drawState.y1 = Math.max(0, Math.min(1, y1));
+
+    const tmp = document.getElementById("draw-tmp");
+    if (!tmp) return;
+    const x = Math.min(_drawState.x0, _drawState.x1);
+    const y = Math.min(_drawState.y0, _drawState.y1);
+    const w = Math.abs(_drawState.x1 - _drawState.x0);
+    const h = Math.abs(_drawState.y1 - _drawState.y0);
+    tmp.setAttribute("x", x); tmp.setAttribute("y", y);
+    tmp.setAttribute("width", w); tmp.setAttribute("height", h);
+}
+
+async function endDraw(event) {
+    window.removeEventListener("mousemove", moveDraw);
+    window.removeEventListener("mouseup", endDraw);
+    window.removeEventListener("touchmove", moveDraw);
+    window.removeEventListener("touchend", endDraw);
+    if (!_drawState) return;
+
+    const tmp = document.getElementById("draw-tmp");
+    if (tmp) tmp.remove();
+
+    const x = Math.min(_drawState.x0, _drawState.x1);
+    const y = Math.min(_drawState.y0, _drawState.y1);
+    const w = Math.abs(_drawState.x1 - _drawState.x0);
+    const h = Math.abs(_drawState.y1 - _drawState.y0);
+    const planId = _drawState.planId;
+    _drawState = null;
+
+    if (w < 0.01 || h < 0.01) {
+        // Trop petit, on annule (un clic accidentel)
+        return;
+    }
+
+    await saveAnnotation(planId, { x, y, w, h });
+}
+
+async function saveAnnotation(planId, geom) {
+    // 1) Choix de catégorie
+    const catChoix = ANNOTATION_CATEGORIES.map((c, i) => `${i+1}. ${c.label}`).join("\n");
+    const reponse = prompt(
+        "Type de zone à signaler :\n\n" + catChoix +
+        "\n\nTape le numéro (1-" + ANNOTATION_CATEGORIES.length + ") ou un type personnalisé :"
+    );
+    if (reponse === null) return;
+    let code;
+    const numStr = reponse.trim();
+    const num = parseInt(numStr, 10);
+    if (num >= 1 && num <= ANNOTATION_CATEGORIES.length) {
+        code = ANNOTATION_CATEGORIES[num - 1].code;
+    } else if (numStr) {
+        // Type personnalisé → on slugify
+        code = numStr.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+        if (!code) code = "autre";
+    } else {
+        code = "autre";
+    }
+
+    // 2) Commentaire
+    const commentaire = prompt("Commentaire (optionnel) :", "");
+    if (commentaire === null) return; // Cancel annule la sauvegarde
+
+    // 3) Récupère le plan, ajoute l'annotation au meta
+    const { data: rows, error: e1 } = await supabaseClient
+        .from("suivi_travaux").select("meta").eq("id", planId).limit(1);
+    if (e1) { alert("Erreur lecture plan : " + e1.message); return; }
+    const current = (rows && rows[0] && rows[0].meta) || {};
+    const annots = Array.isArray(current.annotations) ? current.annotations.slice() : [];
+    annots.push({
+        id: (crypto.randomUUID ? crypto.randomUUID() : ("a_" + Date.now() + "_" + Math.random().toString(36).slice(2,8))),
+        type: code,
+        commentaire: commentaire || "",
+        x: +geom.x.toFixed(4),
+        y: +geom.y.toFixed(4),
+        w: +geom.w.toFixed(4),
+        h: +geom.h.toFixed(4),
+        createdAt: new Date().toISOString(),
+        createdBy: localStorage.getItem("nom") || "—"
+    });
+
+    const newMeta = Object.assign({}, current, { annotations: annots });
+    const { error: e2 } = await supabaseClient
+        .from("suivi_travaux").update({ meta: newMeta }).eq("id", planId);
+    if (e2) { alert("Erreur sauvegarde annotation : " + e2.message); return; }
+
+    chargerPlans();
+}
+
+async function ouvrirAnnotation(planId, annotId) {
+    const { data: rows } = await supabaseClient
+        .from("suivi_travaux").select("meta").eq("id", planId).limit(1);
+    const current = (rows && rows[0] && rows[0].meta) || {};
+    const annots = Array.isArray(current.annotations) ? current.annotations : [];
+    const a = annots.find(x => x.id === annotId);
+    if (!a) return;
+
+    const msg =
+        "Type : " + _categoryLabel(a.type) + "\n" +
+        "Commentaire : " + (a.commentaire || "(aucun)") + "\n" +
+        "Créé par : " + (a.createdBy || "—") + "\n" +
+        "Date : " + (a.createdAt ? new Date(a.createdAt).toLocaleString("fr-FR") : "—") + "\n\n" +
+        "Choisis : OK pour Modifier · Annuler pour fermer\n" +
+        "(Pour supprimer cette annotation, modifie le commentaire en y mettant uniquement le mot DELETE)";
+
+    if (!confirm(msg)) return;
+
+    const newComment = prompt("Modifier le commentaire (ou écrire DELETE pour supprimer) :", a.commentaire || "");
+    if (newComment === null) return;
+
+    let newAnnots;
+    if (newComment.trim().toUpperCase() === "DELETE") {
+        newAnnots = annots.filter(x => x.id !== annotId);
+    } else {
+        newAnnots = annots.map(x => x.id === annotId ? Object.assign({}, x, { commentaire: newComment }) : x);
+    }
+
+    const newMeta = Object.assign({}, current, { annotations: newAnnots });
+    const { error } = await supabaseClient
+        .from("suivi_travaux").update({ meta: newMeta }).eq("id", planId);
+    if (error) { alert("Erreur : " + error.message); return; }
+
+    chargerPlans();
+}
+
+function filterAnnotations(planId, category) {
+    // Toggle si on reclique sur la même catégorie
+    if (_annotMode.planId === planId && _annotMode.filter === category) {
+        _annotMode.filter = null;
+    } else {
+        _annotMode.planId = planId;
+        _annotMode.filter = category;
+    }
+    chargerPlans();
+}
+
+/* ----------------------------------------------------------
+   🟪 PLANS — SUPPRESSION
+---------------------------------------------------------- */
+async function supprimerPlan(id, path) {
+    if (!confirm("Supprimer ce plan ?")) return;
+    await deleteFile(path);
+    await supabaseClient.from("suivi_travaux").delete().eq("id", id);
+    chargerPlans();
+}
+
+/* ----------------------------------------------------------
+   📊 STATISTIQUES
+---------------------------------------------------------- */
+async function chargerStats() {
+    const { data: actifs } = await supabaseClient
+        .from("suivi_travaux").select("*")
+        .eq("kind", "travail").eq("archive", false);
+    const { data: archives } = await supabaseClient
+        .from("suivi_travaux").select("*")
+        .eq("kind", "travail").eq("archive", true);
+
+    const A = actifs || [], B = archives || [];
+
+    document.getElementById("resume").innerHTML =
+        `Travaux actifs : <b>${A.length}</b><br>Archivés : <b>${B.length}</b>`;
+
+    const enCours = A.filter(t => t.statut === "en-cours").length;
+    const attente = A.filter(t => t.statut === "attente").length;
+    const termine = A.filter(t => t.statut === "termine").length;
+
+    document.getElementById("statut").innerHTML = `
+        En cours : <b>${enCours}</b><br>
+        En attente : <b>${attente}</b><br>
+        Terminés : <b>${termine}</b>
+    `;
+
+    const mois = {};
+    A.forEach(t => {
+        if (!t.created_at) return;
+        const m = new Date(t.created_at).getMonth();
+        mois[m] = (mois[m] || 0) + 1;
+    });
+
+    let graph = "";
+    for (let i = 0; i < 12; i++) {
+        const bar = "█".repeat(mois[i] || 0);
+        graph += `${i+1} : ${bar}\n`;
+    }
+    document.getElementById("graph").textContent = graph;
+}
+
+/* ----------------------------------------------------------
+   📥 EXPORT CSV (travaux non archivés du jour)
+---------------------------------------------------------- */
+async function exporterCSV() {
+    const { data, error } = await supabaseClient
+        .from("suivi_travaux")
+        .select("*")
+        .eq("kind", "travail")
+        .eq("archive", false)
+        .order("created_at", { ascending: false });
+
+    if (error) return alert("Erreur export : " + error.message);
+    if (!data || !data.length) return alert("Aucun travail à exporter.");
+
+    const headers = ["Titre", "Description", "Statut", "Créé le"];
+    const rows = data.map(t => [
+        t.titre || "",
+        (t.description || "").replace(/(\r\n|\n|\r)/gm, " "),
+        t.statut || "",
+        t.created_at ? new Date(t.created_at).toLocaleString("fr-FR") : ""
+    ]);
+
+    let csv = "\uFEFF" + headers.join(";") + "\n";
+    rows.forEach(r => {
+        csv += r.map(v => `"${(v || "").toString().replace(/"/g, '""')}"`).join(";") + "\n";
+    });
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `travaux_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/* ----------------------------------------------------------
+   🗑 EFFACER LA JOURNÉE
+   Supprime TOUS les travaux (actifs + archivés) après confirmation.
+   Ne touche pas aux zones de stockage ni aux plans.
+---------------------------------------------------------- */
+async function effacerJournee() {
+    const { data, error } = await supabaseClient
+        .from("suivi_travaux")
+        .select("id")
+        .eq("kind", "travail");
+
+    if (error) return alert("Erreur : " + error.message);
+    const n = (data || []).length;
+    if (!n) return alert("Aucun travail à effacer.");
+
+    if (!confirm(`⚠️ Effacer ${n} travail(s) (actifs + archivés) ?\n\n` +
+                 `Action définitive. Pense à exporter le CSV avant.`)) return;
+
+    const safety = prompt('Tape "EFFACER" pour confirmer définitivement :');
+    if (safety !== "EFFACER") return alert("Suppression annulée.");
+
+    const { error: delErr } = await supabaseClient
+        .from("suivi_travaux")
+        .delete()
+        .eq("kind", "travail");
+
+    if (delErr) return alert("Erreur suppression : " + delErr.message);
+
+    chargerTravaux();
+    alert("✅ Journée effacée.");
+}
+
+/* ----------------------------------------------------------
+   🚀 INIT
+---------------------------------------------------------- */
+chargerTravaux();
+</script>
+
+<script src="security.js"></script>
+<script src="global.js"></script>
 <script src="notifications_global.js"></script>
 </body>
 </html>

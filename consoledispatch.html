@@ -1,407 +1,1621 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Gestion sites & services — Aura Sentinelle</title>
-<link rel="stylesheet" href="global.css">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Console Dispatch — SIP Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-    :root {
-        --bg: #0b0d10;
-        --bg2: #14181d;
-        --card: #1a1f26;
-        --border: #2a3038;
-        --text: #e6e8eb;
-        --text-dim: #a0a8b0;
-        --accent: #d4af37;
-        --purple: #a855f7;
-        --shadow: 0 6px 24px rgba(0,0,0,0.4);
-    }
-    body {
-        background: var(--bg); color: var(--text);
-        font-family: system-ui, -apple-system, sans-serif;
-        margin: 0; padding: 28px 20px;
-    }
-    .header {
-        max-width: 1100px; margin: 0 auto 24px;
-        display: flex; align-items: center; gap: 14px;
-    }
-    .header h1 {
-        font-size: 1.5rem; font-weight: 700; margin: 0;
-        background: linear-gradient(90deg, var(--purple), var(--accent));
-        -webkit-background-clip: text; background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-    .header .subtitle {
-        font-size: 0.85rem; color: var(--text-dim);
-        margin-top: 4px;
-    }
-    .header .back {
-        margin-left: auto;
-        background: var(--bg2); color: var(--text);
-        border: 1px solid var(--border); padding: 8px 16px;
-        border-radius: 8px; text-decoration: none;
-        font-size: 0.85rem;
-    }
-    .header .back:hover { background: var(--card); }
+  :root {
+    /* surfaces */
+    --bg-0: #070a12;
+    --bg-1: #0c111d;
+    --bg-2: #121827;
+    --bg-3: #1a2133;
+    --bg-hover: #1f2740;
+    --border: #1e2739;
+    --border-strong: #2a3550;
 
-    .grid {
-        max-width: 1100px; margin: 0 auto;
-        display: grid; grid-template-columns: 1fr 1fr; gap: 24px;
-    }
-    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+    /* ink */
+    --ink-0: #e6ecf7;
+    --ink-1: #a9b4cc;
+    --ink-2: #6b7891;
+    --ink-3: #434d66;
 
-    .card {
-        background: var(--card); border: 1px solid var(--border);
-        border-radius: 14px; padding: 22px; box-shadow: var(--shadow);
-    }
-    .card h2 {
-        font-size: 1.1rem; margin: 0 0 6px;
-        display: flex; align-items: center; gap: 10px;
-    }
-    .card .count {
-        background: rgba(168,85,247,0.15); color: var(--purple);
-        padding: 2px 10px; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 600;
-    }
-    .card .desc {
-        color: var(--text-dim); font-size: 0.82rem; margin-bottom: 16px;
-    }
+    /* signal colors */
+    --amber: #f5b041;
+    --amber-dim: #8a6324;
+    --red: #ef4444;
+    --red-dim: #6b1f23;
+    --green: #34d399;
+    --green-dim: #18543d;
+    --cyan: #22d3ee;
+    --cyan-dim: #155469;
+    --violet: #a78bfa;
+    --violet-dim: #463269;
 
-    label { display: block; font-size: 0.78rem; color: var(--text-dim); margin: 12px 0 4px; }
-    input[type=text], input[type=color] {
-        width: 100%; padding: 9px 12px; box-sizing: border-box;
-        background: var(--bg2); border: 1px solid var(--border);
-        border-radius: 8px; color: var(--text); font-size: 0.9rem;
-    }
-    input[type=color] { padding: 4px; height: 38px; }
-    button.primary {
-        background: var(--purple); color: #fff;
-        border: none; padding: 10px 20px; border-radius: 8px;
-        font-weight: 600; cursor: pointer; margin-top: 12px;
-        font-size: 0.88rem;
-    }
-    button.primary:hover { background: #9333ea; }
-    button.secondary {
-        background: var(--bg2); color: var(--text);
-        border: 1px solid var(--border); padding: 6px 12px;
-        border-radius: 6px; cursor: pointer; font-size: 0.78rem;
-    }
-    button.danger {
-        background: rgba(220,38,38,0.15); color: #ef4444;
-        border: 1px solid rgba(220,38,38,0.3);
-        padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.78rem;
-    }
+    --radius: 4px;
+    --radius-lg: 6px;
 
-    .list-item {
-        background: var(--bg2); border: 1px solid var(--border);
-        padding: 10px 14px; border-radius: 10px; margin-bottom: 8px;
-        display: flex; align-items: center; gap: 12px;
-    }
-    .list-item .code {
-        font-family: monospace; font-weight: 600;
-        background: rgba(212,175,55,0.15); color: var(--accent);
-        padding: 3px 8px; border-radius: 6px;
-        font-size: 0.78rem;
-    }
-    .list-item .nom { flex: 1; }
-    .list-item .colordot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--border); }
+    --font-sans: 'IBM Plex Sans', -apple-system, sans-serif;
+    --font-cond: 'IBM Plex Sans Condensed', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
 
-    .empty { color: var(--text-dim); text-align: center; padding: 18px; font-size: 0.85rem; }
-    .status { padding: 10px 14px; border-radius: 8px; margin-top: 12px; font-size: 0.85rem; }
-    .status.ok    { background: rgba(16,185,129,0.12); color: #10b981; border: 1px solid rgba(16,185,129,0.3); }
-    .status.error { background: rgba(220,38,38,0.12); color: #ef4444; border: 1px solid rgba(220,38,38,0.3); }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    .accessdenied {
-        max-width: 600px; margin: 80px auto; padding: 40px;
-        background: var(--card); border: 1px solid var(--border);
-        border-radius: 14px; text-align: center;
-    }
-    .accessdenied h1 { color: #ef4444; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font-sans);
+    background: var(--bg-0);
+    color: var(--ink-0);
+    font-size: 13px;
+    line-height: 1.4;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* subtle grid texture on body */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app {
+    height: 100vh;
+    display: grid;
+    grid-template-rows: 44px 1fr 28px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ════════════════════════════════  HEADER  ════════════════════════════════ */
+  header {
+    background: var(--bg-1);
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 240px 1fr auto;
+    align-items: center;
+    padding: 0 16px;
+    gap: 24px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-cond);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .brand-mark {
+    width: 22px; height: 22px;
+    background: var(--amber);
+    position: relative;
+    clip-path: polygon(0 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
+  }
+  .brand-mark::after {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    background: var(--bg-1);
+    clip-path: polygon(0 0, 100% 0, 100% 50%, 50% 100%, 0 100%);
+  }
+  .brand-text { font-size: 14px; }
+  .brand-sub { color: var(--ink-2); font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; }
+
+  .global-status {
+    display: flex;
+    gap: 20px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-1);
+  }
+  .gs-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .gs-label { color: var(--ink-2); }
+  .gs-val { color: var(--ink-0); font-weight: 600; }
+  .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 0 2px rgba(0,0,0,0.3);
+  }
+  .dot.green { background: var(--green); box-shadow: 0 0 8px var(--green), 0 0 0 2px rgba(0,0,0,0.3); animation: pulse-g 2.4s infinite; }
+  .dot.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber), 0 0 0 2px rgba(0,0,0,0.3); }
+  .dot.red { background: var(--red); box-shadow: 0 0 8px var(--red), 0 0 0 2px rgba(0,0,0,0.3); animation: pulse-r 1.2s infinite; }
+  .dot.grey { background: var(--ink-3); }
+
+  @keyframes pulse-g {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  @keyframes pulse-r {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.3); }
+  }
+
+  .operator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-left: 16px;
+    border-left: 1px solid var(--border);
+  }
+  .op-info {
+    text-align: right;
+    line-height: 1.2;
+  }
+  .op-name { font-size: 12px; font-weight: 600; }
+  .op-role { font-size: 10px; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.12em; }
+  .op-badge {
+    width: 32px; height: 32px;
+    background: linear-gradient(135deg, var(--amber), #d48a1e);
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-cond);
+    font-weight: 700;
+    color: var(--bg-0);
+    font-size: 12px;
+    position: relative;
+  }
+  .op-badge::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 10px; height: 10px;
+    background: var(--green);
+    border-radius: 50%;
+    border: 2px solid var(--bg-1);
+  }
+
+  /* ════════════════════════════════  MAIN GRID  ════════════════════════════════ */
+  main {
+    display: grid;
+    grid-template-columns: 320px 1fr 340px;
+    gap: 1px;
+    background: var(--border);
+    overflow: hidden;
+  }
+
+  .col {
+    background: var(--bg-0);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .section-head {
+    padding: 10px 14px 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-1);
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .section-title {
+    font-family: var(--font-cond);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-1);
+  }
+  .section-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-2);
+    padding: 2px 6px;
+    background: var(--bg-3);
+    border-radius: 3px;
+    letter-spacing: 0.08em;
+  }
+  .section-count.active { color: var(--amber); background: rgba(245, 176, 65, 0.12); }
+  .section-count.urgent { color: var(--red); background: rgba(239, 68, 68, 0.12); }
+
+  /* ──────────────────  LEFT COLUMN : QUEUE  ─────────────────── */
+  .queue-list {
+    flex: 1;
+    overflow-y: auto;
+  }
+  .queue-item {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 4px 1fr auto;
+    gap: 10px;
+    transition: background 0.12s;
+    position: relative;
+  }
+  .queue-item:hover { background: var(--bg-2); }
+  .queue-item.priority-1 { background: linear-gradient(90deg, rgba(239,68,68,0.08), transparent 60%); }
+  .queue-item.priority-1:hover { background: linear-gradient(90deg, rgba(239,68,68,0.14), var(--bg-2)); }
+
+  .priority-bar {
+    width: 3px;
+    border-radius: 2px;
+    align-self: stretch;
+  }
+  .priority-bar.p1 { background: var(--red); box-shadow: 0 0 8px var(--red); }
+  .priority-bar.p2 { background: var(--amber); }
+  .priority-bar.p3 { background: var(--cyan); }
+  .priority-bar.p4 { background: var(--ink-3); }
+
+  .qi-main {
+    min-width: 0;
+  }
+  .qi-top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 2px;
+  }
+  .qi-caller {
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .qi-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 2px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .qi-tag.urg { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid var(--red-dim); }
+  .qi-tag.pri { background: rgba(245,176,65,0.12); color: var(--amber); border: 1px solid var(--amber-dim); }
+  .qi-tag.std { background: rgba(34,211,238,0.08); color: var(--cyan); border: 1px solid var(--cyan-dim); }
+  .qi-tag.rad { background: rgba(167,139,250,0.1); color: var(--violet); border: 1px solid var(--violet-dim); }
+
+  .qi-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-2);
+    display: flex;
+    gap: 12px;
+  }
+  .qi-meta span { white-space: nowrap; }
+  .qi-timer {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-0);
+    font-weight: 500;
+    text-align: right;
+  }
+  .qi-timer.warn { color: var(--amber); }
+  .qi-timer.crit { color: var(--red); animation: flash 1.4s infinite; }
+  @keyframes flash {
+    0%,50%,100% { opacity: 1; }
+    25%,75% { opacity: 0.4; }
+  }
+
+  /* Channels block under queue */
+  .channels {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px 14px;
+  }
+  .channel {
+    display: grid;
+    grid-template-columns: 24px 1fr auto;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--border);
+    font-size: 11px;
+  }
+  .channel:last-child { border-bottom: none; }
+  .ch-icon {
+    width: 20px; height: 20px;
+    display: grid;
+    place-items: center;
+    border-radius: 3px;
+    background: var(--bg-2);
+    font-family: var(--font-cond);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--ink-1);
+  }
+  .ch-icon.active { background: rgba(52,211,153,0.12); color: var(--green); }
+  .ch-name { color: var(--ink-1); font-family: var(--font-mono); font-size: 11px; }
+  .ch-count {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-2);
+  }
+
+  /* ──────────────────  CENTER COLUMN : ACTIVE CALL  ─────────────────── */
+  .active-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  .active-card {
+    padding: 24px 28px 20px;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(245,176,65,0.06), transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(34,211,238,0.04), transparent 50%),
+      var(--bg-1);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .active-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--amber), transparent);
+    opacity: 0.6;
+  }
+
+  .ac-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .ac-status .in-call {
+    color: var(--green);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+  }
+  .rec-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--red);
+    padding: 2px 7px;
+    border: 1px solid var(--red-dim);
+    border-radius: 2px;
+    background: rgba(239,68,68,0.06);
+  }
+  .rec-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--red);
+    animation: pulse-r 1.2s infinite;
+  }
+
+  .ac-body {
+    display: grid;
+    grid-template-columns: 72px 1fr auto;
+    gap: 20px;
+    align-items: center;
+  }
+  .ac-avatar {
+    width: 72px; height: 72px;
+    border-radius: 6px;
+    background: linear-gradient(135deg, #1a2133, #0c111d);
+    border: 1px solid var(--border-strong);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-cond);
+    font-weight: 700;
+    font-size: 26px;
+    color: var(--amber);
+    position: relative;
+  }
+  .ac-avatar::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: linear-gradient(135deg, var(--amber), transparent) border-box;
+    -webkit-mask: linear-gradient(#000 0 0) padding-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+            mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.4;
+  }
+
+  .ac-info { min-width: 0; }
+  .ac-name {
+    font-family: var(--font-cond);
+    font-weight: 600;
+    font-size: 24px;
+    letter-spacing: 0.01em;
+    margin-bottom: 4px;
+  }
+  .ac-number {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    color: var(--ink-1);
+    margin-bottom: 8px;
+    letter-spacing: 0.04em;
+  }
+  .ac-tags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .ac-chip {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    background: var(--bg-3);
+    color: var(--ink-1);
+    border: 1px solid var(--border);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+  .ac-chip.location { color: var(--cyan); border-color: var(--cyan-dim); background: rgba(34,211,238,0.05); }
+
+  .ac-timer-block {
+    text-align: right;
+  }
+  .ac-timer {
+    font-family: var(--font-mono);
+    font-size: 34px;
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    color: var(--ink-0);
+    line-height: 1;
+  }
+  .ac-timer .sec { color: var(--amber); }
+  .ac-timer-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-2);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* Waveform */
+  .waveform {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    margin: 18px 0 6px;
+    padding: 0 4px;
+  }
+  .wf-bar {
+    width: 3px;
+    background: var(--amber);
+    border-radius: 2px;
+    animation: wave 1.2s ease-in-out infinite;
+    opacity: 0.9;
+  }
+  @keyframes wave {
+    0%, 100% { height: 8%; }
+    50% { height: 90%; }
+  }
+
+  .ac-levels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 8px;
+  }
+  .level {
+    display: grid;
+    grid-template-columns: 30px 1fr 32px;
+    gap: 8px;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-2);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .level-bar {
+    height: 4px;
+    background: var(--bg-3);
+    border-radius: 2px;
+    overflow: hidden;
+    position: relative;
+  }
+  .level-fill {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--green) 0%, var(--green) 55%, var(--amber) 75%, var(--red) 95%);
+    transition: width 0.15s;
+  }
+  .level-val { color: var(--ink-1); text-align: right; }
+
+  /* Call controls */
+  .controls {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-1);
+  }
+  .ctl-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr) 1.4fr;
+    gap: 10px;
+  }
+  .ctl {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink-1);
+    transition: all 0.15s;
+    font-family: var(--font-cond);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .ctl:hover {
+    background: var(--bg-3);
+    color: var(--ink-0);
+    border-color: var(--border-strong);
+  }
+  .ctl.active {
+    background: rgba(245,176,65,0.12);
+    border-color: var(--amber-dim);
+    color: var(--amber);
+  }
+  .ctl svg {
+    width: 20px; height: 20px;
+    stroke: currentColor;
+    fill: none;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .ctl-hangup {
+    background: linear-gradient(180deg, #c7302e, #9b1f1d);
+    border: 1px solid #e44c4a;
+    color: white;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 0 2px 0 #5a1210;
+    grid-column: span 1;
+  }
+  .ctl-hangup:hover {
+    background: linear-gradient(180deg, #d8413f, #af2624);
+    color: white;
+  }
+  .ctl-hangup svg { transform: rotate(135deg); }
+
+  /* Transfer/Conf line */
+  .transfer-row {
+    margin-top: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    padding: 9px 12px;
+    color: var(--ink-1);
+    font-family: var(--font-cond);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.12s;
+  }
+  .btn-ghost:hover {
+    background: var(--bg-2);
+    color: var(--ink-0);
+  }
+  .btn-ghost svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.6; }
+
+  /* Tabs: dialpad / history / notes */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-1);
+  }
+  .tab {
+    padding: 10px 18px;
+    font-family: var(--font-cond);
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--ink-1); }
+  .tab.active {
+    color: var(--amber);
+    border-bottom-color: var(--amber);
+    background: var(--bg-0);
+  }
+
+  .tab-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 28px;
+  }
+
+  /* Dialpad */
+  .dialpad-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .dial-display {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    font-family: var(--font-mono);
+    font-size: 22px;
+    letter-spacing: 0.08em;
+    color: var(--ink-0);
+    min-height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .dial-display .placeholder { color: var(--ink-3); }
+  .dial-display .clear {
+    color: var(--ink-2);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 3px;
+  }
+  .dial-display .clear:hover { background: var(--bg-3); color: var(--ink-0); }
+
+  .dialpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .key {
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 0;
+    cursor: pointer;
+    text-align: center;
+    font-family: var(--font-mono);
+    transition: all 0.1s;
+    user-select: none;
+  }
+  .key:hover { background: var(--bg-3); border-color: var(--border-strong); }
+  .key:active { transform: scale(0.97); background: var(--bg-hover); }
+  .key-num { font-size: 20px; font-weight: 500; color: var(--ink-0); line-height: 1; }
+  .key-alpha { font-size: 9px; color: var(--ink-2); letter-spacing: 0.2em; margin-top: 3px; }
+
+  .dial-call {
+    margin-top: 8px;
+    width: 100%;
+    background: linear-gradient(180deg, #2f9d5e, #1f7a46);
+    border: 1px solid #45b877;
+    color: white;
+    padding: 12px;
+    font-family: var(--font-cond);
+    font-weight: 600;
+    font-size: 12px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-radius: var(--radius);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  .dial-call:hover { background: linear-gradient(180deg, #37b06c, #238551); }
+  .dial-call svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; }
+
+  /* Speed dials */
+  .speeddial-head {
+    font-family: var(--font-cond);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .speed-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .speed {
+    background: var(--bg-1);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 9px 12px;
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+    transition: all 0.12s;
+  }
+  .speed:hover { background: var(--bg-2); border-color: var(--border-strong); }
+  .speed-icon {
+    width: 24px; height: 24px;
+    border-radius: 3px;
+    display: grid;
+    place-items: center;
+    background: var(--bg-3);
+    font-family: var(--font-cond);
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .speed-name { font-size: 11px; font-weight: 500; }
+  .speed-num { font-family: var(--font-mono); font-size: 10px; color: var(--ink-2); }
+
+  /* History */
+  .history-row {
+    display: grid;
+    grid-template-columns: 16px 1fr auto auto;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    cursor: pointer;
+  }
+  .history-row:hover { background: var(--bg-1); }
+  .h-dir { color: var(--ink-2); display: flex; align-items: center; }
+  .h-dir.in { color: var(--green); }
+  .h-dir.out { color: var(--cyan); }
+  .h-dir.missed { color: var(--red); }
+  .h-dir svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+  .h-name { font-weight: 500; font-size: 12px; }
+  .h-num { font-family: var(--font-mono); font-size: 10px; color: var(--ink-2); }
+  .h-time { font-family: var(--font-mono); font-size: 11px; color: var(--ink-1); text-align: right; }
+  .h-dur { font-family: var(--font-mono); font-size: 10px; color: var(--ink-2); }
+
+  /* ──────────────────  RIGHT COLUMN : SUPERVISION  ─────────────────── */
+  .agent {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 10px;
+    align-items: center;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .agent:hover { background: var(--bg-2); }
+  .agent-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    background: var(--bg-3);
+    display: grid;
+    place-items: center;
+    font-family: var(--font-cond);
+    font-weight: 700;
+    font-size: 11px;
+    color: var(--ink-1);
+    position: relative;
+  }
+  .agent-avatar::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; right: -1px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    border: 2px solid var(--bg-0);
+  }
+  .agent-avatar.s-avail::after { background: var(--green); }
+  .agent-avatar.s-call::after { background: var(--red); }
+  .agent-avatar.s-hold::after { background: var(--amber); }
+  .agent-avatar.s-away::after { background: var(--ink-3); }
+
+  .agent-info { min-width: 0; }
+  .agent-name {
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .agent-status {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-2);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .agent-status.call { color: var(--red); }
+  .agent-status.hold { color: var(--amber); }
+  .agent-status.avail { color: var(--green); }
+  .agent-status.away { color: var(--ink-3); }
+
+  .agent-actions {
+    display: flex;
+    gap: 4px;
+  }
+  .agent-btn {
+    width: 22px; height: 22px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--ink-2);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-family: var(--font-cond);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    transition: all 0.1s;
+  }
+  .agent-btn:hover { color: var(--amber); border-color: var(--amber-dim); background: rgba(245,176,65,0.08); }
+
+  /* Stats panel */
+  .stats-panel {
+    padding: 14px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-1);
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .stat {
+    padding: 10px 12px;
+    background: var(--bg-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    margin-bottom: 4px;
+  }
+  .stat-value {
+    font-family: var(--font-cond);
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .stat-value .unit { font-size: 11px; color: var(--ink-2); font-weight: 400; margin-left: 2px; }
+  .stat-delta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    margin-top: 4px;
+  }
+  .stat-delta.up { color: var(--green); }
+  .stat-delta.down { color: var(--red); }
+
+  /* ════════════════════════════════  FOOTER  ════════════════════════════════ */
+  footer {
+    background: var(--bg-1);
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding: 0 16px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-2);
+    letter-spacing: 0.08em;
+  }
+  .foot-left, .foot-right { display: flex; gap: 18px; }
+  .foot-right { justify-content: flex-end; }
+  .foot-mid {
+    color: var(--ink-1);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .kbd {
+    background: var(--bg-3);
+    padding: 1px 6px;
+    border-radius: 2px;
+    color: var(--ink-1);
+    margin: 0 3px;
+    border: 1px solid var(--border-strong);
+  }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+  /* small responsive: collapse right col */
+  @media (max-width: 1280px) {
+    main { grid-template-columns: 280px 1fr 300px; }
+  }
+  @media (max-width: 1100px) {
+    main { grid-template-columns: 260px 1fr; }
+    .col-supervision { display: none; }
+  }
 </style>
 </head>
 <body>
+<div class="app">
 
-<div id="accessGate" class="accessdenied" style="display:none;">
-    <h1>🔒 Accès refusé</h1>
-    <p>Cette page est réservée aux super-administrateurs.</p>
-    <p style="color:var(--text-dim);font-size:0.85rem;">Connectez-vous avec un compte ayant le rôle <code>superadmin</code>.</p>
-    <a href="index.html" style="color:var(--accent);">← Retour</a>
-</div>
-
-<div id="mainContent" style="display:none;">
-
-<div class="header">
-    <div>
-        <h1>🌐 Gestion sites &amp; services</h1>
-        <div class="subtitle">Catalogue global — ajouté dynamiquement, utilisé partout dans l'app</div>
+  <!-- ═══════  HEADER  ═══════ -->
+  <header>
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div>
+        <div class="brand-text">DISPATCH CONSOLE</div>
+        <div class="brand-sub">SIP · OPS · v4.2</div>
+      </div>
     </div>
-    <a href="index.html" class="back">← Retour</a>
-</div>
 
-<div class="grid">
+    <div class="global-status">
+      <div class="gs-item">
+        <span class="dot green"></span>
+        <span class="gs-label">SIP</span>
+        <span class="gs-val">REGISTERED</span>
+      </div>
+      <div class="gs-item">
+        <span class="dot green"></span>
+        <span class="gs-label">NET</span>
+        <span class="gs-val">28 ms</span>
+      </div>
+      <div class="gs-item">
+        <span class="gs-label">MOS</span>
+        <span class="gs-val">4.3</span>
+      </div>
+      <div class="gs-item">
+        <span class="gs-label">QUEUE</span>
+        <span class="gs-val" id="hdr-queue" style="color:var(--amber)">4</span>
+      </div>
+      <div class="gs-item">
+        <span class="gs-label">ANSWERED</span>
+        <span class="gs-val">47 / 52</span>
+      </div>
+      <div class="gs-item">
+        <span class="gs-label" id="hdr-time">14:37:22</span>
+      </div>
+    </div>
 
-    <!-- ─── SITES ─── -->
-    <div class="card">
-        <h2>🏢 Sites <span class="count" id="cntSites">0</span></h2>
-        <div class="desc">Codes courts (ex: LBM) utilisés dans les requêtes Supabase.</div>
+    <div class="operator">
+      <div class="op-info">
+        <div class="op-name">M. Dubois</div>
+        <div class="op-role">Dispatcher · Poste 104</div>
+      </div>
+      <div class="op-badge">MD</div>
+    </div>
+  </header>
 
-        <div id="listeSites"></div>
+  <!-- ═══════  MAIN  ═══════ -->
+  <main>
 
-        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
-            <label>Code (court, MAJ)</label>
-            <input type="text" id="newSiteCode" placeholder="LBM" maxlength="20" style="text-transform:uppercase;">
+    <!-- ─────────  LEFT : QUEUE  ───────── -->
+    <section class="col col-queue">
+      <div class="section-head">
+        <div class="section-title">File d'attente</div>
+        <div class="section-count urgent" id="queue-count">4 APPELS</div>
+      </div>
 
-            <label>Nom complet</label>
-            <input type="text" id="newSiteNom" placeholder="Le Bon Marché" maxlength="120">
+      <div class="queue-list" id="queue-list">
+        <!-- queue items injected by JS -->
+      </div>
 
-            <button class="primary" onclick="ajouterSite()">+ Ajouter le site</button>
-            <div id="statusSites"></div>
+      <div class="section-head">
+        <div class="section-title">Canaux</div>
+        <div class="section-count">6 / 8</div>
+      </div>
+      <div class="channels">
+        <div class="channel">
+          <div class="ch-icon active">911</div>
+          <div class="ch-name">Urgences</div>
+          <div class="ch-count">2 actifs</div>
         </div>
-    </div>
-
-    <!-- ─── SERVICES ─── -->
-    <div class="card">
-        <h2>⚙️ Services <span class="count" id="cntServices">0</span></h2>
-        <div class="desc">Codes en minuscules (ex: incendie) utilisés pour le cloisonnement.</div>
-
-        <div id="listeServices"></div>
-
-        <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border);">
-            <label>Code (court, min., snake_case)</label>
-            <input type="text" id="newSrvCode" placeholder="incendie" maxlength="40" style="text-transform:lowercase;">
-
-            <label>Nom complet</label>
-            <input type="text" id="newSrvNom" placeholder="Sécurité Incendie" maxlength="120">
-
-            <label>Couleur d'identification</label>
-            <input type="color" id="newSrvColor" value="#a855f7">
-
-            <button class="primary" onclick="ajouterService()">+ Ajouter le service</button>
-            <div id="statusServices"></div>
+        <div class="channel">
+          <div class="ch-icon active">GEN</div>
+          <div class="ch-name">Général</div>
+          <div class="ch-count">3 actifs</div>
         </div>
+        <div class="channel">
+          <div class="ch-icon active">RAD</div>
+          <div class="ch-name">Radio Intégrée</div>
+          <div class="ch-count">1 actif</div>
+        </div>
+        <div class="channel">
+          <div class="ch-icon">INT</div>
+          <div class="ch-name">Interne</div>
+          <div class="ch-count">—</div>
+        </div>
+        <div class="channel">
+          <div class="ch-icon">EXT</div>
+          <div class="ch-name">Sortant</div>
+          <div class="ch-count">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─────────  CENTER : ACTIVE CALL  ───────── -->
+    <section class="col col-active">
+      <div class="active-shell">
+
+        <div class="active-card">
+          <div class="ac-status">
+            <span class="in-call"><span class="dot green"></span>APPEL ACTIF · LIGNE 1</span>
+            <span>·</span>
+            <span>Entrant · SIP/1.2.3.4</span>
+            <span style="margin-left:auto" class="rec-badge">
+              <span class="rec-dot"></span>REC
+            </span>
+          </div>
+
+          <div class="ac-body">
+            <div class="ac-avatar" id="ac-initials">LR</div>
+            <div class="ac-info">
+              <div class="ac-name" id="ac-name">Laurent Renard</div>
+              <div class="ac-number" id="ac-number">+33 6 14 82 03 17</div>
+              <div class="ac-tags">
+                <span class="ac-chip">PRIORITÉ 1</span>
+                <span class="ac-chip">DOSSIER #A-4428</span>
+                <span class="ac-chip location">◈ Paris XVe · Secteur B</span>
+              </div>
+            </div>
+            <div class="ac-timer-block">
+              <div class="ac-timer" id="call-timer">00:02<span class="sec">:14</span></div>
+              <div class="ac-timer-label">Durée de l'appel</div>
+            </div>
+          </div>
+
+          <div class="waveform" id="waveform"></div>
+
+          <div class="ac-levels">
+            <div class="level">
+              <span>IN</span>
+              <div class="level-bar"><div class="level-fill" id="lvl-in" style="width:62%"></div></div>
+              <span class="level-val" id="lvl-in-val">-14 dB</span>
+            </div>
+            <div class="level">
+              <span>OUT</span>
+              <div class="level-bar"><div class="level-fill" id="lvl-out" style="width:48%"></div></div>
+              <span class="level-val" id="lvl-out-val">-22 dB</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <div class="ctl-grid">
+            <div class="ctl" data-toggle="mute" onclick="toggleCtl(this)">
+              <svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
+              <span>MUTE</span>
+            </div>
+            <div class="ctl" data-toggle="hold" onclick="toggleCtl(this)">
+              <svg viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+              <span>ATTENTE</span>
+            </div>
+            <div class="ctl" data-toggle="speaker" onclick="toggleCtl(this)">
+              <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+              <span>HP</span>
+            </div>
+            <div class="ctl" data-toggle="rec" onclick="toggleCtl(this)">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="9"/></svg>
+              <span>REC</span>
+            </div>
+            <div class="ctl" onclick="alert('Ouverture fiche contact')">
+              <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>FICHE</span>
+            </div>
+            <div class="ctl" onclick="alert('Notes ajoutées à la main courante')">
+              <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              <span>NOTE</span>
+            </div>
+            <div class="ctl ctl-hangup" onclick="hangup()">
+              <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <span>RACCROCHER</span>
+            </div>
+          </div>
+
+          <div class="transfer-row">
+            <button class="btn-ghost" onclick="alert('Ouverture transfert aveugle')">
+              <svg viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              Transfert aveugle
+            </button>
+            <button class="btn-ghost" onclick="alert('Ouverture transfert assisté')">
+              <svg viewBox="0 0 24 24"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3z"/><path d="M8 21a4 4 0 0 0 8 0"/></svg>
+              Transfert assisté
+            </button>
+            <button class="btn-ghost" onclick="alert('Conférence à 3 initiée')">
+              <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Conférence
+            </button>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" data-tab="dialpad" onclick="switchTab(this)">Clavier</div>
+          <div class="tab" data-tab="speed" onclick="switchTab(this)">Numérotation rapide</div>
+          <div class="tab" data-tab="history" onclick="switchTab(this)">Historique</div>
+        </div>
+
+        <div class="tab-body">
+          <!-- DIALPAD TAB -->
+          <div data-panel="dialpad">
+            <div class="dialpad-wrap">
+              <div>
+                <div class="dial-display">
+                  <span id="dial-text" class="placeholder">Saisir un numéro…</span>
+                  <span class="clear" onclick="clearDial()">⌫</span>
+                </div>
+                <div class="dialpad">
+                  <div class="key" onclick="pushKey('1')"><div class="key-num">1</div><div class="key-alpha">&nbsp;</div></div>
+                  <div class="key" onclick="pushKey('2')"><div class="key-num">2</div><div class="key-alpha">ABC</div></div>
+                  <div class="key" onclick="pushKey('3')"><div class="key-num">3</div><div class="key-alpha">DEF</div></div>
+                  <div class="key" onclick="pushKey('4')"><div class="key-num">4</div><div class="key-alpha">GHI</div></div>
+                  <div class="key" onclick="pushKey('5')"><div class="key-num">5</div><div class="key-alpha">JKL</div></div>
+                  <div class="key" onclick="pushKey('6')"><div class="key-num">6</div><div class="key-alpha">MNO</div></div>
+                  <div class="key" onclick="pushKey('7')"><div class="key-num">7</div><div class="key-alpha">PQRS</div></div>
+                  <div class="key" onclick="pushKey('8')"><div class="key-num">8</div><div class="key-alpha">TUV</div></div>
+                  <div class="key" onclick="pushKey('9')"><div class="key-num">9</div><div class="key-alpha">WXYZ</div></div>
+                  <div class="key" onclick="pushKey('*')"><div class="key-num">*</div><div class="key-alpha">&nbsp;</div></div>
+                  <div class="key" onclick="pushKey('0')"><div class="key-num">0</div><div class="key-alpha">+</div></div>
+                  <div class="key" onclick="pushKey('#')"><div class="key-num">#</div><div class="key-alpha">&nbsp;</div></div>
+                </div>
+                <button class="dial-call" onclick="dialCall()">
+                  <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  Appeler
+                </button>
+              </div>
+              <div>
+                <div class="speeddial-head">Lignes directes</div>
+                <div class="speed-list">
+                  <div class="speed" onclick="alert('Appel Police Nationale')">
+                    <div class="speed-icon" style="background:rgba(34,211,238,0.12);color:var(--cyan)">P</div>
+                    <div>
+                      <div class="speed-name">Police Nationale</div>
+                      <div class="speed-num">17</div>
+                    </div>
+                  </div>
+                  <div class="speed" onclick="alert('Appel Pompiers')">
+                    <div class="speed-icon" style="background:rgba(239,68,68,0.12);color:var(--red)">SP</div>
+                    <div>
+                      <div class="speed-name">Pompiers</div>
+                      <div class="speed-num">18</div>
+                    </div>
+                  </div>
+                  <div class="speed" onclick="alert('Appel SAMU')">
+                    <div class="speed-icon" style="background:rgba(245,176,65,0.12);color:var(--amber)">S</div>
+                    <div>
+                      <div class="speed-name">SAMU</div>
+                      <div class="speed-num">15</div>
+                    </div>
+                  </div>
+                  <div class="speed" onclick="alert('Appel Superviseur')">
+                    <div class="speed-icon" style="background:rgba(167,139,250,0.12);color:var(--violet)">SU</div>
+                    <div>
+                      <div class="speed-name">Superviseur</div>
+                      <div class="speed-num">8100</div>
+                    </div>
+                  </div>
+                  <div class="speed" onclick="alert('Appel PC Sécurité')">
+                    <div class="speed-icon">PC</div>
+                    <div>
+                      <div class="speed-name">PC Sécurité</div>
+                      <div class="speed-num">8200</div>
+                    </div>
+                  </div>
+                  <div class="speed" onclick="alert('Appel Astreinte')">
+                    <div class="speed-icon">AS</div>
+                    <div>
+                      <div class="speed-name">Astreinte</div>
+                      <div class="speed-num">8300</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="speeddial-head" style="margin-top:18px">Codes DTMF rapides</div>
+                <div class="speed-list">
+                  <div class="speed" onclick="sendDtmf('*1')">
+                    <div class="speed-icon">*1</div>
+                    <div><div class="speed-name">Menu principal</div></div>
+                  </div>
+                  <div class="speed" onclick="sendDtmf('#9')">
+                    <div class="speed-icon">#9</div>
+                    <div><div class="speed-name">Reprise appel</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SPEED TAB placeholder (reused) -->
+          <div data-panel="speed" style="display:none">
+            <div class="speeddial-head">Répertoire</div>
+            <p style="color:var(--ink-2);font-size:11px;margin-top:12px">Répertoire global synchronisé avec la main courante.</p>
+          </div>
+
+          <!-- HISTORY TAB -->
+          <div data-panel="history" style="display:none">
+            <div class="history-row">
+              <span class="h-dir in"><svg viewBox="0 0 24 24"><polyline points="16 17 21 17 21 22"/><line x1="15" y1="15" x2="21" y2="21"/></svg></span>
+              <div><div class="h-name">Laurent Renard</div><div class="h-num">+33 6 14 82 03 17</div></div>
+              <span class="h-time">14:35</span>
+              <span class="h-dur">2m14s</span>
+            </div>
+            <div class="history-row">
+              <span class="h-dir out"><svg viewBox="0 0 24 24"><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="3" y2="21"/></svg></span>
+              <div><div class="h-name">Superviseur Zone B</div><div class="h-num">8100</div></div>
+              <span class="h-time">14:22</span>
+              <span class="h-dur">0m47s</span>
+            </div>
+            <div class="history-row">
+              <span class="h-dir missed"><svg viewBox="0 0 24 24"><line x1="23" y1="1" x2="17" y2="7"/><line x1="17" y1="1" x2="23" y2="7"/><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></span>
+              <div><div class="h-name">Inconnu</div><div class="h-num">+33 7 88 45 12 09</div></div>
+              <span class="h-time">14:08</span>
+              <span class="h-dur">—</span>
+            </div>
+            <div class="history-row">
+              <span class="h-dir in"><svg viewBox="0 0 24 24"><polyline points="16 17 21 17 21 22"/><line x1="15" y1="15" x2="21" y2="21"/></svg></span>
+              <div><div class="h-name">Patrouille 04</div><div class="h-num">RAD-04</div></div>
+              <span class="h-time">13:51</span>
+              <span class="h-dur">5m03s</span>
+            </div>
+            <div class="history-row">
+              <span class="h-dir in"><svg viewBox="0 0 24 24"><polyline points="16 17 21 17 21 22"/><line x1="15" y1="15" x2="21" y2="21"/></svg></span>
+              <div><div class="h-name">Sophie Marchand</div><div class="h-num">+33 1 42 55 91 28</div></div>
+              <span class="h-time">13:37</span>
+              <span class="h-dur">1m29s</span>
+            </div>
+            <div class="history-row">
+              <span class="h-dir out"><svg viewBox="0 0 24 24"><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="3" y2="21"/></svg></span>
+              <div><div class="h-name">PC Sécurité</div><div class="h-num">8200</div></div>
+              <span class="h-time">13:22</span>
+              <span class="h-dur">0m18s</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ─────────  RIGHT : SUPERVISION  ───────── -->
+    <section class="col col-supervision">
+      <div class="section-head">
+        <div class="section-title">Opérateurs</div>
+        <div class="section-count active">5 / 7 EN LIGNE</div>
+      </div>
+
+      <div class="agent">
+        <div class="agent-avatar s-call">JM</div>
+        <div class="agent-info">
+          <div class="agent-name">Julie Martin</div>
+          <div class="agent-status call"><span class="dot red"></span>En appel · 04:32</div>
+        </div>
+        <div class="agent-actions">
+          <button class="agent-btn" title="Écoute discrète">L</button>
+          <button class="agent-btn" title="Chuchoter">W</button>
+        </div>
+      </div>
+
+      <div class="agent">
+        <div class="agent-avatar s-avail">TB</div>
+        <div class="agent-info">
+          <div class="agent-name">Thomas Bernard</div>
+          <div class="agent-status avail"><span class="dot green"></span>Disponible</div>
+        </div>
+        <div class="agent-actions">
+          <button class="agent-btn" title="Appeler">C</button>
+        </div>
+      </div>
+
+      <div class="agent">
+        <div class="agent-avatar s-hold">AP</div>
+        <div class="agent-info">
+          <div class="agent-name">Amélie Petit</div>
+          <div class="agent-status hold"><span class="dot amber"></span>En attente · 00:48</div>
+        </div>
+        <div class="agent-actions">
+          <button class="agent-btn" title="Écoute">L</button>
+          <button class="agent-btn" title="Intrusion">I</button>
+        </div>
+      </div>
+
+      <div class="agent">
+        <div class="agent-avatar s-call">RG</div>
+        <div class="agent-info">
+          <div class="agent-name">Rémi Girard</div>
+          <div class="agent-status call"><span class="dot red"></span>En appel · 01:17</div>
+        </div>
+        <div class="agent-actions">
+          <button class="agent-btn" title="Écoute">L</button>
+          <button class="agent-btn" title="Chuchoter">W</button>
+        </div>
+      </div>
+
+      <div class="agent">
+        <div class="agent-avatar s-avail">CL</div>
+        <div class="agent-info">
+          <div class="agent-name">Camille Leroy</div>
+          <div class="agent-status avail"><span class="dot green"></span>Disponible</div>
+        </div>
+        <div class="agent-actions">
+          <button class="agent-btn" title="Appeler">C</button>
+        </div>
+      </div>
+
+      <div class="agent">
+        <div class="agent-avatar s-away">NF</div>
+        <div class="agent-info">
+          <div class="agent-name">Nicolas Faure</div>
+          <div class="agent-status away"><span class="dot grey"></span>Pause</div>
+        </div>
+        <div class="agent-actions">
+          <button class="agent-btn" title="Message">M</button>
+        </div>
+      </div>
+
+      <div class="agent">
+        <div class="agent-avatar s-away">EV</div>
+        <div class="agent-info">
+          <div class="agent-name">Élodie Vasseur</div>
+          <div class="agent-status away"><span class="dot grey"></span>Hors ligne</div>
+        </div>
+        <div class="agent-actions">
+        </div>
+      </div>
+
+      <div class="stats-panel">
+        <div class="speeddial-head" style="margin-bottom:10px">Statistiques · Dernières 24h</div>
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-label">Appels traités</div>
+            <div class="stat-value">247</div>
+            <div class="stat-delta up">↑ +12% vs hier</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Durée moy.</div>
+            <div class="stat-value">2:43<span class="unit">min</span></div>
+            <div class="stat-delta down">↓ -4s</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Attente moy.</div>
+            <div class="stat-value">14<span class="unit">s</span></div>
+            <div class="stat-delta up">↓ sous cible</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Abandon</div>
+            <div class="stat-value">3.1<span class="unit">%</span></div>
+            <div class="stat-delta up">↓ -0.4pt</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ═══════  FOOTER  ═══════ -->
+  <footer>
+    <div class="foot-left">
+      <span><span class="kbd">F1</span> Aide</span>
+      <span><span class="kbd">F2</span> Décrocher</span>
+      <span><span class="kbd">F3</span> Raccrocher</span>
+      <span><span class="kbd">F4</span> Transfert</span>
+      <span><span class="kbd">Esc</span> Annuler</span>
     </div>
-
+    <div class="foot-mid">SYSTÈME OPÉRATIONNEL · SERVEUR SIP-PROD-02</div>
+    <div class="foot-right">
+      <span>CODEC · G.711 A-law</span>
+      <span>CHIFFREMENT · SRTP</span>
+      <span>BUILD 4.2.1847</span>
+    </div>
+  </footer>
 </div>
 
-</div>
+<script>
+  /* ═════════  QUEUE  ═════════ */
+  const queueData = [
+    { priority: 1, tag: 'URG', name: 'Valérie Chen', number: '+33 6 22 41 08 93', source: '911 · Entrant', wait: 142, crit: true },
+    { priority: 2, tag: 'PRI', name: 'Station Beta', number: 'RAD-07', source: 'Radio intégrée', wait: 68, warn: true },
+    { priority: 3, tag: 'STD', name: 'Marc Lefèvre', number: '+33 1 48 22 90 14', source: 'Ligne générale', wait: 34 },
+    { priority: 3, tag: 'STD', name: 'Inconnu', number: '+33 7 05 44 11 78', source: 'Ligne générale', wait: 12 },
+  ];
 
+  function renderQueue() {
+    const list = document.getElementById('queue-list');
+    list.innerHTML = queueData.map((q, i) => {
+      const m = Math.floor(q.wait / 60).toString().padStart(2,'0');
+      const s = (q.wait % 60).toString().padStart(2,'0');
+      const timerCls = q.crit ? 'crit' : q.warn ? 'warn' : '';
+      return `
+        <div class="queue-item ${q.priority===1?'priority-1':''}" onclick="answerQueue(${i})">
+          <div class="priority-bar p${q.priority}"></div>
+          <div class="qi-main">
+            <div class="qi-top">
+              <span class="qi-caller">${q.name}</span>
+              <span class="qi-tag ${q.tag==='URG'?'urg':q.tag==='PRI'?'pri':q.tag==='RAD'?'rad':'std'}">${q.tag}</span>
+            </div>
+            <div class="qi-meta">
+              <span>${q.number}</span>
+              <span>· ${q.source}</span>
+            </div>
+          </div>
+          <div class="qi-timer ${timerCls}">${m}:${s}</div>
+        </div>
+      `;
+    }).join('');
+  }
+  renderQueue();
+
+  /* Increment wait timers */
+  setInterval(() => {
+    queueData.forEach(q => q.wait++);
+    renderQueue();
+  }, 1000);
+
+  function answerQueue(i) {
+    const q = queueData[i];
+    document.getElementById('ac-name').textContent = q.name;
+    document.getElementById('ac-number').textContent = q.number;
+    document.getElementById('ac-initials').textContent = q.name.split(' ').map(n=>n[0]).slice(0,2).join('').toUpperCase();
+    callSeconds = 0;
+    queueData.splice(i, 1);
+    renderQueue();
+    document.getElementById('queue-count').textContent = queueData.length + ' APPELS';
+    document.getElementById('hdr-queue').textContent = queueData.length;
+  }
+
+  /* ═════════  WAVEFORM  ═════════ */
+  const wf = document.getElementById('waveform');
+  let wfHTML = '';
+  for (let i = 0; i < 72; i++) {
+    const delay = (Math.random() * 1.2).toFixed(2);
+    const h = 20 + Math.random() * 60;
+    wfHTML += `<div class="wf-bar" style="animation-delay:${delay}s; height:${h}%"></div>`;
+  }
+  wf.innerHTML = wfHTML;
+
+  /* ═════════  AUDIO LEVELS  ═════════ */
+  setInterval(() => {
+    const inLvl = 40 + Math.random() * 45;
+    const outLvl = 30 + Math.random() * 40;
+    document.getElementById('lvl-in').style.width = inLvl + '%';
+    document.getElementById('lvl-out').style.width = outLvl + '%';
+    document.getElementById('lvl-in-val').textContent = `-${Math.floor(40 - inLvl * 0.4)} dB`;
+    document.getElementById('lvl-out-val').textContent = `-${Math.floor(40 - outLvl * 0.4)} dB`;
+  }, 200);
+
+  /* ═════════  CALL TIMER  ═════════ */
+  let callSeconds = 134;
+  function updateTimer() {
+    const m = Math.floor(callSeconds / 60).toString().padStart(2,'0');
+    const s = (callSeconds % 60).toString().padStart(2,'0');
+    document.getElementById('call-timer').innerHTML = `00:${m}<span class="sec">:${s}</span>`;
+    callSeconds++;
+  }
+  updateTimer();
+  setInterval(updateTimer, 1000);
+
+  /* ═════════  CLOCK  ═════════ */
+  function updateClock() {
+    const d = new Date();
+    const hh = d.getHours().toString().padStart(2,'0');
+    const mm = d.getMinutes().toString().padStart(2,'0');
+    const ss = d.getSeconds().toString().padStart(2,'0');
+    document.getElementById('hdr-time').textContent = `${hh}:${mm}:${ss}`;
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  /* ═════════  CTL TOGGLES  ═════════ */
+  function toggleCtl(el) {
+    el.classList.toggle('active');
+  }
+
+  /* ═════════  TABS  ═════════ */
+  function switchTab(el) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    const target = el.dataset.tab;
+    document.querySelectorAll('[data-panel]').forEach(p => {
+      p.style.display = p.dataset.panel === target ? '' : 'none';
+    });
+  }
+
+  /* ═════════  DIALPAD  ═════════ */
+  let dialBuffer = '';
+  function pushKey(k) {
+    dialBuffer += k;
+    const disp = document.getElementById('dial-text');
+    disp.textContent = dialBuffer;
+    disp.classList.remove('placeholder');
+    // micro dtmf tone via Web Audio
+    playTone();
+  }
+  function clearDial() {
+    dialBuffer = dialBuffer.slice(0, -1);
+    const disp = document.getElementById('dial-text');
+    if (!dialBuffer) {
+      disp.textContent = 'Saisir un numéro…';
+      disp.classList.add('placeholder');
+    } else {
+      disp.textContent = dialBuffer;
+    }
+  }
+  function dialCall() {
+    if (!dialBuffer) return;
+    alert('Appel vers ' + dialBuffer);
+  }
+  function sendDtmf(code) {
+    alert('DTMF envoyé : ' + code);
+  }
+
+  /* small audible click for key press */
+  let audioCtx = null;
+  function playTone() {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.frequency.value = 880;
+      o.connect(g); g.connect(audioCtx.destination);
+      g.gain.value = 0.04;
+      o.start();
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.08);
+      o.stop(audioCtx.currentTime + 0.08);
+    } catch(e) {}
+  }
+
+  /* ═════════  HANGUP  ═════════ */
+  function hangup() {
+    if (confirm('Raccrocher l\'appel en cours ?')) {
+      document.getElementById('ac-name').textContent = 'Aucun appel actif';
+      document.getElementById('ac-number').textContent = '—';
+      callSeconds = 0;
+    }
+  }
+
+  /* ═════════  KEYBOARD SHORTCUTS  ═════════ */
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'F2') { e.preventDefault(); if (queueData.length) answerQueue(0); }
+    if (e.key === 'F3') { e.preventDefault(); hangup(); }
+    if (/^[0-9*#]$/.test(e.key)) pushKey(e.key);
+    if (e.key === 'Backspace' && document.activeElement.tagName !== 'INPUT') clearDial();
+  });
+</script>
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
-<script>
-// ────────────────────────────────────────────────────────────
-// Garde d'accès : seul un super-admin peut accéder à cette page
-// ────────────────────────────────────────────────────────────
-const role = (localStorage.getItem("role") || "").toLowerCase();
-if (role !== "superadmin") {
-    document.getElementById("accessGate").style.display = "block";
-} else {
-    document.getElementById("mainContent").style.display = "block";
-    init();
-}
-
-function setStatus(target, msg, isError) {
-    const el = document.getElementById(target);
-    el.innerHTML = '<div class="status ' + (isError ? "error" : "ok") + '">' + msg + '</div>';
-    setTimeout(() => { el.innerHTML = ""; }, 4000);
-}
-
-async function init() {
-    await chargerSites();
-    await chargerServices();
-}
-
-// ─── SITES ──────────────────────────────────────────────────
-async function chargerSites() {
-    try {
-        const { data, error } = await supabaseClient
-            .from("sites").select("*").order("nom", { ascending: true });
-        if (error) {
-            // Table absente : guide l'utilisateur
-            if (error.code === "42P01") {
-                document.getElementById("listeSites").innerHTML =
-                    '<div class="empty">⚠️ Table <code>sites</code> non créée en BDD.<br>Exécute le SQL fourni dans Supabase Studio.</div>';
-                document.getElementById("cntSites").textContent = "0";
-                return;
-            }
-            throw error;
-        }
-        const liste = data || [];
-        document.getElementById("cntSites").textContent = liste.length;
-        if (!liste.length) {
-            document.getElementById("listeSites").innerHTML =
-                '<div class="empty">Aucun site. Ajoute-en un ci-dessous.</div>';
-            return;
-        }
-        document.getElementById("listeSites").innerHTML = liste.map(s => `
-            <div class="list-item">
-                <span class="code">${escapeHtml(s.code)}</span>
-                <span class="nom">${escapeHtml(s.nom)}</span>
-                <button class="secondary" onclick="renommerSite('${escapeAttr(s.code)}', '${escapeAttr(s.nom)}')">✏️</button>
-                <button class="danger" onclick="supprimerSite('${escapeAttr(s.code)}', '${escapeAttr(s.nom)}')">🗑</button>
-            </div>
-        `).join("");
-    } catch (e) {
-        console.error(e);
-        setStatus("statusSites", "Erreur : " + e.message, true);
-    }
-}
-
-async function ajouterSite() {
-    const code = (document.getElementById("newSiteCode").value || "").trim().toUpperCase();
-    const nom  = (document.getElementById("newSiteNom").value  || "").trim();
-    if (!code || !nom) { setStatus("statusSites", "Code et nom requis.", true); return; }
-    if (!/^[A-Z0-9_]+$/.test(code)) { setStatus("statusSites", "Code : MAJ, chiffres, _ uniquement.", true); return; }
-    try {
-        const { error } = await supabaseClient.from("sites").insert({ code, nom });
-        if (error) throw error;
-        document.getElementById("newSiteCode").value = "";
-        document.getElementById("newSiteNom").value  = "";
-        setStatus("statusSites", "✅ Site « " + nom + " » ajouté.");
-        await chargerSites();
-        // Recharger le cache du catalogue
-        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
-            await window.AuraTenant.loadCatalogues(true);
-        }
-    } catch (e) {
-        setStatus("statusSites", "Erreur : " + (e.message || e), true);
-    }
-}
-
-async function renommerSite(code, ancienNom) {
-    const nv = prompt("Nouveau nom pour le site « " + code + " » :", ancienNom);
-    if (!nv || nv === ancienNom) return;
-    try {
-        const { error } = await supabaseClient.from("sites").update({ nom: nv }).eq("code", code);
-        if (error) throw error;
-        setStatus("statusSites", "✅ Renommé.");
-        await chargerSites();
-        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
-            await window.AuraTenant.loadCatalogues(true);
-        }
-    } catch (e) {
-        setStatus("statusSites", "Erreur : " + (e.message || e), true);
-    }
-}
-
-async function supprimerSite(code, nom) {
-    if (!confirm(`Supprimer le site "${nom}" (${code}) ?\n\n⚠️ Les comptes et données existants liés à ce site resteront en BDD mais deviendront orphelins.`)) return;
-    try {
-        const { error } = await supabaseClient.from("sites").delete().eq("code", code);
-        if (error) throw error;
-        setStatus("statusSites", "✅ Site supprimé.");
-        await chargerSites();
-        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
-            await window.AuraTenant.loadCatalogues(true);
-        }
-    } catch (e) {
-        setStatus("statusSites", "Erreur : " + (e.message || e), true);
-    }
-}
-
-// ─── SERVICES ───────────────────────────────────────────────
-async function chargerServices() {
-    try {
-        const { data, error } = await supabaseClient
-            .from("services").select("*").order("nom", { ascending: true });
-        if (error) {
-            if (error.code === "42P01") {
-                document.getElementById("listeServices").innerHTML =
-                    '<div class="empty">⚠️ Table <code>services</code> non créée en BDD.<br>Exécute le SQL fourni dans Supabase Studio.</div>';
-                document.getElementById("cntServices").textContent = "0";
-                return;
-            }
-            throw error;
-        }
-        const liste = data || [];
-        document.getElementById("cntServices").textContent = liste.length;
-        if (!liste.length) {
-            document.getElementById("listeServices").innerHTML =
-                '<div class="empty">Aucun service. Ajoute-en un ci-dessous.</div>';
-            return;
-        }
-        document.getElementById("listeServices").innerHTML = liste.map(s => `
-            <div class="list-item">
-                <span class="colordot" style="background:${escapeAttr(s.couleur || '#6b7280')}"></span>
-                <span class="code">${escapeHtml(s.code)}</span>
-                <span class="nom">${escapeHtml(s.nom)}</span>
-                <button class="secondary" onclick="modifierService('${escapeAttr(s.code)}', '${escapeAttr(s.nom)}', '${escapeAttr(s.couleur || '#6b7280')}')">✏️</button>
-                <button class="danger" onclick="supprimerService('${escapeAttr(s.code)}', '${escapeAttr(s.nom)}')">🗑</button>
-            </div>
-        `).join("");
-    } catch (e) {
-        console.error(e);
-        setStatus("statusServices", "Erreur : " + e.message, true);
-    }
-}
-
-async function ajouterService() {
-    const code = (document.getElementById("newSrvCode").value || "").trim().toLowerCase();
-    const nom  = (document.getElementById("newSrvNom").value  || "").trim();
-    const couleur = document.getElementById("newSrvColor").value || "#6b7280";
-    if (!code || !nom) { setStatus("statusServices", "Code et nom requis.", true); return; }
-    if (!/^[a-z0-9_]+$/.test(code)) { setStatus("statusServices", "Code : minuscules, chiffres, _ uniquement.", true); return; }
-    try {
-        const { error } = await supabaseClient.from("services").insert({ code, nom, couleur });
-        if (error) throw error;
-        document.getElementById("newSrvCode").value = "";
-        document.getElementById("newSrvNom").value  = "";
-        setStatus("statusServices", "✅ Service « " + nom + " » ajouté.");
-        await chargerServices();
-        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
-            await window.AuraTenant.loadCatalogues(true);
-        }
-    } catch (e) {
-        setStatus("statusServices", "Erreur : " + (e.message || e), true);
-    }
-}
-
-async function modifierService(code, ancienNom, ancienneCouleur) {
-    const nv = prompt("Nouveau nom pour le service « " + code + " » :", ancienNom);
-    if (!nv) return;
-    const couleur = prompt("Nouvelle couleur (hex, ex #ef4444) ou laisser vide :", ancienneCouleur);
-    try {
-        const update = { nom: nv };
-        if (couleur && /^#[0-9a-fA-F]{6}$/.test(couleur.trim())) update.couleur = couleur.trim();
-        const { error } = await supabaseClient.from("services").update(update).eq("code", code);
-        if (error) throw error;
-        setStatus("statusServices", "✅ Service mis à jour.");
-        await chargerServices();
-        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
-            await window.AuraTenant.loadCatalogues(true);
-        }
-    } catch (e) {
-        setStatus("statusServices", "Erreur : " + (e.message || e), true);
-    }
-}
-
-async function supprimerService(code, nom) {
-    if (!confirm(`Supprimer le service "${nom}" (${code}) ?\n\n⚠️ Les comptes et données existants liés à ce service resteront en BDD mais deviendront orphelins.`)) return;
-    try {
-        const { error } = await supabaseClient.from("services").delete().eq("code", code);
-        if (error) throw error;
-        setStatus("statusServices", "✅ Service supprimé.");
-        await chargerServices();
-        if (window.AuraTenant && window.AuraTenant.loadCatalogues) {
-            await window.AuraTenant.loadCatalogues(true);
-        }
-    } catch (e) {
-        setStatus("statusServices", "Erreur : " + (e.message || e), true);
-    }
-}
-
-// ─── Helpers ────────────────────────────────────────────────
-function escapeHtml(s) {
-    if (s === null || s === undefined) return "";
-    const d = document.createElement("div");
-    d.textContent = String(s);
-    return d.innerHTML;
-}
-function escapeAttr(s) {
-    return String(s || "").replace(/'/g, "\\'").replace(/"/g, "&quot;");
-}
-</script>
-
+<script src="security.js"></script>
+<script src="global.js"></script>
+<script src="notifications_global.js"></script>
 </body>
 </html>

@@ -1,111 +1,604 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-Frame-Options" content="DENY">
-<meta name="referrer" content="strict-origin-when-cross-origin">
-<meta name="robots" content="noindex, nofollow">
-<meta charset="UTF-8">
-<title>Intervention Sanitaire Syope</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="global.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Demande de laissez-passer — Aura</title>
+<script src="vendor/supabase.js"></script>
 <style>
-h1 { color:var(--accent); text-align:center; margin-bottom:25px; }
-h3 { color:var(--accent); margin-top:25px; }
-.info { margin-bottom:10px; }
-input, textarea { width:100%; padding:12px; margin-top:6px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:1rem; }
-textarea { height:140px; resize:none; }
-button { margin-top:20px; padding:14px; background:var(--accent); border:none; border-radius:10px; color:black; cursor:pointer; width:100%; font-size:1.1rem; font-weight:700; transition:0.25s; }
-button:hover { opacity:0.9; }
-button:disabled { opacity:0.4; cursor:not-allowed; }
-.card { background:var(--card); border:1px solid var(--border); padding:20px; border-radius:14px; margin-bottom:25px; box-shadow:var(--shadow); }
+  :root{ --bg:#eef1f6; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+         --accent:#0e1626; --accent2:#1e3a5f; --cyan:#0891b2; --ok:#16a34a; --warn:#ea580c; --bad:#dc2626; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+  header{background:linear-gradient(135deg,#0e1626,#1e3a5f);color:#fff;padding:22px 20px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 14px rgba(14,22,38,.25);}
+  header .logo{font-size:1.7rem;background:rgba(255,255,255,.1);width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;}
+  header h1{font-size:1.2rem;margin:0;font-weight:800;letter-spacing:-.01em;}
+  header .sub{font-size:.76rem;opacity:.7;margin-top:1px;}
+  header a{margin-left:auto;color:#cbd5e1;text-decoration:none;font-size:.85rem;padding:8px 14px;border:1px solid rgba(255,255,255,.15);border-radius:9px;}
+  header a:hover{background:rgba(255,255,255,.08);}
+  .wrap{max-width:780px;margin:0 auto;padding:18px 16px 70px;}
+
+  .tabs{display:flex;gap:8px;margin-bottom:18px;background:#fff;padding:6px;border-radius:14px;border:1px solid var(--line);box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .tab{flex:1;padding:12px;border-radius:10px;border:none;background:transparent;color:var(--muted);font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .15s;}
+  .tab.active{background:linear-gradient(135deg,#0e1626,#1e3a5f);color:#fff;box-shadow:0 2px 8px rgba(14,22,38,.2);}
+  .tab .cnt{font-size:.72rem;background:rgba(0,0,0,.12);border-radius:999px;padding:1px 8px;}
+  .tab.active .cnt{background:rgba(255,255,255,.2);}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .card h2{font-size:.82rem;margin:0 0 16px;color:var(--cyan);text-transform:uppercase;letter-spacing:.06em;font-weight:800;display:flex;align-items:center;gap:8px;}
+  .card h2::before{content:"";width:4px;height:16px;background:var(--cyan);border-radius:2px;}
+  label{display:block;font-size:.8rem;font-weight:600;color:#334155;margin:13px 0 5px;}
+  input,select,textarea{width:100%;padding:12px 13px;border:1px solid #cbd5e1;border-radius:11px;font-size:.92rem;background:#fff;color:var(--ink);transition:border .15s,box-shadow .15s;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cyan);box-shadow:0 0 0 3px rgba(8,145,178,.12);}
+  textarea{min-height:72px;resize:vertical;}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:560px){.row{grid-template-columns:1fr;}}
+  .checks{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:6px;}
+  @media(max-width:560px){.checks{grid-template-columns:1fr;}}
+  .check{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid #cbd5e1;border-radius:11px;font-size:.86rem;cursor:pointer;transition:all .15s;}
+  .check:has(input:checked){border-color:var(--cyan);background:rgba(8,145,178,.06);font-weight:600;}
+  .check input{width:auto;accent-color:var(--cyan);}
+  .hint{font-size:.74rem;color:var(--muted);margin-top:4px;}
+  .sub-list{display:none;flex-direction:column;gap:7px;margin:8px 0 4px 14px;padding-left:14px;border-left:2px solid rgba(8,145,178,.35);}
+  .sub-list.show{display:flex;}
+  .sub-list .check{font-size:.82rem;padding:9px 12px;}
+  .urgent-box{display:none;margin-top:12px;padding:14px;border-radius:11px;background:rgba(234,88,12,.07);border:1px solid rgba(234,88,12,.35);}
+  .urgent-box label{color:#9a3412;margin-top:0;}
+  .btn{width:100%;padding:15px;border:none;border-radius:13px;background:linear-gradient(135deg,#0e1626,#1e3a5f);color:#fff;font-size:1rem;font-weight:800;cursor:pointer;margin-top:10px;box-shadow:0 4px 14px rgba(14,22,38,.22);transition:transform .1s;}
+  .btn:active{transform:scale(.99);}
+  .btn:disabled{opacity:.6;cursor:not-allowed;}
+  .delai-banner{font-size:.82rem;padding:11px 13px;border-radius:10px;margin-top:8px;font-weight:600;}
+  .delai-ok{background:rgba(22,163,74,.1);color:#15803d;border:1px solid rgba(22,163,74,.3);}
+  .delai-warn{background:rgba(234,88,12,.1);color:#9a3412;border:1px solid rgba(234,88,12,.35);}
+
+  /* Mes demandes */
+  .req-id-box{background:linear-gradient(135deg,rgba(8,145,178,.08),rgba(30,58,95,.05));border:1px solid rgba(8,145,178,.25);border-radius:13px;padding:14px 16px;margin-bottom:16px;font-size:.84rem;color:#334155;}
+  .req-id-box strong{color:var(--cyan);}
+  .lp-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .lp-item-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;}
+  .lp-item-title{font-weight:800;font-size:1rem;flex:1;}
+  .lp-item-sub{font-size:.78rem;color:var(--muted);margin-top:2px;font-weight:400;}
+  .st{font-size:.7rem;font-weight:800;border-radius:999px;padding:4px 12px;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em;}
+  .st-wait{background:rgba(234,179,8,.15);color:#a16207;border:1px solid rgba(234,179,8,.4);}
+  .st-ok{background:rgba(22,163,74,.13);color:#15803d;border:1px solid rgba(22,163,74,.4);}
+  .st-bad{background:rgba(220,38,38,.12);color:#b91c1c;border:1px solid rgba(220,38,38,.4);}
+  .st-exp{background:rgba(100,116,139,.13);color:#475569;border:1px solid rgba(100,116,139,.35);}
+  .st-anndem{background:rgba(234,88,12,.13);color:#c2410c;border:1px solid rgba(234,88,12,.4);}
+  .lp-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px 16px;font-size:.82rem;margin:8px 0;}
+  .lp-meta .k{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;}
+  .lp-item-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+  .btn-sm{padding:9px 15px;border:none;border-radius:9px;font-size:.82rem;font-weight:700;cursor:pointer;}
+  .btn-cancel{background:rgba(220,38,38,.1);color:#b91c1c;border:1px solid rgba(220,38,38,.3);}
+  .btn-edit{background:rgba(37,99,235,.1);color:#1d4ed8;border:1px solid rgba(37,99,235,.3);}
+  /* Modale d'édition LP */
+  .lp-edit-ov{position:fixed;inset:0;background:rgba(8,11,20,.6);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px;}
+  .lp-edit-ov.show{display:flex;}
+  .lp-edit-box{background:#fff;color:#111;border-radius:16px;max-width:440px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.4);}
+  .lp-edit-box h3{margin:0 0 4px;font-size:1.1rem;}
+  .lp-edit-box .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+  .lp-edit-box label{font-size:.78rem;font-weight:600;color:#475569;display:block;margin-bottom:4px;}
+  .lp-edit-box input{width:100%;padding:9px 10px;border:1px solid #cbd5e1;border-radius:9px;font-size:.9rem;}
+  .lp-edit-warn{margin-top:12px;font-size:.8rem;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:9px;padding:9px 11px;}
+  .lp-edit-actions{display:flex;gap:8px;margin-top:16px;}
+  .lp-edit-actions button{flex:1;padding:11px;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:.9rem;}
+  .lp-edit-save{background:#1d4ed8;color:#fff;}
+  .lp-edit-cancel2{background:#e2e8f0;color:#334155;}
+  .btn-qr{background:rgba(8,145,178,.1);color:#0e7490;border:1px solid rgba(8,145,178,.3);}
+  .empty{text-align:center;color:var(--muted);padding:40px 20px;font-size:.9rem;}
+  .empty .big{font-size:2.4rem;display:block;margin-bottom:8px;opacity:.5;}
+  .hidden{display:none!important;}
 </style>
 </head>
 <body>
-<h1>Intervention Sanitaire Syope</h1>
+<header>
+  <span class="logo">🪪</span>
+  <div>
+    <h1>Laissez-passer</h1>
+    <div class="sub">Demande &amp; suivi d'accès</div>
+  </div>
+  <a href="index.html">← Accueil</a>
+</header>
 
-<div class="card">
-    <div class="info">👤 Équipier : <span id="equipierAffiche"></span></div>
-    <div class="info">🎖 Statut : <span id="statut"></span></div>
-    <div class="info">🕒 Heure d'arrivée : <span id="heureDebut"></span></div>
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" id="tab-new" onclick="switchTab('new')">✏️ Nouvelle demande</button>
+    <button class="tab" id="tab-mine" onclick="switchTab('mine')">📋 Mes demandes <span class="cnt" id="mineCnt">0</span></button>
+  </div>
+
+  <!-- ░░░ VUE : MES DEMANDES ░░░ -->
+  <div id="view-mine" class="hidden">
+    <div class="req-id-box">
+      👤 Demandes au nom de <strong id="mineName">—</strong>. Cette vue liste les laissez-passer demandés depuis cet appareil et ceux à votre nom.
+    </div>
+    <div id="mineList"><div class="empty"><span class="big">📭</span>Chargement…</div></div>
+  </div>
+
+  <!-- ░░░ VUE : NOUVELLE DEMANDE ░░░ -->
+  <div id="view-new">
+  <div class="card">
+    <h2>Demandeur</h2>
+    <div class="row">
+      <div>
+        <label>Nom du demandeur *</label>
+        <input id="nom_demandeur" placeholder="Votre nom complet">
+      </div>
+      <div>
+        <label>N° de département</label>
+        <input id="departement" placeholder="Ex : 42">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Téléphone du demandeur</label>
+        <input id="tel_demandeur" type="tel" placeholder="06 00 00 00 00">
+      </div>
+      <div>
+        <label>Email du demandeur</label>
+        <input id="email_demandeur" type="email" placeholder="demandeur@lvmh.fr">
+      </div>
+    </div>
+    <label>Établissement concerné *</label>
+    <select id="etablissement">
+      <option value="">— Sélectionner l'établissement —</option>
+      <option value="bon_marche">Le Bon Marché</option>
+      <option value="grande_epicerie_rg">Grande Épicerie Rive Gauche</option>
+      <option value="grande_epicerie_rd">Grande Épicerie Rive Droite</option>
+      <option value="moet_hennessy">Moët Hennessy</option>
+      <option value="samaritaine">La Samaritaine (service sûreté indépendant)</option>
+      <option value="entrepot_bagneux">Entrepôt Bagneux</option>
+    </select>
+    <div class="row">
+      <div>
+        <label>Marque / Zone</label>
+        <input id="marque_zone" placeholder="Ex : Dior — RDC">
+      </div>
+      <div>
+        <label>Besoins LP</label>
+        <input id="besoins_lp_short" placeholder="Résumé court (optionnel)">
+      </div>
+    </div>
+    <label>Détails des besoins LP</label>
+    <textarea id="besoins_lp" placeholder="Décrivez le besoin du laissez-passer"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>Intervenant</h2>
+    <div class="row">
+      <div>
+        <label>Société intervenante</label>
+        <input id="societe_intervenante" placeholder="Raison sociale">
+      </div>
+      <div>
+        <label>Nombre d'intervenants</label>
+        <input id="nb_intervenants" type="number" min="1" value="1">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Téléphone intervenant</label>
+        <input id="tel_intervenant" type="tel" placeholder="06 00 00 00 00">
+      </div>
+      <div>
+        <label>Email intervenant <span style="font-weight:400;color:var(--muted)">(optionnel)</span></label>
+        <input id="email_intervenant" type="email" placeholder="intervenant@societe.fr">
+      </div>
+    </div>
+    <label>Nom des intervenants</label>
+    <textarea id="noms_intervenants" placeholder="Un nom par ligne"></textarea>
+    <label>Nature des travaux</label>
+    <textarea id="nature_travaux" placeholder="Décrivez les travaux"></textarea>
+  </div>
+
+  <div class="card">
+    <h2>Intervention</h2>
+    <div class="row">
+      <div>
+        <label>Début d'intervention *</label>
+        <input id="debut_intervention" type="datetime-local">
+      </div>
+      <div>
+        <label>Fin d'intervention *</label>
+        <input id="fin_intervention" type="datetime-local">
+      </div>
+    </div>
+    <div id="delai-banner"></div>
+
+    <div class="row" style="margin-top:4px;">
+      <div>
+        <label>Heure d'accès — début <span style="opacity:.6;font-weight:400;">(optionnel)</span></label>
+        <input id="heure_debut" type="time">
+      </div>
+      <div>
+        <label>Heure d'accès — fin <span style="opacity:.6;font-weight:400;">(optionnel)</span></label>
+        <input id="heure_fin" type="time">
+      </div>
+    </div>
+    <div class="hint">Si renseignées, l'accès n'est autorisé que dans cette tranche <strong>chaque jour</strong> de la période (ex. 08:00–20:00). Laissez vide pour un accès continu sur toute la plage.</div>
+
+    <div class="urgent-box" id="urgent-box">
+      <label>Motif de l'urgence (demande à moins de 24h) *</label>
+      <textarea id="motif_urgence" placeholder="Justifiez pourquoi la demande est faite à moins de 24h"></textarea>
+      <div class="hint">Les demandes à moins de 24h déclenchent une alerte aux valideurs dans Aura.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Accès demandés</h2>
+    <div class="checks">
+      <label class="check"><input type="checkbox" id="porte_segep"> Porte SEGEP</label>
+      <label class="check"><input type="checkbox" id="quai_38_sevres"> Quai 38 Sèvres</label>
+      <label class="check"><input type="checkbox" id="ouverture_porte"> Ouverture Porte</label>
+      <label class="check"><input type="checkbox" id="horlo_jo"> Horlo / JO</label>
+    </div>
+    <h2 style="margin-top:18px;">Accompagnement</h2>
+
+    <label class="check"><input type="checkbox" id="besoin_agent_surete"> Besoin d'un agent de sûreté</label>
+    <div class="sub-list" id="sub_surete">
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Ouverture d'une porte"> Ouverture d'une porte</label>
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Alarme à désactiver"> Alarme à désactiver</label>
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Accompagnement sur zone ou boutique"> Accompagnement sur zone ou boutique</label>
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Présence en permanence"> Présence en permanence</label>
+      <label class="check"><input type="checkbox" class="sub-surete" data-label="Soirée événements"> Soirée événements</label>
+    </div>
+
+    <label class="check" style="margin-top:9px;"><input type="checkbox" id="besoin_pompier"> Besoin d'un pompier</label>
+    <div class="sub-list" id="sub_pompier">
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Balisage d'une zone"> Balisage d'une zone</label>
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Besoin d'un permis feu"> Besoin d'un permis feu</label>
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Accompagnement en verrière ou locaux techniques à risques"> Accompagnement en verrière ou locaux techniques à risques</label>
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Présence d'une équipe de secours ou Croix-Rouge"> Présence d'une équipe de secours ou Croix-Rouge</label>
+      <label class="check"><input type="checkbox" class="sub-pompier" data-label="Soirée événements"> Soirée événements</label>
+    </div>
+
+    <label class="check" style="margin-top:9px;"><input type="checkbox" id="besoin_technicien"> Besoin d'un technicien (service technique)</label>
+    <div class="sub-list" id="sub_technicien">
+      <label class="check"><input type="checkbox" class="sub-technicien" data-label="Ouverture de rideau"> Ouverture de rideau</label>
+      <label class="check"><input type="checkbox" class="sub-technicien" data-label="Escalator"> Escalator</label>
+      <label class="check"><input type="checkbox" class="sub-technicien" data-label="Besoin d'éclairage"> Besoin d'éclairage</label>
+      <label class="check"><input type="checkbox" class="sub-technicien" data-label="Soirée événements"> Soirée événements</label>
+    </div>
+  </div>
+
+  <button class="btn" id="submitBtn" onclick="soumettre()">Envoyer la demande</button>
+  </div><!-- /view-new -->
 </div>
 
-<div class="card">
-    <h3>Intervention / Agent</h3>
-    <label>Motif d'intervention</label><input type="text" id="motif">
-    <label>Nature réelle</label><input type="text" id="nature">
-    <label>Agent (intervenant)</label><input type="text" id="agent">
-
-    <h3>Circonstantiel</h3>
-    <label>Lieu d'intervention</label><input type="text" id="lieu">
-    <label>Localisation</label><input type="text" id="localisation">
-    <label>Sous localisation</label><input type="text" id="sousLocalisation">
-    <label>Circonstances</label><textarea id="circonstances"></textarea>
-
-    <h3>Identité</h3>
-    <label>Prénom</label><input type="text" id="prenom">
-    <label>Nom</label><input type="text" id="nomPatient">
-    <label>Âge</label><input type="text" id="age">
-    <label>Sexe</label>
-    <select id="sexe"><option value="homme">Homme</option><option value="femme">Femme</option><option value="inconnu">Inconnu</option></select>
-
-    <h3>Devenir</h3>
-    <label>Devenir du patient</label><input type="text" id="devenir">
-    <label>Transmission initiale</label><input type="text" id="transmission">
-    <label>Heure d'arrivée sur les lieux</label><input type="time" id="heureArrivee">
-
-    <button id="save">💾 Enregistrer</button>
-    <button onclick="window.print()">📄 Exporter en PDF</button>
-    <button onclick="location.href='index.html'">🏠 Retour à l'accueil</button>
+<!-- Modale modifier / prolonger un LP -->
+<div class="lp-edit-ov" id="lpEditOv">
+  <div class="lp-edit-box">
+    <h3>Modifier / prolonger</h3>
+    <div style="font-size:.82rem;color:#64748b;">Ajustez les dates, heures et la tranche horaire d'accès.</div>
+    <div class="row2">
+      <div><label>Début d'intervention</label><input id="ed_debut" type="datetime-local"></div>
+      <div><label>Fin d'intervention</label><input id="ed_fin" type="datetime-local"></div>
+    </div>
+    <div class="row2">
+      <div><label>Heure accès — début (option.)</label><input id="ed_hd" type="time"></div>
+      <div><label>Heure accès — fin (option.)</label><input id="ed_hf" type="time"></div>
+    </div>
+    <div class="lp-edit-warn" id="ed_warn" style="display:none;">⚠️ Ce LP est déjà validé. Toute modification le repassera <strong>en attente de validation</strong> par la sûreté, et le QR précédent ne donnera plus accès tant qu'il n'est pas revalidé.</div>
+    <div class="lp-edit-actions">
+      <button class="lp-edit-cancel2" onclick="fermerEdition()">Annuler</button>
+      <button class="lp-edit-save" id="ed_save" onclick="enregistrerEdition()">Enregistrer</button>
+    </div>
+  </div>
 </div>
 
-<script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
-<script src="tenant.js"></script>
 <script>
-const equipier = localStorage.getItem("equipierSelectionne") || localStorage.getItem("nom") || "";
-document.getElementById("agent").value = equipier;
-document.getElementById("equipierAffiche").textContent = equipier;
-document.getElementById("statut").textContent = localStorage.getItem("statut");
-document.getElementById("heureDebut").textContent = new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+const debutEl = document.getElementById("debut_intervention");
+const finEl   = document.getElementById("fin_intervention");
 
-document.getElementById("agent").addEventListener("input", () => {
-    document.getElementById("equipierAffiche").textContent = document.getElementById("agent").value;
-});
+function evalDelai(){
+  const banner = document.getElementById("delai-banner");
+  const urgent = document.getElementById("urgent-box");
+  if(!debutEl.value){ banner.innerHTML=""; urgent.style.display="none"; return null; }
+  const debut = new Date(debutEl.value);
+  const diffH = (debut - new Date()) / 3600000;
+  if(diffH < 24){
+    banner.className = "delai-banner delai-warn";
+    banner.textContent = "⚠️ Demande à moins de 24h (" + Math.max(0,Math.round(diffH)) + "h) — motif d'urgence requis + validation intranet renforcée.";
+    urgent.style.display = "block";
+    return true;  // <24h
+  } else {
+    banner.className = "delai-banner delai-ok";
+    banner.textContent = "✅ Délai respecté (" + Math.round(diffH/24*10)/10 + " j d'avance).";
+    urgent.style.display = "none";
+    return false;
+  }
+}
+debutEl.addEventListener("change", evalDelai);
 
-document.getElementById("save").addEventListener("click", async () => {
-    const btn = document.getElementById("save");
-    btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
-    try {
-        const now = new Date();
-        const heureArr = document.getElementById("heureArrivee").value;
-        let heureArrTs = null;
-        if (heureArr) { const [h,m] = heureArr.split(":"); heureArrTs = new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m).toISOString(); }
+async function soumettre(){
+  const btn = document.getElementById("submitBtn");
+  const v = id => (document.getElementById(id).value||"").trim();
+  const c = id => document.getElementById(id).checked;
 
-        const { error } = await supabaseClient.from("interventions_syope").insert({
-            type_intervention: document.getElementById("motif").value,
-            localisation: document.getElementById("localisation").value || document.getElementById("lieu").value,
-            victime_genre: document.getElementById("sexe").value,
-            victime_age_estime: parseInt(document.getElementById("age").value) || null,
-            bilan: document.getElementById("circonstances").value,
-            suite_donnee: document.getElementById("devenir").value,
-            heure_arrivee: heureArrTs,
-            gestes_effectues: [document.getElementById("transmission").value].filter(Boolean),
-            smur_appele: false,
-            sapeurs_pompiers: false,
-            hospitalisation: false
-        });
-        if (error) throw error;
-        showToast("✅ Intervention SYOPE enregistrée !");
-        setTimeout(() => location.href="index.html", 1200);
-    } catch(e) {
-        showToast("❌ "+e.message, true);
-        btn.disabled = false; btn.textContent = "💾 Enregistrer";
-    }
-});
+  const nom = v("nom_demandeur");
+  const email = v("email_intervenant");
+  if(!nom){ showToast("⚠️ Nom du demandeur requis", true); return; }
+  if(email && !/.+@.+\..+/.test(email)){ showToast("⚠️ Format d'email invalide", true); return; }
+  if(!debutEl.value || !finEl.value){ showToast("⚠️ Début et fin d'intervention requis", true); return; }
+  if(new Date(finEl.value) <= new Date(debutEl.value)){ showToast("⚠️ La fin doit être après le début", true); return; }
+
+  const hDeb = v("heure_debut"), hFin = v("heure_fin");
+  if((hDeb && !hFin) || (!hDeb && hFin)){ showToast("⚠️ Renseignez les deux heures d'accès, ou aucune", true); return; }
+  if(hDeb && hFin && hFin <= hDeb){ showToast("⚠️ L'heure de fin d'accès doit être après l'heure de début", true); return; }
+
+  const etab = v("etablissement");
+  if(!etab){ showToast("⚠️ Sélectionnez l'établissement concerné", true); document.getElementById("etablissement").focus(); return; }
+
+  const moins24 = evalDelai();
+  if(moins24 && !v("motif_urgence")){ showToast("⚠️ Motif d'urgence obligatoire (demande < 24h)", true); document.getElementById("motif_urgence").focus(); return; }
+
+  btn.disabled = true; btn.textContent = "Envoi…";
+
+  let userId = null;
+  try { const { data } = await supabaseClient.auth.getUser(); userId = data?.user?.id || null; } catch(_){}
+
+  // Besoins LP : on concatène le résumé court + les détails si présents
+  const besoinsShort = v("besoins_lp_short");
+  const besoinsLong  = v("besoins_lp");
+  const besoins = [besoinsShort, besoinsLong].filter(Boolean).join(" — ") || null;
+
+  const payload = {
+    nom_demandeur: nom,
+    departement: v("departement") || null,
+    tel_demandeur: v("tel_demandeur") || null,
+    email_demandeur: v("email_demandeur") || null,
+    etablissement: etab,
+    marque_zone: v("marque_zone") || null,
+    besoins_lp: besoins,
+    debut_intervention: new Date(debutEl.value).toISOString(),
+    fin_intervention: new Date(finEl.value).toISOString(),
+    heure_debut: hDeb || null,
+    heure_fin: hFin || null,
+    societe_intervenante: v("societe_intervenante") || null,
+    nb_intervenants: parseInt(v("nb_intervenants")||"1",10) || 1,
+    noms_intervenants: v("noms_intervenants") || null,
+    nature_travaux: v("nature_travaux") || null,
+    porte_segep: c("porte_segep"),
+    quai_38_sevres: c("quai_38_sevres"),
+    ouverture_porte: c("ouverture_porte"),
+    horlo_jo: c("horlo_jo"),
+    besoin_agent_surete: c("besoin_agent_surete"),
+    besoin_pompier: c("besoin_pompier"),
+    surete_details: c("besoin_agent_surete")
+      ? (Array.from(document.querySelectorAll(".sub-surete:checked")).map(e=>e.dataset.label)) : null,
+    pompier_details: c("besoin_pompier")
+      ? (Array.from(document.querySelectorAll(".sub-pompier:checked")).map(e=>e.dataset.label)) : null,
+    besoin_technicien: c("besoin_technicien"),
+    technicien_details: c("besoin_technicien")
+      ? (Array.from(document.querySelectorAll(".sub-technicien:checked")).map(e=>e.dataset.label)) : null,
+    tel_intervenant: v("tel_intervenant") || null,
+    email_intervenant: email || null,
+    motif_urgence: moins24 ? v("motif_urgence") : null,
+    delai_inferieur_24h: !!moins24,
+    site_code: localStorage.getItem("site_code") || null,
+    created_by: userId,
+    statut: "en_attente"
+  };
+
+  const { data: inserted, error } = await supabaseClient.from("laissez_passer").insert(payload).select("id").single();
+  if(error){ showToast("❌ " + error.message, true); btn.disabled=false; btn.textContent="Envoyer la demande"; return; }
+
+  // Mémorise l'id localement pour le suivi "Mes demandes" depuis cet appareil
+  try{
+    const mine = JSON.parse(localStorage.getItem("lp_mine")||"[]");
+    if(inserted && inserted.id){ mine.push(inserted.id); localStorage.setItem("lp_mine", JSON.stringify(mine)); }
+    localStorage.setItem("lp_last_name", nom);
+  }catch(_){}
+
+  showToast(moins24
+    ? "✅ Demande urgente envoyée — les valideurs sont alertés"
+    : "✅ Demande envoyée — en attente de validation sûreté");
+  btn.textContent = "✅ Demande envoyée";
+  // Réinitialise et bascule vers "Mes demandes"
+  setTimeout(()=>{
+    resetForm();
+    btn.disabled=false; btn.textContent="Envoyer la demande";
+    switchTab("mine");
+  }, 1400);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ONGLETS + MES DEMANDES
+   ═══════════════════════════════════════════════════════════════ */
+function switchTab(t){
+  document.getElementById("tab-new").classList.toggle("active", t==="new");
+  document.getElementById("tab-mine").classList.toggle("active", t==="mine");
+  document.getElementById("view-new").classList.toggle("hidden", t!=="new");
+  document.getElementById("view-mine").classList.toggle("hidden", t!=="mine");
+  if(t==="mine") chargerMesDemandes();
+}
+
+function resetForm(){
+  ["nom_demandeur","departement","tel_demandeur","email_demandeur","marque_zone","besoins_lp_short",
+   "besoins_lp","societe_intervenante","noms_intervenants","nature_travaux","tel_intervenant",
+   "email_intervenant","motif_urgence","debut_intervention","fin_intervention"].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value="";
+  });
+  const nb=document.getElementById("nb_intervenants"); if(nb) nb.value="1";
+  const etab=document.getElementById("etablissement"); if(etab) etab.value="";
+  ["porte_segep","quai_38_sevres","ouverture_porte","horlo_jo","besoin_agent_surete","besoin_pompier","besoin_technicien"].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.checked=false;
+  });
+  document.querySelectorAll(".sub-surete, .sub-pompier, .sub-technicien").forEach(el=> el.checked=false);
+  document.querySelectorAll(".sub-list").forEach(el=> el.classList.remove("show"));
+  document.getElementById("delai-banner").innerHTML="";
+  document.getElementById("urgent-box").style.display="none";
+}
+
+const _escD = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const _fmtD = iso => { try{ return new Date(iso).toLocaleString("fr-FR",{dateStyle:"short",timeStyle:"short"}); }catch(_){ return iso||"—"; } };
+
+const ETAB_LBL = {
+  bon_marche:"Le Bon Marché", grande_epicerie_rg:"Grande Épicerie Rive Gauche",
+  grande_epicerie_rd:"Grande Épicerie Rive Droite", moet_hennessy:"Moët Hennessy", samaritaine:"La Samaritaine",
+  entrepot_bagneux:"Entrepôt Bagneux"
+};
+
+function statutBadge(s){
+  const map = {
+    en_attente:['st-wait','⏳ En attente'],
+    valide:['st-ok','✅ Validé'],
+    refuse:['st-bad','✖️ Refusé'],
+    annule:['st-exp','🚫 Annulé'],
+    expire:['st-exp','⌛ Expiré'],
+    demande_annulation:['st-anndem','🔄 Annulation demandée']
+  };
+  const [cls,lbl] = map[s] || ['st-exp', s];
+  return `<span class="st ${cls}">${lbl}</span>`;
+}
+
+async function chargerMesDemandes(){
+  const box = document.getElementById("mineList");
+  const lastName = localStorage.getItem("lp_last_name") || (document.getElementById("nom_demandeur").value||"").trim();
+  document.getElementById("mineName").textContent = lastName || "—";
+
+  let ids=[];
+  try{ ids = JSON.parse(localStorage.getItem("lp_mine")||"[]"); }catch(_){}
+
+  // On récupère les LP par id (cet appareil) OU par nom du demandeur
+  let rows=[];
+  try{
+    const orParts=[];
+    if(ids.length) orParts.push("id.in.("+ids.join(",")+")");
+    if(lastName)   orParts.push("nom_demandeur.eq."+lastName);
+    if(!orParts.length){ box.innerHTML='<div class="empty"><span class="big">📭</span>Aucune demande pour le moment.<br>Vos demandes apparaîtront ici après envoi.</div>'; document.getElementById("mineCnt").textContent="0"; return; }
+    const { data, error } = await supabaseClient.from("laissez_passer")
+      .select("*").or(orParts.join(",")).eq("archive", false).order("created_at",{ascending:false});
+    if(error){ box.innerHTML='<div class="empty">❌ '+_escD(error.message)+'</div>'; return; }
+    rows = data||[];
+  }catch(e){ box.innerHTML='<div class="empty">❌ '+_escD(e.message)+'</div>'; return; }
+
+  document.getElementById("mineCnt").textContent = rows.length;
+  if(!rows.length){ box.innerHTML='<div class="empty"><span class="big">📭</span>Aucune demande trouvée.</div>'; return; }
+
+  box.innerHTML = rows.map(p=>{
+    const peutAnnuler = ["en_attente","valide"].includes(p.statut);
+    return `<div class="lp-item">
+      <div class="lp-item-head">
+        <div class="lp-item-title">${_escD(p.marque_zone||"Laissez-passer")}
+          <div class="lp-item-sub">${_escD(ETAB_LBL[p.etablissement]||p.etablissement||"—")}${p.societe_intervenante?" · "+_escD(p.societe_intervenante):""}</div>
+        </div>
+        ${statutBadge(p.statut)}
+      </div>
+      <div class="lp-meta">
+        <div><div class="k">Début</div>${_fmtD(p.debut_intervention)}</div>
+        <div><div class="k">Fin</div>${_fmtD(p.fin_intervention)}</div>
+        <div><div class="k">Demandé le</div>${_fmtD(p.created_at)}</div>
+      </div>
+      ${(p.heure_debut&&p.heure_fin)?`<div class="hint">⏰ Accès quotidien autorisé : ${_escD(p.heure_debut.slice(0,5))}–${_escD(p.heure_fin.slice(0,5))}</div>`:""}
+      ${p.statut==="refuse"&&p.motif_refus?`<div class="hint" style="color:#b91c1c">Motif du refus : ${_escD(p.motif_refus)}</div>`:""}
+      ${p.statut==="demande_annulation"?`<div class="hint" style="color:#c2410c">Annulation demandée — en attente de confirmation par la sûreté.</div>`:""}
+      ${p.statut==="valide"&&p.arrivee_le?`<div class="hint" style="color:#15803d">Arrivée enregistrée : ${_fmtD(p.arrivee_le)}${p.depart_le?" · Départ : "+_fmtD(p.depart_le):""}</div>`:""}
+      ${peutAnnuler?`<div class="lp-item-actions">
+        <button class="btn-sm btn-edit" onclick="ouvrirEdition('${p.id}','${p.statut}','${p.debut_intervention||''}','${p.fin_intervention||''}','${p.heure_debut||''}','${p.heure_fin||''}')">✏️ Modifier / prolonger</button>
+        <button class="btn-sm btn-cancel" onclick="demanderAnnulation('${p.id}')">🚫 Demander l'annulation</button>
+      </div>`:""}
+    </div>`;
+  }).join("");
+}
+
+async function demanderAnnulation(id){
+  const motif = prompt("Motif de la demande d'annulation (optionnel) :");
+  if(motif===null) return; // annulé
+  // On récupère le statut courant pour le mémoriser
+  const { data: cur } = await supabaseClient.from("laissez_passer").select("statut").eq("id",id).single();
+  const { error } = await supabaseClient.from("laissez_passer").update({
+    statut: "demande_annulation",
+    annulation_motif: motif || null,
+    annulation_demandee_le: new Date().toISOString(),
+    statut_avant_annulation: cur ? cur.statut : null
+  }).eq("id", id);
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast("🔄 Demande d'annulation envoyée à la sûreté");
+  chargerMesDemandes();
+}
+
+// ─── Modifier / prolonger un LP ───────────────────────────────────
+let _editId = null, _editStatut = null;
+function _isoToLocalInput(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  if(isNaN(d)) return "";
+  const p = n => String(n).padStart(2,"0");
+  return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
+}
+function ouvrirEdition(id, statut, debutIso, finIso, hd, hf){
+  _editId = id; _editStatut = statut;
+  document.getElementById("ed_debut").value = _isoToLocalInput(debutIso);
+  document.getElementById("ed_fin").value   = _isoToLocalInput(finIso);
+  document.getElementById("ed_hd").value = (hd||"").slice(0,5);
+  document.getElementById("ed_hf").value = (hf||"").slice(0,5);
+  document.getElementById("ed_warn").style.display = (statut==="valide") ? "block" : "none";
+  document.getElementById("lpEditOv").classList.add("show");
+}
+function fermerEdition(){ document.getElementById("lpEditOv").classList.remove("show"); _editId=null; }
+
+async function enregistrerEdition(){
+  if(!_editId) return;
+  const debut = document.getElementById("ed_debut").value;
+  const fin   = document.getElementById("ed_fin").value;
+  const hd    = document.getElementById("ed_hd").value;
+  const hf    = document.getElementById("ed_hf").value;
+  if(!debut || !fin){ showToast("⚠️ Début et fin requis", true); return; }
+  if(new Date(fin) <= new Date(debut)){ showToast("⚠️ La fin doit être après le début", true); return; }
+  if((hd && !hf) || (!hd && hf)){ showToast("⚠️ Renseignez les deux heures d'accès, ou aucune", true); return; }
+  if(hd && hf && hf <= hd){ showToast("⚠️ L'heure de fin d'accès doit être après le début", true); return; }
+
+  const save = document.getElementById("ed_save");
+  save.disabled = true; save.textContent = "Enregistrement…";
+
+  const update = {
+    debut_intervention: new Date(debut).toISOString(),
+    fin_intervention: new Date(fin).toISOString(),
+    heure_debut: hd || null,
+    heure_fin: hf || null
+  };
+  // Un LP déjà validé qu'on modifie doit repasser en validation (le QR
+  // existant ne doit plus ouvrir tant que la sûreté n'a pas revalidé).
+  if(_editStatut === "valide"){
+    update.statut = "en_attente";
+    update.valide_par = null;
+    update.valide_le = null;
+  }
+
+  const { error } = await supabaseClient.from("laissez_passer").update(update).eq("id", _editId);
+  save.disabled = false; save.textContent = "Enregistrer";
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast(_editStatut==="valide" ? "✅ Modifié — renvoyé en validation" : "✅ Modifié");
+  fermerEdition();
+  chargerMesDemandes();
+}
+
+// ─── Accompagnement : sous-listes conditionnelles ────────────────
+(function setupAccompagnement(){
+  function wire(parentId, subClass, subListId){
+    const parent=document.getElementById(parentId);
+    const list=document.getElementById(subListId);
+    if(!parent||!list) return;
+    const subs=()=>Array.from(list.querySelectorAll("."+subClass));
+    parent.addEventListener("change", ()=>{
+      list.classList.toggle("show", parent.checked);
+      if(!parent.checked) subs().forEach(s=>s.checked=false);
+    });
+    subs().forEach(s=> s.addEventListener("change", ()=>{
+      if(s.checked && !parent.checked){ parent.checked=true; list.classList.add("show"); }
+    }));
+  }
+  wire("besoin_agent_surete","sub-surete","sub_surete");
+  wire("besoin_pompier","sub-pompier","sub_pompier");
+  wire("besoin_technicien","sub-technicien","sub_technicien");
+})();
+
+// Pré-remplit le nom si déjà connu
+(function(){
+  const n = localStorage.getItem("lp_last_name") || localStorage.getItem("nom");
+  if(n){ const el=document.getElementById("nom_demandeur"); if(el && !el.value) el.value=n; }
+})();
 </script>
-<script src="security.js"></script>
 <script src="global.js"></script>
-<script src="notifications_global.js"></script>
 </body>
 </html>

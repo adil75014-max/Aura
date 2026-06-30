@@ -1,906 +1,754 @@
-// ===============================================================
-//  NOTIFICATIONS GLOBALES — SUPABASE REALTIME
-//  Visible par tous : agent, stationnaire, superviseur, admin
-// ===============================================================
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<title>Rapport - LBM Sécurité</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+<style>
+body { display:flex; justify-content:center; padding:20px; }
+.page-container { width:100%; max-width:700px; }
+h1 { text-align:center; margin-bottom:25px; color:var(--accent); font-size:1.7rem; }
+.menu-return { margin-bottom:20px; }
+.menu-return button { background:var(--bg2); border:1px solid var(--border); padding:8px 16px; border-radius:10px; color:var(--accent); cursor:pointer; transition:0.25s; }
+.menu-return button:hover { background:var(--accent); color:#000; }
+.section { background:var(--card); border:1px solid var(--border); padding:18px; border-radius:14px; margin-bottom:20px; box-shadow:var(--shadow); }
+.section h2 { color:var(--accent); margin-bottom:10px; }
+textarea, input[type="text"], input[type="time"], select, input[type="file"] { width:100%; padding:10px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; color:var(--text); margin-top:8px; font-size:0.9rem; }
+textarea { min-height:120px; resize:vertical; }
+.btn { background:var(--accent); border:none; padding:12px 16px; border-radius:10px; color:#000; font-weight:600; cursor:pointer; width:100%; margin-top:10px; }
+.btn:hover { opacity:0.85; }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+</style>
+</head>
+<body>
+<div class="page-container">
+<h1>Rapport</h1>
+<div class="menu-return"><button onclick="location.href='index.html'">⟵ Menu</button></div>
 
-// ⚠️ Requiert supabaseClient.js chargé avant ce fichier
+<label><strong>Site :</strong></label>
+<select id="reportSite">
+    <option value="">Sélectionner un site</option>
+    <option value="LBM">Le Bon Marché</option>
+    <option value="GERG">La Grande Épicerie Rive Gauche</option>
+    <option value="GERD">La Grande Épicerie Rive Droite</option>
+    <option value="SAM">La Samaritaine</option>
+    <option value="MH">Moët Hennessy</option>
+    <option value="M3">Magasin 3 – 115 Rue du Bac</option>
+    <option value="BGX">Bagneux</option>
+</select>
 
-// ───────────────────────────────────────
-//  INITIALISATION DES NOTIFICATIONS
-// ───────────────────────────────────────
+<div class="section">
+    <h2>Informations automatiques</h2>
+    <p><strong>ID :</strong> <span id="reportId"></span></p>
+    <p><strong>Date :</strong> <span id="reportDate"></span></p>
+    <p><strong>Heure début :</strong> <span id="reportTime"></span></p>
+    <label>Heure de fin :</label>
+    <input type="time" id="reportEndTime">
+    <p><strong>Agent principal :</strong> <span id="reportAgent"></span></p>
+    <p><strong>Type :</strong> <span id="reportType"></span></p>
+</div>
 
-let globalNotifications = [];
-let notifChannel = null;
+<!-- SECTION MULTI-AGENTS (2 à 3 agents par intervention) -->
+<div class="section">
+    <h2>👥 Agents affectés à l'intervention</h2>
+    <p style="font-size:0.85rem;opacity:0.7;margin-bottom:12px;">
+        Vous pouvez affecter jusqu'à 3 agents sur cette intervention.
+    </p>
+    <div id="agentsContainer">
+        <div class="agent-row" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;">
+            <span style="font-size:1.1rem;">👤</span>
+            <span id="agent1Name" style="flex:1;font-weight:600;"></span>
+            <span style="font-size:0.75rem;opacity:0.6;background:rgba(212,175,55,0.15);padding:4px 10px;border-radius:6px;color:var(--accent);">Principal</span>
+        </div>
+    </div>
 
-// La cloche de notification / l'alarme sont RÉSERVÉES au service Sécurité Incendie.
-// Les autres services (sûreté, technique, services généraux) n'ont ni cloche,
-// ni alarme sonore, ni souscription temps réel aux notifications.
-// (Un superadmin qui "incarne" le service incendie aura service === "incendie"
-//  en localStorage, donc la cloche s'active normalement dans ce cas.)
-function _isNotifServiceIncendie() {
-    var svc = (localStorage.getItem("service") || "").toLowerCase().trim();
-    return svc === "incendie";
+    <div style="margin-top:10px;">
+        <label style="font-size:0.88rem;font-weight:600;">Ajouter un agent supplémentaire :</label>
+        <div style="display:flex;gap:8px;margin-top:6px;">
+            <select id="agentSelect" style="flex:1;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.9rem;">
+                <option value="">— Sélectionner un agent —</option>
+            </select>
+            <button type="button" onclick="addAgent()" style="padding:10px 16px;background:var(--accent);color:#000;border:none;border-radius:10px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Ajouter</button>
+        </div>
+        <div id="agentMsg" style="font-size:0.8rem;margin-top:6px;display:none;"></div>
+    </div>
+</div>
+
+<!-- CHAMPS SPÉCIFIQUES AU TYPE (rendus dynamiquement selon ?type=) -->
+<div class="section" id="extraFieldsSection" style="display:none;">
+    <h2 id="extraFieldsTitle">Détails spécifiques</h2>
+    <div id="extraFields"></div>
+</div>
+
+<div class="section"><h2>Informations générales</h2><textarea id="infoGenerales" placeholder="Décris la situation initiale..."></textarea></div>
+<div class="section"><h2>Constat</h2><textarea id="constat" placeholder="Décris ce que tu as constaté..."></textarea></div>
+<div class="section"><h2>Actions réalisées</h2><textarea id="actions" placeholder="Décris les actions effectuées..."></textarea></div>
+<div class="section">
+    <label>📸 Photos (multiples)</label><input type="file" id="photos" accept="image/*" multiple>
+    <label style="margin-top:10px;">🎥 Vidéos (multiples)</label><input type="file" id="videos" accept="video/*" multiple>
+</div>
+
+<button class="btn" id="btnSave" onclick="saveReport()">💾 Enregistrer le rapport</button>
+</div>
+
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="app-config.js"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script>
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+/* Source de vérité unique : code -> libellé lisible.
+   Couvre interventions, vérifications et rondes. */
+const TYPES = {
+    // Interventions
+    incendie:                       "Détection incendie",
+    odeur:                          "Odeur suspecte",
+    desincarceration:               "Désincarcération ASC/MC/Escalator/Toilette",
+    fuite:                          "Fuite d'eau",
+    alarme:                         "Alarme technique",
+    coupure:                        "Coupure électrique",
+    animalier:                      "Sauvetage animalier",
+    // Vérifications
+    verif_j1_baie_ssi:              "J1 Baie SSI",
+    verif_j2_materiel_pc:           "J2 Matériel PC",
+    verif_j3_materiel_secours:      "J3 Matériel de secours",
+    verif_j4_epi:                   "J4 EPI",
+    verif_j5_interphonie_asc_mc:    "J5 Interphonie ASC/MC",
+    verif_extincteurs_ria_baes:     "Extincteur / RIA / BAES",
+    verif_sprinkler:                "Sprinkler",
+    verif_surpresseur:              "Surpresseur",
+    verif_colonne_seche:            "Colonne sèche",
+    verif_desenfumage_naturel:      "Désenfumage naturel",
+    verif_baie_accessible:          "Baie accessible",
+    verif_eas:                      "EAS",
+    verif_salle_gaz:                "Salle automatique à gaz",
+    verif_essai_annuel_technicien:  "Essai annuel Technicien",
+    verif_essai_triennal_bureau:    "Essai triennal Bureau de contrôle",
+    // Rondes
+    verif_popup:                    "Vérification Pop up",
+    verifreceptiontravaux:          "Réception Travaux",
+
+    // ─── COMMUN (incendie + sûreté) ───
+    ouverture_porte_casiers: "Ouverture porte/casiers",
+
+    // ─── SÛRETÉ ───
+    vol:                "Vol",
+    conflit:            "Conflit / Altercation",
+    intrusion:          "Intrusion",
+    personne_suspecte:  "Personne suspecte",
+    colis_suspect:      "Colis suspect",
+    objet_abandonne:    "Objet abandonné",
+    camera_hs:          "Caméra hors service",
+
+    // ─── TECHNIQUE ───
+    panne_elec:         "Panne électrique",
+    panne_cvc:          "Panne CVC / Climatisation",
+    panne_plomberie:    "Panne plomberie / Fuite",
+    panne_ascenseur:    "Panne ascenseur / monte-charge",
+    panne_eclairage:    "Panne éclairage",
+    porte_auto:         "Porte automatique HS",
+    chaudiere:          "Chaudière / Production ECS",
+    maint_hebdo:        "Maintenance hebdomadaire",
+    maint_mens:         "Maintenance mensuelle",
+    maint_annuelle:     "Maintenance annuelle",
+
+    // ─── SERVICES GÉNÉRAUX ───
+    livraison_in:       "Livraison entrante",
+    livraison_out:      "Livraison sortante",
+    courrier:           "Réception courrier",
+    colis:              "Gestion colis",
+    nettoyage:          "Nettoyage / Propreté",
+    espaces_verts:      "Espaces verts",
+    dechets:            "Gestion déchets",
+    resa_salle:         "Réservation salle de réunion",
+    resa_parking:       "Réservation parking",
+    resa_materiel:      "Réservation matériel"
+};
+
+/* Champs spécifiques par type d'intervention (adaptés au métier).
+   Rendus dynamiquement sous le type, sauvegardés dans meta.champs_specifiques.
+   Types de champ supportés : text, number, textarea, select (avec options). */
+const TYPE_EXTRA_FIELDS = {
+    ouverture_porte_casiers: [
+        { id: "objet",       label: "Élément ouvert",       type: "select", options: ["Porte","Casier / vestiaire","Bureau","Local technique","Coffre / armoire","Autre"] },
+        { id: "reference",   label: "N° / localisation (porte, casier…)", type: "text" },
+        { id: "motif",       label: "Motif",                type: "select", options: ["Oubli de clé/badge","Demande hiérarchie/RH","Intervention technique","Contrôle/sûreté","Urgence","Objet oublié"] },
+        { id: "demandeur",   label: "Demandeur / autorisé par", type: "text" },
+        { id: "moyen",       label: "Moyen d'ouverture",    type: "select", options: ["Passe","Clé de secours","Code","Badge","Ouverture forcée"] },
+        { id: "temoin",      label: "Témoin présent",       type: "select", options: ["Non","Oui — agent","Oui — demandeur","Oui — responsable"] },
+        { id: "etat",        label: "État après ouverture", type: "select", options: ["Refermé/sécurisé","Laissé ouvert","Remis au demandeur"] }
+    ],
+    // ── Sûreté ──
+    vol: [
+        { id: "objets_voles",   label: "Objets volés",        type: "textarea" },
+        { id: "valeur_estimee", label: "Valeur estimée (€)",  type: "number" },
+        { id: "auteur",         label: "Auteur",              type: "select", options: ["Non identifié","Identifié","Interpellé","En fuite"] },
+        { id: "plainte",        label: "Plainte déposée",     type: "select", options: ["Non","Oui","À faire"] }
+    ],
+    conflit: [
+        { id: "personnes",   label: "Personnes impliquées",  type: "text" },
+        { id: "niveau",      label: "Niveau",                type: "select", options: ["Verbal","Physique léger","Physique grave","Arme"] },
+        { id: "blesses",     label: "Blessés",               type: "select", options: ["Non","Oui — secours sur place","Oui — évacuation"] },
+        { id: "police",      label: "Intervention police",   type: "select", options: ["Non","Oui","En cours"] }
+    ],
+    intrusion: [
+        { id: "point_entree", label: "Point d'entrée",       type: "text" },
+        { id: "nb_individus", label: "Nombre d'individus",   type: "number" },
+        { id: "interpellation", label: "Interpellation",     type: "select", options: ["Non","Oui","Fuite"] },
+        { id: "police",      label: "Forces de l'ordre",     type: "select", options: ["Non","Prévenues","Sur place"] }
+    ],
+    personne_suspecte: [
+        { id: "description_pers", label: "Description de la personne", type: "textarea" },
+        { id: "comportement",     label: "Comportement observé",      type: "text" },
+        { id: "suite",            label: "Suite donnée",              type: "select", options: ["Surveillance","Contrôle","Éconduite","Forces de l'ordre"] }
+    ],
+    colis_suspect: [
+        { id: "localisation_colis", label: "Localisation précise", type: "text" },
+        { id: "description_colis",  label: "Description du colis",  type: "textarea" },
+        { id: "perimetre",          label: "Périmètre de sécurité", type: "select", options: ["Non","Établi"] },
+        { id: "demineurs",          label: "Démineurs / Police",    type: "select", options: ["Non","Appelés","Sur place"] }
+    ],
+    objet_abandonne: [
+        { id: "description_objet", label: "Description de l'objet", type: "textarea" },
+        { id: "proprietaire",      label: "Propriétaire",          type: "select", options: ["Inconnu","Retrouvé","Objet retiré"] }
+    ],
+    camera_hs: [
+        { id: "num_camera",    label: "N° / nom caméra",      type: "text" },
+        { id: "zone_couverte", label: "Zone couverte",        type: "text" },
+        { id: "type_panne",    label: "Type de panne",        type: "select", options: ["Image noire","Image figée","Réseau","Alimentation","Autre"] },
+        { id: "compensation",  label: "Mesure compensatoire", type: "select", options: ["Aucune","Gardiennage renforcé","Ronde supplémentaire"] }
+    ],
+    // ── Technique ──
+    panne_elec: [
+        { id: "equipement", label: "Équipement concerné",      type: "text" },
+        { id: "zone",       label: "Zone impactée",            type: "text" },
+        { id: "criticite",  label: "Criticité",                type: "select", options: ["Faible","Moyenne","Haute","Critique"] },
+        { id: "prestataire",label: "Prestataire",              type: "select", options: ["Non requis","À appeler","Appelé","Sur place"] },
+        { id: "delai",      label: "Délai estimé remise en service", type: "text" }
+    ],
+    panne_cvc: [
+        { id: "equipement",  label: "Équipement (CTA, groupe froid…)", type: "text" },
+        { id: "zone",        label: "Zone impactée",          type: "text" },
+        { id: "temperature", label: "Température relevée (°C)", type: "number" },
+        { id: "criticite",   label: "Criticité",              type: "select", options: ["Faible","Moyenne","Haute"] }
+    ],
+    panne_plomberie: [
+        { id: "localisation_fuite", label: "Localisation de la fuite", type: "text" },
+        { id: "ampleur",            label: "Ampleur",                  type: "select", options: ["Goutte à goutte","Modérée","Importante","Inondation"] },
+        { id: "eau_coupee",         label: "Arrivée d'eau coupée",     type: "select", options: ["Non","Oui"] }
+    ],
+    panne_ascenseur: [
+        { id: "num_appareil",      label: "N° appareil",          type: "text" },
+        { id: "personnes_bloquees",label: "Personnes bloquées",   type: "select", options: ["Non","Oui — dégagées","Oui — en cours"] },
+        { id: "ascensoriste",      label: "Ascensoriste",         type: "select", options: ["Non requis","Appelé","Sur place"] }
+    ],
+    panne_eclairage: [
+        { id: "zone",            label: "Zone",                 type: "text" },
+        { id: "nb_points",       label: "Nb points lumineux",   type: "number" },
+        { id: "eclairage_secours", label: "Éclairage de secours", type: "select", options: ["Fonctionnel","HS"] }
+    ],
+    porte_auto: [
+        { id: "num_porte", label: "N° / emplacement porte", type: "text" },
+        { id: "etat",      label: "État",                   type: "select", options: ["Bloquée fermée","Bloquée ouverte","Fonctionnement aléatoire"] },
+        { id: "securite",  label: "Impact sûreté",          type: "select", options: ["Aucun","Accès non sécurisé","Issue condamnée"] }
+    ],
+    chaudiere: [
+        { id: "equipement", label: "Équipement",            type: "text" },
+        { id: "impact_ecs", label: "Impact eau chaude",     type: "select", options: ["Aucun","Partiel","Total"] }
+    ],
+    maint_hebdo:    [ { id: "prestataire", label: "Intervenant", type: "text" }, { id: "conforme", label: "Conformité", type: "select", options: ["Conforme","Réserves","Non conforme"] } ],
+    maint_mens:     [ { id: "prestataire", label: "Intervenant", type: "text" }, { id: "conforme", label: "Conformité", type: "select", options: ["Conforme","Réserves","Non conforme"] } ],
+    maint_annuelle: [ { id: "prestataire", label: "Intervenant", type: "text" }, { id: "conforme", label: "Conformité", type: "select", options: ["Conforme","Réserves","Non conforme"] } ],
+    // ── Services Généraux ──
+    livraison_in: [
+        { id: "transporteur", label: "Transporteur",        type: "text" },
+        { id: "num_bl",       label: "N° bon de livraison",  type: "text" },
+        { id: "nb_colis",     label: "Nombre de colis",      type: "number" },
+        { id: "destinataire", label: "Destinataire",         type: "text" },
+        { id: "controle",     label: "Contrôle effectué",    type: "select", options: ["Oui — conforme","Oui — réserves","Non"] }
+    ],
+    livraison_out: [
+        { id: "transporteur", label: "Transporteur",        type: "text" },
+        { id: "num_bl",       label: "N° bon d'enlèvement",  type: "text" },
+        { id: "nb_colis",     label: "Nombre de colis",      type: "number" },
+        { id: "expediteur",   label: "Expéditeur / service", type: "text" }
+    ],
+    courrier: [
+        { id: "type_courrier", label: "Type",            type: "select", options: ["Lettre","Recommandé","Colis","Pli interne"] },
+        { id: "expediteur",    label: "Expéditeur",      type: "text" },
+        { id: "destinataire",  label: "Destinataire",    type: "text" }
+    ],
+    colis: [
+        { id: "transporteur", label: "Transporteur", type: "text" },
+        { id: "num_suivi",    label: "N° de suivi",  type: "text" },
+        { id: "destinataire", label: "Destinataire", type: "text" },
+        { id: "etat",         label: "État du colis", type: "select", options: ["Bon","Endommagé","Ouvert"] }
+    ],
+    nettoyage: [
+        { id: "zone",        label: "Zone",            type: "text" },
+        { id: "prestataire", label: "Prestataire",     type: "text" },
+        { id: "type_inter",  label: "Type",            type: "select", options: ["Quotidien","Ponctuel","Urgence","Vitrerie"] }
+    ],
+    espaces_verts: [
+        { id: "zone",       label: "Zone",  type: "text" },
+        { id: "type_inter", label: "Type",  type: "select", options: ["Arrosage","Taille","Plantation","Entretien"] }
+    ],
+    dechets: [
+        { id: "type_dechet", label: "Type de déchet", type: "select", options: ["DIB","Carton","Verre","DEEE","Dangereux"] },
+        { id: "volume",      label: "Volume / quantité", type: "text" },
+        { id: "evacuation",  label: "Évacuation",        type: "select", options: ["Local déchets","Enlèvement prestataire","Benne"] }
+    ],
+    // ── Réservations (Services Généraux) ──
+    resa_salle: [
+        { id: "salle",        label: "Salle",                type: "text" },
+        { id: "date_resa",    label: "Date",                 type: "date" },
+        { id: "heure_debut",  label: "Heure début",          type: "time" },
+        { id: "heure_fin",    label: "Heure fin",            type: "time" },
+        { id: "demandeur",    label: "Demandeur / service",  type: "text" },
+        { id: "nb_personnes", label: "Nombre de personnes",  type: "number" },
+        { id: "equipements",  label: "Équipements",          type: "select", options: ["Aucun","Vidéoprojecteur","Visioconférence","Paperboard","Visio + vidéo","Sonorisation"] }
+    ],
+    resa_parking: [
+        { id: "emplacement",     label: "Emplacement / zone", type: "text" },
+        { id: "date_resa",       label: "Date",               type: "date" },
+        { id: "creneau",         label: "Créneau",            type: "text" },
+        { id: "demandeur",       label: "Demandeur",          type: "text" },
+        { id: "immatriculation", label: "Immatriculation",    type: "text" },
+        { id: "societe",         label: "Société / service",  type: "text" }
+    ],
+    resa_materiel: [
+        { id: "materiel",   label: "Matériel",        type: "text" },
+        { id: "quantite",   label: "Quantité",        type: "number" },
+        { id: "date_resa",  label: "Date",            type: "date" },
+        { id: "periode",    label: "Période / créneau", type: "text" },
+        { id: "demandeur",  label: "Demandeur",       type: "text" },
+        { id: "retour",     label: "Retour prévu",    type: "select", options: ["Même jour","Lendemain","Sous 1 semaine","À définir"] }
+    ]
+};
+
+/* Inverse libellé -> code (généré automatiquement) */
+const LABEL_TO_CODE = Object.fromEntries(
+    Object.entries(TYPES).map(([code, label]) => [label, code])
+);
+
+function getTypeCode(label) {
+    return LABEL_TO_CODE[label] || label || "autre";
 }
 
-async function initGlobalNotifications() {
-    // Garde service : pas de cloche hors incendie.
-    if (!_isNotifServiceIncendie()) {
-        return;
+function getTypeLabel(code) {
+    return TYPES[code] || code || "—";
+}
+
+/* Récupère le type depuis (1) l'URL ?type=..., (2) le localStorage, sinon null */
+function resolveIntervention() {
+    const params = new URLSearchParams(window.location.search);
+    const typeParam = params.get("type");
+    if (typeParam) {
+        // Le type peut être soit un code (ex: "incendie"), soit un libellé complet (ex: "Levée de doute")
+        // On essaie d'abord de le résoudre comme code, sinon comme libellé
+        let label, code;
+        if (TYPES[typeParam]) {
+            // C'est un code connu
+            code = typeParam;
+            label = TYPES[typeParam];
+        } else {
+            // C'est probablement un libellé envoyé par la supervision
+            label = typeParam;
+            code = LABEL_TO_CODE[typeParam] || typeParam.toLowerCase().replace(/\s+/g, "_").replace(/[^\w]/g, "");
+        }
+        localStorage.setItem("selectedIntervention", label);
+        return { code, label };
+    }
+    const fallback = localStorage.getItem("selectedIntervention");
+    if (fallback) return { code: getTypeCode(fallback), label: fallback };
+    return { code: null, label: null };
+}
+
+/* Rendu des champs spécifiques au type d'intervention */
+function renderExtraFields(code, label) {
+    const section = document.getElementById("extraFieldsSection");
+    const wrap = document.getElementById("extraFields");
+    const fields = TYPE_EXTRA_FIELDS[code];
+    if (!fields || !fields.length) { section.style.display = "none"; return; }
+
+    document.getElementById("extraFieldsTitle").textContent = "Détails — " + (label || "intervention");
+    wrap.innerHTML = fields.map(f => {
+        const fid = "xf_" + f.id;
+        if (f.type === "select") {
+            const opts = (f.options || []).map(o => `<option value="${escapeAttr(o)}">${escapeHtml(o)}</option>`).join("");
+            return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
+                    <select id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}">
+                        <option value="">— Choisir —</option>${opts}
+                    </select>`;
+        }
+        if (f.type === "textarea") {
+            return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
+                    <textarea id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}" placeholder="${escapeAttr(f.label)}"></textarea>`;
+        }
+        const inputType = ["number","date","time"].includes(f.type) ? f.type : "text";
+        return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
+                <input type="${inputType}" id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}" placeholder="${escapeAttr(f.label)}">`;
+    }).join("");
+    section.style.display = "block";
+}
+
+/* Collecte des champs spécifiques saisis → objet {id:{label,value}} */
+function collectExtraFields() {
+    const out = {};
+    document.querySelectorAll("#extraFields [data-xf]").forEach(el => {
+        const v = (el.value || "").trim();
+        if (v) out[el.getAttribute("data-xf")] = { label: el.getAttribute("data-xflabel"), value: v };
+    });
+    return out;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const { code, label } = resolveIntervention();
+    document.getElementById("reportType").textContent = label || "—";
+    renderExtraFields(code, label);
+
+    const now = new Date();
+    document.getElementById("reportDate").textContent = now.toLocaleDateString("fr-FR");
+    document.getElementById("reportTime").textContent = now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+
+    // Récupérer les paramètres URL passés par la supervision
+    const params = new URLSearchParams(window.location.search);
+    const agentsFromURL = params.get("agents");
+    const noteFromURL = params.get("note");
+    const missionId = params.get("missionId");
+
+    // Si des agents sont passés depuis la supervision, les utiliser
+    if (agentsFromURL) {
+        const agentList = agentsFromURL.split(",").filter(Boolean);
+        if (agentList.length) {
+            assignedAgents = agentList;
+            const agentPrincipal = agentList[0];
+            document.getElementById("reportAgent").textContent = agentPrincipal;
+            document.getElementById("agent1Name").textContent = agentPrincipal;
+
+            // Afficher les agents supplémentaires
+            if (agentList.length > 1) {
+                const container = document.getElementById("agentsContainer");
+                for (let i = 1; i < agentList.length; i++) {
+                    const row = document.createElement("div");
+                    row.className = "agent-row";
+                    row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;";
+                    row.innerHTML = `
+                        <span style="font-size:1.1rem;">👤</span>
+                        <span style="flex:1;font-weight:600;">${esc(agentList[i])}</span>
+                        <span style="font-size:0.75rem;opacity:0.6;background:rgba(100,180,255,0.15);padding:4px 10px;border-radius:6px;color:#4da3ff;">Agent ${i + 1}</span>
+                        <button type="button" onclick="removeAgent('${agentList[i]}', this)" style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);color:#ff6b6b;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.8rem;">✕</button>
+                    `;
+                    container.appendChild(row);
+                }
+            }
+        }
+    } else {
+        const agentPrincipal = localStorage.getItem("nom") || "Inconnu";
+        document.getElementById("reportAgent").textContent = agentPrincipal;
+        document.getElementById("agent1Name").textContent = agentPrincipal;
     }
 
-    // Charger les notifications existantes depuis Supabase
-    await loadNotifications();
+    // Pré-remplir la note dans le champ "Informations générales"
+    if (noteFromURL) {
+        const infoGen = document.getElementById("infoGenerales");
+        if (infoGen) infoGen.value = "Note opérationnelle depuis la supervision : " + noteFromURL;
+    }
 
-    // Écouter les nouvelles notifications en temps réel
-    subscribeToNotifications();
+    // Stocker le missionId pour le rapport
+    if (missionId) {
+        document.getElementById("reportId").textContent = missionId;
+    }
 
-    // Injecter le bouton cloche sur toutes les pages (sauf login)
-    injectNotifBell();
+    document.getElementById("reportSite").addEventListener("change", () => {
+        const s = document.getElementById("reportSite").value;
+        if (!s) return;
+        if (missionId) return; // Ne pas écraser l'ID si fourni
+        const codeForId = (code || "autre").toUpperCase().slice(0,3);
+        document.getElementById("reportId").textContent = s+"-"+codeForId+"-"+Date.now().toString().slice(-6);
+    });
 
-    // Mettre à jour le badge
-    updateGlobalNotifBadge();
-}
+    // Charger la liste des agents depuis Supabase
+    loadAgentsList();
+});
 
-// ───────────────────────────────────────
-//  CHARGER LES NOTIFICATIONS DEPUIS SUPABASE
-// ───────────────────────────────────────
-async function loadNotifications() {
+/* ═══════════════════════════════════════════════════════
+   MULTI-AGENTS : jusqu'à 3 agents par intervention
+═══════════════════════════════════════════════════════ */
+let assignedAgents = [localStorage.getItem("nom") || "Inconnu"];
+
+async function loadAgentsList() {
+    const select = document.getElementById("agentSelect");
     try {
-        const { data, error } = await supabaseClient
-            .from("notifications")
+        // Charger la feuille de garde du jour
+        const todayISO = new Date().toISOString().split("T")[0];
+        const { data: feuille, error: fError } = await supabaseClient
+            .from("feuille_de_garde")
             .select("*")
-            .order("created_at", { ascending: false })
-            .limit(50);
+            .eq("date_jour", todayISO)
+            .maybeSingle();
 
-        if (error) {
-            console.warn("[NOTIF] Erreur chargement:", error.message);
-            // Fallback sur localStorage
-            globalNotifications = JSON.parse(localStorage.getItem("notifications_global") || "[]");
+        const agentsFromFeuille = [];
+
+        if (!fError && feuille && feuille.data_json) {
+            const json = feuille.data_json;
+            // Extraire tous les noms : chef_poste_nom, agent1_nom à agent5_nom, resp_bm_nom
+            const fieldsToCheck = [
+                "resp_bm_nom", "chef_poste_nom",
+                "agent1_nom", "agent2_nom", "agent3_nom", "agent4_nom", "agent5_nom",
+                "stat_8_10_nom", "stat_10_12_nom", "stat_12_13_nom",
+                "stat_13_15_nom", "stat_15_17_nom", "stat_17_19_nom",
+                "stat_19_21_nom", "stat_21_23_nom"
+            ];
+            const labels = {
+                resp_bm_nom: "Responsable BM",
+                chef_poste_nom: "Chef de poste",
+                agent1_nom: "Agent 1", agent2_nom: "Agent 2",
+                agent3_nom: "Agent 3", agent4_nom: "Agent 4", agent5_nom: "Agent 5"
+            };
+            const seen = new Set();
+            fieldsToCheck.forEach(field => {
+                const val = (json[field] || "").trim();
+                if (val && !seen.has(val.toLowerCase())) {
+                    seen.add(val.toLowerCase());
+                    agentsFromFeuille.push({
+                        nom: val,
+                        role: labels[field] || "Stationnaire"
+                    });
+                }
+            });
+        }
+
+        // Si la feuille de garde a des agents, les utiliser
+        if (agentsFromFeuille.length > 0) {
+            agentsFromFeuille.forEach(p => {
+                if (p.nom !== assignedAgents[0]) {
+                    const opt = document.createElement("option");
+                    opt.value = p.nom;
+                    opt.textContent = p.nom + " (" + p.role + ")";
+                    select.appendChild(opt);
+                }
+            });
+            // Petit indicateur visuel
+            const label = select.previousElementSibling;
+            if (label) label.textContent = "Personnel présent (feuille de garde du jour) :";
             return;
         }
-        globalNotifications = data || [];
+
+        // Sinon, fallback sur la table profiles
+        const { data, error } = await supabaseClient
+            .from("profiles")
+            .select("nom, prenom, role")
+            .order("nom");
+
+        if (error || !data) return;
+
+        data.forEach(p => {
+            const fullName = [p.prenom, p.nom].filter(Boolean).join(" ");
+            if (fullName && fullName !== assignedAgents[0]) {
+                const opt = document.createElement("option");
+                opt.value = fullName;
+                opt.textContent = fullName + (p.role ? " (" + p.role + ")" : "");
+                select.appendChild(opt);
+            }
+        });
     } catch (e) {
-        console.warn("[NOTIF] Erreur:", e);
-        globalNotifications = JSON.parse(localStorage.getItem("notifications_global") || "[]");
+        console.warn("Impossible de charger la liste des agents:", e);
     }
 }
 
-// ───────────────────────────────────────
-//  ABONNEMENT TEMPS RÉEL
-// ───────────────────────────────────────
-function subscribeToNotifications() {
-    try {
-        /* On NE filtre PAS côté serveur Supabase ici : si les anciens rows
-           ont site_code=NULL ou si la colonne manque, le filter serveur
-           les mange tous et l'utilisateur ne reçoit plus rien (régression
-           identifiée). Le cloisonnement reste assuré côté client via
-           AuraTenant.matchesRealtime() ci-dessous, qui rejette les
-           payloads d'un autre tenant tout en laissant passer ceux avec
-           site_code/service à NULL ou manquant. */
-        var rtOpts = { event: "INSERT", schema: "public", table: "notifications" };
+function addAgent() {
+    const select = document.getElementById("agentSelect");
+    const msg = document.getElementById("agentMsg");
+    const name = select.value;
 
-        notifChannel = supabaseClient
-            .channel("global-notifications")
-            .on("postgres_changes", rtOpts, (payload) => {
-                const newNotif = payload.new;
+    msg.style.display = "none";
 
-                // Filet client : rejet uniquement si le row appartient
-                // explicitement à un AUTRE tenant. Les rows sans site_code
-                // ou sans service passent (compatibilité ascendante).
-                if (window.AuraTenant && !window.AuraTenant.matchesRealtime(newNotif)) return;
-
-                const myRole = (localStorage.getItem("role") || "agent").toLowerCase();
-                const myName = localStorage.getItem("nom") || "";
-
-                // Toujours ajouter à la liste pour TOUS les rôles
-                globalNotifications.unshift(newNotif);
-                updateGlobalNotifBadge();
-                renderGlobalNotifPanel();
-
-                const isAlarm = newNotif.type_notif === "alarme" || newNotif.priorite === "haute" || newNotif.priorite === "critique";
-                const isPermisFeuAlarm = isAlarm && /permis.*feu|incendie|secours.*victime|svv/i.test(
-                    (newNotif.titre || "") + " " + (newNotif.message || "")
-                );
-                const isCriticalAlarm = isPermisFeuAlarm || newNotif.priorite === "critique";
-
-                // Self-bypass différencié : on ne se notifie pas soi-même sur les
-                // notifs banales, mais on RECOIT les alarmes critiques (utile pour
-                // confirmer le départ du signal sur ses autres devices + acquitter).
-                if (newNotif.emetteur === myName && !isCriticalAlarm) return;
-
-                // Toast complet (titre + détails comme le lieu, agent, etc.)
-                const toastText = (newNotif.titre || "") +
-                                  (newNotif.message ? "\n" + newNotif.message : "") ||
-                                  "Nouvelle notification";
-
-                // ── RÈGLES PAR RÔLE ──
-                if (myRole === "stationnaire") {
-                    // Stationnaire : uniquement les alarmes liées aux permis feu.
-                    // Le message va UNIQUEMENT dans la bannière plein écran (pas de
-                    // toast en plus, sinon l'adresse s'affiche deux fois).
-                    if (isPermisFeuAlarm) {
-                        playAlarmSound();
-                        setAlarmBanner(toastText);
-                    }
-                    return;
-                }
-
-                // ── Agent / Superviseur / Admin / Superadmin ──
-                if (isAlarm) {
-                    // ALARME : bannière plein écran + son. setAlarmBanner est
-                    // l'écrivain unique : il fusionne avec ce que checkUrgence
-                    // (index.html) a éventuellement déjà écrit, en dédupliquant
-                    // les lignes → l'adresse ne s'affiche qu'une seule fois.
-                    playAlarmSound();
-                    setAlarmBanner(toastText);
-                } else {
-                    // Notification banale : toast + son léger.
-                    playNotifSound();
-                    showGlobalToast(toastText);
-                }
-            })
-            .subscribe();
-
-        // ─── Subscription auxiliaire sur alertes_urgence ───
-        // Quand UNE row passe à statut='traitee' (UPDATE), on ferme
-        // automatiquement le banner d'alarme et on stoppe le son sur
-        // CE device. Combiné avec stopAllAlarms() qui broadcast cet
-        // UPDATE, ça donne un acquittement multi-device en temps réel.
-        try {
-            supabaseClient
-                .channel("alertes_urgence_stop")
-                .on("postgres_changes", {
-                    event: "UPDATE",
-                    schema: "public",
-                    table: "alertes_urgence"
-                }, (payload) => {
-                    const row = payload.new || {};
-                    if (window.AuraTenant && !window.AuraTenant.matchesRealtime(row)) return;
-                    if (row.statut === "traitee") {
-                        // Quelqu'un (peut-être nous, peut-être un autre poste) a stoppé.
-                        // On ferme le banner et on coupe le son sans rebroadcaster.
-                        closeAlarmBanner();
-                    }
-                })
-                .subscribe();
-        } catch (e) {
-            console.warn("[NOTIF] Subscription alertes_urgence_stop indisponible:", e);
-        }
-    } catch (e) {
-        console.warn("[NOTIF] Realtime non disponible:", e);
-    }
-}
-
-// ───────────────────────────────────────
-//  ENVOYER UNE NOTIFICATION (TOUS LES RÔLES)
-// ───────────────────────────────────────
-async function sendGlobalNotification(titre, message, type = "info", priorite = "normale") {
-    const agent = localStorage.getItem("nom") || "Système";
-    const role  = localStorage.getItem("role") || "système";
-
-    const notif = {
-        texte: message || titre || "Notification", // colonne NOT NULL en base — sans elle l'insert échouait
-        titre: titre,
-        message: message,
-        type_notif: type, // "info", "alarme", "intervention", "alerte"
-        priorite: priorite, // "normale", "haute", "critique"
-        emetteur: agent,
-        emetteur_role: role,
-        visible_par: ["agent", "stationnaire", "superviseur", "admin"],
-        lu: false,
-        created_at: new Date().toISOString()
-    };
-
-    try {
-        const { error } = await supabaseClient
-            .from("notifications")
-            .insert(notif);
-
-        if (error) {
-            console.warn("[NOTIF] Erreur envoi Supabase:", error.message);
-            // Fallback localStorage
-            globalNotifications.unshift(notif);
-            localStorage.setItem("notifications_global", JSON.stringify(globalNotifications));
-        }
-    } catch (e) {
-        console.warn("[NOTIF] Fallback localStorage");
-        globalNotifications.unshift(notif);
-        localStorage.setItem("notifications_global", JSON.stringify(globalNotifications));
-    }
-
-    updateGlobalNotifBadge();
-    renderGlobalNotifPanel();
-}
-
-// ───────────────────────────────────────
-//  UI : CLOCHE DE NOTIFICATION GLOBALE
-// ───────────────────────────────────────
-function injectNotifBell() {
-    const page = window.location.pathname.split("/").pop() || "index.html";
-    if (page === "login.html") return;
-    // Ne pas dupliquer si l'index a déjà sa propre cloche
-    if (document.getElementById("globalNotifBell")) return;
-    // Ne pas injecter sur index.html car il a déjà sa propre cloche
-    if (page === "index.html") return;
-
-    // Conteneur cloche
-    const bell = document.createElement("div");
-    bell.id = "globalNotifBell";
-    bell.innerHTML = `
-        <span style="font-size:1.4rem;cursor:pointer;">🔔</span>
-        <span id="globalNotifBadge" style="
-            position:absolute; top:-4px; right:-6px;
-            background:#ff4444; color:#fff;
-            font-size:0.65rem; font-weight:700;
-            min-width:18px; height:18px;
-            border-radius:50%; display:none;
-            align-items:center; justify-content:center;
-            line-height:18px; text-align:center;
-        ">0</span>
-    `;
-    bell.style.cssText = `
-        position:fixed; top:18px; right:24px; z-index:99999;
-        cursor:pointer; user-select:none;
-    `;
-    bell.onclick = toggleGlobalNotifPanel;
-    document.body.appendChild(bell);
-
-    // Panneau notifications
-    const panel = document.createElement("div");
-    panel.id = "globalNotifPanel";
-    panel.innerHTML = `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);">
-            <span style="font-weight:700;font-size:1rem;">🔔 Notifications & Alarmes</span>
-            <button onclick="toggleGlobalNotifPanel()" style="background:none;border:none;color:inherit;font-size:1.3rem;cursor:pointer;">✖</button>
-        </div>
-        <div id="globalNotifContent" style="padding:12px 20px;max-height:60vh;overflow-y:auto;">
-            Aucune notification.
-        </div>
-    `;
-    panel.style.cssText = `
-        position:fixed; top:0; right:-400px; width:380px; max-width:90vw;
-        height:100vh; background:rgba(10,12,20,0.97);
-        border-left:1px solid rgba(255,255,255,0.08);
-        backdrop-filter:blur(16px); z-index:100000;
-        transition:right 0.35s ease; color:#e0e4ef;
-        font-family:system-ui,sans-serif;
-        box-shadow:-8px 0 30px rgba(0,0,0,0.5);
-    `;
-    document.body.appendChild(panel);
-
-    // Overlay
-    const overlay = document.createElement("div");
-    overlay.id = "globalNotifOverlay";
-    overlay.style.cssText = `
-        position:fixed;inset:0;background:rgba(0,0,0,0.4);
-        z-index:99999;display:none;
-    `;
-    overlay.onclick = toggleGlobalNotifPanel;
-    document.body.appendChild(overlay);
-}
-
-function toggleGlobalNotifPanel() {
-    const panel = document.getElementById("globalNotifPanel");
-    const overlay = document.getElementById("globalNotifOverlay");
-    if (!panel) return;
-
-    const isOpen = panel.style.right === "0px";
-    panel.style.right = isOpen ? "-400px" : "0px";
-    overlay.style.display = isOpen ? "none" : "block";
-
-    if (!isOpen) {
-        // Marquer comme lu
-        markAllNotifAsRead();
-        renderGlobalNotifPanel();
-    }
-}
-
-function updateGlobalNotifBadge() {
-    const badge = document.getElementById("globalNotifBadge");
-    if (!badge) return;
-    const unread = globalNotifications.filter(n => !n.lu).length;
-    badge.style.display = unread > 0 ? "flex" : "none";
-    badge.textContent = unread > 99 ? "99+" : unread;
-}
-
-function renderGlobalNotifPanel() {
-    const container = document.getElementById("globalNotifContent");
-    if (!container) return;
-    container.innerHTML = "";
-
-    if (!globalNotifications.length) {
-        container.innerHTML = "<div style='opacity:0.5;padding:20px;text-align:center;'>Aucune notification.</div>";
+    if (!name) {
+        msg.textContent = "Veuillez sélectionner un agent.";
+        msg.style.color = "#ff6b6b";
+        msg.style.display = "block";
         return;
     }
 
-    const role = (localStorage.getItem("role") || "agent").toLowerCase();
-
-    globalNotifications.forEach(n => {
-        // Vérifier que ce rôle peut voir cette notification
-        if (n.visible_par && !n.visible_par.includes(role) && !n.visible_par.includes("admin")) return;
-
-        const div = document.createElement("div");
-        const typeIcon = {
-            "alarme": "🚨",
-            "intervention": "🔥",
-            "alerte": "⚠️",
-            "info": "ℹ️"
-        }[n.type_notif] || "📢";
-
-        const prioriteColor = {
-            "critique": "#ff4444",
-            "haute": "#fbbf24",
-            "normale": "#4da3ff"
-        }[n.priorite] || "#6b7280";
-
-        const date = n.created_at ? new Date(n.created_at).toLocaleString("fr-FR") : "";
-
-        div.style.cssText = `
-            padding:14px 0; border-bottom:1px solid rgba(255,255,255,0.06);
-            border-left:3px solid ${prioriteColor}; padding-left:14px; margin-bottom:4px;
-        `;
-        div.innerHTML = `
-            <div style="font-weight:700;font-size:0.92rem;">${typeIcon} ${n.titre || "Notification"}</div>
-            <div style="font-size:0.84rem;opacity:0.85;margin-top:4px;">${n.message || ""}</div>
-            <div style="font-size:0.72rem;opacity:0.45;margin-top:6px;">
-                ${n.emetteur || ""} ${n.emetteur_role ? "(" + n.emetteur_role + ")" : ""} · ${date}
-            </div>
-        `;
-        container.appendChild(div);
-    });
-}
-
-async function markAllNotifAsRead() {
-    globalNotifications.forEach(n => n.lu = true);
-    updateGlobalNotifBadge();
-
-    // Mettre à jour dans Supabase si possible
-    try {
-        const ids = globalNotifications.filter(n => n.id).map(n => n.id);
-        if (ids.length) {
-            await supabaseClient
-                .from("notifications")
-                .update({ lu: true })
-                .in("id", ids);
-        }
-    } catch (e) {
-        // Silencieux
-    }
-}
-
-// ═══════════════════════════════════════════════════════
-//  SON DE NOTIFICATION & ALARME — FIABLE iOS/Android/Web
-// ═══════════════════════════════════════════════════════
-//  Stratégie multi-niveaux :
-//   1) Élément <audio> HTML caché dans la page (le plus fiable)
-//   2) Pré-déblocage au premier geste utilisateur
-//   3) Fallback AudioContext si <audio> bloqué
-//   4) Fallback bip généré (oscillator) si tout échoue
-// ═══════════════════════════════════════════════════════
-
-var _alarmEl = null;
-var _notifEl = null;
-var _audioUnlocked = false;
-var _audioCtx = null;
-var _alarmBuffer = null;
-var _alarmSource = null;        // BufferSourceNode actif (pour pouvoir l'arrêter)
-var _alarmGain = null;          // Gain pour fade out propre
-var _bufferDecodePromise = null;
-var _alarmDecodeWaiting = false; // évite d'empiler plusieurs attentes de décodage
-
-function _ensureAudioElements() {
-    if (!_alarmEl) {
-        _alarmEl = document.createElement("audio");
-        _alarmEl.id = "_global_alarm_audio";
-        _alarmEl.src = "fire_station_tone_x4.mp3";
-        _alarmEl.preload = "auto";
-        _alarmEl.loop = true;
-        _alarmEl.volume = 1.0;
-        _alarmEl.playsInline = true;
-        _alarmEl.setAttribute("playsinline", "true");
-        _alarmEl.setAttribute("webkit-playsinline", "true");
-        _alarmEl.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;";
-        document.body.appendChild(_alarmEl);
-    }
-    if (!_notifEl) {
-        _notifEl = document.createElement("audio");
-        _notifEl.id = "_global_notif_audio";
-        _notifEl.src = "fire_station_tone_x4.mp3";
-        _notifEl.preload = "auto";
-        _notifEl.volume = 0.5;
-        _notifEl.playsInline = true;
-        _notifEl.setAttribute("playsinline", "true");
-        _notifEl.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px;";
-        document.body.appendChild(_notifEl);
-    }
-}
-
-// Décode le MP3 en AudioBuffer une seule fois → son instantané au play
-function _decodeAlarmBuffer() {
-    if (_alarmBuffer) return Promise.resolve(_alarmBuffer);
-    if (_bufferDecodePromise) return _bufferDecodePromise;
-    if (!_audioCtx) {
-        try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
-        catch(e) { return Promise.reject(e); }
-    }
-    _bufferDecodePromise = fetch("fire_station_tone_x4.mp3", { cache: "force-cache" })
-        .then(function(r) {
-            if (!r.ok) throw new Error("HTTP " + r.status);
-            return r.arrayBuffer();
-        })
-        .then(function(ab) {
-            // Safari iOS exige la forme callback de decodeAudioData (pas la promise)
-            return new Promise(function(resolve, reject) {
-                _audioCtx.decodeAudioData(ab, function(buf) {
-                    _alarmBuffer = buf;
-                    console.info("[Audio] Buffer alarme décodé : " + buf.duration.toFixed(1) + "s");
-                    resolve(buf);
-                }, function(err) {
-                    console.warn("[Audio] decodeAudioData failed:", err);
-                    reject(err);
-                });
-            });
-        })
-        .catch(function(e) {
-            console.warn("[Audio] Échec pré-décodage buffer (fallback HTML5 prendra le relais):", e);
-            _bufferDecodePromise = null; // permettre une nouvelle tentative plus tard
-            return null;
-        });
-    return _bufferDecodePromise;
-}
-
-// Débloquer au premier geste utilisateur (iOS exige absolument un user gesture)
-function _unlockAudio() {
-    _ensureAudioElements();
-
-    // 1) Créer/reprendre l'AudioContext sur le geste utilisateur
-    if (!_audioCtx) {
-        try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
-    }
-    if (_audioCtx && _audioCtx.state === "suspended") {
-        try { _audioCtx.resume(); } catch(e) {}
-    }
-
-    // 2) Lancer (ou relancer) le pré-décodage du buffer alarme
-    _decodeAlarmBuffer();
-
-    // 2bis) KEEP-ALIVE : maintenir le contexte audio "running" en jouant un
-    // silence en boucle (gain 0). Sans ça, le navigateur suspend le contexte
-    // après le geste, et la 1ère alarme ne sonne pas (il fallait 2-3 essais).
-    // Avec ce keep-alive, le contexte reste actif → son instantané dès la 1ère.
-    _startAudioKeepAlive();
-
-    // 3) Débloquer aussi les éléments <audio> HTML5 (fallback iOS très ancien)
-    try {
-        _alarmEl.muted = true;
-        var p1 = _alarmEl.play();
-        if (p1 && p1.then) {
-            p1.then(function() {
-                _alarmEl.pause();
-                _alarmEl.currentTime = 0;
-                _alarmEl.muted = false;
-            }).catch(function(){});
-        }
-        _notifEl.muted = true;
-        var p2 = _notifEl.play();
-        if (p2 && p2.then) {
-            p2.then(function() {
-                _notifEl.pause();
-                _notifEl.currentTime = 0;
-                _notifEl.muted = false;
-            }).catch(function(){});
-        }
-    } catch(e) {}
-
-    _audioUnlocked = true;
-}
-
-// Source silencieuse persistante qui empêche la suspension du contexte audio.
-var _keepAliveSource = null;
-function _startAudioKeepAlive() {
-    if (!_audioCtx || _keepAliveSource) return;
-    try {
-        // Buffer d'1 frame silencieuse, joué en boucle à volume 0
-        var buf = _audioCtx.createBuffer(1, 1, _audioCtx.sampleRate);
-        var src = _audioCtx.createBufferSource();
-        src.buffer = buf;
-        src.loop = true;
-        var g = _audioCtx.createGain();
-        g.gain.value = 0; // totalement silencieux
-        src.connect(g);
-        g.connect(_audioCtx.destination);
-        src.start(0);
-        _keepAliveSource = src;
-    } catch(e) { /* pas bloquant */ }
-}
-
-// Si l'onglet revient au premier plan, on relance resume() + keep-alive
-document.addEventListener("visibilitychange", function() {
-    if (!document.hidden && _audioCtx) {
-        if (_audioCtx.state === "suspended") { try { _audioCtx.resume(); } catch(e){} }
-        _startAudioKeepAlive();
-    }
-});
-
-// Attacher le déblocage à TOUS les types de gestes utilisateur (re-déclenche aussi resume() à chaque fois)
-function _attachUnlockListeners() {
-    var events = ["click", "touchstart", "touchend", "pointerdown", "keydown", "mousedown"];
-    events.forEach(function(evt) {
-        document.addEventListener(evt, _unlockAudio, { capture: true, passive: true });
-    });
-}
-
-if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", function() {
-        _ensureAudioElements();
-        _attachUnlockListeners();
-        // Pré-décoder le son d'alarme DÈS le chargement (ne nécessite pas de
-        // geste utilisateur : decodeAudioData fonctionne sur un contexte suspendu).
-        // Sans ça, le décodage ne démarrait qu'au 1er clic → la 1ère alarme
-        // arrivait avant la fin du décodage et ne sonnait pas ("2e fois seulement").
-        _decodeAlarmBuffer();
-    });
-} else {
-    _ensureAudioElements();
-    _attachUnlockListeners();
-    _decodeAlarmBuffer();
-}
-
-function playAlarmSound() {
-    // ── Pages intervenant (QR consulter_pf / permis_feu) ──
-    // L'alarme sonore + la bannière plein écran sont réservées au PC
-    // Sécurité et aux agents. L'intervenant qui déclare l'urgence ne doit
-    // ni entendre le son ni voir la bannière : il reçoit uniquement le
-    // toast de confirmation de sa page.
-    if (window.AURA_ALARM_SILENT === true) return;
-    _ensureAudioElements();
-    showAlarmBanner();
-
-    // Vibration mobile (immédiate, indépendante de l'audio)
-    if (navigator.vibrate) {
-        try { navigator.vibrate([500, 200, 500, 200, 500, 200, 500]); } catch(e){}
-    }
-
-    // ── PRIORITÉ 0 : buffer pas encore décodé ──
-    // Cas rare (toute 1ère alarme juste après le chargement, décodage non
-    // terminé). On réveille le contexte, on attend la fin du décodage et on
-    // relance proprement, AU LIEU de tomber sur le fallback HTML5 peu fiable
-    // qui ne sonnait qu'à la 2e tentative. On sort ensuite (pas de double son).
-    if (_audioCtx && !_alarmBuffer && !_alarmDecodeWaiting) {
-        _alarmDecodeWaiting = true;
-        if (_audioCtx.state === "suspended") { try { _audioCtx.resume(); } catch(e){} }
-        _decodeAlarmBuffer().then(function(buf) {
-            _alarmDecodeWaiting = false;
-            if (buf && !_alarmSource) {
-                playAlarmSound();          // buffer prêt → lecture Web Audio propre
-            } else if (!buf) {
-                _playFallbackAlarm();      // décodage impossible → bip d'urgence
-            }
-        });
+    if (assignedAgents.includes(name)) {
+        msg.textContent = "Cet agent est déjà affecté.";
+        msg.style.color = "#ff6b6b";
+        msg.style.display = "block";
         return;
     }
 
-    // ── PRIORITÉ 1 : Web Audio API avec buffer pré-décodé ──
-    // Le plus fiable : démarrage instantané, marche sur iOS dès que le
-    // contexte audio a été réveillé par un user gesture (ce que fait
-    // _unlockAudio attaché à tous les events).
-    if (_audioCtx && _alarmBuffer) {
-        // Encapsulation du démarrage de la source dans une closure pour pouvoir
-        // soit l'appeler immédiatement (ctx running), soit la chaîner après
-        // resume() qui est asynchrone. Sans ça, src.start(0) partait AVANT
-        // que le contexte soit réellement repris → source silencieuse au 1er
-        // déclenchement quand le ctx était suspendu.
-        var _startSrc = function() {
-            try {
-                // Couper toute alarme précédente
-                if (_alarmSource) {
-                    try { _alarmSource.stop(); } catch(e){}
-                    _alarmSource = null;
-                }
-                var src = _audioCtx.createBufferSource();
-                src.buffer = _alarmBuffer;
-                src.loop = true;
-                var gain = _audioCtx.createGain();
-                gain.gain.value = 1.0;
-                src.connect(gain);
-                gain.connect(_audioCtx.destination);
-                src.start(0);
-                _alarmSource = src;
-                _alarmGain = gain;
-                // Auto-cut à 30s
-                setTimeout(function() {
-                    try { src.stop(); } catch(e){}
-                    if (_alarmSource === src) _alarmSource = null;
-                }, 30000);
-            } catch(e) {
-                console.warn("[Audio] Web Audio start échec, fallback HTML5:", e);
-                _playHtml5Fallback();
-            }
+    if (assignedAgents.length >= 3) {
+        msg.textContent = "Maximum 3 agents par intervention.";
+        msg.style.color = "#ff6b6b";
+        msg.style.display = "block";
+        return;
+    }
+
+    assignedAgents.push(name);
+    select.value = "";
+
+    // Ajouter la ligne visuelle
+    const container = document.getElementById("agentsContainer");
+    const row = document.createElement("div");
+    row.className = "agent-row";
+    row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;";
+    row.innerHTML = `
+        <span style="font-size:1.1rem;">👤</span>
+        <span style="flex:1;font-weight:600;">${esc(name)}</span>
+        <span style="font-size:0.75rem;opacity:0.6;background:rgba(100,180,255,0.15);padding:4px 10px;border-radius:6px;color:#4da3ff;">Agent ${assignedAgents.length}</span>
+        <button type="button" onclick="removeAgent('${name}', this)" style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);color:#ff6b6b;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.8rem;">✕</button>
+    `;
+    container.appendChild(row);
+
+    msg.textContent = "✅ Agent ajouté avec succès.";
+    msg.style.color = "#4dff88";
+    msg.style.display = "block";
+    setTimeout(() => { msg.style.display = "none"; }, 2000);
+}
+
+function removeAgent(name, btn) {
+    assignedAgents = assignedAgents.filter(a => a !== name);
+    btn.closest(".agent-row").remove();
+}
+
+/* ═══════════════════════════════════════════════════════
+   UPLOAD MÉDIAS → Supabase Storage bucket "rapports-media"
+   Retourne un tableau d'URLs publiques
+═══════════════════════════════════════════════════════ */
+async function uploadMediaFiles(fileInputId, folder) {
+    const input = document.getElementById(fileInputId);
+    if (!input || !input.files.length) return [];
+
+    const urls = [];
+    for (const file of input.files) {
+        /* Nom unique : timestamp + nom nettoyé (pas de caractères spéciaux) */
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const path = `${folder}/${Date.now()}_${safeName}`;
+
+        const { error: upErr } = await supabaseClient
+            .storage
+            .from(window.APP_CONFIG.BUCKETS.rapportsMedia)
+            .upload(path, file, { contentType: file.type, upsert: false });
+
+        if (upErr) {
+            console.error(`[Upload] Erreur sur ${file.name} :`, upErr.message);
+            continue; /* on skip le fichier en erreur, on continue les autres */
+        }
+
+        /* URL publique permanente */
+        const { data: pub } = supabaseClient
+            .storage
+            .from(window.APP_CONFIG.BUCKETS.rapportsMedia)
+            .getPublicUrl(path);
+
+        if (pub && pub.publicUrl) urls.push(pub.publicUrl);
+    }
+    return urls;
+}
+
+async function saveReport() {
+    const btn = document.getElementById("btnSave");
+    btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
+    try {
+        const { code: typeCode, label: intervention } = resolveIntervention();
+        const site = document.getElementById("reportSite").value;
+        const reportId = document.getElementById("reportId").textContent;
+        const description = [
+            "Informations générales:\n"+document.getElementById("infoGenerales").value,
+            "Constat:\n"+document.getElementById("constat").value,
+            "Actions réalisées:\n"+document.getElementById("actions").value
+        ].join("\n\n");
+
+        /* ── Upload des médias ── */
+        btn.textContent = "⏳ Upload des photos...";
+        const photoUrls = await uploadMediaFiles('photos', 'photos/' + (reportId || 'unknown'));
+
+        btn.textContent = "⏳ Upload des vidéos...";
+        const videoUrls = await uploadMediaFiles('videos', 'videos/' + (reportId || 'unknown'));
+
+        btn.textContent = "⏳ Sauvegarde du rapport...";
+
+        const priorite = typeCode==="incendie" ? "haute" : "normale";
+
+        /* ── Champs spécifiques au type ── */
+        const champsSpec = collectExtraFields();
+        let blocSpec = "";
+        if (Object.keys(champsSpec).length) {
+            blocSpec = "\n\nDétails spécifiques:\n" +
+                Object.values(champsSpec).map(c => "• " + c.label + " : " + c.value).join("\n");
+        }
+
+        /* ── Service métier déduit du TYPE (pas du service de l'agent) ──
+           Un "vol" est sûreté, une "panne" est technique, etc., quel que
+           soit l'agent qui saisit. Si le type n'est pas mappé (types
+           incendie génériques), on laisse tenant.js mettre le service. */
+        const SERVICE_PAR_TYPE = {
+            vol:"surete",conflit:"surete",intrusion:"surete",personne_suspecte:"surete",
+            colis_suspect:"surete",objet_abandonne:"surete",camera_hs:"surete",
+            video_consultation:"surete",video_extraction:"surete",
+            panne_elec:"technique",panne_cvc:"technique",panne_plomberie:"technique",
+            panne_ascenseur:"technique",panne_eclairage:"technique",porte_auto:"technique",
+            chaudiere:"technique",maint_hebdo:"technique",maint_mens:"technique",maint_annuelle:"technique",
+            livraison_in:"services_generaux",livraison_out:"services_generaux",courrier:"services_generaux",
+            colis:"services_generaux",nettoyage:"services_generaux",espaces_verts:"services_generaux",dechets:"services_generaux",
+            resa_salle:"services_generaux",resa_parking:"services_generaux",resa_materiel:"services_generaux"
         };
+        const serviceMetier = SERVICE_PAR_TYPE[typeCode]; // undefined si non mappé → tenant.js gère
 
-        if (_audioCtx.state === "suspended") {
-            // resume() est asynchrone — on attend qu'il se termine AVANT de
-            // démarrer la source. Sinon, sur iOS / Chrome, src.start(0) peut
-            // s'exécuter sur un contexte encore figé et le son est perdu.
-            var p = _audioCtx.resume();
-            if (p && p.then) {
-                p.then(_startSrc).catch(function(err) {
-                    console.warn("[Audio] resume() rejeté, fallback HTML5:", err);
-                    _playHtml5Fallback();
-                });
-            } else {
-                _startSrc();
+        const { error } = await supabaseClient.from("rapports").insert({
+            type: typeCode || "autre",
+            service: serviceMetier,  // forcé si métier connu, sinon tenant.js complète
+            titre: (intervention||"Rapport")+" — "+site,
+            description: description + blocSpec,
+            localisation: site || "Non précisé",
+            statut: "cloture",
+            priorite: priorite,
+            meta: {
+                site,
+                heure_debut: document.getElementById("reportTime").textContent,
+                heure_fin: document.getElementById("reportEndTime").value,
+                agent_nom: assignedAgents[0],
+                agents_affectes: assignedAgents, // MULTI-AGENTS
+                nb_agents: assignedAgents.length,
+                intervention_label: intervention,
+                report_id: reportId,
+                champs_specifiques: champsSpec,
+                photos: photoUrls,
+                videos: videoUrls
             }
-        } else {
-            _startSrc();
-        }
-        return; // ✅ son lancé (synchrone ou via resume.then), on s'arrête là
-    }
+        });
+        if (error) throw error;
 
-    // ── PRIORITÉ 2 : élément <audio> HTML5 (fallback) ──
-    // Si le buffer n'est pas encore décodé (premier chargement, ou décodage
-    // a échoué), on tombe sur l'élément audio classique. Au passage on
-    // relance le décodage pour la prochaine fois.
-    _decodeAlarmBuffer();
-    _playHtml5Fallback();
-}
-
-// Fallback HTML5 réutilisé par le chemin Web Audio en cas d'échec de resume()
-// ou de start(). Extrait en fonction séparée pour éviter la duplication.
-function _playHtml5Fallback() {
-    _ensureAudioElements();
-    try {
-        _alarmEl.currentTime = 0;
-        _alarmEl.loop = true;
-        _alarmEl.volume = 1.0;
-        _alarmEl.muted = false;
-        var p = _alarmEl.play();
-        if (p && p.catch) {
-            p.catch(function(err) {
-                console.warn("[Audio] HTML5 play échec, fallback bip:", err && err.message);
-                _playFallbackAlarm();
-            });
+        // ── Notification globale visible par tous les rôles ──
+        const agentsStr = assignedAgents.join(", ");
+        if (typeof sendGlobalNotification === "function") {
+            await sendGlobalNotification(
+                "🔥 Nouvelle intervention : " + (intervention || "Rapport"),
+                "Site : " + (site || "—") + "\nAgents : " + agentsStr + "\nPriorité : " + priorite,
+                typeCode === "incendie" || typeCode === "alarme" ? "alarme" : "intervention",
+                priorite
+            );
         }
-        setTimeout(function() {
-            try { _alarmEl.pause(); _alarmEl.currentTime = 0; } catch(e){}
-        }, 30000);
+
+        const mediaCount = photoUrls.length + videoUrls.length;
+        const mediaSuffix = mediaCount > 0 ? ` (${photoUrls.length} photo(s), ${videoUrls.length} vidéo(s))` : '';
+        showToast("✅ Rapport enregistré !" + mediaSuffix + " — " + assignedAgents.length + " agent(s)");
+        setTimeout(() => location.href="index.html", 1500);
     } catch(e) {
-        _playFallbackAlarm();
+        showToast("❌ "+e.message, true);
+        btn.disabled = false; btn.textContent = "💾 Enregistrer le rapport";
     }
 }
-
-function playNotifSound() {
-    _ensureAudioElements();
-    try {
-        _notifEl.currentTime = 0;
-        _notifEl.volume = 0.5;
-        var p = _notifEl.play();
-        if (p && p.catch) p.catch(function(){ _playFallbackBeep(0.5, 0.3); });
-    } catch(e) {
-        _playFallbackBeep(0.5, 0.3);
-    }
-    if (navigator.vibrate) {
-        try { navigator.vibrate(200); } catch(e){}
-    }
-}
-
-// Fallback alarme : bip d'urgence répété via AudioContext
-function _playFallbackAlarm() {
-    if (!_audioCtx) {
-        try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; }
-    }
-    if (_audioCtx.state === "suspended") _audioCtx.resume();
-
-    var beepCount = 0;
-    var maxBeeps = 30;
-    var interval = setInterval(function() {
-        if (beepCount >= maxBeeps) { clearInterval(interval); return; }
-        _playFallbackBeep(1.0, 0.3, beepCount % 2 === 0 ? 880 : 660);
-        beepCount++;
-    }, 1000);
-}
-
-function _playFallbackBeep(volume, duration, frequency) {
-    if (!_audioCtx) {
-        try { _audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){ return; }
-    }
-    try {
-        if (_audioCtx.state === "suspended") _audioCtx.resume();
-        var osc = _audioCtx.createOscillator();
-        var gain = _audioCtx.createGain();
-        osc.frequency.value = frequency || 880;
-        osc.type = "square";
-        gain.gain.value = volume;
-        osc.connect(gain);
-        gain.connect(_audioCtx.destination);
-        osc.start();
-        osc.stop(_audioCtx.currentTime + (duration || 0.3));
-    } catch(e){}
-}
-
-// ───────────────────────────────────────
-//  BANNIÈRE D'ALARME VISUELLE
-//  S'affiche en plein écran pour garantir que l'alarme est vue
-//  Le bouton "🛑 ARRÊTER L'ALARME" broadcaste à tous les agents
-//  connectés via UPDATE de alertes_urgence → statut='traitee'.
-// ───────────────────────────────────────
-function showAlarmBanner() {
-    if (window.AURA_ALARM_SILENT === true) return;
-    if (document.getElementById("alarmBanner")) return;
-
-    const banner = document.createElement("div");
-    banner.id = "alarmBanner";
-    banner.innerHTML = `
-        <div style="font-size:2.5rem;margin-bottom:6px;">🚨</div>
-        <div style="font-size:1.4rem;font-weight:800;letter-spacing:0.05em;">ALARME EN COURS</div>
-        <div style="font-size:1rem;margin-top:12px;opacity:0.98;white-space:pre-line;line-height:1.5;max-width:92%;text-align:center;font-weight:500;" id="alarmBannerMsg"></div>
-        <button onclick="window.stopAllAlarms && window.stopAllAlarms()" style="
-            margin-top:24px; padding:16px 32px; background:#fff; color:#b91c1c;
-            border:none; border-radius:12px; font-weight:800; font-size:1.05rem;
-            cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.3);
-            letter-spacing:0.03em;
-        ">🛑 ARRÊTER L'ALARME</button>
-        <div style="margin-top:10px;font-size:0.78rem;opacity:0.85;">
-            ⚠️ Stoppe l'alarme sur TOUS les postes connectés.
-        </div>
-    `;
-    banner.style.cssText = `
-        position:fixed; inset:0; z-index:999999;
-        background:rgba(180,20,20,0.97); color:#fff;
-        display:flex; flex-direction:column;
-        justify-content:center; align-items:center;
-        font-family:system-ui,sans-serif; text-align:center;
-        animation: alarmPulse 0.8s ease-in-out infinite alternate;
-        padding:20px;
-    `;
-
-    // CSS animation
-    const style = document.createElement("style");
-    style.textContent = `
-        @keyframes alarmPulse {
-            from { background: rgba(180,20,20,0.97); }
-            to { background: rgba(220,40,40,0.97); }
-        }
-    `;
-    document.head.appendChild(style);
-    document.body.appendChild(banner);
-}
-
-/* ───────────────────────────────────────
-   ÉCRIVAIN UNIQUE DE LA BANNIÈRE (anti-doublon)
-   Deux flux realtime concurrents écrivent dans la bannière : le handler
-   notifications (titre+message) et checkUrgence d'index.html (row
-   alertes_urgence). Chacun formate l'adresse à sa façon → selon l'ordre
-   d'arrivée, l'adresse pouvait apparaître deux fois. Cette fonction est
-   désormais le SEUL point d'écriture : elle fusionne ce qui est déjà
-   affiché avec le nouveau texte en dédupliquant ligne à ligne sur le
-   contenu utile (emojis et libellés « Lieu : », « Agent : »… ignorés).
-   ─────────────────────────────────────── */
-function _normAlarmLine(line) {
-    return String(line || "")
-        .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, "")   // emojis
-        .replace(/^\s*(lieu|agent|permis(\s*feu)?|position)\s*:?\s*/i, "") // libellés
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")           // accents
-        .replace(/[—–\-:,;.!]/g, " ")                               // ponctuation
-        .toLowerCase().replace(/\s+/g, " ").trim();
-}
-function setAlarmBanner(text) {
-    if (window.AURA_ALARM_SILENT === true) return;
-    showAlarmBanner(); // crée la bannière si absente (no-op sinon)
-    var msgEl = document.getElementById("alarmBannerMsg");
-    if (!msgEl) return;
-
-    // Fusion existant + nouveau, puis déduplication par INCLUSION :
-    // si le contenu utile d'une ligne est contenu dans celui d'une autre
-    // (ex. « URGENCE INCENDIE » ⊂ « URGENCE INCENDIE — PERMIS FEU »),
-    // seule la plus complète est conservée. L'adresse, le n° de permis et
-    // le nom d'agent ne peuvent donc jamais apparaître deux fois.
-    var rawLines = (msgEl.textContent || "").split("\n").concat(String(text || "").split("\n"))
-        .map(function(l){ return l.trim(); })
-        .filter(function(l){ return l.length > 0; });
-
-    var entries = rawLines.map(function(l){ return { line: l, key: _normAlarmLine(l) }; })
-        .filter(function(e){ return e.key.length > 0; });
-
-    var kept = [];
-    for (var i = 0; i < entries.length; i++) {
-        var e = entries[i], absorbed = false;
-        for (var j = 0; j < kept.length; j++) {
-            if (kept[j].key.indexOf(e.key) !== -1) { absorbed = true; break; }      // déjà couvert
-            if (e.key.indexOf(kept[j].key) !== -1) { kept[j] = e; absorbed = true; break; } // remplace par + complet
-        }
-        if (!absorbed) kept.push(e);
-    }
-    msgEl.textContent = kept.map(function(e){ return e.line; }).join("\n");
-}
-window.setAlarmBanner = setAlarmBanner;
-
-function closeAlarmBanner() {
-    var banner = document.getElementById("alarmBanner");
-    if (banner) banner.remove();
-    // Stop HTML5 audio
-    if (_alarmEl) { try { _alarmEl.pause(); _alarmEl.currentTime = 0; } catch(e){} }
-    // Stop Web Audio BufferSource (la source primaire du son)
-    if (_alarmSource) { try { _alarmSource.stop(); } catch(e){} _alarmSource = null; }
-    if (navigator.vibrate) { try { navigator.vibrate(0); } catch(e){} }
-}
-
-// ───────────────────────────────────────
-//  STOP ALARM BROADCAST
-//  Marque toutes les urgences actives comme traitées en BDD.
-//  Le realtime UPDATE propagera la fermeture du banner sur tous
-//  les autres devices connectés (incluant le PC sécurité).
-// ───────────────────────────────────────
-async function stopAllAlarms() {
-    closeAlarmBanner(); // ferme immédiatement localement, on n'attend pas le round-trip
-
-    if (typeof supabaseClient === "undefined") return;
-
-    try {
-        // Récupère toutes les urgences encore actives pour ce tenant.
-        // tenant.js patche déjà supabaseClient.from() → on est cloisonné automatiquement.
-        let q = supabaseClient.from("alertes_urgence")
-            .select("id")
-            .eq("statut", "active");
-
-        const { data, error } = await q;
-        if (error) { console.warn("[STOP-ALARM] fetch:", error); return; }
-        if (!data || !data.length) return;
-
-        // Marquer toutes traitées en parallèle
-        const nom = localStorage.getItem("nom") || null;
-        const updates = data.map(u =>
-            supabaseClient.from("alertes_urgence")
-                .update({
-                    statut: "traitee",
-                    traitee_at: new Date().toISOString(),
-                    traitee_par: nom
-                })
-                .eq("id", u.id)
-        );
-        await Promise.all(updates);
-        console.info("[STOP-ALARM] " + data.length + " urgence(s) traitée(s) par " + (nom || "—"));
-    } catch (e) {
-        console.error("[STOP-ALARM]", e);
-    }
-}
-// Exposé global pour le bouton onclick="window.stopAllAlarms()"
-window.stopAllAlarms = stopAllAlarms;
-
-// ───────────────────────────────────────
-//  TOAST GLOBAL
-// ───────────────────────────────────────
-function showGlobalToast(text) {
-    let t = document.getElementById("global-notif-toast");
-    if (!t) {
-        t = document.createElement("div");
-        t.id = "global-notif-toast";
-        t.style.cssText = `
-            position:fixed;top:24px;left:50%;transform:translateX(-50%) translateY(-80px);
-            padding:14px 28px;border-radius:12px;font-size:0.92rem;z-index:999999;
-            opacity:0;transition:all 0.4s;color:#fff;
-            background:rgba(20,20,40,0.95);border:1px solid rgba(212,175,55,0.3);
-            backdrop-filter:blur(12px);box-shadow:0 6px 24px rgba(0,0,0,0.5);
-            font-family:system-ui,sans-serif;max-width:90vw;text-align:center;
-        `;
-        document.body.appendChild(t);
-    }
-    t.textContent = text;
-    t.style.transform = "translateX(-50%) translateY(0)";
-    t.style.opacity = "1";
-    setTimeout(() => {
-        t.style.transform = "translateX(-50%) translateY(-80px)";
-        t.style.opacity = "0";
-    }, 4500);
-}
-
-// ───────────────────────────────────────
-//  AUTO-INIT AU CHARGEMENT
-// ───────────────────────────────────────
-document.addEventListener("DOMContentLoaded", () => {
-    const page = window.location.pathname.split("/").pop() || "index.html";
-    // Ne pas init sur login ou sur accès QR code (pas de session)
-    if (page === "login.html") return;
-    if (page === "consulter_pf.html" && window.location.search.includes("pf=") && !localStorage.getItem("nom")) return;
-    initGlobalNotifications();
-});
+</script>
+<script src="security.js"></script>
+<script src="global.js"></script>
+<script src="notifications_global.js"></script>
+</body>
+</html>

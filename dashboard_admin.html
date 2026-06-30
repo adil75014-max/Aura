@@ -10,11 +10,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
-    <script src="supabaseClient.js"></script>
+    <script src="vendor/supabase.js" crossorigin="anonymous"></script>
+    <script src="app-config.js"></script>
+<script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
     <!-- jsPDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+    <script src="vendor/jspdf.umd.min.js" crossorigin="anonymous"></script>
 
     <!-- 🎨 Design global (fallback si global.css absent) -->
     <link rel="stylesheet" href="global.css">
@@ -1650,7 +1651,7 @@ function isMediaUrl(v) {
     if (typeof v !== 'string') return false;
     try { new URL(v); } catch { return false; }
     return /\.(jpg|jpeg|png|webp|gif|mp4|webm|mov)/i.test(v)
-        || v.includes('/storage/v1/object/public/rapports-media/');
+        || v.includes(('/storage/v1/object/public/' + window.APP_CONFIG.BUCKETS.rapportsMedia + '/'));
 }
 function isImageUrl(v) { return typeof v === 'string' && /\.(jpg|jpeg|png|webp|gif)/i.test(v); }
 function isVideoUrl(v) { return typeof v === 'string' && /\.(mp4|webm|mov)/i.test(v); }

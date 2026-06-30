@@ -1,401 +1,320 @@
-// ═══════════════════════════════════════════════════════════════
-//  TENANT.JS v3 — Cloisonnement site_code + service + Super-admin
-//  ----------------------------------------------------------------
-//  Intercepte automatiquement les opérations Supabase sur les
-//  tables tenant pour ajouter un filtre site_code + service.
-//
-//  Couvre :
-//    .insert() / .upsert()  → enrichit les données
-//    .select() / .update() / .delete() → ajoute .eq() en filtre
-//
-//  Échappatoires (admin global) :
-//    client.fromAll("table")            → sans filtre (méthode dédiée)
-//    AuraTenant.unscoped("table")       → alias équivalent
-//    AuraTenant.bypassNext()            → bypass UNE requête .from()
-//
-//  ════ NOUVEAU v3 ═════════════════════════════════════════════
-//  AuraTenant.patch(client)             → patche un client Supabase
-//                                          créé après tenant.js
-//                                          (utile pour supabaseFg
-//                                          ou tout createClient
-//                                          additionnel).
-//  AuraTenant.realtimeFilter()          → renvoie une chaîne
-//                                          "site_code=eq.LBM" prête
-//                                          à mettre dans .on(...,
-//                                          { filter: ... }).
-//                                          Renvoie null si super-admin.
-//  AuraTenant.isSuperAdmin              → bool
-//  AuraTenant.switchContext(site, srv)  → bascule le contexte
-//                                          super-admin (recharge).
-//  AuraTenant.resetGlobalMode()         → super-admin → mode "voir
-//                                          tout" (pas d'incarnation).
-//  AuraTenant.loadCatalogues()          → async, charge sites + services
-//                                          depuis BDD (tables `sites`
-//                                          et `services`). Fallback sur
-//                                          listes hard-codées si tables
-//                                          inaccessibles. Cache 5 min.
-//  AuraTenant.sites()                   → tableau {code, nom}
-//  AuraTenant.services()                → tableau {code, nom, couleur}
-//
-//  Mode SUPER-ADMIN :
-//    Détecté via localStorage.role === "superadmin".
-//    Dans ce mode, si AUCUNE incarnation n'est active :
-//      - aucun filtre auto sur les select/update/delete
-//      - aucun enrichissement auto sur les insert/upsert
-//      - tenant.js se comporte comme un no-op (sauf pour la BDD
-//        catalogue sites/services).
-//    Si une incarnation est active (localStorage.superadmin_incarne
-//    contient "LBM|incendie"), le filtrage reprend mais en utilisant
-//    le contexte incarné, pas le contexte personnel du super-admin.
-// ═══════════════════════════════════════════════════════════════
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<title>Rapport — Formulaire dynamique</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+<style>
+body{display:flex;justify-content:center;padding:20px}
+.page{width:100%;max-width:720px}
+h1{text-align:center;color:var(--accent);margin-bottom:20px;font-size:1.5rem}
+.menu-return{margin-bottom:16px}
+.menu-return button{background:var(--bg2);border:1px solid var(--border);padding:8px 16px;border-radius:10px;color:var(--accent);cursor:pointer;transition:.25s}
+.menu-return button:hover{background:var(--accent);color:#000}
+.card{background:var(--card);border:1px solid var(--border);padding:18px;border-radius:14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card h2{color:var(--accent);margin-bottom:10px;font-size:1.1rem}
+.field-group{margin-bottom:14px}
+.field-group label{font-weight:600;display:block;margin-bottom:4px;font-size:.9rem;color:var(--accent)}
+.field-group input,.field-group textarea,.field-group select{width:100%;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:.95rem}
+.field-group textarea{min-height:80px;resize:vertical}
+.field-group .checkbox-row,.field-group .radio-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:6px}
+.field-group .checkbox-row label,.field-group .radio-row label{font-weight:400;display:flex;align-items:center;gap:6px;cursor:pointer}
+.separator{border-top:1px solid var(--border);margin:16px 0}
+.section-title{font-size:1.1rem;font-weight:700;color:var(--accent);margin:18px 0 8px;border-left:3px solid var(--accent);padding-left:10px}
+.subtitle-text{font-size:.95rem;font-weight:600;color:var(--text);margin:12px 0 6px;opacity:.8}
+.info-text{font-size:.85rem;color:var(--text);opacity:.7;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:8px;margin-bottom:8px}
+.btn{margin-top:12px;padding:14px;background:linear-gradient(135deg,#7ab8ff,#4d9dff);border:none;border-radius:10px;color:#0a0f1c;cursor:pointer;width:100%;font-size:1rem;font-weight:700;transition:.25s}
+.btn:hover{transform:translateY(-2px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--bg2);color:var(--accent);border:1px solid var(--border)}
+</style>
+</head>
+<body>
+<div class="page">
+    <h1 id="pageTitle">Rapport</h1>
+    <div class="menu-return"><button onclick="location.href='index.html'">⟵ Menu</button></div>
 
-(function () {
-    "use strict";
+    <div class="card">
+        <p><strong>Agent :</strong> <span id="agentNom"></span></p>
+        <p><strong>Date :</strong> <span id="dateJour"></span></p>
+    </div>
 
-    // ── 0. Constantes et fallback hard-codé ─────────────────────
-    var FALLBACK_SITES = [
-        { code: "LBM",  nom: "Le Bon Marché" },
-        { code: "SAM",  nom: "Samaritaine" },
-        { code: "GERD", nom: "La Grande Épicerie Rive Droite" },
-        { code: "GERG", nom: "La Grande Épicerie Rive Gauche" },
-        { code: "MH",   nom: "Moët Hennessy" },
-        { code: "EBAG", nom: "Entrepôt Bagneux" }
-    ];
-    var FALLBACK_SERVICES = [
-        { code: "incendie",          nom: "Sécurité Incendie", couleur: "#ef4444" },
-        { code: "surete",            nom: "Sûreté",            couleur: "#3b82f6" },
-        { code: "technique",         nom: "Technique",         couleur: "#f59e0b" },
-        { code: "services_generaux", nom: "Services Généraux", couleur: "#10b981" }
-    ];
+    <div id="formContainer"></div>
 
-    // ── 1. Contexte tenant (lu en localStorage) ─────────────────
-    var ROLE = (localStorage.getItem("role") || "").toLowerCase();
-    var IS_SUPERADMIN = (ROLE === "superadmin");
+    <div class="card">
+        <button class="btn" id="btnSave" onclick="enregistrer()">💾 Enregistrer le rapport</button>
+        <button class="btn btn-secondary" onclick="window.print()" style="margin-top:8px">🖨 Imprimer</button>
+    </div>
+</div>
 
-    // Super-admin peut "incarner" un tenant : valeur "LBM|incendie"
-    var INCARNATION = localStorage.getItem("superadmin_incarne") || "";
-    var INCARN_SITE = null, INCARN_SRV = null;
-    if (IS_SUPERADMIN && INCARNATION.indexOf("|") !== -1) {
-        var parts = INCARNATION.split("|");
-        INCARN_SITE = (parts[0] || "").toUpperCase();
-        INCARN_SRV  = (parts[1] || "").toLowerCase();
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script>
+if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
+
+document.getElementById("agentNom").textContent = localStorage.getItem("nom") || "—";
+document.getElementById("dateJour").textContent = new Date().toLocaleDateString("fr-FR");
+
+let modele = null;
+let modeleId = null;
+
+/* ============================================================
+   CHARGEMENT DU MODÈLE
+============================================================ */
+async function chargerModele() {
+    const params = new URLSearchParams(location.search);
+    modeleId = params.get("modele");
+
+    if (!modeleId) {
+        document.getElementById("formContainer").innerHTML =
+            '<div class="card"><p style="text-align:center;opacity:.7">Aucun modèle spécifié. Lancez depuis la page de gestion des rapports.</p></div>';
+        return;
     }
 
-    // Contexte effectif (utilisé pour filtrer/enrichir)
-    var SITE = IS_SUPERADMIN
-        ? (INCARN_SITE || null)
-        : (localStorage.getItem("site_code") || "LBM").toUpperCase();
-    var SERV = IS_SUPERADMIN
-        ? (INCARN_SRV || null)
-        : (localStorage.getItem("service")   || "incendie").toLowerCase();
+    const { data, error } = await supabaseClient
+        .from("rapport_modeles")
+        .select("*")
+        .eq("id", modeleId)
+        .single();
 
-    // Super-admin SANS incarnation = mode global "voir tout"
-    var IS_GLOBAL_MODE = IS_SUPERADMIN && (!SITE || !SERV);
-
-    var _bypassNext = false;
-
-    // ── 2. Catalogues sites/services (cache mémoire) ────────────
-    var _sitesCache = null, _srvCache = null, _cacheTs = 0;
-    var CACHE_TTL_MS = 5 * 60 * 1000;
-
-    async function loadCatalogues(force) {
-        var now = Date.now();
-        if (!force && _sitesCache && _srvCache && (now - _cacheTs) < CACHE_TTL_MS) {
-            return { sites: _sitesCache, services: _srvCache };
-        }
-        var sites = FALLBACK_SITES.slice();
-        var services = FALLBACK_SERVICES.slice();
-        try {
-            if (typeof window.supabaseClient !== "undefined" && window.supabaseClient) {
-                // Bypass tenant pour ces lookups
-                _bypassNext = true;
-                var rs = await window.supabaseClient
-                    .from("sites").select("code, nom").order("nom", { ascending: true });
-                if (rs && rs.data && rs.data.length) {
-                    sites = rs.data.map(function (r) { return { code: r.code, nom: r.nom }; });
-                }
-                _bypassNext = true;
-                var rsv = await window.supabaseClient
-                    .from("services").select("code, nom, couleur").order("nom", { ascending: true });
-                if (rsv && rsv.data && rsv.data.length) {
-                    services = rsv.data.map(function (r) {
-                        return { code: r.code, nom: r.nom, couleur: r.couleur || "#6b7280" };
-                    });
-                }
-            }
-        } catch (e) {
-            console.warn("[Tenant] Catalogue BDD inaccessible, fallback hard-codé:", e && e.message);
-        }
-        _sitesCache = sites;
-        _srvCache   = services;
-        _cacheTs    = Date.now();
-        return { sites: sites, services: services };
+    if (error || !data) {
+        document.getElementById("formContainer").innerHTML =
+            '<div class="card"><p style="color:#f87171">Modèle introuvable.</p></div>';
+        return;
     }
 
-    // ── 3. API publique AuraTenant ──────────────────────────────
-    function labelFor(siteCode, srvCode) {
-        var siteName = siteCode;
-        var srvName  = srvCode;
-        if (_sitesCache) {
-            for (var i = 0; i < _sitesCache.length; i++) {
-                if (_sitesCache[i].code === siteCode) { siteName = _sitesCache[i].nom; break; }
-            }
-        } else {
-            for (var j = 0; j < FALLBACK_SITES.length; j++) {
-                if (FALLBACK_SITES[j].code === siteCode) { siteName = FALLBACK_SITES[j].nom; break; }
-            }
-        }
-        if (_srvCache) {
-            for (var k = 0; k < _srvCache.length; k++) {
-                if (_srvCache[k].code === srvCode) { srvName = _srvCache[k].nom; break; }
-            }
-        } else {
-            for (var m = 0; m < FALLBACK_SERVICES.length; m++) {
-                if (FALLBACK_SERVICES[m].code === srvCode) { srvName = FALLBACK_SERVICES[m].nom; break; }
-            }
-        }
-        return srvName + " · " + siteName;
+    modele = data;
+    document.getElementById("pageTitle").textContent = data.titre || "Rapport";
+    renderForm(data.fields || []);
+}
+
+/* ============================================================
+   RENDU DU FORMULAIRE DYNAMIQUE
+============================================================ */
+function renderForm(fields) {
+    const container = document.getElementById("formContainer");
+    container.innerHTML = "";
+
+    if (fields.length === 0) {
+        container.innerHTML = '<div class="card"><p style="opacity:.7">Ce modèle ne contient aucun champ.</p></div>';
+        return;
     }
 
-    function colorFor(srvCode) {
-        var list = _srvCache || FALLBACK_SERVICES;
-        for (var i = 0; i < list.length; i++) {
-            if (list[i].code === srvCode) return list[i].couleur || "#6b7280";
+    let currentCard = null;
+
+    function ensureCard() {
+        if (!currentCard) {
+            currentCard = document.createElement("div");
+            currentCard.className = "card";
+            container.appendChild(currentCard);
         }
-        return "#6b7280";
+        return currentCard;
     }
 
-    window.AuraTenant = {
-        siteCode: SITE,
-        service:  SERV,
-        role:     ROLE,
-        isSuperAdmin: IS_SUPERADMIN,
-        isGlobalMode: IS_GLOBAL_MODE,
-        incarnation:  INCARNATION,
+    fields.forEach(f => {
+        const type = f.type;
 
-        label: function () {
-            if (IS_GLOBAL_MODE) return "🌐 Mode global (super-admin)";
-            if (!SITE || !SERV) return "—";
-            return labelFor(SITE, SERV);
-        },
-        color: function () {
-            if (IS_GLOBAL_MODE) return "#a855f7"; // violet pour mode global
-            return colorFor(SERV);
-        },
-
-        bypassNext: function () { _bypassNext = true; },
-        unscoped: null,  // assigné plus bas
-
-        // Patch d'un client Supabase créé après tenant.js
-        patch: function (client) {
-            try {
-                if (client) patchClient(client);
-            } catch (e) { console.warn("[Tenant] patch externe:", e); }
-            return client;
-        },
-
-        // Filtre realtime côté Supabase pour les channels
-        // Renvoie ex: "site_code=eq.LBM" — combiner avec ".eq.service.eq."
-        // si tu veux un AND, mais Supabase realtime n'accepte qu'UN filtre.
-        // On filtre donc par site_code et on laisse le client filtrer par service.
-        // En mode global → null (pas de filtre).
-        realtimeFilter: function () {
-            if (IS_GLOBAL_MODE || !SITE) return null;
-            return "site_code=eq." + SITE;
-        },
-        // Pour un filtrage client complémentaire des payloads realtime
-        matchesRealtime: function (row) {
-            if (!row) return true;
-            if (IS_GLOBAL_MODE) return true;
-            if (!SITE || !SERV) return true;
-            if (row.site_code && row.site_code !== SITE) return false;
-            if (row.service   && row.service   !== SERV) return false;
-            return true;
-        },
-
-        switchContext: function (siteCode, srvCode) {
-            if (!IS_SUPERADMIN) {
-                console.warn("[Tenant] switchContext refusé : non super-admin");
-                return;
-            }
-            localStorage.setItem("superadmin_incarne", siteCode + "|" + srvCode);
-            // Aussi mettre à jour site_code/service pour rétrocompatibilité
-            localStorage.setItem("site_code", siteCode);
-            localStorage.setItem("service",   srvCode);
-            window.location.reload();
-        },
-        resetGlobalMode: function () {
-            if (!IS_SUPERADMIN) return;
-            localStorage.removeItem("superadmin_incarne");
-            localStorage.removeItem("site_code");
-            localStorage.removeItem("service");
-            window.location.reload();
-        },
-
-        loadCatalogues: loadCatalogues,
-        sites:    function () { return (_sitesCache || FALLBACK_SITES).slice(); },
-        services: function () { return (_srvCache   || FALLBACK_SERVICES).slice(); }
-    };
-
-    // ── 4. Tables soumises au cloisonnement ─────────────────────
-    var TENANT_TABLES = [
-        "rapports", "permis_feu", "dai_hors_service", "ssiap2_chantier",
-        "feuille_de_garde", "consignes_permanentes", "consignes_journalieres",
-        "notifications", "audit_log", "verifications", "verifications_types",
-        "rondes", "interventions_exterieures", "suivi_travaux", "interventions",
-        "rapport_modeles", "rapports_entree_sortie", "interventions_syope",
-        "plan_prevention", "plans", "alertes_urgence", "ssiap", "controle_acces", "prets_materiel"
-    ];
-
-    // Tables JAMAIS filtrées
-    var GLOBAL_TABLES = [
-        "users", "login_attempts", "security_audit",
-        "system_config", "profiles",
-        "sites", "services"           // catalogues globaux
-    ];
-
-    function isTenantTable(name) {
-        if (!name) return false;
-        name = String(name).toLowerCase();
-        if (GLOBAL_TABLES.indexOf(name) !== -1) return false;
-        return TENANT_TABLES.indexOf(name) !== -1;
-    }
-
-    // ── 5. Enrichissement INSERT/UPSERT ─────────────────────────
-    function enrichWithTenant(values) {
-        if (!values) return values;
-        if (Array.isArray(values)) return values.map(addFields);
-        return addFields(values);
-    }
-    function addFields(obj) {
-        if (!obj || typeof obj !== "object") return obj;
-        var out = {};
-        for (var k in obj) {
-            if (Object.prototype.hasOwnProperty.call(obj, k)) out[k] = obj[k];
-        }
-        if (SITE && (typeof out.site_code === "undefined" || out.site_code === null || out.site_code === "")) {
-            out.site_code = SITE;
-        }
-        if (SERV && (typeof out.service === "undefined" || out.service === null || out.service === "")) {
-            out.service = SERV;
-        }
-        return out;
-    }
-
-    // ── 6. Application des filtres ──────────────────────────────
-    function applyTenantFilter(fb) {
-        if (!fb || typeof fb.eq !== "function") return fb;
-        if (!SITE || !SERV) return fb;
-        try {
-            fb = fb.eq("site_code", SITE);
-            fb = fb.eq("service", SERV);
-        } catch (e) { console.warn("[Tenant] applyFilter:", e); }
-        return fb;
-    }
-
-    // ── 7. Patch sur un client Supabase ─────────────────────────
-    function patchClient(client) {
-        if (!client || client.__auraTenantPatched) return;
-        var originalFrom = client.from.bind(client);
-
-        client.fromAll = function (tableName) { return originalFrom(tableName); };
-        // unscoped() exposé une seule fois (sur le premier patch)
-        if (!window.AuraTenant.unscoped) {
-            window.AuraTenant.unscoped = function (tableName) {
-                if (window.supabaseClient && window.supabaseClient !== client) {
-                    return window.supabaseClient.from
-                        ? originalFrom(tableName)
-                        : originalFrom(tableName);
-                }
-                return originalFrom(tableName);
-            };
+        // Section = nouveau card
+        if (type === "section") {
+            currentCard = null;
+            const card = document.createElement("div");
+            card.className = "card";
+            card.innerHTML = `<h2>${escapeHtml(f.label || "Section")}</h2>`;
+            container.appendChild(card);
+            currentCard = card;
+            return;
         }
 
-        client.from = function (tableName) {
-            var qb = originalFrom(tableName);
+        const card = ensureCard();
 
-            // Cas où on n'a pas à filtrer :
-            //   - mode global (super-admin sans incarnation)
-            //   - table non-tenant ou bypass ponctuel
-            if (IS_GLOBAL_MODE || !isTenantTable(tableName) || _bypassNext) {
-                _bypassNext = false;
-                return qb;
-            }
+        if (type === "title") {
+            card.innerHTML += `<div class="section-title">${escapeHtml(f.label || "")}</div>`;
+            return;
+        }
+        if (type === "subtitle") {
+            card.innerHTML += `<div class="subtitle-text">${escapeHtml(f.label || "")}</div>`;
+            return;
+        }
+        if (type === "separator") {
+            card.innerHTML += `<div class="separator"></div>`;
+            return;
+        }
+        if (type === "info") {
+            card.innerHTML += `<div class="info-text">${escapeHtml(f.label || "")}</div>`;
+            return;
+        }
 
-            // SELECT
-            if (typeof qb.select === "function") {
-                var origSelect = qb.select.bind(qb);
-                qb.select = function () {
-                    var result = origSelect.apply(null, arguments);
-                    return applyTenantFilter(result);
-                };
-            }
-            // INSERT
-            if (typeof qb.insert === "function") {
-                var origInsert = qb.insert.bind(qb);
-                qb.insert = function (values, options) {
-                    return origInsert(enrichWithTenant(values), options);
-                };
-            }
-            // UPSERT
-            if (typeof qb.upsert === "function") {
-                var origUpsert = qb.upsert.bind(qb);
-                qb.upsert = function (values, options) {
-                    return origUpsert(enrichWithTenant(values), options);
-                };
-            }
-            // UPDATE
-            if (typeof qb.update === "function") {
-                var origUpdate = qb.update.bind(qb);
-                qb.update = function (values, options) {
-                    var result = origUpdate(values, options);
-                    return applyTenantFilter(result);
-                };
-            }
-            // DELETE
-            if (typeof qb["delete"] === "function") {
-                var origDelete = qb["delete"].bind(qb);
-                qb["delete"] = function (options) {
-                    var result = origDelete(options);
-                    return applyTenantFilter(result);
-                };
-            }
+        const div = document.createElement("div");
+        div.className = "field-group";
 
-            return qb;
-        };
+        const label = escapeHtml(f.label || f.id);
+        const fid = escapeAttr(f.id);
 
-        client.__auraTenantPatched = true;
+        if (type === "text" || type === "number" || type === "date" || type === "time" || type === "location") {
+            const inputType = type === "location" ? "text" : type;
+            const placeholder = escapeAttr(type === "location" ? "Adresse / localisation" : (f.placeholder || ""));
+            div.innerHTML = `
+                <label>${label}</label>
+                <input type="${inputType}" data-field-id="${fid}" placeholder="${placeholder}">
+            `;
+        }
+        else if (type === "textarea") {
+            div.innerHTML = `
+                <label>${label}</label>
+                <textarea data-field-id="${fid}" placeholder="${escapeAttr(f.placeholder || "")}"></textarea>
+            `;
+        }
+        else if (type === "select") {
+            const options = (f.options || "Option A,Option B").split(",").map(o => o.trim());
+            div.innerHTML = `
+                <label>${label}</label>
+                <select data-field-id="${fid}">
+                    <option value="">— Choisir —</option>
+                    ${options.map(o => `<option value="${escapeAttr(o)}">${escapeHtml(o)}</option>`).join("")}
+                </select>
+            `;
+        }
+        else if (type === "checkbox") {
+            const options = (f.options || "Option A,Option B").split(",").map(o => o.trim());
+            div.innerHTML = `
+                <label>${label}</label>
+                <div class="checkbox-row">
+                    ${options.map((o,i) => `<label><input type="checkbox" data-field-id="${fid}" value="${escapeAttr(o)}"> ${escapeHtml(o)}</label>`).join("")}
+                </div>
+            `;
+        }
+        else if (type === "radio") {
+            const options = (f.options || "Oui,Non").split(",").map(o => o.trim());
+            div.innerHTML = `
+                <label>${label}</label>
+                <div class="radio-row">
+                    ${options.map((o,i) => `<label><input type="radio" name="${fid}" data-field-id="${fid}" value="${escapeAttr(o)}"> ${escapeHtml(o)}</label>`).join("")}
+                </div>
+            `;
+        }
+        else if (type === "photo") {
+            div.innerHTML = `
+                <label>📷 ${label}</label>
+                <input type="file" data-field-id="${fid}" accept="image/*" capture="camera">
+            `;
+        }
+        else if (type === "equipier") {
+            div.innerHTML = `
+                <label>👤 ${label}</label>
+                <input type="text" data-field-id="${f.id}" placeholder="Nom de l'équipier">
+            `;
+        }
+        else if (type === "siteSelector") {
+            div.innerHTML = `
+                <label>🏢 ${label}</label>
+                <select data-field-id="${f.id}">
+                    <option value="">— Site —</option>
+                    <option value="Le Bon Marché">Le Bon Marché</option>
+                    <option value="Grande Épicerie RG">Grande Épicerie Rive Gauche</option>
+                    <option value="Grande Épicerie RD">Grande Épicerie Rive Droite</option>
+            <option value="SAM">La Samaritaine</option>
+                    <option value="Moët Hennessy">Moët Hennessy</option>
+                    <option value="Magasin 3">Magasin 3 – 115 Rue du Bac</option>
+                    <option value="Bagneux">Bagneux</option>
+                </select>
+            `;
+        }
+        else if (type === "qrcode") {
+            div.innerHTML = `<label>📡 ${label}</label><p style="opacity:.6;font-size:.85rem">QR code généré automatiquement à l'enregistrement.</p>`;
+        }
+        else {
+            div.innerHTML = `<label>${label}</label><input type="text" data-field-id="${f.id}">`;
+        }
+
+        card.appendChild(div);
+    });
+}
+
+/* ============================================================
+   COLLECTE DES DONNÉES
+============================================================ */
+function collectFormData() {
+    const result = {};
+
+    // Inputs simples (text, number, date, time, select, file)
+    document.querySelectorAll("[data-field-id]").forEach(el => {
+        const fid = el.dataset.fieldId;
+
+        if (el.type === "checkbox") {
+            if (!result[fid]) result[fid] = [];
+            if (el.checked) result[fid].push(el.value);
+        }
+        else if (el.type === "radio") {
+            if (el.checked) result[fid] = el.value;
+        }
+        else if (el.type === "file") {
+            // On ne sauvegarde pas le fichier en base (trop lourd), juste le nom
+            result[fid] = el.files.length ? el.files[0].name : null;
+        }
+        else {
+            result[fid] = el.value;
+        }
+    });
+
+    return result;
+}
+
+/* ============================================================
+   ENREGISTREMENT
+============================================================ */
+async function enregistrer() {
+    const btn = document.getElementById("btnSave");
+    btn.disabled = true; btn.textContent = "⏳ Enregistrement…";
+
+    try {
+        const formData = collectFormData();
+        const titre = modele ? modele.titre : "Rapport";
+        const site = modele ? (modele.site || "") : "";
+
+        // Construire une description lisible
+        const desc = Object.entries(formData)
+            .filter(([k, v]) => v && (!Array.isArray(v) || v.length))
+            .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`)
+            .join("\n");
+
+        const { error } = await supabaseClient.from("rapports").insert({
+            type: "formulaire_custom",
+            titre: titre,
+            description: desc,
+            localisation: site || null,
+            statut: "ouvert",
+            priorite: "normale",
+            meta: {
+                modele_id: modeleId,
+                modele_titre: titre,
+                form_data: formData,
+                agent_nom: localStorage.getItem("nom") || null,
+                source: "rapport_dynamique"
+            }
+        });
+
+        if (error) throw error;
+
+        showToast("✅ Rapport enregistré !");
+        btn.textContent = "✅ Enregistré";
+        setTimeout(() => location.href = "index.html", 1200);
+    } catch (e) {
+        showToast("❌ " + (e.message || e), true);
+        btn.disabled = false;
+        btn.textContent = "💾 Enregistrer le rapport";
     }
+}
 
-    // Filtre manuel exposé
-    window.AuraTenant.filter = function (queryBuilder) {
-        return applyTenantFilter(queryBuilder);
-    };
-
-    // ── 8. Lance le patch dès que possible ──────────────────────
-    function tryPatch() {
-        try {
-            if (typeof window.supabaseClient !== "undefined" && window.supabaseClient) {
-                patchClient(window.supabaseClient);
-                // Charger catalogues en arrière-plan (best-effort, non bloquant)
-                loadCatalogues().catch(function () {});
-                return true;
-            }
-        } catch (e) {}
-        return false;
-    }
-    if (!tryPatch()) {
-        var attempts = 0;
-        var interval = setInterval(function () {
-            attempts++;
-            if (tryPatch() || attempts > 30) clearInterval(interval);
-        }, 100);
-    }
-
-    console.info(
-        "[Tenant v3] Mode :",
-        IS_GLOBAL_MODE ? "🌐 SUPER-ADMIN GLOBAL"
-                       : (IS_SUPERADMIN ? "👤 super-admin incarné " + SITE + "/" + SERV
-                                        : "🔒 " + SITE + "/" + SERV)
-    );
-})();
+chargerModele();
+</script>
+<script src="security.js"></script>
+<script src="global.js"></script>
+<script src="notifications_global.js"></script>
+</body>
+</html>

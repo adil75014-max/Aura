@@ -5,405 +5,775 @@
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DAI Hors Service</title>
+<meta charset="UTF-8">
+<title>Sociétés & Permis Feu – Suivi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #eef1f5;
-            margin: 0;
-            padding: 0;
-        }
+<style>
+body {
+    background: #111522;
+    color: white;
+    font-family: system-ui, sans-serif;
+    padding: 20px;
+}
 
-        .container {
-            max-width: 900px;
-            margin: auto;
-            padding: 20px;
-        }
+h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    color: #6fb3ff;
+}
 
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
+.menu-return {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
 
-        /* Bouton menu */
-        .menu-btn {
-            background: #007bff;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
+.menu-return button {
+    background: rgba(255,255,255,0.10);
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 8px 16px;
+    border-radius: 10px;
+    color: #6fb3ff;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+    transition: 0.25s;
+}
 
-        .menu-btn:hover {
-            background: #0056b3;
-        }
+.menu-return button:hover {
+    background: rgba(255,255,255,0.18);
+}
 
-        /* Formulaire */
-        form {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
+.card {
+    background: rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.18);
+    padding: 20px;
+    border-radius: 14px;
+    margin-bottom: 25px;
+    backdrop-filter: blur(10px);
+}
 
-        label {
-            font-weight: bold;
-            margin-top: 10px;
-            display: block;
-        }
+label {
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
 
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            margin-top: 5px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-        }
+input, select {
+    width: 100%;
+    padding: 10px;
+    margin-top: 6px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    border: none;
+}
 
-        button[type="submit"] {
-            width: 100%;
-            padding: 14px;
-            margin-top: 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            cursor: pointer;
-        }
+button {
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: #6fb3ff;
+    color: black;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 10px;
+}
 
-        button[type="submit"]:hover {
-            background: #0056b3;
-        }
+table {
+    width: 100%;
+    margin-top: 20px;
+    border-collapse: collapse;
+}
 
-        /* Messages */
-        .success, .error {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 8px;
-        }
+td, th {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+}
 
-        .success {
-            background: #d4edda;
-            color: #155724;
-        }
+th {
+    cursor: pointer;
+    color: #6fb3ff;
+}
 
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        /* Tableau responsive — structure stricte pour alignement parfait */
-        .table-wrapper {
-            margin-top: 30px;
-            overflow-x: auto;              /* scroll horizontal si écran trop petit */
-            border-radius: 12px;
-            background: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        table {
-            width: 100%;
-            min-width: 900px;              /* plancher pour garder la lisibilité */
-            margin-top: 0;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            table-layout: fixed;            /* respect strict des largeurs colgroup */
-        }
-
-        /* Largeurs explicites — garantissent l'alignement face à face */
-        col.col-site    { width: 16%; }
-        col.col-zone    { width:  8%; }
-        col.col-boucle  { width:  8%; }
-        col.col-point   { width:  8%; }
-        col.col-adresse { width: 12%; }
-        col.col-date    { width: 13%; }
-        col.col-motif   { width: 20%; }
-        col.col-action  { width: 15%; }
-
-        th, td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #ddd;
-            text-align: center;
-            font-size: 14px;
-            vertical-align: middle;
-            word-break: break-word;         /* coupe les mots trop longs plutôt que de déborder */
-        }
-
-        th {
-            background: #007bff;
-            color: white;
-            white-space: nowrap;            /* entêtes jamais cassées */
-        }
-
-        /* Cellules au contenu potentiellement long : on wrap sur plusieurs lignes */
-        td.cell-wrap {
-            text-align: left;
-            line-height: 1.4;
-            white-space: normal;
-        }
-
-        /* Cellules courtes : troncature avec tooltip */
-        td.cell-short {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Bouton "Remettre en service" — désormais un vrai bouton avec taille propre */
-        .btn-rs {
-            background: #28a745;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: none;
-            color: white;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            white-space: normal;            /* autorise le retour à la ligne si besoin */
-            line-height: 1.2;
-            max-width: 100%;
-            transition: background 0.15s;
-        }
-
-        .btn-rs:hover {
-            background: #1e7e34;
-        }
-
-        /* État vide */
-        .empty-row td {
-            text-align: center;
-            padding: 30px 16px;
-            color: #94a3b8;
-            font-style: italic;
-        }
-
-        /* MOBILE OPTIMISATION */
-        @media (max-width: 600px) {
-            th, td {
-                font-size: 12px;
-                padding: 8px 6px;
-            }
-
-            button[type="submit"] {
-                font-size: 16px;
-            }
-
-            input, select, textarea {
-                font-size: 14px;
-            }
-
-            .btn-rs {
-                font-size: 11px;
-                padding: 6px 8px;
-            }
-        }
-    </style>
+.actions-bar {
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-bottom:15px;
+}
+</style>
 </head>
 
 <body>
 
-<div class="container">
+<h1>🏗️ Sociétés & Permis Feu</h1>
 
-    <button class="menu-btn" onclick="window.location.href='index.html'">⟵ Menu</button>
+<div class="menu-return">
+    <button onclick="goMenu()">⟵ Menu</button>
+</div>
 
-    <h2>Gestion des DAI Hors Service</h2>
-
-    <!-- FORMULAIRE -->
-    <form id="hsForm">
-
-        <label>Site :</label>
-        <select id="site">
-            <option value="">Sélectionner un site</option>
-            <option value="Le Bon Marché">Le Bon Marché</option>
-            <option value="La Grande Épicerie Rive Gauche">La Grande Épicerie Rive Gauche</option>
-            <option value="Moët Hennessy">Moët Hennessy</option>
-            <option value="Magasin 3 – 115 Rue du Bac">Magasin 3 – 115 Rue du Bac</option>
-            <option value="La Grande Épicerie Rive Droite">La Grande Épicerie Rive Droite</option>
-            <option value="SAM">La Samaritaine</option>
-            <option value="Bagneux">Bagneux</option>
-        </select>
-
-        <label>Zone :</label>
-        <input type="text" id="zone" placeholder="Ex : Zone 12">
-
-        <label>Boucle :</label>
-        <input type="text" id="boucle" placeholder="Ex : Boucle 3">
-
-        <label>Point :</label>
-        <input type="text" id="point" placeholder="Ex : Point 45">
-
-        <label>Adresse :</label>
-        <input type="text" id="adresse" placeholder="Ex : 12.3.45">
-
-        <label>Date & heure de mise hors service :</label>
-        <input type="datetime-local" id="date_hs">
-
-        <label>Motif :</label>
-        <textarea id="motif" placeholder="Décrivez le motif…"></textarea>
-
-        <button type="submit">Déclarer hors service</button>
-    </form>
-
-    <div id="message"></div>
-
-    <h3 style="margin-top:40px;">DAI actuellement hors service</h3>
-
-    <div class="table-wrapper">
-        <table>
-            <colgroup>
-                <col class="col-site">
-                <col class="col-zone">
-                <col class="col-boucle">
-                <col class="col-point">
-                <col class="col-adresse">
-                <col class="col-date">
-                <col class="col-motif">
-                <col class="col-action">
-            </colgroup>
-            <thead>
-                <tr>
-                    <th>Site</th>
-                    <th>Zone</th>
-                    <th>Boucle</th>
-                    <th>Point</th>
-                    <th>Adresse</th>
-                    <th>Date HS</th>
-                    <th>Motif</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="hsList"></tbody>
-        </table>
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:flex; gap:15px; margin-bottom:25px; flex-wrap:wrap;">
+    <div class="card" style="flex:1; min-width:180px; text-align:center;">
+        <h3>Interventions actives</h3>
+        <p id="dashActifs" style="font-size:1.6rem; color:#4ade80;">0</p>
     </div>
 
+    <div class="card" style="flex:1; min-width:180px; text-align:center;">
+        <h3>Permis feu requis</h3>
+        <p id="dashFeuRequis" style="font-size:1.6rem; color:#fbbf24;">0</p>
+    </div>
+
+    <div class="card" style="flex:1; min-width:180px; text-align:center;">
+        <h3>Ouvriers présents</h3>
+        <p id="dashOuvriers" style="font-size:1.6rem; color:#6fb3ff;">0</p>
+    </div>
+</div>
+
+<!-- ALERTES -->
+<div id="alertes" class="card" style="display:none; border-left:4px solid #ef4444;">
+    <h3 style="color:#ef4444;">⚠️ Alertes critiques</h3>
+    <ul id="alertList"></ul>
+</div>
+
+<!-- FORMULAIRE -->
+<div class="card">
+    <h2>Déclarer une intervention</h2>
+
+    <label>PDF Permis Feu (si existant) :</label>
+    <input type="file" id="pdfInput" accept="application/pdf">
+
+    <label>Société :</label>
+    <input type="text" id="inputSociete">
+
+    <label>Zone :</label>
+    <input type="text" id="inputZone">
+
+    <label>Date de fin d’intervention :</label>
+    <input type="date" id="inputDate">
+
+    <label>Heure d’arrivée :</label>
+    <input type="time" id="inputArrivee">
+
+    <label>Permis feu requis :</label>
+    <select id="inputFeuRequis">
+        <option value="Non">Non</option>
+        <option value="Oui">Oui</option>
+    </select>
+
+    <label>Permis feu signé :</label>
+    <select id="inputFeuSigne">
+        <option value="Non">Non</option>
+        <option value="Oui">Oui</option>
+    </select>
+
+    <label>Nombre d’ouvriers :</label>
+    <input type="number" id="inputOuvriers" min="0" value="0">
+
+    <label>Observations :</label>
+    <input type="text" id="inputObs">
+
+    <button onclick="ajouterIntervention()" style="width:100%;">Enregistrer</button>
+</div>
+
+<!-- TABLEAU -->
+<div class="card">
+    <h2>Interventions en cours</h2>
+
+    <div class="actions-bar">
+        <select id="filtreSociete">
+            <option value="">Toutes les sociétés</option>
+        </select>
+
+        <select id="filtreZone">
+            <option value="">Toutes les zones</option>
+        </select>
+
+        <select id="filtreFeu">
+            <option value="">Permis feu ?</option>
+            <option value="Oui">Oui</option>
+            <option value="Non">Non</option>
+        </select>
+
+        <button onclick="exportExcel()">Exporter Excel</button>
+        <button onclick="effacerJournee()" style="background:#ef4444; color:white;">🗑 Effacer la journée</button>
+    </div>
+
+    <input type="text" id="searchInput" placeholder="🔍 Recherche..." style="margin-bottom:15px; width:100%;">
+
+    <table id="tableInterv">
+        <tr>
+            <th onclick="trier('societe')">Société ⬍</th>
+            <th onclick="trier('zone')">Zone ⬍</th>
+            <th onclick="trier('dateFin')">Fin prévue ⬍</th>
+            <th>Arrivée</th>
+            <th>Départ</th>
+            <th>Permis requis</th>
+            <th>Permis signé</th>
+            <th>Ouvriers</th>
+            <th>Observations</th>
+            <th>Permis</th>
+            <th>Modifier</th>
+        </tr>
+    </table>
+</div>
+
+<!-- MODALE EDITION -->
+<div id="modalEdit" style="
+    display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+    background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
+    justify-content:center; align-items:center;
+">
+    <div style="
+        background:rgba(255,255,255,0.12); padding:20px; border-radius:12px;
+        width:90%; max-width:400px; border:1px solid rgba(255,255,255,0.2);
+    ">
+        <h3 style="color:#6fb3ff;">Modifier l’intervention</h3>
+
+        <label>Heure d’arrivée :</label>
+        <input type="time" id="editArrivee">
+
+        <label>Permis feu requis :</label>
+        <select id="editFeuRequis">
+            <option value="Non">Non</option>
+            <option value="Oui">Oui</option>
+        </select>
+
+        <label>Permis feu signé :</label>
+        <select id="editFeuSigne">
+            <option value="Non">Non</option>
+            <option value="Oui">Oui</option>
+        </select>
+
+        <label>Nombre d’ouvriers :</label>
+        <input type="number" id="editOuvriers" min="0">
+
+        <label>Observations :</label>
+        <input type="text" id="editObs">
+
+        <button onclick="saveEdit()" style="width:100%;">Enregistrer</button>
+        <button onclick="closeModal()" style="background:#444; color:white; margin-top:10px; width:100%;">Annuler</button>
+    </div>
 </div>
 
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="app-config.js"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
-
 <script>
-    // Config loaded from supabaseClient.js
+let interventions = [];
+async function loadInterventions() {
+    const { data, error } = await supabaseClient
+        .from("ssiap2_chantier")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-    // Using supabaseClient from supabaseClient.js
+    if (error) {
+        console.error("Erreur chargement :", error);
+        alert("Erreur Supabase : " + error.message);
+        return;
+    }
 
-    // INSERTION
-    document.getElementById("hsForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
+    interventions = (data || []).map(d => ({
+        id:           d.id,
+        societe:      d.societe || d.entreprise || "",
+        zone:         d.zone || "",
+        dateFin:      d.date_fin || "",
+        arrivee:      d.arrivee || "",
+        depart:       d.depart || null,
+        feuRequis:    d.feu_requis || "Non",
+        feuSigne:     d.feu_signe || "Non",
+        ouvriers:     d.ouvriers || 0,
+        observations: d.observations || "",
+        url:          d.pdf_url || "",
+        pdfPath:      d.pdf_path || null
+    }));
 
-        const site = document.getElementById("site").value;
-        const zone = document.getElementById("zone").value;
-        const boucle = document.getElementById("boucle").value;
-        const point = document.getElementById("point").value;
-        const adresse = document.getElementById("adresse").value;
-        const dateRaw = document.getElementById("date_hs").value;
-        // Ajouter le fuseau horaire local pour éviter le décalage UTC
-        const tzOffset = -new Date().getTimezoneOffset();
-        const tzSign = tzOffset >= 0 ? "+" : "-";
-        const tzH = String(Math.floor(Math.abs(tzOffset)/60)).padStart(2,"0");
-        const tzM = String(Math.abs(tzOffset)%60).padStart(2,"0");
-        const date_hs = dateRaw ? dateRaw + ":00" + tzSign + tzH + ":" + tzM : null;
-        const motif = document.getElementById("motif").value;
+    refreshAll();
+}
+loadInterventions();
+let triActuel = { colonne: null, ordre: 1 };
+let editIndex = null;
 
-        const agent = "NomAgent"; 
-        const statut = "hors_service";
+/* TEMPS RÉEL LOCAL */
+function refreshAll() {
+    afficherInterventions();
+    remplirFiltres();
+    updateDashboard();
+    updateAlertes();
+}
 
-        const { error } = await supabaseClient
-            .from("dai_hors_service")
-            .insert([{ site, zone, boucle, point, adresse, date_hs, motif, agent, statut }]);
+/* AFFICHAGE */
+function afficherInterventions() {
+    const table = document.getElementById("tableInterv");
 
-        const msg = document.getElementById("message");
+    table.innerHTML = `
+        <tr>
+            <th onclick="trier('societe')">Société ⬍</th>
+            <th onclick="trier('zone')">Zone ⬍</th>
+            <th onclick="trier('dateFin')">Fin prévue ⬍</th>
+            <th>Arrivée</th>
+            <th>Départ</th>
+            <th>Permis requis</th>
+            <th>Permis signé</th>
+            <th>Ouvriers</th>
+            <th>Observations</th>
+            <th>Permis</th>
+            <th>Modifier</th>
+        </tr>
+    `;
 
-        if (error) {
-            msg.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
-        } else {
-            msg.innerHTML = `<div class="success">Mise hors service enregistrée.</div>`;
-            document.getElementById("hsForm").reset();
-            loadHS();
+    const now = new Date();
+    const fSoc = document.getElementById("filtreSociete").value;
+    const fZone = document.getElementById("filtreZone").value;
+    const fFeu = document.getElementById("filtreFeu").value;
+    const search = document.getElementById("searchInput").value.toLowerCase();
+
+    interventions.forEach((i, index) => {
+        // Comparer avec la fin de journée (23:59:59) pour ne pas masquer les interventions du jour
+        const fin = i.dateFin ? new Date(i.dateFin + "T23:59:59") : null;
+        if (fin && fin < now) return;
+
+        if (fSoc && i.societe !== fSoc) return;
+        if (fZone && i.zone !== fZone) return;
+        if (fFeu && i.feuRequis !== fFeu) return;
+
+        if (
+            !i.societe.toLowerCase().includes(search) &&
+            !i.zone.toLowerCase().includes(search) &&
+            !(i.observations || "").toLowerCase().includes(search)
+        ) return;
+
+        let colorFeu = "#4ade80";
+        if (i.feuRequis === "Oui" && i.feuSigne === "Non") colorFeu = "#ef4444";
+        else if (i.feuRequis === "Oui") colorFeu = "#fbbf24";
+
+        const row = document.createElement("tr");
+        // Sécurise l'URL : on n'autorise que http(s), sinon on l'ignore (anti javascript:)
+        const safeUrl = (i.url && /^https?:\/\//i.test(i.url)) ? i.url : "";
+        row.innerHTML = `
+            <td>${escapeHtml(i.societe)}</td>
+            <td>${escapeHtml(i.zone)}</td>
+            <td>${escapeHtml(i.dateFin)}</td>
+            <td>${escapeHtml(i.arrivee || "-")}</td>
+            <td>
+                ${i.depart 
+                    ? escapeHtml(i.depart) 
+                    : `<button onclick="declarerDepart(${index})" style="padding:6px 10px; border-radius:6px; background:#ef4444; color:white;">Sortie</button>`
+                }
+            </td>
+            <td>${escapeHtml(i.feuRequis)}</td>
+            <td style="color:${colorFeu}; font-weight:700;">${escapeHtml(i.feuSigne)}</td>
+            <td>${escapeHtml(i.ouvriers)}</td>
+            <td>${escapeHtml(i.observations || "-")}</td>
+            <td>${safeUrl ? `<a href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener" style="color:#6fb3ff;">Ouvrir</a>` : "-"}</td>
+            <td><button onclick="editIntervention(${index})">✏️</button></td>
+        `;
+        table.appendChild(row);
+    });
+}
+
+/* BOUTON SORTIE */
+async function declarerDepart(index) {
+    const now = new Date();
+    const h = now.getHours().toString().padStart(2, "0");
+    const m = now.getMinutes().toString().padStart(2, "0");
+    const heure = `${h}:${m}`;
+
+    const inter = interventions[index];
+
+    const { error } = await supabaseClient
+        .from("ssiap2_chantier")
+        .update({ depart: heure })
+        .eq("id", inter.id);
+
+    if (error) {
+        alert("❌ Erreur sortie : " + error.message);
+        return;
+    }
+
+    interventions[index].depart = heure;
+    refreshAll();
+}
+
+/* TRI */
+function trier(colonne) {
+    if (triActuel.colonne === colonne) triActuel.ordre *= -1;
+    else { triActuel.colonne = colonne; triActuel.ordre = 1; }
+
+    interventions.sort((a, b) => {
+        if (colonne === "dateFin")
+            return (new Date(a[colonne]) - new Date(b[colonne])) * triActuel.ordre;
+        return a[colonne].localeCompare(b[colonne]) * triActuel.ordre;
+    });
+
+    refreshAll();
+}
+
+/* FILTRES */
+function remplirFiltres() {
+    const fSoc = document.getElementById("filtreSociete");
+    const fZone = document.getElementById("filtreZone");
+
+    fSoc.innerHTML = `<option value="">Toutes les sociétés</option>`;
+    fZone.innerHTML = `<option value="">Toutes les zones</option>`;
+
+    [...new Set(interventions.map(i => i.societe))].forEach(s => {
+        fSoc.innerHTML += `<option value="${escapeAttr(s)}">${escapeHtml(s)}</option>`;
+    });
+
+    [...new Set(interventions.map(i => i.zone))].forEach(z => {
+        fZone.innerHTML += `<option value="${escapeAttr(z)}">${escapeHtml(z)}</option>`;
+    });
+}
+
+/* AJOUT */
+async function ajouterIntervention() {
+    const fileInput = document.getElementById("pdfInput");
+    const societe = document.getElementById("inputSociete").value.trim();
+    const zone = document.getElementById("inputZone").value.trim();
+    const dateFin = document.getElementById("inputDate").value;
+    const arrivee = document.getElementById("inputArrivee").value;
+    const feuRequis = document.getElementById("inputFeuRequis").value;
+    const feuSigne = document.getElementById("inputFeuSigne").value;
+    const ouvriers = parseInt(document.getElementById("inputOuvriers").value || "0", 10);
+    const observations = document.getElementById("inputObs").value.trim();
+
+    if (!societe || !zone || !dateFin || !arrivee)
+        return alert("Société, zone, date et heure d'arrivée obligatoires.");
+
+    const btn = document.querySelector('button[onclick="ajouterIntervention()"]');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "⏳ Enregistrement…";
+
+    try {
+        let pdfUrl = null;
+        let pdfPath = null;
+
+        // 1) Upload du PDF si fourni
+        if (fileInput.files.length) {
+            const file = fileInput.files[0];
+            const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+            pdfPath = `${Date.now()}_${safeName}`;
+
+            const { error: upErr } = await supabaseClient
+                .storage
+                .from(window.APP_CONFIG.BUCKETS.ssiap2)
+                .upload(pdfPath, file, { contentType: file.type || "application/pdf", upsert: false });
+
+            if (upErr) throw upErr;
+
+            pdfUrl = supabaseClient.storage.from(window.APP_CONFIG.BUCKETS.ssiap2).getPublicUrl(pdfPath).data.publicUrl;
+        }
+
+        // 2) Insert dans la table
+        const { error: insErr } = await supabaseClient
+            .from("ssiap2_chantier")
+            .insert({
+                societe, zone,
+                date_fin: dateFin,
+                arrivee, depart: null,
+                feu_requis: feuRequis, feu_signe: feuSigne,
+                ouvriers, observations,
+                pdf_url: pdfUrl, pdf_path: pdfPath,
+                statut: "en_cours"
+            });
+
+        if (insErr) throw insErr;
+
+        // 3) Reset du formulaire
+        fileInput.value = "";
+        document.getElementById("inputSociete").value = "";
+        document.getElementById("inputZone").value = "";
+        document.getElementById("inputDate").value = "";
+        document.getElementById("inputArrivee").value = "";
+        document.getElementById("inputFeuRequis").value = "Non";
+        document.getElementById("inputFeuSigne").value = "Non";
+        document.getElementById("inputOuvriers").value = "0";
+        document.getElementById("inputObs").value = "";
+
+        // 4) Recharge la liste depuis Supabase
+        await loadInterventions();
+    } catch (e) {
+        console.error(e);
+        alert("❌ Erreur : " + (e.message || e));
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+    }
+}
+
+/* DASHBOARD */
+function updateDashboard() {
+    const now = new Date();
+    let actifs = 0, feuRequis = 0, ouvriersPresent = 0;
+
+    interventions.forEach(i => {
+        const fin = i.dateFin ? new Date(i.dateFin + "T23:59:59") : null;
+        if (fin && (isNaN(fin) || fin < now)) return;
+
+        actifs++;
+        if (i.feuRequis === "Oui") feuRequis++;
+
+        // Présent = arrivée saisie ET pas encore reparti
+        if (i.arrivee && !i.depart) {
+            ouvriersPresent += Number(i.ouvriers || 0);
         }
     });
 
-    // AFFICHAGE
-    async function loadHS() {
-        const { data, error } = await supabaseClient
-            .from("dai_hors_service")
-            .select("*")
-            .eq("statut", "hors_service")
-            .order("date_hs", { ascending: false });
+    document.getElementById("dashActifs").textContent = actifs;
+    document.getElementById("dashFeuRequis").textContent = feuRequis;
+    document.getElementById("dashOuvriers").textContent = ouvriersPresent;
+}
 
-        const list = document.getElementById("hsList");
-        list.innerHTML = "";
+/* ALERTES */
+function updateAlertes() {
+    const now = new Date();
+    const alertBox = document.getElementById("alertes");
+    const alertList = document.getElementById("alertList");
 
-        if (error) {
-            list.innerHTML = `<tr class="empty-row"><td colspan="8">Erreur chargement : ${error.message}</td></tr>`;
-            return;
+    alertList.innerHTML = "";
+    let count = 0;
+
+    interventions.forEach(i => {
+        const diff = (new Date(i.dateFin + "T23:59:59") - now) / (1000 * 3600 * 24);
+
+        if ((i.feuRequis === "Oui" && i.feuSigne === "Non") ||
+            (diff <= 1 && diff >= 0 && i.ouvriers > 0)) {
+
+            alertList.innerHTML += `<li>${i.societe} – ${i.zone}</li>`;
+            count++;
+        }
+    });
+
+    alertBox.style.display = count > 0 ? "block" : "none";
+}
+/* EDITION */
+function editIntervention(index) {
+    editIndex = index;
+    const i = interventions[index];
+
+    document.getElementById("editArrivee").value = i.arrivee || "";
+    document.getElementById("editFeuRequis").value = i.feuRequis || "Non";
+    document.getElementById("editFeuSigne").value = i.feuSigne || "Non";
+    document.getElementById("editOuvriers").value = i.ouvriers || 0;
+    document.getElementById("editObs").value = i.observations || "";
+
+    document.getElementById("modalEdit").style.display = "flex";
+}
+
+function closeModal() {
+    document.getElementById("modalEdit").style.display = "none";
+}
+
+async function saveEdit() {
+    if (editIndex === null) return;
+
+    const i = interventions[editIndex];
+
+    const newArrivee   = document.getElementById("editArrivee").value;
+    const newFeuRequis = document.getElementById("editFeuRequis").value;
+    const newFeuSigne  = document.getElementById("editFeuSigne").value;
+    const newOuvriers  = parseInt(document.getElementById("editOuvriers").value || "0", 10);
+    const newObs       = document.getElementById("editObs").value.trim();
+
+    const { error } = await supabaseClient
+        .from("ssiap2_chantier")
+        .update({
+            arrivee:    newArrivee,
+            feu_requis: newFeuRequis,
+            feu_signe:  newFeuSigne,
+            ouvriers:   newOuvriers,
+            observations: newObs
+        })
+        .eq("id", i.id);
+
+    if (error) {
+        alert("❌ Erreur sauvegarde : " + error.message);
+        return;
+    }
+
+    i.arrivee = newArrivee;
+    i.feuRequis = newFeuRequis;
+    i.feuSigne = newFeuSigne;
+    i.ouvriers = newOuvriers;
+    i.observations = newObs;
+
+    closeModal();
+    refreshAll();
+}
+
+/* EXPORT */
+function exportExcel() {
+    if (!interventions.length) {
+        alert("Aucune intervention à exporter.");
+        return;
+    }
+
+    const headers = [
+        "Société",
+        "Zone",
+        "Date fin",
+        "Heure arrivée",
+        "Heure départ",
+        "Permis requis",
+        "Permis signé",
+        "Ouvriers",
+        "Observations",
+        "URL Permis"
+    ];
+
+    const rows = interventions.map(i => [
+        i.societe,
+        i.zone,
+        i.dateFin,
+        i.arrivee || "",
+        i.depart || "",
+        i.feuRequis || "Non",
+        i.feuSigne || "Non",
+        i.ouvriers || 0,
+        (i.observations || "").replace(/(\r\n|\n|\r)/gm, " "),
+        i.url || ""
+    ]);
+
+    let csvContent = "\uFEFF" + headers.join(";") + "\n";
+    rows.forEach(r => {
+        csvContent += r.map(v => `"${(v || "").toString().replace(/"/g, '""')}"`).join(";") + "\n";
+    });
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "interventions_permis_feu.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+/* EFFACER LA JOURNÉE
+   Supprime toutes les interventions de la table + les PDFs associés dans Storage.
+   À utiliser en fin de vacation, APRÈS avoir exporté l'Excel. */
+async function effacerJournee() {
+    if (!interventions.length) {
+        alert("Rien à effacer.");
+        return;
+    }
+
+    const confirmation = confirm(
+        `⚠️ Effacer ${interventions.length} intervention(s) ?\n\n` +
+        `Cette action est définitive : les fiches et les PDFs associés seront supprimés.\n` +
+        `Pense à exporter l'Excel avant de valider.`
+    );
+    if (!confirmation) return;
+
+    // Double confirmation pour éviter les fausses manips
+    const safety = prompt('Tape "EFFACER" pour confirmer définitivement :');
+    if (safety !== "EFFACER") {
+        alert("Suppression annulée.");
+        return;
+    }
+
+    try {
+        // 1) Suppression des PDFs dans Storage (s'il y en a)
+        const paths = interventions.map(i => i.pdfPath).filter(Boolean);
+        if (paths.length) {
+            const { error: stErr } = await supabaseClient
+                .storage
+                .from(window.APP_CONFIG.BUCKETS.ssiap2)
+                .remove(paths);
+            if (stErr) console.warn("Erreur suppression PDFs (on continue) :", stErr);
         }
 
-        if (!data || data.length === 0) {
-            list.innerHTML = `<tr class="empty-row"><td colspan="8">Aucune DAI actuellement hors service.</td></tr>`;
-            return;
+        // 2) Suppression de toutes les lignes via leurs IDs (plus fiable qu'un filtre NOT IS NULL)
+        const allIds = interventions.map(i => i.id).filter(Boolean);
+        if (allIds.length) {
+            const { error: delErr, count } = await supabaseClient
+                .from("ssiap2_chantier")
+                .delete({ count: "exact" })
+                .in("id", allIds);
+
+            if (delErr) throw delErr;
+
+            // Vérifier que toutes les lignes ont bien été supprimées
+            const { count: remaining } = await supabaseClient
+                .from("ssiap2_chantier")
+                .select("*", { count: "exact", head: true });
+
+            if (remaining > 0) {
+                // Une seconde tentative pour les lignes orphelines
+                const { data: leftover } = await supabaseClient
+                    .from("ssiap2_chantier")
+                    .select("id");
+                if (leftover && leftover.length) {
+                    const leftIds = leftover.map(r => r.id);
+                    await supabaseClient
+                        .from("ssiap2_chantier")
+                        .delete()
+                        .in("id", leftIds);
+                }
+            }
         }
 
-        /* Échappement HTML pour éviter qu'un motif/adresse contenant < > & ne casse la mise en page */
-        const esc = (s) => {
-            if (s === null || s === undefined) return "";
-            const d = document.createElement("div");
-            d.textContent = String(s);
-            return d.innerHTML;
-        };
+        // 3) Reset COMPLET de l'état local
+        interventions = [];
 
-        data.forEach(item => {
-            const dateFmt = item.date_hs
-                ? new Date(item.date_hs).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })
-                : "—";
+        // Forcer le masquage explicite de la boîte d'alertes et vider sa liste
+        const alertBox = document.getElementById("alertes");
+        const alertList = document.getElementById("alertList");
+        if (alertBox) alertBox.style.display = "none";
+        if (alertList) alertList.innerHTML = "";
 
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td class="cell-short" title="${esc(item.site)}">${esc(item.site) || "—"}</td>
-                <td class="cell-short" title="${esc(item.zone)}">${esc(item.zone) || "—"}</td>
-                <td class="cell-short" title="${esc(item.boucle)}">${esc(item.boucle) || "—"}</td>
-                <td class="cell-short" title="${esc(item.point)}">${esc(item.point) || "—"}</td>
-                <td class="cell-wrap"  title="${esc(item.adresse)}">${esc(item.adresse) || "—"}</td>
-                <td class="cell-short" title="${dateFmt}">${dateFmt}</td>
-                <td class="cell-wrap"  title="${esc(item.motif)}">${esc(item.motif) || "—"}</td>
-                <td><button type="button" class="btn-rs" onclick="remiseService('${item.id}')">Remettre en service</button></td>
-            `;
-            list.appendChild(row);
+        // Réinitialiser les filtres pour éviter qu'ils gardent l'ancienne valeur "e3" / "E3"
+        const fSoc = document.getElementById("filtreSociete");
+        const fZone = document.getElementById("filtreZone");
+        const fFeu = document.getElementById("filtreFeu");
+        const search = document.getElementById("searchInput");
+        if (fSoc) fSoc.innerHTML = '<option value="">Toutes</option>';
+        if (fZone) fZone.innerHTML = '<option value="">Toutes</option>';
+        if (fFeu) fFeu.value = "";
+        if (search) search.value = "";
+
+        // Vider le tableau d'interventions
+        const table = document.getElementById("tableInterv");
+        if (table) table.innerHTML = "";
+
+        // Reset des compteurs dashboard
+        ["dashTotal", "dashEnCours", "dashTermine", "dashOuvriers", "dashPermisFeu"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = "0";
         });
+
+        // Recharger depuis la base pour s'assurer que tout est bien synchronisé
+        await loadInterventions();
+        refreshAll();
+        alert("✅ Journée effacée.");
+    } catch (e) {
+        console.error(e);
+        alert("❌ Erreur lors de la suppression : " + (e.message || e));
     }
+}
 
-    // REMISE EN SERVICE -> suppression de la ligne dans Supabase
-    async function remiseService(id) {
-        if (!confirm("Confirmer la remise en service ? La ligne sera supprimée.")) {
-            return;
-        }
+/* INIT */
+function init() {
+    refreshAll();
 
-        const { error } = await supabaseClient
-            .from("dai_hors_service")
-            .delete()
-            .eq("id", id);
+    document.getElementById("filtreSociete").addEventListener("change", refreshAll);
+    document.getElementById("filtreZone").addEventListener("change", refreshAll);
+    document.getElementById("filtreFeu").addEventListener("change", refreshAll);
+    document.getElementById("searchInput").addEventListener("input", refreshAll);
+}
 
-        const msg = document.getElementById("message");
+init();
+</script>
 
-        if (error) {
-            msg.innerHTML = `<div class="error">Erreur suppression : ${error.message}</div>`;
-            return;
-        }
-
-        msg.innerHTML = `<div class="success">DAI remise en service (ligne supprimée).</div>`;
-        loadHS();
-    }
-
-    loadHS();
+<script>
+function goMenu() {
+    window.location.href = "index.html";
+}
 </script>
 
 <script src="security.js"></script>

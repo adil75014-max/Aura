@@ -2,753 +2,247 @@
 <html lang="fr">
 <head>
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-Frame-Options" content="DENY">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Rapport - LBM Sécurité</title>
+<title>Prêt clé / badge — Aura Sentinelle</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="global.css">
 <style>
-body { display:flex; justify-content:center; padding:20px; }
-.page-container { width:100%; max-width:700px; }
-h1 { text-align:center; margin-bottom:25px; color:var(--accent); font-size:1.7rem; }
-.menu-return { margin-bottom:20px; }
-.menu-return button { background:var(--bg2); border:1px solid var(--border); padding:8px 16px; border-radius:10px; color:var(--accent); cursor:pointer; transition:0.25s; }
-.menu-return button:hover { background:var(--accent); color:#000; }
-.section { background:var(--card); border:1px solid var(--border); padding:18px; border-radius:14px; margin-bottom:20px; box-shadow:var(--shadow); }
-.section h2 { color:var(--accent); margin-bottom:10px; }
-textarea, input[type="text"], input[type="time"], select, input[type="file"] { width:100%; padding:10px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; color:var(--text); margin-top:8px; font-size:0.9rem; }
-textarea { min-height:120px; resize:vertical; }
-.btn { background:var(--accent); border:none; padding:12px 16px; border-radius:10px; color:#000; font-weight:600; cursor:pointer; width:100%; margin-top:10px; }
-.btn:hover { opacity:0.85; }
-.btn:disabled { opacity:0.4; cursor:not-allowed; }
+body { margin:0; padding:16px; background:radial-gradient(circle at top,#101a2e,#080b14 60%); color:#e8ebf0; font-family:system-ui,sans-serif; }
+.bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+.bar h1 { font-size:1.3rem; margin:0; flex:1; min-width:200px; display:flex; align-items:center; gap:8px; }
+.btn { background:#16203a; border:1px solid #283042; color:#e8ebf0; border-radius:8px; padding:8px 13px; cursor:pointer; font-size:.85rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+.btn:hover { background:#1d2942; }
+.btn.primary { background:linear-gradient(135deg,#f59e0b,#b45309); border:none; color:#fff; font-weight:700; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:880px){ .grid{ grid-template-columns:1fr; } }
+.card { background:#0e1626; border:1px solid #232c40; border-radius:14px; padding:16px; }
+.card h2 { font-size:1rem; margin:0 0 12px; color:#fcd34d; }
+.cats { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.cat { flex:1; min-width:74px; padding:9px 6px; border-radius:8px; border:1px solid #283042; background:#111b2e; cursor:pointer; font-size:.82rem; text-align:center; font-weight:600; }
+.cat.active { background:#3a2e12; border-color:#f59e0b; color:#fde68a; }
+label { display:block; font-size:.82rem; margin-top:10px; font-weight:600; opacity:.9; }
+input, select { width:100%; box-sizing:border-box; padding:9px; margin-top:4px; background:#0a1120; border:1px solid #283042; border-radius:8px; color:#e8ebf0; font-size:.9rem; }
+.sens-row { display:flex; gap:8px; margin-top:14px; }
+.sens-row .btn { flex:1; justify-content:center; }
+.sens-row .out { background:linear-gradient(135deg,#f59e0b,#b45309); border:none; color:#fff; font-weight:700; }
+.sens-row .in { background:linear-gradient(135deg,#10b981,#047857); border:none; color:#fff; font-weight:700; }
+.scan { background:#0a1120; border:1px dashed #f59e0b; border-radius:8px; padding:10px; margin-bottom:10px; }
+.board { display:flex; flex-direction:column; gap:7px; max-height:300px; overflow-y:auto; }
+.item { padding:9px 11px; border-radius:9px; background:#0a1120; border:1px solid #1d2740; border-left:3px solid #f59e0b; font-size:.86rem; cursor:pointer; }
+.item.over { border-left-color:#ef4444; }
+.item:hover { background:#111c30; }
+.item .t { display:flex; justify-content:space-between; gap:8px; }
+.item .nm { font-weight:700; }
+.item .meta { font-size:.74rem; opacity:.72; margin-top:3px; }
+.counters { display:flex; gap:8px; margin-bottom:10px; }
+.cc { flex:1; background:#0a1120; border:1px solid #232c40; border-radius:10px; padding:8px; text-align:center; }
+.cc .n { font-size:1.4rem; font-weight:800; color:#f59e0b; }
+.cc .l { font-size:.7rem; opacity:.75; }
+.logsearch { display:flex; gap:8px; margin-bottom:10px; }
+.logsearch input { margin-top:0; }
+.log { max-height:260px; overflow-y:auto; }
+.entry { padding:8px 11px; border-radius:9px; margin-bottom:7px; background:#0a1120; border:1px solid #1d2740; border-left:3px solid #283042; font-size:.84rem; }
+.entry.pret { border-left-color:#f59e0b; } .entry.retour { border-left-color:#10b981; }
+.entry .meta { font-size:.73rem; opacity:.7; margin-top:3px; }
+.empty { opacity:.6; text-align:center; padding:18px; font-size:.85rem; }
+#toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#111; padding:12px 22px; border-radius:10px; opacity:0; transition:.3s; pointer-events:none; z-index:999; }
+#toast.show { opacity:1; }
+.hint { font-size:.78rem; opacity:.8; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.3); border-radius:8px; padding:9px 11px; margin-bottom:10px; line-height:1.5; }
 </style>
 </head>
 <body>
-<div class="page-container">
-<h1>Rapport</h1>
-<div class="menu-return"><button onclick="location.href='index.html'">⟵ Menu</button></div>
 
-<label><strong>Site :</strong></label>
-<select id="reportSite">
-    <option value="">Sélectionner un site</option>
-    <option value="LBM">Le Bon Marché</option>
-    <option value="GERG">La Grande Épicerie Rive Gauche</option>
-    <option value="GERD">La Grande Épicerie Rive Droite</option>
-    <option value="SAM">La Samaritaine</option>
-    <option value="MH">Moët Hennessy</option>
-    <option value="M3">Magasin 3 – 115 Rue du Bac</option>
-    <option value="BGX">Bagneux</option>
-</select>
-
-<div class="section">
-    <h2>Informations automatiques</h2>
-    <p><strong>ID :</strong> <span id="reportId"></span></p>
-    <p><strong>Date :</strong> <span id="reportDate"></span></p>
-    <p><strong>Heure début :</strong> <span id="reportTime"></span></p>
-    <label>Heure de fin :</label>
-    <input type="time" id="reportEndTime">
-    <p><strong>Agent principal :</strong> <span id="reportAgent"></span></p>
-    <p><strong>Type :</strong> <span id="reportType"></span></p>
+<div class="bar">
+    <h1>🔑 Prêt clé / badge <span style="font-size:.8rem;opacity:.65;font-weight:500" id="svcLbl"></span></h1>
+    <button class="btn" onclick="exportCSV()">⬇️ Export CSV</button>
+    <a class="btn" href="index.html">← Retour</a>
 </div>
 
-<!-- SECTION MULTI-AGENTS (2 à 3 agents par intervention) -->
-<div class="section">
-    <h2>👥 Agents affectés à l'intervention</h2>
-    <p style="font-size:0.85rem;opacity:0.7;margin-bottom:12px;">
-        Vous pouvez affecter jusqu'à 3 agents sur cette intervention.
-    </p>
-    <div id="agentsContainer">
-        <div class="agent-row" style="display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;">
-            <span style="font-size:1.1rem;">👤</span>
-            <span id="agent1Name" style="flex:1;font-weight:600;"></span>
-            <span style="font-size:0.75rem;opacity:0.6;background:rgba(212,175,55,0.15);padding:4px 10px;border-radius:6px;color:var(--accent);">Principal</span>
+<div class="grid">
+    <!-- ENREGISTRER -->
+    <div class="card">
+        <h2>➕ Enregistrer un prêt / retour</h2>
+        <div class="hint">Prête une clé, un badge ou du matériel à une personne. Le retour se fait en cliquant l'objet sorti (colonne de droite) ou en scannant son code.</div>
+
+        <div class="scan">
+            <label style="margin-top:0">🔖 Scan / saisie rapide du code</label>
+            <input type="text" id="scanField" placeholder="Scanner le code de l'objet, puis Entrée" autocomplete="off">
+        </div>
+
+        <div class="cats" id="cats">
+            <div class="cat active" data-cat="cle"      onclick="setCat('cle')">🔑 Clé</div>
+            <div class="cat" data-cat="badge"    onclick="setCat('badge')">🎫 Badge</div>
+            <div class="cat" data-cat="radio"    onclick="setCat('radio')">📻 Radio</div>
+            <div class="cat" data-cat="vehicule" onclick="setCat('vehicule')">🚗 Véhicule</div>
+            <div class="cat" data-cat="autre"    onclick="setCat('autre')">📦 Autre</div>
+        </div>
+
+        <label>Identifiant de l'objet *</label>
+        <input type="text" id="f_identifiant" placeholder="Ex : Clé local technique, Badge B12, Talkie 3" autocomplete="off">
+        <label>Emprunteur *</label>
+        <input type="text" id="f_emprunteur" placeholder="Nom de la personne" autocomplete="off">
+        <label>Société / service (optionnel)</label>
+        <input type="text" id="f_societe" placeholder="Société ou service" autocomplete="off">
+        <label>Motif (optionnel)</label>
+        <input type="text" id="f_motif" placeholder="Raison du prêt" autocomplete="off">
+
+        <div class="sens-row">
+            <button class="btn out" onclick="enregistrer('pret')">↑ PRÊT (sortie)</button>
+            <button class="btn in" onclick="enregistrer('retour')">↓ RETOUR</button>
         </div>
     </div>
 
-    <div style="margin-top:10px;">
-        <label style="font-size:0.88rem;font-weight:600;">Ajouter un agent supplémentaire :</label>
-        <div style="display:flex;gap:8px;margin-top:6px;">
-            <select id="agentSelect" style="flex:1;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:0.9rem;">
-                <option value="">— Sélectionner un agent —</option>
-            </select>
-            <button type="button" onclick="addAgent()" style="padding:10px 16px;background:var(--accent);color:#000;border:none;border-radius:10px;font-weight:700;cursor:pointer;white-space:nowrap;">+ Ajouter</button>
+    <!-- OBJETS SORTIS + JOURNAL -->
+    <div class="card">
+        <h2>📤 Objets actuellement prêtés</h2>
+        <div class="counters" id="counters"></div>
+        <div class="board" id="board"><div class="empty">Chargement…</div></div>
+
+        <h2 style="margin-top:14px">📋 Journal — traçabilité</h2>
+        <div class="logsearch">
+            <input type="text" id="searchField" placeholder="🔍 Rechercher (objet, emprunteur…)" oninput="renderLog()">
         </div>
-        <div id="agentMsg" style="font-size:0.8rem;margin-top:6px;display:none;"></div>
+        <div class="log" id="log"></div>
     </div>
 </div>
 
-<!-- CHAMPS SPÉCIFIQUES AU TYPE (rendus dynamiquement selon ?type=) -->
-<div class="section" id="extraFieldsSection" style="display:none;">
-    <h2 id="extraFieldsTitle">Détails spécifiques</h2>
-    <div id="extraFields"></div>
-</div>
-
-<div class="section"><h2>Informations générales</h2><textarea id="infoGenerales" placeholder="Décris la situation initiale..."></textarea></div>
-<div class="section"><h2>Constat</h2><textarea id="constat" placeholder="Décris ce que tu as constaté..."></textarea></div>
-<div class="section"><h2>Actions réalisées</h2><textarea id="actions" placeholder="Décris les actions effectuées..."></textarea></div>
-<div class="section">
-    <label>📸 Photos (multiples)</label><input type="file" id="photos" accept="image/*" multiple>
-    <label style="margin-top:10px;">🎥 Vidéos (multiples)</label><input type="file" id="videos" accept="video/*" multiple>
-</div>
-
-<button class="btn" id="btnSave" onclick="saveReport()">💾 Enregistrer le rapport</button>
-</div>
+<div id="toast"></div>
 
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
-<script src="app-config.js"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
+<script src="global.js"></script>
 <script>
-function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+const OVERSTAY_H = 12; // un objet prêté depuis +12h est signalé
+let categorie = "cle";
+let journal = [];
 
-/* Source de vérité unique : code -> libellé lisible.
-   Couvre interventions, vérifications et rondes. */
-const TYPES = {
-    // Interventions
-    incendie:                       "Détection incendie",
-    odeur:                          "Odeur suspecte",
-    desincarceration:               "Désincarcération ASC/MC/Escalator/Toilette",
-    fuite:                          "Fuite d'eau",
-    alarme:                         "Alarme technique",
-    coupure:                        "Coupure électrique",
-    animalier:                      "Sauvetage animalier",
-    // Vérifications
-    verif_j1_baie_ssi:              "J1 Baie SSI",
-    verif_j2_materiel_pc:           "J2 Matériel PC",
-    verif_j3_materiel_secours:      "J3 Matériel de secours",
-    verif_j4_epi:                   "J4 EPI",
-    verif_j5_interphonie_asc_mc:    "J5 Interphonie ASC/MC",
-    verif_extincteurs_ria_baes:     "Extincteur / RIA / BAES",
-    verif_sprinkler:                "Sprinkler",
-    verif_surpresseur:              "Surpresseur",
-    verif_colonne_seche:            "Colonne sèche",
-    verif_desenfumage_naturel:      "Désenfumage naturel",
-    verif_baie_accessible:          "Baie accessible",
-    verif_eas:                      "EAS",
-    verif_salle_gaz:                "Salle automatique à gaz",
-    verif_essai_annuel_technicien:  "Essai annuel Technicien",
-    verif_essai_triennal_bureau:    "Essai triennal Bureau de contrôle",
-    // Rondes
-    verif_popup:                    "Vérification Pop up",
-    verifreceptiontravaux:          "Réception Travaux",
+const TYPE_LBL = { cle:"🔑 Clé", badge:"🎫 Badge", radio:"📻 Radio", vehicule:"🚗 Véhicule", autre:"📦 Autre" };
 
-    // ─── COMMUN (incendie + sûreté) ───
-    ouverture_porte_casiers: "Ouverture porte/casiers",
+function showToast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),2800); }
+function setCat(c){ categorie=c; document.querySelectorAll(".cat").forEach(el=>el.classList.toggle("active",el.dataset.cat===c)); }
 
-    // ─── SÛRETÉ ───
-    vol:                "Vol",
-    conflit:            "Conflit / Altercation",
-    intrusion:          "Intrusion",
-    personne_suspecte:  "Personne suspecte",
-    colis_suspect:      "Colis suspect",
-    objet_abandonne:    "Objet abandonné",
-    camera_hs:          "Caméra hors service",
-
-    // ─── TECHNIQUE ───
-    panne_elec:         "Panne électrique",
-    panne_cvc:          "Panne CVC / Climatisation",
-    panne_plomberie:    "Panne plomberie / Fuite",
-    panne_ascenseur:    "Panne ascenseur / monte-charge",
-    panne_eclairage:    "Panne éclairage",
-    porte_auto:         "Porte automatique HS",
-    chaudiere:          "Chaudière / Production ECS",
-    maint_hebdo:        "Maintenance hebdomadaire",
-    maint_mens:         "Maintenance mensuelle",
-    maint_annuelle:     "Maintenance annuelle",
-
-    // ─── SERVICES GÉNÉRAUX ───
-    livraison_in:       "Livraison entrante",
-    livraison_out:      "Livraison sortante",
-    courrier:           "Réception courrier",
-    colis:              "Gestion colis",
-    nettoyage:          "Nettoyage / Propreté",
-    espaces_verts:      "Espaces verts",
-    dechets:            "Gestion déchets",
-    resa_salle:         "Réservation salle de réunion",
-    resa_parking:       "Réservation parking",
-    resa_materiel:      "Réservation matériel"
-};
-
-/* Champs spécifiques par type d'intervention (adaptés au métier).
-   Rendus dynamiquement sous le type, sauvegardés dans meta.champs_specifiques.
-   Types de champ supportés : text, number, textarea, select (avec options). */
-const TYPE_EXTRA_FIELDS = {
-    ouverture_porte_casiers: [
-        { id: "objet",       label: "Élément ouvert",       type: "select", options: ["Porte","Casier / vestiaire","Bureau","Local technique","Coffre / armoire","Autre"] },
-        { id: "reference",   label: "N° / localisation (porte, casier…)", type: "text" },
-        { id: "motif",       label: "Motif",                type: "select", options: ["Oubli de clé/badge","Demande hiérarchie/RH","Intervention technique","Contrôle/sûreté","Urgence","Objet oublié"] },
-        { id: "demandeur",   label: "Demandeur / autorisé par", type: "text" },
-        { id: "moyen",       label: "Moyen d'ouverture",    type: "select", options: ["Passe","Clé de secours","Code","Badge","Ouverture forcée"] },
-        { id: "temoin",      label: "Témoin présent",       type: "select", options: ["Non","Oui — agent","Oui — demandeur","Oui — responsable"] },
-        { id: "etat",        label: "État après ouverture", type: "select", options: ["Refermé/sécurisé","Laissé ouvert","Remis au demandeur"] }
-    ],
-    // ── Sûreté ──
-    vol: [
-        { id: "objets_voles",   label: "Objets volés",        type: "textarea" },
-        { id: "valeur_estimee", label: "Valeur estimée (€)",  type: "number" },
-        { id: "auteur",         label: "Auteur",              type: "select", options: ["Non identifié","Identifié","Interpellé","En fuite"] },
-        { id: "plainte",        label: "Plainte déposée",     type: "select", options: ["Non","Oui","À faire"] }
-    ],
-    conflit: [
-        { id: "personnes",   label: "Personnes impliquées",  type: "text" },
-        { id: "niveau",      label: "Niveau",                type: "select", options: ["Verbal","Physique léger","Physique grave","Arme"] },
-        { id: "blesses",     label: "Blessés",               type: "select", options: ["Non","Oui — secours sur place","Oui — évacuation"] },
-        { id: "police",      label: "Intervention police",   type: "select", options: ["Non","Oui","En cours"] }
-    ],
-    intrusion: [
-        { id: "point_entree", label: "Point d'entrée",       type: "text" },
-        { id: "nb_individus", label: "Nombre d'individus",   type: "number" },
-        { id: "interpellation", label: "Interpellation",     type: "select", options: ["Non","Oui","Fuite"] },
-        { id: "police",      label: "Forces de l'ordre",     type: "select", options: ["Non","Prévenues","Sur place"] }
-    ],
-    personne_suspecte: [
-        { id: "description_pers", label: "Description de la personne", type: "textarea" },
-        { id: "comportement",     label: "Comportement observé",      type: "text" },
-        { id: "suite",            label: "Suite donnée",              type: "select", options: ["Surveillance","Contrôle","Éconduite","Forces de l'ordre"] }
-    ],
-    colis_suspect: [
-        { id: "localisation_colis", label: "Localisation précise", type: "text" },
-        { id: "description_colis",  label: "Description du colis",  type: "textarea" },
-        { id: "perimetre",          label: "Périmètre de sécurité", type: "select", options: ["Non","Établi"] },
-        { id: "demineurs",          label: "Démineurs / Police",    type: "select", options: ["Non","Appelés","Sur place"] }
-    ],
-    objet_abandonne: [
-        { id: "description_objet", label: "Description de l'objet", type: "textarea" },
-        { id: "proprietaire",      label: "Propriétaire",          type: "select", options: ["Inconnu","Retrouvé","Objet retiré"] }
-    ],
-    camera_hs: [
-        { id: "num_camera",    label: "N° / nom caméra",      type: "text" },
-        { id: "zone_couverte", label: "Zone couverte",        type: "text" },
-        { id: "type_panne",    label: "Type de panne",        type: "select", options: ["Image noire","Image figée","Réseau","Alimentation","Autre"] },
-        { id: "compensation",  label: "Mesure compensatoire", type: "select", options: ["Aucune","Gardiennage renforcé","Ronde supplémentaire"] }
-    ],
-    // ── Technique ──
-    panne_elec: [
-        { id: "equipement", label: "Équipement concerné",      type: "text" },
-        { id: "zone",       label: "Zone impactée",            type: "text" },
-        { id: "criticite",  label: "Criticité",                type: "select", options: ["Faible","Moyenne","Haute","Critique"] },
-        { id: "prestataire",label: "Prestataire",              type: "select", options: ["Non requis","À appeler","Appelé","Sur place"] },
-        { id: "delai",      label: "Délai estimé remise en service", type: "text" }
-    ],
-    panne_cvc: [
-        { id: "equipement",  label: "Équipement (CTA, groupe froid…)", type: "text" },
-        { id: "zone",        label: "Zone impactée",          type: "text" },
-        { id: "temperature", label: "Température relevée (°C)", type: "number" },
-        { id: "criticite",   label: "Criticité",              type: "select", options: ["Faible","Moyenne","Haute"] }
-    ],
-    panne_plomberie: [
-        { id: "localisation_fuite", label: "Localisation de la fuite", type: "text" },
-        { id: "ampleur",            label: "Ampleur",                  type: "select", options: ["Goutte à goutte","Modérée","Importante","Inondation"] },
-        { id: "eau_coupee",         label: "Arrivée d'eau coupée",     type: "select", options: ["Non","Oui"] }
-    ],
-    panne_ascenseur: [
-        { id: "num_appareil",      label: "N° appareil",          type: "text" },
-        { id: "personnes_bloquees",label: "Personnes bloquées",   type: "select", options: ["Non","Oui — dégagées","Oui — en cours"] },
-        { id: "ascensoriste",      label: "Ascensoriste",         type: "select", options: ["Non requis","Appelé","Sur place"] }
-    ],
-    panne_eclairage: [
-        { id: "zone",            label: "Zone",                 type: "text" },
-        { id: "nb_points",       label: "Nb points lumineux",   type: "number" },
-        { id: "eclairage_secours", label: "Éclairage de secours", type: "select", options: ["Fonctionnel","HS"] }
-    ],
-    porte_auto: [
-        { id: "num_porte", label: "N° / emplacement porte", type: "text" },
-        { id: "etat",      label: "État",                   type: "select", options: ["Bloquée fermée","Bloquée ouverte","Fonctionnement aléatoire"] },
-        { id: "securite",  label: "Impact sûreté",          type: "select", options: ["Aucun","Accès non sécurisé","Issue condamnée"] }
-    ],
-    chaudiere: [
-        { id: "equipement", label: "Équipement",            type: "text" },
-        { id: "impact_ecs", label: "Impact eau chaude",     type: "select", options: ["Aucun","Partiel","Total"] }
-    ],
-    maint_hebdo:    [ { id: "prestataire", label: "Intervenant", type: "text" }, { id: "conforme", label: "Conformité", type: "select", options: ["Conforme","Réserves","Non conforme"] } ],
-    maint_mens:     [ { id: "prestataire", label: "Intervenant", type: "text" }, { id: "conforme", label: "Conformité", type: "select", options: ["Conforme","Réserves","Non conforme"] } ],
-    maint_annuelle: [ { id: "prestataire", label: "Intervenant", type: "text" }, { id: "conforme", label: "Conformité", type: "select", options: ["Conforme","Réserves","Non conforme"] } ],
-    // ── Services Généraux ──
-    livraison_in: [
-        { id: "transporteur", label: "Transporteur",        type: "text" },
-        { id: "num_bl",       label: "N° bon de livraison",  type: "text" },
-        { id: "nb_colis",     label: "Nombre de colis",      type: "number" },
-        { id: "destinataire", label: "Destinataire",         type: "text" },
-        { id: "controle",     label: "Contrôle effectué",    type: "select", options: ["Oui — conforme","Oui — réserves","Non"] }
-    ],
-    livraison_out: [
-        { id: "transporteur", label: "Transporteur",        type: "text" },
-        { id: "num_bl",       label: "N° bon d'enlèvement",  type: "text" },
-        { id: "nb_colis",     label: "Nombre de colis",      type: "number" },
-        { id: "expediteur",   label: "Expéditeur / service", type: "text" }
-    ],
-    courrier: [
-        { id: "type_courrier", label: "Type",            type: "select", options: ["Lettre","Recommandé","Colis","Pli interne"] },
-        { id: "expediteur",    label: "Expéditeur",      type: "text" },
-        { id: "destinataire",  label: "Destinataire",    type: "text" }
-    ],
-    colis: [
-        { id: "transporteur", label: "Transporteur", type: "text" },
-        { id: "num_suivi",    label: "N° de suivi",  type: "text" },
-        { id: "destinataire", label: "Destinataire", type: "text" },
-        { id: "etat",         label: "État du colis", type: "select", options: ["Bon","Endommagé","Ouvert"] }
-    ],
-    nettoyage: [
-        { id: "zone",        label: "Zone",            type: "text" },
-        { id: "prestataire", label: "Prestataire",     type: "text" },
-        { id: "type_inter",  label: "Type",            type: "select", options: ["Quotidien","Ponctuel","Urgence","Vitrerie"] }
-    ],
-    espaces_verts: [
-        { id: "zone",       label: "Zone",  type: "text" },
-        { id: "type_inter", label: "Type",  type: "select", options: ["Arrosage","Taille","Plantation","Entretien"] }
-    ],
-    dechets: [
-        { id: "type_dechet", label: "Type de déchet", type: "select", options: ["DIB","Carton","Verre","DEEE","Dangereux"] },
-        { id: "volume",      label: "Volume / quantité", type: "text" },
-        { id: "evacuation",  label: "Évacuation",        type: "select", options: ["Local déchets","Enlèvement prestataire","Benne"] }
-    ],
-    // ── Réservations (Services Généraux) ──
-    resa_salle: [
-        { id: "salle",        label: "Salle",                type: "text" },
-        { id: "date_resa",    label: "Date",                 type: "date" },
-        { id: "heure_debut",  label: "Heure début",          type: "time" },
-        { id: "heure_fin",    label: "Heure fin",            type: "time" },
-        { id: "demandeur",    label: "Demandeur / service",  type: "text" },
-        { id: "nb_personnes", label: "Nombre de personnes",  type: "number" },
-        { id: "equipements",  label: "Équipements",          type: "select", options: ["Aucun","Vidéoprojecteur","Visioconférence","Paperboard","Visio + vidéo","Sonorisation"] }
-    ],
-    resa_parking: [
-        { id: "emplacement",     label: "Emplacement / zone", type: "text" },
-        { id: "date_resa",       label: "Date",               type: "date" },
-        { id: "creneau",         label: "Créneau",            type: "text" },
-        { id: "demandeur",       label: "Demandeur",          type: "text" },
-        { id: "immatriculation", label: "Immatriculation",    type: "text" },
-        { id: "societe",         label: "Société / service",  type: "text" }
-    ],
-    resa_materiel: [
-        { id: "materiel",   label: "Matériel",        type: "text" },
-        { id: "quantite",   label: "Quantité",        type: "number" },
-        { id: "date_resa",  label: "Date",            type: "date" },
-        { id: "periode",    label: "Période / créneau", type: "text" },
-        { id: "demandeur",  label: "Demandeur",       type: "text" },
-        { id: "retour",     label: "Retour prévu",    type: "select", options: ["Même jour","Lendemain","Sous 1 semaine","À définir"] }
-    ]
-};
-
-/* Inverse libellé -> code (généré automatiquement) */
-const LABEL_TO_CODE = Object.fromEntries(
-    Object.entries(TYPES).map(([code, label]) => [label, code])
-);
-
-function getTypeCode(label) {
-    return LABEL_TO_CODE[label] || label || "autre";
+/* Statut des objets : un objet (type+identifiant) est "sorti" si son dernier
+   mouvement est un prêt sans retour postérieur. */
+function getEnCours(){
+    const etat={}; // cle -> {row}
+    const key = r => (r.type_objet||"")+"|"+((r.identifiant||"").toLowerCase().trim());
+    [...journal].reverse().forEach(r=>{ // ancien -> récent
+        const k=key(r);
+        if(r.sens==="pret") etat[k]={ type:r.type_objet, identifiant:r.identifiant, emprunteur:r.emprunteur, societe:r.societe, motif:r.motif, since:r.created_at };
+        else if(r.sens==="retour") delete etat[k];
+    });
+    return Object.values(etat);
 }
 
-function getTypeLabel(code) {
-    return TYPES[code] || code || "—";
+async function enregistrer(sens){
+    const identifiant=document.getElementById("f_identifiant").value.trim();
+    const emprunteur=document.getElementById("f_emprunteur").value.trim();
+    if(!identifiant){ showToast("⚠️ Indique l'identifiant de l'objet"); return; }
+    if(sens==="pret" && !emprunteur){ showToast("⚠️ Indique l'emprunteur"); return; }
+    const agent=localStorage.getItem("nom")||"—";
+    const row={ type_objet:categorie, identifiant, sens, emprunteur:emprunteur||null,
+        societe:document.getElementById("f_societe").value.trim()||null,
+        motif:document.getElementById("f_motif").value.trim()||null, agent, meta:{} };
+    try{
+        const { error } = await supabaseClient.from("prets_materiel").insert(row);
+        if(error) throw error;
+        showToast(sens==="pret" ? "↑ Prêt enregistré" : "↓ Retour enregistré");
+        ["f_identifiant","f_emprunteur","f_societe","f_motif"].forEach(id=>document.getElementById(id).value="");
+        document.getElementById("scanField").value="";
+        charger();
+    }catch(e){ console.error(e); showToast("❌ "+(e.message||e)); }
 }
 
-/* Récupère le type depuis (1) l'URL ?type=..., (2) le localStorage, sinon null */
-function resolveIntervention() {
-    const params = new URLSearchParams(window.location.search);
-    const typeParam = params.get("type");
-    if (typeParam) {
-        // Le type peut être soit un code (ex: "incendie"), soit un libellé complet (ex: "Levée de doute")
-        // On essaie d'abord de le résoudre comme code, sinon comme libellé
-        let label, code;
-        if (TYPES[typeParam]) {
-            // C'est un code connu
-            code = typeParam;
-            label = TYPES[typeParam];
-        } else {
-            // C'est probablement un libellé envoyé par la supervision
-            label = typeParam;
-            code = LABEL_TO_CODE[typeParam] || typeParam.toLowerCase().replace(/\s+/g, "_").replace(/[^\w]/g, "");
-        }
-        localStorage.setItem("selectedIntervention", label);
-        return { code, label };
-    }
-    const fallback = localStorage.getItem("selectedIntervention");
-    if (fallback) return { code: getTypeCode(fallback), label: fallback };
-    return { code: null, label: null };
+/* Clic sur un objet sorti → enregistre son retour */
+async function retourObjet(type, identifiant, emprunteur){
+    if(!confirm("Enregistrer le RETOUR de « "+identifiant+" » ("+emprunteur+") ?")) return;
+    const agent=localStorage.getItem("nom")||"—";
+    try{
+        const { error } = await supabaseClient.from("prets_materiel").insert({
+            type_objet:type, identifiant, sens:"retour", emprunteur, agent, meta:{} });
+        if(error) throw error;
+        showToast("↓ Retour de « "+identifiant+" » enregistré");
+        charger();
+    }catch(e){ console.error(e); showToast("❌ "+(e.message||e)); }
 }
 
-/* Rendu des champs spécifiques au type d'intervention */
-function renderExtraFields(code, label) {
-    const section = document.getElementById("extraFieldsSection");
-    const wrap = document.getElementById("extraFields");
-    const fields = TYPE_EXTRA_FIELDS[code];
-    if (!fields || !fields.length) { section.style.display = "none"; return; }
+async function charger(){
+    const start=new Date(); start.setDate(start.getDate()-7); start.setHours(0,0,0,0); // 7 derniers jours
+    try{
+        const { data, error } = await supabaseClient.from("prets_materiel")
+            .select("*").gte("created_at",start.toISOString()).order("created_at",{ascending:false});
+        if(error) throw error;
+        journal=data||[];
+    }catch(e){ console.error(e); journal=[]; }
+    renderBoard(); renderLog();
+}
 
-    document.getElementById("extraFieldsTitle").textContent = "Détails — " + (label || "intervention");
-    wrap.innerHTML = fields.map(f => {
-        const fid = "xf_" + f.id;
-        if (f.type === "select") {
-            const opts = (f.options || []).map(o => `<option value="${escapeAttr(o)}">${escapeHtml(o)}</option>`).join("");
-            return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
-                    <select id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}">
-                        <option value="">— Choisir —</option>${opts}
-                    </select>`;
-        }
-        if (f.type === "textarea") {
-            return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
-                    <textarea id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}" placeholder="${escapeAttr(f.label)}"></textarea>`;
-        }
-        const inputType = ["number","date","time"].includes(f.type) ? f.type : "text";
-        return `<label style="display:block;margin-top:10px;font-size:0.9rem;">${escapeHtml(f.label)}</label>
-                <input type="${inputType}" id="${fid}" data-xf="${escapeAttr(f.id)}" data-xflabel="${escapeAttr(f.label)}" placeholder="${escapeAttr(f.label)}">`;
+function renderBoard(){
+    const enCours=getEnCours();
+    document.getElementById("counters").innerHTML =
+        `<div class="cc"><div class="n">${enCours.length}</div><div class="l">objets sortis</div></div>`+
+        `<div class="cc"><div class="n">${enCours.filter(o=>(Date.now()-new Date(o.since))/3600000>=OVERSTAY_H).length}</div><div class="l">+${OVERSTAY_H}h</div></div>`;
+    const el=document.getElementById("board");
+    if(!enCours.length){ el.innerHTML='<div class="empty">Aucun objet prêté actuellement ✔</div>'; return; }
+    el.innerHTML=enCours.map(o=>{
+        const mins=Math.floor((Date.now()-new Date(o.since))/60000);
+        const dur=mins<60?(mins+" min"):(Math.floor(mins/60)+"h"+String(mins%60).padStart(2,"0"));
+        const over=mins>=OVERSTAY_H*60;
+        return `<div class="item ${over?'over':''}" onclick="retourObjet('${escapeAttr(o.type)}','${escapeAttr(o.identifiant)}','${escapeAttr(o.emprunteur||'')}')" title="Cliquer pour enregistrer le retour">
+            <div class="t"><span class="nm">${TYPE_LBL[o.type]||''} ${escapeHtml(o.identifiant)}</span><span>${over?'⚠️ ':''}${dur}</span></div>
+            <div class="meta">👤 ${escapeHtml(o.emprunteur||'—')}${o.societe?' · '+escapeHtml(o.societe):''}${o.motif?' · '+escapeHtml(o.motif):''}</div>
+        </div>`;
     }).join("");
-    section.style.display = "block";
 }
 
-/* Collecte des champs spécifiques saisis → objet {id:{label,value}} */
-function collectExtraFields() {
-    const out = {};
-    document.querySelectorAll("#extraFields [data-xf]").forEach(el => {
-        const v = (el.value || "").trim();
-        if (v) out[el.getAttribute("data-xf")] = { label: el.getAttribute("data-xflabel"), value: v };
-    });
-    return out;
+function renderLog(){
+    const q=(document.getElementById("searchField").value||"").toLowerCase();
+    let list=journal;
+    if(q) list=list.filter(r=>[r.identifiant,r.emprunteur,r.societe,r.motif,r.agent].some(v=>(v||"").toLowerCase().includes(q)));
+    const el=document.getElementById("log");
+    if(!list.length){ el.innerHTML='<div class="empty">Aucun mouvement.</div>'; return; }
+    el.innerHTML=list.map(r=>{
+        const d=new Date(r.created_at).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+        return `<div class="entry ${r.sens}">
+            <div class="t" style="display:flex;justify-content:space-between"><span><b>${TYPE_LBL[r.type_objet]||''} ${escapeHtml(r.identifiant||'—')}</b></span><span>${r.sens==='pret'?'↑ Prêt':'↓ Retour'} · ${escapeHtml(d)}</span></div>
+            <div class="meta">👤 ${escapeHtml(r.emprunteur||'—')}${r.societe?' · '+escapeHtml(r.societe):''}${r.motif?' · '+escapeHtml(r.motif):''} · 👮 ${escapeHtml(r.agent||'—')}</div>
+        </div>`;
+    }).join("");
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-    const { code, label } = resolveIntervention();
-    document.getElementById("reportType").textContent = label || "—";
-    renderExtraFields(code, label);
+function exportCSV(){
+    if(!journal.length){ showToast("Rien à exporter"); return; }
+    const cols=["created_at","type_objet","identifiant","sens","emprunteur","societe","motif","agent"];
+    const esc=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+    const csv=[cols.join(";")].concat(journal.map(r=>cols.map(c=>esc(r[c])).join(";"))).join("\n");
+    const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="prets_"+new Date().toISOString().split("T")[0]+".csv"; a.click();
+    showToast("⬇️ Export CSV généré");
+}
 
-    const now = new Date();
-    document.getElementById("reportDate").textContent = now.toLocaleDateString("fr-FR");
-    document.getElementById("reportTime").textContent = now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-
-    // Récupérer les paramètres URL passés par la supervision
-    const params = new URLSearchParams(window.location.search);
-    const agentsFromURL = params.get("agents");
-    const noteFromURL = params.get("note");
-    const missionId = params.get("missionId");
-
-    // Si des agents sont passés depuis la supervision, les utiliser
-    if (agentsFromURL) {
-        const agentList = agentsFromURL.split(",").filter(Boolean);
-        if (agentList.length) {
-            assignedAgents = agentList;
-            const agentPrincipal = agentList[0];
-            document.getElementById("reportAgent").textContent = agentPrincipal;
-            document.getElementById("agent1Name").textContent = agentPrincipal;
-
-            // Afficher les agents supplémentaires
-            if (agentList.length > 1) {
-                const container = document.getElementById("agentsContainer");
-                for (let i = 1; i < agentList.length; i++) {
-                    const row = document.createElement("div");
-                    row.className = "agent-row";
-                    row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;";
-                    row.innerHTML = `
-                        <span style="font-size:1.1rem;">👤</span>
-                        <span style="flex:1;font-weight:600;">${esc(agentList[i])}</span>
-                        <span style="font-size:0.75rem;opacity:0.6;background:rgba(100,180,255,0.15);padding:4px 10px;border-radius:6px;color:#4da3ff;">Agent ${i + 1}</span>
-                        <button type="button" onclick="removeAgent('${agentList[i]}', this)" style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);color:#ff6b6b;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.8rem;">✕</button>
-                    `;
-                    container.appendChild(row);
-                }
-            }
-        }
-    } else {
-        const agentPrincipal = localStorage.getItem("nom") || "Inconnu";
-        document.getElementById("reportAgent").textContent = agentPrincipal;
-        document.getElementById("agent1Name").textContent = agentPrincipal;
-    }
-
-    // Pré-remplir la note dans le champ "Informations générales"
-    if (noteFromURL) {
-        const infoGen = document.getElementById("infoGenerales");
-        if (infoGen) infoGen.value = "Note opérationnelle depuis la supervision : " + noteFromURL;
-    }
-
-    // Stocker le missionId pour le rapport
-    if (missionId) {
-        document.getElementById("reportId").textContent = missionId;
-    }
-
-    document.getElementById("reportSite").addEventListener("change", () => {
-        const s = document.getElementById("reportSite").value;
-        if (!s) return;
-        if (missionId) return; // Ne pas écraser l'ID si fourni
-        const codeForId = (code || "autre").toUpperCase().slice(0,3);
-        document.getElementById("reportId").textContent = s+"-"+codeForId+"-"+Date.now().toString().slice(-6);
-    });
-
-    // Charger la liste des agents depuis Supabase
-    loadAgentsList();
+document.getElementById("scanField").addEventListener("keydown",e=>{
+    if(e.key!=="Enter") return;
+    const code=e.target.value.trim(); if(!code) return;
+    // Si le code correspond à un objet sorti → propose le retour
+    const found=getEnCours().find(o=>(o.identifiant||"").toLowerCase()===code.toLowerCase());
+    if(found){ retourObjet(found.type,found.identifiant,found.emprunteur||""); e.target.value=""; return; }
+    document.getElementById("f_identifiant").value=code;
+    showToast("🔖 "+code+" — complète l'emprunteur puis PRÊT");
 });
 
-/* ═══════════════════════════════════════════════════════
-   MULTI-AGENTS : jusqu'à 3 agents par intervention
-═══════════════════════════════════════════════════════ */
-let assignedAgents = [localStorage.getItem("nom") || "Inconnu"];
-
-async function loadAgentsList() {
-    const select = document.getElementById("agentSelect");
-    try {
-        // Charger la feuille de garde du jour
-        const todayISO = new Date().toISOString().split("T")[0];
-        const { data: feuille, error: fError } = await supabaseClient
-            .from("feuille_de_garde")
-            .select("*")
-            .eq("date_jour", todayISO)
-            .maybeSingle();
-
-        const agentsFromFeuille = [];
-
-        if (!fError && feuille && feuille.data_json) {
-            const json = feuille.data_json;
-            // Extraire tous les noms : chef_poste_nom, agent1_nom à agent5_nom, resp_bm_nom
-            const fieldsToCheck = [
-                "resp_bm_nom", "chef_poste_nom",
-                "agent1_nom", "agent2_nom", "agent3_nom", "agent4_nom", "agent5_nom",
-                "stat_8_10_nom", "stat_10_12_nom", "stat_12_13_nom",
-                "stat_13_15_nom", "stat_15_17_nom", "stat_17_19_nom",
-                "stat_19_21_nom", "stat_21_23_nom"
-            ];
-            const labels = {
-                resp_bm_nom: "Responsable BM",
-                chef_poste_nom: "Chef de poste",
-                agent1_nom: "Agent 1", agent2_nom: "Agent 2",
-                agent3_nom: "Agent 3", agent4_nom: "Agent 4", agent5_nom: "Agent 5"
-            };
-            const seen = new Set();
-            fieldsToCheck.forEach(field => {
-                const val = (json[field] || "").trim();
-                if (val && !seen.has(val.toLowerCase())) {
-                    seen.add(val.toLowerCase());
-                    agentsFromFeuille.push({
-                        nom: val,
-                        role: labels[field] || "Stationnaire"
-                    });
-                }
-            });
-        }
-
-        // Si la feuille de garde a des agents, les utiliser
-        if (agentsFromFeuille.length > 0) {
-            agentsFromFeuille.forEach(p => {
-                if (p.nom !== assignedAgents[0]) {
-                    const opt = document.createElement("option");
-                    opt.value = p.nom;
-                    opt.textContent = p.nom + " (" + p.role + ")";
-                    select.appendChild(opt);
-                }
-            });
-            // Petit indicateur visuel
-            const label = select.previousElementSibling;
-            if (label) label.textContent = "Personnel présent (feuille de garde du jour) :";
-            return;
-        }
-
-        // Sinon, fallback sur la table profiles
-        const { data, error } = await supabaseClient
-            .from("profiles")
-            .select("nom, prenom, role")
-            .order("nom");
-
-        if (error || !data) return;
-
-        data.forEach(p => {
-            const fullName = [p.prenom, p.nom].filter(Boolean).join(" ");
-            if (fullName && fullName !== assignedAgents[0]) {
-                const opt = document.createElement("option");
-                opt.value = fullName;
-                opt.textContent = fullName + (p.role ? " (" + p.role + ")" : "");
-                select.appendChild(opt);
-            }
-        });
-    } catch (e) {
-        console.warn("Impossible de charger la liste des agents:", e);
-    }
-}
-
-function addAgent() {
-    const select = document.getElementById("agentSelect");
-    const msg = document.getElementById("agentMsg");
-    const name = select.value;
-
-    msg.style.display = "none";
-
-    if (!name) {
-        msg.textContent = "Veuillez sélectionner un agent.";
-        msg.style.color = "#ff6b6b";
-        msg.style.display = "block";
-        return;
-    }
-
-    if (assignedAgents.includes(name)) {
-        msg.textContent = "Cet agent est déjà affecté.";
-        msg.style.color = "#ff6b6b";
-        msg.style.display = "block";
-        return;
-    }
-
-    if (assignedAgents.length >= 3) {
-        msg.textContent = "Maximum 3 agents par intervention.";
-        msg.style.color = "#ff6b6b";
-        msg.style.display = "block";
-        return;
-    }
-
-    assignedAgents.push(name);
-    select.value = "";
-
-    // Ajouter la ligne visuelle
-    const container = document.getElementById("agentsContainer");
-    const row = document.createElement("div");
-    row.className = "agent-row";
-    row.style.cssText = "display:flex;align-items:center;gap:10px;margin-bottom:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;";
-    row.innerHTML = `
-        <span style="font-size:1.1rem;">👤</span>
-        <span style="flex:1;font-weight:600;">${esc(name)}</span>
-        <span style="font-size:0.75rem;opacity:0.6;background:rgba(100,180,255,0.15);padding:4px 10px;border-radius:6px;color:#4da3ff;">Agent ${assignedAgents.length}</span>
-        <button type="button" onclick="removeAgent('${name}', this)" style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);color:#ff6b6b;border-radius:8px;padding:4px 10px;cursor:pointer;font-size:0.8rem;">✕</button>
-    `;
-    container.appendChild(row);
-
-    msg.textContent = "✅ Agent ajouté avec succès.";
-    msg.style.color = "#4dff88";
-    msg.style.display = "block";
-    setTimeout(() => { msg.style.display = "none"; }, 2000);
-}
-
-function removeAgent(name, btn) {
-    assignedAgents = assignedAgents.filter(a => a !== name);
-    btn.closest(".agent-row").remove();
-}
-
-/* ═══════════════════════════════════════════════════════
-   UPLOAD MÉDIAS → Supabase Storage bucket "rapports-media"
-   Retourne un tableau d'URLs publiques
-═══════════════════════════════════════════════════════ */
-async function uploadMediaFiles(fileInputId, folder) {
-    const input = document.getElementById(fileInputId);
-    if (!input || !input.files.length) return [];
-
-    const urls = [];
-    for (const file of input.files) {
-        /* Nom unique : timestamp + nom nettoyé (pas de caractères spéciaux) */
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const path = `${folder}/${Date.now()}_${safeName}`;
-
-        const { error: upErr } = await supabaseClient
-            .storage
-            .from(window.APP_CONFIG.BUCKETS.rapportsMedia)
-            .upload(path, file, { contentType: file.type, upsert: false });
-
-        if (upErr) {
-            console.error(`[Upload] Erreur sur ${file.name} :`, upErr.message);
-            continue; /* on skip le fichier en erreur, on continue les autres */
-        }
-
-        /* URL publique permanente */
-        const { data: pub } = supabaseClient
-            .storage
-            .from(window.APP_CONFIG.BUCKETS.rapportsMedia)
-            .getPublicUrl(path);
-
-        if (pub && pub.publicUrl) urls.push(pub.publicUrl);
-    }
-    return urls;
-}
-
-async function saveReport() {
-    const btn = document.getElementById("btnSave");
-    btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
-    try {
-        const { code: typeCode, label: intervention } = resolveIntervention();
-        const site = document.getElementById("reportSite").value;
-        const reportId = document.getElementById("reportId").textContent;
-        const description = [
-            "Informations générales:\n"+document.getElementById("infoGenerales").value,
-            "Constat:\n"+document.getElementById("constat").value,
-            "Actions réalisées:\n"+document.getElementById("actions").value
-        ].join("\n\n");
-
-        /* ── Upload des médias ── */
-        btn.textContent = "⏳ Upload des photos...";
-        const photoUrls = await uploadMediaFiles('photos', 'photos/' + (reportId || 'unknown'));
-
-        btn.textContent = "⏳ Upload des vidéos...";
-        const videoUrls = await uploadMediaFiles('videos', 'videos/' + (reportId || 'unknown'));
-
-        btn.textContent = "⏳ Sauvegarde du rapport...";
-
-        const priorite = typeCode==="incendie" ? "haute" : "normale";
-
-        /* ── Champs spécifiques au type ── */
-        const champsSpec = collectExtraFields();
-        let blocSpec = "";
-        if (Object.keys(champsSpec).length) {
-            blocSpec = "\n\nDétails spécifiques:\n" +
-                Object.values(champsSpec).map(c => "• " + c.label + " : " + c.value).join("\n");
-        }
-
-        /* ── Service métier déduit du TYPE (pas du service de l'agent) ──
-           Un "vol" est sûreté, une "panne" est technique, etc., quel que
-           soit l'agent qui saisit. Si le type n'est pas mappé (types
-           incendie génériques), on laisse tenant.js mettre le service. */
-        const SERVICE_PAR_TYPE = {
-            vol:"surete",conflit:"surete",intrusion:"surete",personne_suspecte:"surete",
-            colis_suspect:"surete",objet_abandonne:"surete",camera_hs:"surete",
-            video_consultation:"surete",video_extraction:"surete",
-            panne_elec:"technique",panne_cvc:"technique",panne_plomberie:"technique",
-            panne_ascenseur:"technique",panne_eclairage:"technique",porte_auto:"technique",
-            chaudiere:"technique",maint_hebdo:"technique",maint_mens:"technique",maint_annuelle:"technique",
-            livraison_in:"services_generaux",livraison_out:"services_generaux",courrier:"services_generaux",
-            colis:"services_generaux",nettoyage:"services_generaux",espaces_verts:"services_generaux",dechets:"services_generaux",
-            resa_salle:"services_generaux",resa_parking:"services_generaux",resa_materiel:"services_generaux"
-        };
-        const serviceMetier = SERVICE_PAR_TYPE[typeCode]; // undefined si non mappé → tenant.js gère
-
-        const { error } = await supabaseClient.from("rapports").insert({
-            type: typeCode || "autre",
-            service: serviceMetier,  // forcé si métier connu, sinon tenant.js complète
-            titre: (intervention||"Rapport")+" — "+site,
-            description: description + blocSpec,
-            localisation: site || "Non précisé",
-            statut: "cloture",
-            priorite: priorite,
-            meta: {
-                site,
-                heure_debut: document.getElementById("reportTime").textContent,
-                heure_fin: document.getElementById("reportEndTime").value,
-                agent_nom: assignedAgents[0],
-                agents_affectes: assignedAgents, // MULTI-AGENTS
-                nb_agents: assignedAgents.length,
-                intervention_label: intervention,
-                report_id: reportId,
-                champs_specifiques: champsSpec,
-                photos: photoUrls,
-                videos: videoUrls
-            }
-        });
-        if (error) throw error;
-
-        // ── Notification globale visible par tous les rôles ──
-        const agentsStr = assignedAgents.join(", ");
-        if (typeof sendGlobalNotification === "function") {
-            await sendGlobalNotification(
-                "🔥 Nouvelle intervention : " + (intervention || "Rapport"),
-                "Site : " + (site || "—") + "\nAgents : " + agentsStr + "\nPriorité : " + priorite,
-                typeCode === "incendie" || typeCode === "alarme" ? "alarme" : "intervention",
-                priorite
-            );
-        }
-
-        const mediaCount = photoUrls.length + videoUrls.length;
-        const mediaSuffix = mediaCount > 0 ? ` (${photoUrls.length} photo(s), ${videoUrls.length} vidéo(s))` : '';
-        showToast("✅ Rapport enregistré !" + mediaSuffix + " — " + assignedAgents.length + " agent(s)");
-        setTimeout(() => location.href="index.html", 1500);
-    } catch(e) {
-        showToast("❌ "+e.message, true);
-        btn.disabled = false; btn.textContent = "💾 Enregistrer le rapport";
-    }
-}
+document.addEventListener("DOMContentLoaded",()=>{
+    try{
+        const svc=(localStorage.getItem("service")||"incendie").toLowerCase();
+        const lbl={incendie:"Sécurité Incendie",surete:"Sûreté",technique:"Technique",services_generaux:"Services Généraux"}[svc]||svc;
+        const site=(window.AuraTenant&&AuraTenant.label)?AuraTenant.label():(localStorage.getItem("site_code")||"");
+        document.getElementById("svcLbl").textContent="· "+lbl+(site&&site.indexOf("global")<0?"":"");
+    }catch(e){}
+    charger();
+});
 </script>
-<script src="security.js"></script>
-<script src="global.js"></script>
-<script src="notifications_global.js"></script>
 </body>
 </html>

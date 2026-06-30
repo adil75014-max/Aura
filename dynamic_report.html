@@ -6,7 +6,7 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Interventions - LBM Sécurité</title>
+<title>Rapport dynamique - LBM Sécurité</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <!-- 🎨 Design global -->
@@ -19,9 +19,8 @@ h1 {
     text-align: center;
     margin-bottom: 25px;
     color: var(--accent);
-    font-size: 1.9rem;
+    font-size: 1.7rem;
     font-weight: 600;
-    text-shadow: 0 0 12px rgba(111,179,255,0.4);
 }
 
 /* Bouton retour */
@@ -32,10 +31,10 @@ h1 {
 .menu-return button {
     background: var(--bg2);
     border: 1px solid var(--border);
-    padding: 10px 18px;
-    border-radius: 12px;
+    padding: 8px 16px;
+    border-radius: 10px;
     color: var(--accent);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     cursor: pointer;
     transition: 0.25s;
 }
@@ -45,116 +44,304 @@ h1 {
     color: #000;
 }
 
-/* Sections */
-.section {
+/* Bloc principal */
+.panel {
     background: var(--card);
     border: 1px solid var(--border);
-    padding: 20px;
-    border-radius: 16px;
-    margin-bottom: 28px;
+    padding: 18px;
+    border-radius: 14px;
+    margin-bottom: 25px;
     box-shadow: var(--shadow);
 }
 
-.section h2 {
-    color: var(--accent);
-    margin-bottom: 14px;
-    font-size: 1.25rem;
-    font-weight: 600;
+/* Champs */
+.field {
+    margin-bottom: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
-/* Boutons */
-.btn {
+.field label {
+    font-size: 0.9rem;
+    opacity: 0.85;
+}
+
+input, textarea, select {
     width: 100%;
-    background: var(--bg2);
+    padding: 10px;
+    border-radius: 10px;
     border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+textarea {
+    min-height: 80px;
+}
+
+/* Bouton principal */
+.btn-primary {
+    width: 100%;
+    background: linear-gradient(135deg, #4da3ff, #7b5cff);
+    border: none;
     padding: 14px;
     border-radius: 12px;
-    color: var(--text);
+    color: #fff;
     font-size: 1rem;
     cursor: pointer;
-    transition: 0.25s;
-    margin-bottom: 12px;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    margin-top: 20px;
 }
 
-.btn:hover {
-    background: var(--accent);
-    color: #000;
-    transform: translateY(-1px);
+.btn-primary:hover {
+    background: linear-gradient(135deg, #3a8be0, #6a4ae0);
 }
 
-.empty {
-    opacity: 0.7;
+/* Titres internes */
+.title-block {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--accent);
+    margin-top: 10px;
+}
+
+.subtitle-block {
+    font-size: 1rem;
+    opacity: 0.9;
+    margin-top: 5px;
+}
+
+/* Séparateur */
+.separator {
+    height: 1px;
+    background: var(--border);
+    margin: 15px 0;
+}
+
+/* Bloc info */
+.info-block {
+    background: var(--bg2);
+    padding: 10px;
+    border-radius: 10px;
     font-size: 0.9rem;
-    text-align: center;
-    padding: 12px;
+    opacity: 0.9;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Interventions</h1>
+<h1>Rapport dynamique</h1>
 
 <div class="menu-return">
-    <button onclick="window.location.href='index.html'">⟵ Retour au menu</button>
+    <button onclick="history.back()">⟵ Retour</button>
 </div>
 
-<!-- INTERVENTIONS CLASSIQUES -->
-<div class="section">
-    <h2>Interventions classiques</h2>
+<div id="formContainer" class="panel"></div>
 
-    <button class="btn" onclick="location.href='report.html?type=intervention'">📄 Intervention classique</button>
-    <button class="btn" onclick="location.href='create_intervention_report.html'">⚡ Intervention avancée</button>
-    <button class="btn" onclick="location.href='report.html?type=verification'">📄 Vérification classique</button>
-    <button class="btn" onclick="location.href='create_verification_report.html'">🔥 Vérification incendie avancée</button>
-</div>
+<button class="btn-primary" onclick="saveReport()">💾 Enregistrer le rapport</button><script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script>
+/* ------------------ Récupération du modèle ------------------ */
+const urlParams = new URLSearchParams(window.location.search);
+const formId = urlParams.get("form");
 
-<!-- INTERVENTIONS PERSONNALISÉES -->
-<div class="section">
-    <h2>Interventions personnalisées (modèles)</h2>
-    <div id="customList"></div>
-</div><script>
-/* ============================================================
-   CHARGEMENT DES MODÈLES PERSONNALISÉS
-============================================================ */
-function loadCustomForms() {
-    const container = document.getElementById("customList");
+if (!formId) {
+    document.getElementById("formContainer").innerHTML =
+        "<p style='opacity:0.7;'>Aucun modèle trouvé.</p>";
+}
+
+const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+const model = models.find(m => m.id === formId);
+
+if (!model) {
+    document.getElementById("formContainer").innerHTML =
+        "<p style='opacity:0.7;'>Modèle introuvable.</p>";
+}
+
+/* ------------------ Génération du formulaire ------------------ */
+function renderForm() {
+    const container = document.getElementById("formContainer");
     container.innerHTML = "";
 
-    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+    model.fields.forEach(f => {
+        const field = document.createElement("div");
+        field.className = "field";
 
-    if (models.length === 0) {
-        container.innerHTML = "<div class='empty'>Aucun modèle créé pour l’instant.</div>";
-        return;
-    }
+        switch (f.type) {
 
-    models.forEach(m => {
-        const btn = document.createElement("button");
-        btn.className = "btn";
-        btn.innerHTML = "📄 " + m.title;
-        btn.onclick = () => {
-            location.href = "dynamic_report.html?form=" + m.id;
-        };
-        container.appendChild(btn);
+            case "title":
+                field.innerHTML = `<div class="title-block">${escapeHtml(f.label)}</div>`;
+                break;
+
+            case "subtitle":
+                field.innerHTML = `<div class="subtitle-block">${escapeHtml(f.label)}</div>`;
+                break;
+
+            case "separator":
+                field.innerHTML = `<div class="separator"></div>`;
+                break;
+
+            case "info":
+                field.innerHTML = `<div class="info-block">${escapeHtml(f.info || f.label)}</div>`;
+                break;
+
+            case "text":
+                field.innerHTML = `
+                    <label>${escapeHtml(f.label)}</label>
+                    <input type="text" id="${escapeAttr(f.id)}" placeholder="${escapeAttr(f.placeholder)}">
+                `;
+                break;
+
+            case "textarea":
+                field.innerHTML = `
+                    <label>${escapeHtml(f.label)}</label>
+                    <textarea id="${escapeAttr(f.id)}" placeholder="${escapeAttr(f.placeholder)}"></textarea>
+                `;
+                break;
+
+            case "number":
+                field.innerHTML = `
+                    <label>${escapeHtml(f.label)}</label>
+                    <input type="number" id="${escapeAttr(f.id)}" placeholder="${escapeAttr(f.placeholder)}">
+                `;
+                break;
+
+            case "date":
+                field.innerHTML = `
+                    <label>${escapeHtml(f.label)}</label>
+                    <input type="date" id="${escapeAttr(f.id)}">
+                `;
+                break;
+
+            case "time":
+                field.innerHTML = `
+                    <label>${escapeHtml(f.label)}</label>
+                    <input type="time" id="${escapeAttr(f.id)}">
+                `;
+                break;
+
+            case "select":
+                field.innerHTML = `
+                    <label>${escapeHtml(f.label)}</label>
+                    <select id="${escapeAttr(f.id)}">
+                        ${f.options.split(";").map(o => `<option>${escapeHtml(o.trim())}</option>`).join("")}
+                    </select>
+                `;
+                break;
+
+            case "checkbox":
+                field.innerHTML = `
+                    <label>${escapeHtml(f.label)}</label>
+                    ${f.options.split(";").map(o => `
+                        <label style="display:flex;align-items:center;gap:6px;">
+                            <input type="checkbox" value="${escapeAttr(o.trim())}" id="${escapeAttr(f.id)}_${escapeAttr(o.trim())}">
+                            ${escapeHtml(o.trim())}
+                        </label>
+                    `).join("")}
+                `;
+                break;
+
+            case "radio":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    ${f.options.split(";").map(o => `
+                        <label style="display:flex;align-items:center;gap:6px;">
+                            <input type="radio" name="${f.id}" value="${o.trim()}">
+                            ${o.trim()}
+                        </label>
+                    `).join("")}
+                `;
+                break;
+
+            case "photo":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <input type="file" id="${f.id}" accept="image/*" capture="environment">
+                `;
+                break;
+
+            case "location":
+                field.innerHTML = `
+                    <label>${f.label}</label>
+                    <button onclick="getLocation('${f.id}')" class="btn-primary" style="padding:8px;font-size:0.8rem;">📍 Obtenir la position</button>
+                    <input type="text" id="${f.id}" readonly placeholder="Latitude, Longitude">
+                `;
+                break;
+
+            default:
+                field.innerHTML = `<p style="opacity:0.7;">Type non supporté : ${f.type}</p>`;
+        }
+
+        container.appendChild(field);
     });
 }
 
-loadCustomForms();
-</script>
+renderForm();
 
-<!-- 🔐 Sécurité -->
-<script src="security.js"></script>
+/* ------------------ Localisation ------------------ */
+function getLocation(id) {
+    if (!navigator.geolocation) {
+        alert("La géolocalisation n'est pas supportée.");
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(pos => {
+        const { latitude, longitude } = pos.coords;
+        document.getElementById(id).value = latitude + ", " + longitude;
+    });
+}
+
+/* ------------------ Enregistrement ------------------ */
+async function saveReport() {
+    const data = {};
+
+    model.fields.forEach(f => {
+        if (["title","subtitle","separator","info"].includes(f.type)) return;
+
+        if (f.type === "checkbox") {
+            const opts = f.options.split(";").map(o => o.trim());
+            data[f.id] = opts
+                .filter(o => document.getElementById(f.id + "_" + o)?.checked)
+                .join(", ");
+            return;
+        }
+
+        if (f.type === "radio") {
+            const selected = document.querySelector(`input[name="${f.id}"]:checked`);
+            data[f.id] = selected ? selected.value : "";
+            return;
+        }
+
+        const el = document.getElementById(f.id);
+        if (el) data[f.id] = el.value;
+    });
+
+    try {
+        const { error } = await supabaseClient.from("rapports").insert({
+            type: model.title || "dynamique",
+            titre: model.title + " — " + new Date().toLocaleDateString("fr-FR"),
+            description: JSON.stringify(data),
+            localisation: model.site || "",
+            statut: "ouvert",
+            priorite: "normale",
+            meta: { source: "dynamic", agent_nom: localStorage.getItem("nom"), form_data: data, model_title: model.title, model_site: model.site }
+        });
+        if (error) throw error;
+        showToast("✅ Rapport enregistré !");
+        setTimeout(() => history.back(), 1200);
+    } catch(e) {
+        showToast("❌ " + e.message, true);
+    }
+}
+</script>
 
 <!-- 🎨 Thème global -->
 <script src="global.js"></script>
 
-<script src="vendor/supabase.js" crossorigin="anonymous"></script>
-<script src="supabaseClient.js"></script>
-<script src="tenant.js"></script>
+<script src="security.js"></script>
 <script src="notifications_global.js"></script>
 </body>
 </html>

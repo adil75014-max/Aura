@@ -1,598 +1,333 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
-<title>Veille temps réel — Sûreté</title>
+<meta charset="UTF-8">
+<title>Interventions Entreprises Extérieures — Liste journalière</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- 🎨 Design global -->
 <link rel="stylesheet" href="global.css">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css"/>
-<script src="vendor/leaflet/leaflet.js"></script>
+
 <style>
-body{margin:0;padding:16px;background:radial-gradient(circle at top,#0f1830,#080b14 60%);color:#e8ebf0;font-family:system-ui,sans-serif}
-.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px}
-.bar h1{font-size:1.3rem;margin:0;flex:1;min-width:200px;display:flex;align-items:center;gap:8px}
-.btn{background:#16203a;border:1px solid #283042;color:#e8ebf0;border-radius:8px;padding:8px 13px;cursor:pointer;font-size:.85rem;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
-select{padding:8px;background:#0a1120;border:1px solid #283042;border-radius:8px;color:#e8ebf0;font-size:.9rem}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media(max-width:900px){.grid{grid-template-columns:1fr}}
-.section{background:#0e1626;border:1px solid #232c40;border-radius:14px;padding:16px}
-.section h2{font-size:1rem;margin:0 0 12px;color:#9ec5ff;display:flex;justify-content:space-between;align-items:center}
-.count{font-size:.75rem;background:#1e3a5f;border-radius:999px;padding:2px 9px;font-weight:600}
-.item{padding:9px 11px;border-radius:9px;margin-bottom:8px;background:#0a1120;border:1px solid #1d2740;border-left:3px solid #283042;font-size:.85rem}
-.item.hot{border-left-color:#ef4444;background:rgba(239,68,68,.06)}
-.item.warn{border-left-color:#f59e0b;background:rgba(245,158,11,.06)}
-.item.watch{border-left-color:#eab308;background:rgba(234,179,8,.04)}
-.item a{color:#6fb3ff;text-decoration:none}
-.item .meta{font-size:.74rem;opacity:.7;margin-top:3px}
-.tag75{font-size:.66rem;background:#ef4444;color:#fff;border-radius:999px;padding:1px 7px;margin-left:6px}
-.tagrisk{font-size:.62rem;font-weight:700;letter-spacing:.04em;border-radius:999px;padding:1px 7px;margin-left:6px;text-transform:uppercase}
-.tagrisk.critique{background:#dc2626;color:#fff}
-.tagrisk.alerte{background:#ea580c;color:#fff}
-.tagrisk.vigilance{background:#ca8a04;color:#fff}
-.loading{opacity:.7;display:flex;align-items:center;gap:8px;font-size:.85rem;padding:10px}
-.spinner{width:16px;height:16px;border:2px solid #283042;border-top-color:#22d3ee;border-radius:50%;animation:spin .8s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.empty{opacity:.6;text-align:center;padding:16px;font-size:.85rem}
-.legend{font-size:.74rem;opacity:.8;margin-top:8px;display:flex;gap:14px;flex-wrap:wrap}
-.leaflet-popup-content{font-size:.82rem}
-/* Sécurise le rendu des tuiles (évite le morcellement si une règle img héritée s'applique) */
-#sureteMap{position:relative}
-.leaflet-container{background:#0a1120}
-.leaflet-tile,.leaflet-container img.leaflet-tile{max-width:none!important;max-height:none!important;width:256px;height:256px}
-.leaflet-pane img{max-width:none!important}
+/* 🎨 Styles spécifiques à cette page */
 
-/* ── Bannière de risque sûreté au-dessus de la carte ────────────── */
-.riskBanner{
-    border-radius:12px;padding:14px 18px;margin-bottom:12px;
-    display:flex;align-items:center;gap:14px;
-    font-size:.9rem;line-height:1.45;
-    border:1px solid;
-    transition:all .3s ease;
-}
-.riskBanner.nominal   {background:rgba(34,197,94,.08); border-color:rgba(34,197,94,.35); color:#86efac}
-.riskBanner.vigilance {background:rgba(234,179,8,.10); border-color:rgba(234,179,8,.4);  color:#fde047}
-.riskBanner.alerte    {background:rgba(234,88,12,.12); border-color:rgba(234,88,12,.5);  color:#fed7aa}
-.riskBanner.critique  {background:rgba(220,38,38,.14); border-color:rgba(220,38,38,.6);  color:#fecaca;
-                       animation:riskPulse 1.6s ease-in-out infinite}
-@keyframes riskPulse{
-    0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.6)}
-    50%    {box-shadow:0 0 0 8px rgba(220,38,38,0)}
-}
-.riskBanner .ico{font-size:1.8rem;flex-shrink:0}
-.riskBanner .body{flex:1;min-width:0}
-.riskBanner .title{font-weight:700;font-size:.95rem;margin-bottom:3px;letter-spacing:.02em}
-.riskBanner .reasons{font-size:.78rem;opacity:.92}
-.riskBanner .reasons li{margin:2px 0}
-
-/* ── Marqueur de risque pulsant sur la carte (Leaflet divIcon) ──── */
-.riskPulse{position:relative;width:24px;height:24px}
-.riskPulse::before{
-    content:"";position:absolute;inset:-6px;border-radius:50%;
-    background:rgba(220,38,38,.5);animation:riskMapPulse 1.4s ease-out infinite
-}
-.riskPulse::after{
-    content:"";position:absolute;inset:0;border-radius:50%;
-    background:#dc2626;border:2px solid #fff;
-    box-shadow:0 0 6px rgba(0,0,0,.7)
-}
-@keyframes riskMapPulse{
-    0%  {transform:scale(.7);opacity:.9}
-    100%{transform:scale(2.0);opacity:0}
+h1 { 
+    color: var(--accent); 
+    margin-bottom: 20px; 
+    text-align: center;
 }
 
-/* ── Anneau d'alerte autour du repère du site ───────────────────── */
-.siteAlertRing{
-    border-radius:50%;animation:siteAlert 1.8s ease-in-out infinite;
-    pointer-events:none
+h2 { 
+    color: var(--accent); 
+    margin-top: 30px; 
 }
-@keyframes siteAlert{
-    0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.7), 0 0 0 0 rgba(220,38,38,.4)}
-    50%    {box-shadow:0 0 0 14px rgba(220,38,38,0), 0 0 0 22px rgba(220,38,38,0)}
+
+/* Champ de recherche */
+input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg2);
+    color: var(--text);
+}
+
+/* Bloc rapport */
+.rapport {
+    background: var(--card);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+/* Compteurs */
+.compteur {
+    background: var(--card);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+/* Bouton retour */
+.menu-return {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+
+.menu-return button {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 10px;
+    color: var(--accent);
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: 0.25s;
+}
+
+.menu-return button:hover {
+    background: var(--accent);
+    color: #000;
 }
 </style>
 </head>
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+
 <body>
 
-<div class="bar">
-    <h1>🛡️ Veille temps réel</h1>
-    <select id="siteSel" onchange="changeSite()"></select>
-    <button class="btn" onclick="fetchAll()">🔄 Actualiser</button>
-    <a class="btn" href="index.html">← Retour</a>
+<!-- 🔐 LOGIN -->
+
+
+<h1>Interventions Entreprises Extérieures — Liste journalière</h1>
+
+<!-- 🔵 BOUTON MENU STANDARD -->
+<div class="menu-return">
+    <button onclick="goMenu()">⟵ Menu</button>
 </div>
 
-<div class="grid">
-    <!-- CARTE -->
-    <div class="section" style="grid-column:1/-1;">
-        <h2>🗺️ Carte de Paris — sites LVMH & risques sûreté <span class="count" id="cntMap">—</span></h2>
+<div class="info">Date du jour : <span id="dateDuJour"></span></div>
 
-        <!-- Bannière de risque sûreté (calculée à partir des données filtrées) -->
-        <div id="riskBanner" class="riskBanner nominal">
-            <div class="ico">🛡️</div>
-            <div class="body">
-                <div class="title" id="riskBannerTitle">Évaluation en cours…</div>
-                <ul class="reasons" id="riskBannerReasons" style="list-style:none;padding:0;margin:0;"></ul>
-            </div>
-        </div>
-
-        <!-- Carte en BANDEAU pleine largeur : hauteur fixe (pas d'aspect-ratio,
-             dont le calcul tardif sur mobile faussait le zoom des bornes et
-             découpait les tuiles aux bords) -->
-        <div id="sureteMap" style="width:100%;height:clamp(360px, 52vh, 540px);border-radius:14px;overflow:hidden;background:#0a1120;border:2px solid #22d3ee;box-shadow:0 0 0 6px rgba(34,211,238,.08)"></div>
-        <div class="legend">
-            <span style="color:#7dd3fc;">🔷 Site sélectionné (+ cercle 1 km)</span>
-            <span>▪️ Autres sites LVMH</span>
-            <span>🔵 Commissariat</span><span>🟥 Hôpital</span><span>🟧 Caserne</span>
-            <span>🟣 Transport / métro</span><span>🟡 Ambassade</span><span>⚪ Tourisme / culte</span>
-            <span style="color:#fecaca;">🔴 Risque sûreté (pulsant)</span>
-        </div>
-    </div>
-
-    <!-- MANIFESTATIONS -->
-    <div class="section" style="grid-column:1/-1;border-color:rgba(239,68,68,0.3);">
-        <h2>📣 Manifestations & rassemblements à risque <span class="count" id="cntManifs">—</span></h2>
-        <div style="font-size:.72rem;opacity:.6;margin:-6px 0 10px;">Source presse (Google News). Filtre : uniquement les items susceptibles d'impacter le site (proximité + mots-clés sûreté).</div>
-        <div id="manifs"><div class="loading"><div class="spinner"></div>Récupération en cours…</div></div>
-    </div>
-
-    <!-- ACTUS -->
-    <div class="section" style="grid-column:1/-1;">
-        <h2>📰 Faits divers & événements impactant la sûreté <span class="count" id="cntNews">—</span></h2>
-        <div style="font-size:.72rem;opacity:.6;margin:-6px 0 10px;">Filtre : agressions, vols, attaques, violences, menaces, évacuations, troubles à proximité. Les actus non pertinentes sont masquées.</div>
-        <div id="news"><div class="loading"><div class="spinner"></div>Chargement…</div></div>
-    </div>
-
-    <!-- POINTS SENSIBLES -->
-    <div class="section">
-        <h2>📍 Points sensibles (1 km) <span class="count" id="cntSens">—</span></h2>
-        <div id="sensibles"><div class="loading"><div class="spinner"></div>Chargement…</div></div>
-    </div>
-
-    <!-- RESSOURCES -->
-    <div class="section">
-        <h2>🚓 Ressources de secours <span class="count" id="cntPoi">—</span></h2>
-        <div id="poi"><div class="loading"><div class="spinner"></div>Chargement…</div></div>
-    </div>
+<!-- ============================
+     COMPTEURS
+============================ -->
+<div class="compteur">
+    <h3 style="color:var(--accent); margin-top:0;">Compteurs du jour</h3>
+    <p>Total : <span id="countTotal">0</span></p>
+    <p>8h → 20h : <span id="countDay">0</span></p>
+    <p>20h → 8h : <span id="countNight">0</span></p>
 </div>
 
-<script src="supabaseClient.js"></script>
-<script>
-const SITES = {
-    LBM:  { nom: "Le Bon Marché (Paris 7e)",      lat: 48.8512, lon: 2.3240 },
-    SAM:  { nom: "Samaritaine (Paris 1er)",        lat: 48.8590, lon: 2.3425 },
-    GERD: { nom: "Gde Épicerie Rive Droite",       lat: 48.8699, lon: 2.3076 },
-    GERG: { nom: "Gde Épicerie Rive Gauche (7e)",  lat: 48.8512, lon: 2.3247 },
-    MH:   { nom: "Moët Hennessy (Paris 8e)",       lat: 48.8665, lon: 2.3060 }
-};
-const SUPABASE_FN = FUNCTIONS_BASE + "/surete-feed";
-const ANON = SUPABASE_KEY;
+<input type="text" id="search" placeholder="Rechercher (entreprise, agent, localisation)…">
 
-function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+<h2>🕗 8h → 20h</h2>
+<div id="dayShift"></div>
 
-let currentSite = localStorage.getItem("site_code") || "LBM";
-if (!SITES[currentSite]) currentSite = "LBM";
+<h2>🌙 20h → 8h</h2>
+<div id="nightShift"></div><script>
+// Fallback showToast si global.js pas encore chargé
+if (typeof showToast !== "function") {
+    window.showToast = function(msg, isError) { alert(msg); };
+}
 
-const sel = document.getElementById("siteSel");
-sel.innerHTML = Object.keys(SITES).map(code =>
-    `<option value="${code}" ${code===currentSite?"selected":""}>${esc(SITES[code].nom)}</option>`).join("");
+/* ============================================================
+   DATE DU JOUR
+============================================================ */
+const today = new Date().toLocaleDateString("fr-FR");
+document.getElementById("dateDuJour").textContent = today;
 
-function changeSite(){ currentSite = sel.value; initMap(SITES[currentSite]); fetchAll(); }
+/* ============================================================
+   HELPERS
+============================================================ */
+function fmtHeure(iso) {
+    if (!iso) return null;
+    return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
 
-async function fetchAll(){
-    const site = SITES[currentSite];
-    ["manifs","news","sensibles","poi"].forEach(id=>{
-        const el=document.getElementById(id);
-        if(el) el.innerHTML='<div class="loading"><div class="spinner"></div>Chargement…</div>';
-    });
-    try {
-        const url = `${SUPABASE_FN}?section=all&lat=${site.lat}&lon=${site.lon}`;
-        const res = await fetch(url, { headers: { "Authorization": "Bearer " + ANON } });
-        if(!res.ok) throw new Error("HTTP " + res.status);
-        const data = await res.json();
+function escapeHtml(s) {
+    const d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+}
 
-        // ── Classification sûreté : on annote chaque item d'un niveau de risque ─
-        //    (null = pas pertinent pour la sûreté du site → masqué dans les listes)
-        const manifsAll = (data.manifestations || []).map(annotateRisk);
-        const newsAll   = (data.news          || []).map(annotateRisk);
+function mapRow(r) {
+    return {
+        id:           r.id,
+        entreprise:   r.entreprise || "—",
+        responsable:  r.responsable || "—",
+        telephone:    r.telephone || "",
+        zone:         r.zone || "—",
+        typeTravaux:  r.type_travaux || "—",
+        heureDebut:   fmtHeure(r.heure_arrivee),
+        heureFin:     fmtHeure(r.heure_depart),
+        statut:       r.statut || "—"
+    };
+}
 
-        // Listes filtrées : on ne garde que ce qui pose réellement un problème
-        const manifsRisk = manifsAll.filter(i => i._risk);
-        const newsRisk   = newsAll.filter(i => i._risk);
+/* ============================================================
+   CHARGER LES INTERVENTIONS DU JOUR
+============================================================ */
+let listeJour = [];
 
-        renderManifs(manifsRisk, manifsAll.length);
-        renderNews(newsRisk, newsAll.length);
-        renderSensibles(data.points_sensibles || []);
-        renderPoi(data.poi || []);
-        renderMapMarkers({ ...data, _manifsRisk: manifsRisk });
-        updateRiskBanner(manifsRisk, newsRisk, site);
-    } catch(e){
-        ["manifs","news","sensibles","poi"].forEach(id=>{
-            const el=document.getElementById(id);
-            if(el) el.innerHTML='<div class="empty">⚠️ Source indisponible ('+esc(e.message)+')</div>';
-        });
-        updateRiskBanner([], [], site, "Données indisponibles");
+async function chargerRapports() {
+    const todayISO = new Date().toISOString().split("T")[0];
+    const { data, error } = await supabaseClient
+        .from("interventions_exterieures")
+        .select("*")
+        .gte("created_at", todayISO + "T00:00:00")
+        .lte("created_at", todayISO + "T23:59:59")
+        .order("created_at", { ascending: false });
+
+    if (error) { showToast("❌ " + error.message, true); return; }
+
+    listeJour = (data || []).map(mapRow);
+    afficher(listeJour);
+    updateCounters(listeJour);
+}
+
+/* ============================================================
+   AFFICHAGE PAR TRANCHE HORAIRE
+============================================================ */
+function afficher(liste) {
+    const day = document.getElementById("dayShift");
+    const night = document.getElementById("nightShift");
+
+    day.innerHTML = "";
+    night.innerHTML = "";
+
+    if (liste.length === 0) {
+        day.innerHTML = "<p>Aucune intervention en cours aujourd'hui.</p>";
+        night.innerHTML = "";
+        return;
     }
+
+    liste.forEach(r => {
+        const div = document.createElement("div");
+        div.className = "rapport";
+
+        const enCours = !r.heureFin;
+        const tel = r.telephone
+            ? `<p><strong>Téléphone :</strong> ${escapeHtml(r.telephone)}</p>` : "";
+
+        const sortieBlock = enCours
+            ? `
+                <label style="display:block; margin-top:10px;">Heure de départ :</label>
+                <input type="time" id="depart_${r.id}" style="width:100%; padding:8px; border-radius:6px;
+                       background:var(--bg2); color:var(--text); border:1px solid var(--border); margin-top:4px;">
+                <div style="display:flex; gap:10px; margin-top:10px;">
+                    <button onclick="cloturer('${r.id}')"
+                            style="flex:1; padding:10px; background:var(--accent); color:#000;
+                                   border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                        ✅ Clôturer
+                    </button>
+                    <button onclick="supprimer('${r.id}')"
+                            style="flex:1; padding:10px; background:#ef4444; color:white;
+                                   border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                        🗑 Supprimer
+                    </button>
+                </div>`
+            : `
+                <p style="color:#4ade80; font-weight:600; margin-top:10px;">✓ Terminée</p>
+                <button onclick="supprimer('${r.id}')"
+                        style="width:100%; padding:10px; background:#ef4444; color:white;
+                               border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                    🗑 Supprimer
+                </button>`;
+
+        div.innerHTML = `
+            <p><strong>Entreprise :</strong> ${escapeHtml(r.entreprise)}</p>
+            <p><strong>Type de travaux :</strong> ${escapeHtml(r.typeTravaux)}</p>
+            <p><strong>Responsable :</strong> ${escapeHtml(r.responsable)}</p>
+            ${tel}
+            <p><strong>Zone :</strong> ${escapeHtml(r.zone)}</p>
+            <p><strong>Heure d'arrivée :</strong> ${r.heureDebut || "—"}</p>
+            <p><strong>Heure de départ :</strong> ${r.heureFin || "—"}</p>
+            ${sortieBlock}
+        `;
+
+        // Tranche selon l'heure d'arrivée
+        const heure = r.heureDebut;
+        if (!heure) { day.appendChild(div); return; }
+        const h = parseInt(heure.split(":")[0]);
+        if (h >= 8 && h < 20) day.appendChild(div);
+        else night.appendChild(div);
+    });
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   CLASSIFICATION SÛRETÉ
-   Détermine si un item (manifestation, fait divers) constitue un risque
-   pour LE bâtiment. Trois critères combinés :
-     1) Présence de mots-clés sûreté (par niveau)
-     2) Proximité géographique : zone75007 OU distance_m < 1500 m OU
-        arrondissement = celui du site
-     3) Si on n'a aucun signal de proximité mais que les mots-clés sont
-        forts (critiques), on garde quand même
-   Retourne 'critique' | 'alerte' | 'vigilance' | null.
-═══════════════════════════════════════════════════════════════════ */
-const RISK_KEYWORDS = {
-    // ── CRITIQUE : menace immédiate, escalade obligatoire vers BSPP / DOPC ──
-    critique: [
-        // Attentat / terrorisme
-        "attentat","attaque terroriste","acte terroriste","fait terroriste",
-        "prise d'otage","prise d otage","otages",
-        "fusillade","tir","arme à feu","arme a feu","arme automatique",
-        "explosion","colis suspect","colis piégé","colis piege",
-        "véhicule bélier","vehicule belier","voiture bélier","voiture-bélier",
-        "voiture-belier","irruption armée","irruption armee",
-        "vigipirate","menace bombe","alerte à la bombe","alerte a la bombe",
-        "évacuation","evacuation","périmètre","perimetre","forcené","forcene",
-        // Variantes anglophones (parfois reprises en titre par presse FR)
-        "terror attack","active shooter","mass shooting","hostage situation",
-        "bomb threat","car ramming","stabbing attack"
-    ],
-    // ── ALERTE : surveillance renforcée, pré-positionnement de moyens ──
-    alerte: [
-        // Voie publique / ordre public
-        "manifestation","rassemblement","blocage","blocus","occupation",
-        "cortège","cortege","défilé","defile","manif sauvage",
-        "émeute","emeute","casseur","casseurs","violences urbaines",
-        "echauffouree","échauffourée","échauffourées","echauffourees",
-        // Effraction / vol organisé (cœur de menace LVMH retail luxe)
-        "cambriolage","braquage","casse","go-fast","go fast",
-        "vol à main armée","vol a main armee","vol à l'étalage organisé",
-        "vol a l etalage organise","attaque de bijouterie","attaque boutique",
-        "smash and grab","smash-and-grab",
-        "intrusion","saccage","saccager","saccagé","saccage",
-        "pillage","pillé","piller","pillent","looting",
-        "incendie criminel","incendie volontaire","vandalisme","tag",
-        // Activistes ayant déjà ciblé le luxe / LVMH
-        "extinction rebellion","dernière rénovation","derniere renovation",
-        "soulèvements de la terre","soulevements de la terre",
-        "anti-LVMH","anti lvmh","boycott LVMH","action anticapitaliste",
-        "aspersion","peinture","soupe",
-        // Agressions / menaces
-        "agression","menace","menaces","rixe","altercation",
-        "interpellation musclée","interpellation musclee",
-        "robbery","armed robbery"
-    ],
-    // ── VIGILANCE : événements pouvant gêner l'exploitation ──
-    vigilance: [
-        "vol","tentative de vol","pickpocket","pickpocketing",
-        "gilets jaunes","marche","mobilisation","grève","greve",
-        "perturbations","troubles","sit-in","sit in","squat",
-        "manif","fan-zone","fan zone","rave","free party",
-        "protest","strike","demonstration","rally"
-    ]
-};
-const PARIS_ARRONDS = {
-    LBM:"75007", SAM:"75001", GERD:"75008", GERG:"75007", MH:"75008"
-};
-
-// Mots ambigus : un même terme peut désigner un risque OU un événement
-// business normal (typique en environnement luxe). Si on détecte une
-// occurrence de la clé ambiguë ET que le contexte contient l'un des
-// termes de la liste associée, on disqualifie le hit.
-//
-// Exemple : "défilé" → manif politique OU défilé Dior. Si "fashion",
-// "couture", "collection", "runway" sont présents, c'est de la mode.
-// Pas un risque sûreté.
-const AMBIGUOUS_KEYWORDS = {
-    "défilé": ["mode","fashion","couture","collection","podium","runway","prêt-à-porter","pret-a-porter","haute couture"],
-    "defile": ["mode","fashion","couture","collection","podium","runway","pret-a-porter","haute couture"],
-    "cortège": ["funéraire","funeraire","mariage","royal","présidentiel","presidentiel","officiel"],
-    "cortege": ["funeraire","mariage","royal","presidentiel","officiel"]
-};
-
-function _normalize(s){
-    return String(s||"").toLowerCase()
-        .normalize("NFD").replace(/[\u0300-\u036f]/g,""); // strip accents
+/* ============================================================
+   COMPTEURS
+============================================================ */
+function updateCounters(liste) {
+    let total = liste.length, day = 0, night = 0;
+    liste.forEach(r => {
+        const heure = r.heureDebut;
+        if (!heure) { day++; return; }
+        const h = parseInt(heure.split(":")[0]);
+        if (h >= 8 && h < 20) day++; else night++;
+    });
+    document.getElementById("countTotal").textContent = total;
+    document.getElementById("countDay").textContent = day;
+    document.getElementById("countNight").textContent = night;
 }
 
-function annotateRisk(item){
-    const out = { ...item, _risk: null, _reason: null };
-    const text = _normalize(
-        (item.titre || item.title || "") + " " +
-        (item.description || item.snippet || "") + " " +
-        (item.arrondissement || "")
+/* ============================================================
+   CLÔTURER UNE INTERVENTION
+============================================================ */
+async function cloturer(id) {
+    const heure = document.getElementById("depart_" + id).value;
+    if (!heure) { alert("Veuillez entrer une heure de départ."); return; }
+
+    const now = new Date();
+    const [h, m] = heure.split(":");
+    const ts = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).toISOString();
+
+    const { error } = await supabaseClient
+        .from("interventions_exterieures")
+        .update({ heure_depart: ts, statut: "termine" })
+        .eq("id", id);
+
+    if (error) { showToast("❌ " + error.message, true); return; }
+    showToast("✅ Intervention clôturée");
+    chargerRapports();
+}
+
+/* ============================================================
+   SUPPRIMER UNE INTERVENTION
+============================================================ */
+async function supprimer(id) {
+    if (!confirm("Supprimer définitivement cette intervention ?")) return;
+
+    const { error } = await supabaseClient
+        .from("interventions_exterieures")
+        .delete()
+        .eq("id", id);
+
+    if (error) { showToast("❌ " + error.message, true); return; }
+    showToast("🗑 Intervention supprimée");
+    chargerRapports();
+}
+
+/* ============================================================
+   RECHERCHE LOCALE (pas de re-fetch)
+============================================================ */
+document.getElementById("search").addEventListener("input", function () {
+    const q = this.value.toLowerCase();
+    const filtered = listeJour.filter(r =>
+        r.entreprise.toLowerCase().includes(q) ||
+        r.responsable.toLowerCase().includes(q) ||
+        r.zone.toLowerCase().includes(q) ||
+        r.typeTravaux.toLowerCase().includes(q)
     );
+    afficher(filtered);
+    updateCounters(filtered);
+});
 
-    // Niveau le plus élevé qui matche
-    let level = null, hit = null;
-    for (const lvl of ["critique","alerte","vigilance"]) {
-        const found = RISK_KEYWORDS[lvl].find(k => text.includes(_normalize(k)));
-        if (found) { level = lvl; hit = found; break; }
-    }
-    if (!level) return out; // aucun mot-clé sûreté → pas pertinent
+/* ============================================================
+   LANCEMENT
+============================================================ */
+chargerRapports();
 
-    // Désambiguïsation contextuelle : si le mot-clé matché est ambigu et que
-    // le contexte le disqualifie (ex. "défilé" + "fashion week" = mode, pas
-    // manif), on rejette l'item. Évite le bruit business pour LVMH.
-    const exclCtx = AMBIGUOUS_KEYWORDS[_normalize(hit)];
-    if (exclCtx && exclCtx.some(k => text.includes(_normalize(k)))) {
-        return out;
-    }
-
-    // Filtre de proximité STRICT : on ne retient l'item que s'il est
-    // géographiquement proche du site, quel que soit son niveau. Choix
-    // opérationnel validé : un attentat à 600 km ne change pas la posture
-    // immédiate du PC sûreté du Bon Marché — l'info pertinente pour ce
-    // dashboard est ce qui touche directement Paris et le site.
-    const dist  = Number(item.distance_m);
-    const arr   = String(item.arrondissement || "");
-    const close = item.zone75007 === true
-               || (Number.isFinite(dist) && dist <= 1500)
-               || (arr && arr === PARIS_ARRONDS[currentSite])
-               || (arr && /^(7500[1-9]|7501[0-9]|75020)$/.test(arr)); // tout Paris intra-muros
-    if (!close) return out;
-
-    out._risk   = level;
-    out._reason = hit;
-    return out;
-}
-
-/* ═══════════════════════════════════════════════════════════════════
-   BANNIÈRE DE RISQUE GLOBALE
-   Agrège tous les items filtrés et affiche le niveau le plus élevé.
-═══════════════════════════════════════════════════════════════════ */
-function updateRiskBanner(manifs, news, site, errorMsg){
-    const el       = document.getElementById("riskBanner");
-    const titleEl  = document.getElementById("riskBannerTitle");
-    const reasonEl = document.getElementById("riskBannerReasons");
-    if (!el) return;
-
-    if (errorMsg) {
-        el.className = "riskBanner vigilance";
-        titleEl.textContent = "⚠ Évaluation impossible — " + errorMsg;
-        reasonEl.innerHTML = "";
-        return;
-    }
-
-    const all = [...manifs, ...news];
-    const order = { critique:3, alerte:2, vigilance:1 };
-    let maxLvl = 0, maxName = "nominal";
-    all.forEach(i => {
-        if ((order[i._risk] || 0) > maxLvl) {
-            maxLvl  = order[i._risk];
-            maxName = i._risk;
-        }
-    });
-
-    const counts = {
-        critique:  all.filter(i => i._risk === "critique").length,
-        alerte:    all.filter(i => i._risk === "alerte").length,
-        vigilance: all.filter(i => i._risk === "vigilance").length
-    };
-
-    el.className = "riskBanner " + maxName;
-    if (maxLvl === 0) {
-        titleEl.textContent = "✓ Aucun risque sûreté détecté à proximité de " + site.nom;
-        reasonEl.innerHTML = "<li style='opacity:.7'>Veille active — actualisation toutes les minutes</li>";
-    } else {
-        const labels = { critique:"CRITIQUE", alerte:"ALERTE", vigilance:"VIGILANCE" };
-        const total  = all.length;
-        titleEl.textContent = `${labels[maxName]} — ${total} risque${total>1?"s":""} sûreté à proximité`;
-        const lines = [];
-        if (counts.critique)  lines.push(`<li>🔴 <strong>${counts.critique}</strong> risque(s) critique(s)</li>`);
-        if (counts.alerte)    lines.push(`<li>🟠 <strong>${counts.alerte}</strong> alerte(s) — manifestation, agression, intrusion…</li>`);
-        if (counts.vigilance) lines.push(`<li>🟡 <strong>${counts.vigilance}</strong> en vigilance — surveillance renforcée</li>`);
-        // Premier item le plus grave en exemple
-        const top = all.find(i => i._risk === maxName);
-        if (top) {
-            const titre = top.titre || top.title || "(sans titre)";
-            lines.push(`<li style='margin-top:6px;opacity:.85'>📌 ${esc(titre.slice(0,90))}${titre.length>90?"…":""}</li>`);
-        }
-        reasonEl.innerHTML = lines.join("");
-    }
-}
-
-/* ---- CARTE ---- */
-let _map=null, _baseLayer=null, _markerLayer=null;
-
-// Bornes de Paris intra-muros (avec une petite marge périphérique)
-const PARIS_BOUNDS = L.latLngBounds([48.812, 2.220], [48.905, 2.475]);
-
-// Initialise la carte sur PARIS ENTIER. Tous les sites LVMH sont affichés ;
-// le site sélectionné est mis en avant (repère + cercle de 1 km de référence).
-// Appelée au chargement et à chaque changement de site.
-function initMap(site){
-    if(typeof L==="undefined"){ document.getElementById("sureteMap").innerHTML='<div class="empty">Carte indisponible (Leaflet non chargé)</div>'; return; }
-    const center=[site.lat, site.lon];
-
-    if(!_map){
-        _map = L.map("sureteMap", {
-            scrollWheelZoom:false,
-            maxBoundsViscosity:1.0,
-            fadeAnimation:false,
-            zoomAnimation:false,
-            markerZoomAnimation:false
-        });
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(_map);
-        _markerLayer = L.layerGroup().addTo(_map);
-    }
-
-    // Couche de base : recréée à chaque changement de site.
-    if(_baseLayer) _map.removeLayer(_baseLayer);
-    _baseLayer = L.layerGroup().addTo(_map);
-
-    // Cercle de 1 km de RÉFÉRENCE autour du site sélectionné (visuel, plus
-    // aucune contrainte de navigation dessus).
-    L.circle(center,{radius:1000,color:"#22d3ee",weight:1.5,fillColor:"#22d3ee",fillOpacity:0.06}).addTo(_baseLayer);
-
-    // Tous les sites LVMH sur la carte : petit repère pour les autres,
-    // gros repère pour le site sélectionné (renderMapMarkers ajoutera
-    // l'anneau pulsant sur le site sélectionné en cas de risque).
-    Object.keys(SITES).forEach(code => {
-        const s = SITES[code];
-        if (code === currentSite) return; // posé par renderMapMarkers (gestion risque)
-        L.circleMarker([s.lat, s.lon],{radius:5,color:"#fff",weight:1.5,fillColor:"#64748b",fillOpacity:0.9})
-            .addTo(_baseLayer).bindPopup("<b>"+esc(s.nom)+"</b>");
-    });
-    L.circleMarker(center,{radius:8,color:"#fff",weight:2,fillColor:"#22d3ee",fillOpacity:1}).addTo(_baseLayer).bindPopup("<b>"+esc(site.nom)+"</b>");
-
-    // Vider les marqueurs précédents lors d'un changement de site
-    if(_markerLayer) _markerLayer.clearLayers();
-    document.getElementById("cntMap").textContent = "—";
-
-    // ── Cadrage : Paris entier dans le bandeau. minZoom = le zoom de ce
-    // cadrage (on ne peut pas dézoomer au-delà de Paris) ; navigation
-    // bornée au Grand Paris. Recalculé à chaque passe pour absorber la
-    // mise en page tardive (mobile) sans tuiles manquantes.
-    const _settleMap = () => {
-        try {
-            _map.invalidateSize(false);
-            _map.setMaxBounds(null);
-            _map.fitBounds(PARIS_BOUNDS, { animate:false });
-            _map.setMinZoom(_map.getZoom());
-            _map.setMaxBounds(PARIS_BOUNDS.pad(0.25));
-        } catch(e){}
-    };
-    _settleMap();
-    [80, 300, 700, 1500].forEach(ms => setTimeout(_settleMap, ms));
-    if (!window._sureteResizeBound) {
-        window._sureteResizeBound = true;
-        window.addEventListener("resize", () => { try { _map && _settleMapRef && _settleMapRef(); } catch(e){} });
-        window.addEventListener("load", _settleMap);
-    }
-    window._settleMapRef = _settleMap;
-}
-
-// Pose les marqueurs (ressources + points sensibles + RISQUES SÛRETÉ) sur la couche dédiée.
-function renderMapMarkers(data){
-    if(!_map || !_markerLayer) return;
-    _markerLayer.clearLayers();
-
-    const dot=(c)=>L.divIcon({className:"",html:'<div style="width:14px;height:14px;border-radius:50%;background:'+c+';border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,.6)"></div>',iconSize:[14,14],iconAnchor:[7,7]});
-    const colRes={police:"#3b82f6",hospital:"#ef4444",fire_station:"#f59e0b"};
-    (data.poi||[]).forEach(p=>{ if(p.lat&&p.lon) L.marker([p.lat,p.lon],{icon:dot(colRes[p.type]||"#3b82f6")}).addTo(_markerLayer).bindPopup("<b>"+esc(p.nom)+"</b><br>"+(p.distance_m||"?")+" m"); });
-    const colSens={transport:"#a855f7",ambassade:"#eab308",tourisme:"#e5e7eb",culte:"#e5e7eb"};
-    (data.points_sensibles||[]).forEach(p=>{ if(p.lat&&p.lon) L.marker([p.lat,p.lon],{icon:dot(colSens[p.categorie]||"#e5e7eb")}).addTo(_markerLayer).bindPopup("<b>"+esc(p.nom)+"</b><br>"+esc(p.type_label)+" · "+(p.distance_m||"?")+" m"); });
-
-    // ── Marqueurs de risque sûreté (manifestations filtrées avec coordonnées) ──
-    const riskIcon = L.divIcon({
-        className: "",
-        html: '<div class="riskPulse"></div>',
-        iconSize: [24,24], iconAnchor: [12,12]
-    });
-    const risks = (data._manifsRisk || []).filter(m => m.lat && m.lon);
-    risks.forEach(m => {
-        const titre = m.titre || m.title || "Manifestation";
-        const dist  = m.distance_m ? m.distance_m + " m" : "";
-        const lvl   = m._risk ? m._risk.toUpperCase() : "RISQUE";
-        L.marker([m.lat, m.lon], { icon: riskIcon, zIndexOffset: 1000 })
-            .addTo(_markerLayer)
-            .bindPopup("<b style='color:#dc2626'>⚠ " + lvl + "</b><br>"
-                     + esc(titre) + (dist ? "<br><span style='opacity:.7'>" + dist + "</span>" : ""));
-    });
-
-    // ── Anneau d'alerte pulsant autour du repère du site si risques détectés ──
-    // Le repère du site est dans _baseLayer ; on ajoute un overlay HTML par-dessus
-    const site = SITES[currentSite];
-    if (site && _baseLayer) {
-        const hasRisk = risks.length > 0;
-        // On crée un divIcon spécifique pour le site (pulsant si risque)
-        const siteIcon = L.divIcon({
-            className: "",
-            html: hasRisk
-                ? '<div class="siteAlertRing" style="width:20px;height:20px;background:#22d3ee;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.7)"></div>'
-                : '<div style="width:16px;height:16px;border-radius:50%;background:#22d3ee;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.7)"></div>',
-            iconSize: [20,20], iconAnchor: [10,10]
-        });
-        // Retirer UNIQUEMENT le repère du site sélectionné posé par initMap
-        // (les petits points gris des 4 autres sites restent en place).
-        _baseLayer.eachLayer(l => {
-            if (l instanceof L.CircleMarker) {
-                const ll = l.getLatLng();
-                if (Math.abs(ll.lat - site.lat) < 1e-6 && Math.abs(ll.lng - site.lon) < 1e-6) {
-                    _baseLayer.removeLayer(l);
-                }
-            }
-        });
-        L.marker([site.lat, site.lon], { icon: siteIcon, zIndexOffset: 2000 })
-            .addTo(_baseLayer).bindPopup("<b>" + esc(site.nom) + "</b>" + (hasRisk ? "<br><span style='color:#fca5a5'>⚠ Risque sûreté à proximité</span>" : ""));
-    }
-
-    const n=(data.poi||[]).length+(data.points_sensibles||[]).length+risks.length;
-    const riskTxt = risks.length ? " · " + risks.length + " risque(s) sûreté" : "";
-    document.getElementById("cntMap").textContent = n>0 ? (n+" points" + riskTxt) : "0 point (source OSM indisponible)";
-}
-
-/* ---- LISTES ---- */
-function _riskClass(r){ return r==="critique"?"hot":r==="alerte"?"warn":r==="vigilance"?"watch":""; }
-function _riskTag(r){ return r ? ` <span class="tagrisk ${r}">${r}</span>` : ""; }
-
-function renderManifs(items, totalAvant){
-    document.getElementById("cntManifs").textContent = items.length;
-    const el=document.getElementById("manifs");
-    const masques = (totalAvant || 0) - items.length;
-    const footer  = masques > 0
-        ? `<div style="font-size:.72rem;opacity:.55;text-align:right;margin-top:6px">${masques} item(s) non pertinent(s) masqué(s) par le filtre sûreté</div>`
-        : "";
-    if(!items.length){
-        el.innerHTML = '<div class="empty">Aucune manifestation à risque détectée à proximité.</div>' + footer;
-        return;
-    }
-    el.innerHTML = items.slice(0,25).map(m=>`
-        <div class="item ${_riskClass(m._risk)}">
-            <div>${m.lien?`<a href="${esc(m.lien)}" target="_blank" rel="noopener">${esc(m.titre)}</a>`:esc(m.titre)}
-                 ${_riskTag(m._risk)}
-                 ${m.zone75007?'<span class="tag75">🔴 7e</span>':""}</div>
-            <div class="meta">${esc(m.date||"")}${m.arrondissement?" · "+esc(m.arrondissement):""}${m.source?" · "+esc(m.source):""}${m._reason?` · mot-clé : ${esc(m._reason)}`:""}</div>
-        </div>`).join("") + footer;
-}
-function renderNews(items, totalAvant){
-    document.getElementById("cntNews").textContent = items.length;
-    const el=document.getElementById("news");
-    const masques = (totalAvant || 0) - items.length;
-    const footer  = masques > 0
-        ? `<div style="font-size:.72rem;opacity:.55;text-align:right;margin-top:6px">${masques} actu(s) non pertinente(s) masquée(s) par le filtre sûreté</div>`
-        : "";
-    if(!items.length){
-        el.innerHTML = '<div class="empty">Aucun fait divers impactant la sûreté à proximité.</div>' + footer;
-        return;
-    }
-    el.innerHTML = items.slice(0,25).map(n=>`
-        <div class="item ${_riskClass(n._risk)}">
-            <div>${n.link?`<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a>`:esc(n.title)}
-                 ${_riskTag(n._risk)}
-                 ${n.zone75007?'<span class="tag75">🔴 75007</span>':""}</div>
-            <div class="meta">${esc(n.source||"")}${n.pubDate?" · "+esc(n.pubDate):""}${n._reason?` · mot-clé : ${esc(n._reason)}`:""}</div>
-        </div>`).join("") + footer;
-}
-function renderSensibles(items){
-    document.getElementById("cntSens").textContent = items.length;
-    const el=document.getElementById("sensibles");
-    if(!items.length){ el.innerHTML='<div class="empty">Aucun point sensible.</div>'; return; }
-    el.innerHTML = items.slice(0,30).map(p=>`
-        <div class="item">
-            <div><b>${esc(p.nom)}</b></div>
-            <div class="meta">${esc(p.type_label)} · ${p.distance_m} m</div>
-        </div>`).join("");
-}
-function renderPoi(items){
-    document.getElementById("cntPoi").textContent = items.length;
-    const lbl={police:"🔵 Commissariat",hospital:"🟥 Hôpital",fire_station:"🟧 Caserne"};
-    const el=document.getElementById("poi");
-    if(!items.length){ el.innerHTML='<div class="empty">Aucune ressource trouvée.</div>'; return; }
-    el.innerHTML = items.slice(0,15).map(p=>`
-        <div class="item">
-            <div><b>${esc(p.nom)}</b> ${lbl[p.type]||""}</div>
-            <div class="meta">${p.distance_m} m${p.tel?" · "+esc(p.tel):""}</div>
-        </div>`).join("");
-}
-
-initMap(SITES[currentSite]);
-fetchAll();
+function goMenu() { window.location.href = "index.html"; }
 </script>
+
+<!-- 🔐 Sécurité -->
+<script src="security.js"></script>
+
+<!-- 🎨 Thème global -->
+<script src="global.js"></script>
+
+<script src="notifications_global.js"></script>
 </body>
 </html>

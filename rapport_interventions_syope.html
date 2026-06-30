@@ -6,833 +6,106 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Plan de Prévention – Import & Consultation</title>
+<title>Intervention Sanitaire Syope</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- 🎨 Design global -->
 <link rel="stylesheet" href="global.css">
-
 <style>
-/* 🎨 Styles spécifiques à cette page */
-
-h1 {
-    text-align: center;
-    margin-bottom: 25px;
-    color: var(--accent);
-}
-
-/* Bouton menu */
-.menu-return {
-    display: flex;
-    justify-content: flex-start;
-    margin-bottom: 20px;
-}
-
-.menu-return button {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 8px 16px;
-    border-radius: 10px;
-    color: var(--accent);
-    font-size: 0.9rem;
-    cursor: pointer;
-    font-weight: 500;
-    transition: 0.25s;
-}
-
-.menu-return button:hover {
-    background: var(--accent);
-    color: #000;
-}
-
-/* Cartes */
-.card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    padding: 20px;
-    border-radius: 14px;
-    margin-bottom: 25px;
-    box-shadow: var(--shadow);
-}
-
-/* Labels */
-label {
-    font-size: 0.9rem;
-    opacity: 0.9;
-}
-
-/* Inputs */
-input, select {
-    width: 100%;
-    padding: 10px;
-    margin-top: 6px;
-    margin-bottom: 15px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--bg2);
-    color: var(--text);
-}
-
-/* Boutons */
-button {
-    padding: 12px;
-    border-radius: 10px;
-    border: none;
-    background: var(--accent);
-    color: black;
-    font-weight: 700;
-    cursor: pointer;
-    margin-top: 10px;
-}
-
-button:hover {
-    opacity: 0.9;
-}
-
-/* Tableau — structure stricte pour alignement parfait */
-.table-wrapper {
-    overflow-x: auto;                    /* scroll horizontal si l'écran est trop petit */
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--bg2);
-}
-
-table {
-    width: 100%;
-    min-width: 1100px;                   /* largeur plancher, évite le "squish" */
-    margin-top: 0;
-    border-collapse: collapse;
-    table-layout: fixed;                 /* clé : respect strict des largeurs définies */
-}
-
-/* Largeurs explicites via colgroup (voir HTML) — garantit l'alignement face à face */
-table col.col-nom       { width: 22%; }
-table col.col-ent       { width: 12%; }
-table col.col-zone      { width: 12%; }
-table col.col-date      { width: 11%; }
-table col.col-etat      { width:  8%; }
-table col.col-visite    { width:  8%; }
-table col.col-obs       { width: 15%; }
-table col.col-ouvrir    { width:  6%; }
-table col.col-modif     { width:  6%; }
-
-td, th {
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-    text-align: left;
-    font-size: 0.9rem;
-}
-
-th {
-    cursor: pointer;
-    color: var(--accent);
-    background: var(--card);
-    font-weight: 600;
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    user-select: none;
-    white-space: nowrap;
-}
-th:hover { background: rgba(212, 175, 55, 0.08); }
-
-/* Troncature pour les colonnes avec contenu long */
-td.cell-truncate {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Wrapping contrôlé pour observations */
-td.cell-wrap {
-    white-space: normal;
-    word-break: break-word;
-    line-height: 1.35;
-    color: #cbd5e1;
-    font-size: 0.85rem;
-}
-
-/* Colonnes actions centrées */
-td.cell-action { text-align: center; }
-th.cell-action { text-align: center; cursor: default; }
-
-/* Alternance de lignes pour lisibilité + hover */
-tbody tr { transition: background 0.12s; }
-tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.015); }
-tbody tr:hover { background: rgba(212, 175, 55, 0.06); }
-
-/* Badges d'état / visite */
-.badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    white-space: nowrap;
-    letter-spacing: 0.02em;
-}
-.badge-actif    { background: rgba(74, 222, 128, 0.15); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.3); }
-.badge-warning  { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
-.badge-danger   { background: rgba(239, 68, 68, 0.15);  color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); }
-.badge-visite-oui { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
-.badge-visite-non { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
-
-/* Boutons dans les cellules */
-.btn-icon {
-    background: var(--bg2);
-    color: var(--accent);
-    border: 1px solid var(--border);
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: 0.15s;
-    margin: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 36px;
-}
-.btn-icon:hover { background: var(--accent); color: #000; }
-
-.link-open {
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.85rem;
-    padding: 6px 10px;
-    border-radius: 8px;
-    background: rgba(212, 175, 55, 0.08);
-    display: inline-block;
-    transition: 0.15s;
-}
-.link-open:hover { background: var(--accent); color: #000; }
-
-/* État vide */
-.empty-row td {
-    text-align: center;
-    padding: 40px 16px;
-    color: #64748b;
-    font-style: italic;
-}
-
-/* Responsive : tablet */
-@media (max-width: 960px) {
-    td, th { padding: 10px 8px; font-size: 0.82rem; }
-    .badge { padding: 3px 8px; font-size: 0.7rem; }
-}
-
-/* Barre d'actions : wrap propre sur mobile */
-.actions-bar {
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-bottom:15px;
-}
-
-.actions-bar button {
-    width:auto;
-}
+h1 { color:var(--accent); text-align:center; margin-bottom:25px; }
+h3 { color:var(--accent); margin-top:25px; }
+.info { margin-bottom:10px; }
+input, textarea { width:100%; padding:12px; margin-top:6px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:1rem; }
+textarea { height:140px; resize:none; }
+button { margin-top:20px; padding:14px; background:var(--accent); border:none; border-radius:10px; color:black; cursor:pointer; width:100%; font-size:1.1rem; font-weight:700; transition:0.25s; }
+button:hover { opacity:0.9; }
+button:disabled { opacity:0.4; cursor:not-allowed; }
+.card { background:var(--card); border:1px solid var(--border); padding:20px; border-radius:14px; margin-bottom:25px; box-shadow:var(--shadow); }
 </style>
 </head>
-
 <body>
+<h1>Intervention Sanitaire Syope</h1>
 
-<!-- 🔐 LOGIN -->
-
-
-<h1>📋 Plan de Prévention</h1>
-
-<!-- Bouton menu -->
-<div class="menu-return">
-    <button onclick="goMenu()">⟵ Menu</button>
-</div>
-
-<!-- Dashboard -->
-<div id="dashboard" style="display:flex; gap:15px; margin-bottom:25px; flex-wrap:wrap;">
-    <div class="card" style="flex:1; min-width:180px; text-align:center;">
-        <h3>Actifs</h3>
-        <p id="dashActifs" style="font-size:1.6rem; color:#4ade80;">0</p>
-    </div>
-
-    <div class="card" style="flex:1; min-width:180px; text-align:center;">
-        <h3>Expirant (7 jours)</h3>
-        <p id="dashExpirant" style="font-size:1.6rem; color:#fbbf24;">0</p>
-    </div>
-
-    <div class="card" style="flex:1; min-width:180px; text-align:center;">
-        <h3>Sans visite</h3>
-        <p id="dashSansVisite" style="font-size:1.6rem; color:#ef4444;">0</p>
-    </div>
-</div>
-
-<!-- Alertes critiques -->
-<div id="alertes" class="card" style="display:none; border-left:4px solid #ef4444;">
-    <h3 style="color:#ef4444;">⚠️ Alertes critiques</h3>
-    <ul id="alertList"></ul>
-</div>
-
-<!-- Import -->
 <div class="card">
-    <h2>Importer un Plan de Prévention</h2>
-
-    <label>PDF du plan :</label>
-    <input type="file" id="pdfInput" accept="application/pdf">
-
-    <label>Entreprise :</label>
-    <input type="text" id="inputEntreprise" placeholder="Ex : Vinci, Segep, Dalkia">
-
-    <label>Zone concernée :</label>
-    <input type="text" id="inputZone" placeholder="Ex : Sous-sol, RDC, Local TGBT">
-
-    <label>Date de validité :</label>
-    <input type="date" id="inputDate">
-
-    <label>Visite commune effectuée :</label>
-    <select id="inputVisite">
-        <option value="Non">Non</option>
-        <option value="Oui">Oui</option>
-    </select>
-
-    <label>Observations :</label>
-    <input type="text" id="inputObs" placeholder="Notes, remarques, points sensibles…">
-
-    <button onclick="importerPDF()" style="width:100%;">Importer</button>
+    <div class="info">👤 Équipier : <span id="equipierAffiche"></span></div>
+    <div class="info">🎖 Statut : <span id="statut"></span></div>
+    <div class="info">🕒 Heure d'arrivée : <span id="heureDebut"></span></div>
 </div>
 
-<!-- Filtres + recherche + tableau -->
 <div class="card">
-    <h2>Plans de Prévention Actifs</h2>
+    <h3>Intervention / Agent</h3>
+    <label>Motif d'intervention</label><input type="text" id="motif">
+    <label>Nature réelle</label><input type="text" id="nature">
+    <label>Agent (intervenant)</label><input type="text" id="agent">
 
-    <div class="actions-bar">
-        <select id="filtreEntreprise">
-            <option value="">Toutes les entreprises</option>
-        </select>
+    <h3>Circonstantiel</h3>
+    <label>Lieu d'intervention</label><input type="text" id="lieu">
+    <label>Localisation</label><input type="text" id="localisation">
+    <label>Sous localisation</label><input type="text" id="sousLocalisation">
+    <label>Circonstances</label><textarea id="circonstances"></textarea>
 
-        <select id="filtreZone">
-            <option value="">Toutes les zones</option>
-        </select>
+    <h3>Identité</h3>
+    <label>Prénom</label><input type="text" id="prenom">
+    <label>Nom</label><input type="text" id="nomPatient">
+    <label>Âge</label><input type="text" id="age">
+    <label>Sexe</label>
+    <select id="sexe"><option value="homme">Homme</option><option value="femme">Femme</option><option value="inconnu">Inconnu</option></select>
 
-        <select id="filtreVisite">
-            <option value="">Visite ?</option>
-            <option value="Oui">Oui</option>
-            <option value="Non">Non</option>
-        </select>
+    <h3>Devenir</h3>
+    <label>Devenir du patient</label><input type="text" id="devenir">
+    <label>Transmission initiale</label><input type="text" id="transmission">
+    <label>Heure d'arrivée sur les lieux</label><input type="time" id="heureArrivee">
 
-        <button onclick="exportExcel()">Exporter Excel</button>
-    </div>
-
-    <input type="text" id="searchInput" placeholder="🔍 Recherche (nom, entreprise, zone)" style="margin-bottom:15px; width:100%;">
-
-    <div class="table-wrapper">
-        <table id="tablePP">
-            <colgroup>
-                <col class="col-nom">
-                <col class="col-ent">
-                <col class="col-zone">
-                <col class="col-date">
-                <col class="col-etat">
-                <col class="col-visite">
-                <col class="col-obs">
-                <col class="col-ouvrir">
-                <col class="col-modif">
-            </colgroup>
-            <thead>
-                <tr>
-                    <th onclick="trier('nom')">Nom du PDF ⬍</th>
-                    <th onclick="trier('entreprise')">Entreprise ⬍</th>
-                    <th onclick="trier('zone')">Zone ⬍</th>
-                    <th onclick="trier('dateValidite')">Valable jusqu'au ⬍</th>
-                    <th class="cell-action">État</th>
-                    <th class="cell-action">Visite</th>
-                    <th>Observations</th>
-                    <th class="cell-action">Ouvrir</th>
-                    <th class="cell-action">Modif.</th>
-                </tr>
-            </thead>
-            <tbody id="tbodyPP"></tbody>
-        </table>
-    </div>
-</div><!-- ============================
-     MODALE D'ÉDITION
-============================ -->
-<div id="modalEdit" style="
-    display:none; position:fixed; top:0; left:0; width:100%; height:100%;
-    background:rgba(0,0,0,0.6); backdrop-filter:blur(4px);
-    justify-content:center; align-items:center;
-">
-    <div style="
-        background:var(--card); padding:20px; border-radius:12px;
-        width:90%; max-width:400px; border:1px solid var(--border);
-        box-shadow:var(--shadow);
-    ">
-        <h3 style="color:var(--accent);">Modifier le Plan</h3>
-
-        <label>Visite commune :</label>
-        <select id="editVisite">
-            <option value="Non">Non</option>
-            <option value="Oui">Oui</option>
-        </select>
-
-        <label>Observations :</label>
-        <input type="text" id="editObs">
-
-        <button onclick="saveEdit()" style="width:100%;">Enregistrer</button>
-        <button onclick="closeModal()" style="background:#444; color:white; margin-top:10px; width:100%;">Annuler</button>
-    </div>
+    <button id="save">💾 Enregistrer</button>
+    <button onclick="window.print()">📄 Exporter en PDF</button>
+    <button onclick="location.href='index.html'">🏠 Retour à l'accueil</button>
 </div>
 
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
 <script>
-// ============================
-// Données
-// ============================
-let plans = [];
-async function loadPlans() {
-    const { data, error } = await supabaseClient
-        .from("plan_prevention")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-    if (error) {
-        console.error("Erreur chargement plans :", error);
-        alert("Erreur Supabase : " + error.message);
-        return;
-    }
-
-    plans = (data || []).map(p => ({
-        id:            p.id,
-        nom:           p.nom_pdf || "Sans nom",
-        entreprise:    p.entreprise || "",
-        zone:          p.zone || "",
-        dateValidite:  p.date_validite || "",
-        url:           p.pdf_url || "#",
-        pdfPath:       p.pdf_path || null,
-        visite:        p.visite || "Non",
-        observations:  p.observations || ""
-    }));
-
-    afficherPlans();
-    remplirFiltres();
-}
-loadPlans();
-let triActuel = { colonne: null, ordre: 1 };
-let editIndex = null;
-let lastCriticalCount = 0;
-
-// ============================
-// Affichage des plans actifs
-// ============================
-function afficherPlans() {
-    const tbody = document.getElementById("tbodyPP");
-    tbody.innerHTML = "";
-
-    const now = new Date();
-    const fEnt = document.getElementById("filtreEntreprise").value;
-    const fZone = document.getElementById("filtreZone").value;
-    const fVisite = document.getElementById("filtreVisite").value;
-    const search = document.getElementById("searchInput").value.toLowerCase();
-
-    /* Formatte une date ISO (YYYY-MM-DD) en JJ/MM/AAAA pour l'affichage */
-    const fmtFR = (iso) => {
-        if (!iso) return "—";
-        const d = new Date(iso);
-        if (isNaN(d)) return iso;
-        return d.toLocaleDateString("fr-FR");
-    };
-
-    /* Échappement HTML pour éviter tout cassage de structure par un contenu mal saisi */
-    const esc = (s) => {
-        if (s === null || s === undefined || s === "") return "";
-        const d = document.createElement("div");
-        d.textContent = String(s);
-        return d.innerHTML;
-    };
-
-    let nbAffiches = 0;
-
-    plans.forEach((p, index) => {
-        const validite = new Date(p.dateValidite);
-        const actif = validite >= now;
-        if (!actif) return;
-
-        if (fEnt && p.entreprise !== fEnt) return;
-        if (fZone && p.zone !== fZone) return;
-        if (fVisite && (p.visite || "Non") !== fVisite) return;
-
-        const nomL = (p.nom || "").toLowerCase();
-        const entL = (p.entreprise || "").toLowerCase();
-        const zoneL = (p.zone || "").toLowerCase();
-        if (
-            !nomL.includes(search) &&
-            !entL.includes(search) &&
-            !zoneL.includes(search)
-        ) return;
-
-        const diff = (validite - now) / (1000 * 3600 * 24);
-
-        /* Badge d'état contextuel */
-        let etatBadge;
-        if (diff <= 7)      etatBadge = `<span class="badge badge-danger">Expire ${Math.ceil(diff)}j</span>`;
-        else if (diff <= 30) etatBadge = `<span class="badge badge-warning">Bientôt</span>`;
-        else                 etatBadge = `<span class="badge badge-actif">Actif</span>`;
-
-        const visiteVal = p.visite || "Non";
-        const visiteBadge = visiteVal === "Oui"
-            ? `<span class="badge badge-visite-oui">✓ Oui</span>`
-            : `<span class="badge badge-visite-non">⚠ Non</span>`;
-
-        const obsClean = p.observations ? esc(p.observations) : `<span style="color:#475569;">—</span>`;
-
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td class="cell-truncate" title="${esc(p.nom)}">${esc(p.nom)}</td>
-            <td class="cell-truncate" title="${esc(p.entreprise)}">${esc(p.entreprise) || "—"}</td>
-            <td class="cell-truncate" title="${esc(p.zone)}">${esc(p.zone) || "—"}</td>
-            <td class="cell-truncate">${fmtFR(p.dateValidite)}</td>
-            <td class="cell-action">${etatBadge}</td>
-            <td class="cell-action">${visiteBadge}</td>
-            <td class="cell-wrap" title="${esc(p.observations || '')}">${obsClean}</td>
-            <td class="cell-action">${p.url && p.url !== "#" ? `<a href="${esc(p.url)}" target="_blank" class="link-open">📄</a>` : '<span style="color:#475569;">—</span>'}</td>
-            <td class="cell-action"><button class="btn-icon" onclick="editPlan(${index})" title="Modifier">✏️</button></td>
-        `;
-        tbody.appendChild(row);
-        nbAffiches++;
-    });
-
-    /* État vide : aucun plan correspond aux filtres */
-    if (nbAffiches === 0) {
-        const emptyRow = document.createElement("tr");
-        emptyRow.className = "empty-row";
-        emptyRow.innerHTML = `<td colspan="9">Aucun plan de prévention actif ne correspond à ces critères.</td>`;
-        tbody.appendChild(emptyRow);
-    }
-
-    updateDashboard();
-    updateAlertes();
-}
-
-// ============================
-// Tri
-// ============================
-function trier(colonne) {
-    if (triActuel.colonne === colonne) {
-        triActuel.ordre *= -1;
-    } else {
-        triActuel.colonne = colonne;
-        triActuel.ordre = 1;
-    }
-
-    plans.sort((a, b) => {
-        if (colonne === "dateValidite") {
-            const da = a[colonne] ? new Date(a[colonne]).getTime() : 0;
-            const db = b[colonne] ? new Date(b[colonne]).getTime() : 0;
-            return (da - db) * triActuel.ordre;
-        }
-        const va = (a[colonne] || "").toString();
-        const vb = (b[colonne] || "").toString();
-        return va.localeCompare(vb, "fr", { numeric: true }) * triActuel.ordre;
-    });
-
-    afficherPlans();
-}
-
-// ============================
-// Remplir les filtres
-// ============================
-function remplirFiltres() {
-    const fEnt = document.getElementById("filtreEntreprise");
-    const fZone = document.getElementById("filtreZone");
-
-    fEnt.innerHTML = `<option value="">Toutes les entreprises</option>`;
-    fZone.innerHTML = `<option value="">Toutes les zones</option>`;
-
-    const entreprises = [...new Set(plans.map(p => p.entreprise))];
-    const zones = [...new Set(plans.map(p => p.zone))];
-
-    entreprises.forEach(ent => {
-        const opt = document.createElement("option");
-        opt.value = ent;
-        opt.textContent = ent;
-        fEnt.appendChild(opt);
-    });
-
-    zones.forEach(z => {
-        const opt = document.createElement("option");
-        opt.value = z;
-        opt.textContent = z;
-        fZone.appendChild(opt);
-    });
-}
-
-// ============================
-// Import PDF
-// ============================
-async function importerPDF() {
-    const fileInput = document.getElementById("pdfInput");
-    const entreprise = document.getElementById("inputEntreprise").value.trim();
-    const zone = document.getElementById("inputZone").value.trim();
-    const dateValidite = document.getElementById("inputDate").value;
-    const visite = document.getElementById("inputVisite").value;
-    const observations = document.getElementById("inputObs").value.trim();
-
-    if (!fileInput.files.length) return alert("Sélectionne un PDF");
-    if (!entreprise) return alert("Saisis une entreprise");
-    if (!zone) return alert("Saisis une zone");
-    if (!dateValidite) return alert("Saisis une date de validité");
-
-    const file = fileInput.files[0];
-    const btn = document.querySelector('button[onclick="importerPDF()"]');
-    const originalLabel = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = "⏳ Import en cours…";
-
-    try {
-        // 1) Upload du PDF dans le bucket Storage
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const path = `${Date.now()}_${safeName}`;
-
-        const { error: upErr } = await supabaseClient
-            .storage
-            .from("plans-prevention")
-            .upload(path, file, { contentType: "application/pdf", upsert: false });
-
-        if (upErr) throw upErr;
-
-        // 2) Récupération de l'URL publique
-        const { data: pub } = supabaseClient
-            .storage
-            .from("plans-prevention")
-            .getPublicUrl(path);
-
-        const pdfUrl = pub.publicUrl;
-
-        // 3) Insertion dans la table
-        const { error: insErr } = await supabaseClient
-            .from("plan_prevention")
-            .insert({
-                nom_pdf:       file.name,
-                entreprise:    entreprise,
-                zone:          zone,
-                date_validite: dateValidite,
-                visite:        visite,
-                observations:  observations,
-                pdf_url:       pdfUrl,
-                pdf_path:      path,
-                statut:        "actif"
-            });
-
-        if (insErr) throw insErr;
-
-        // 4) Reset du formulaire
-        fileInput.value = "";
-        document.getElementById("inputEntreprise").value = "";
-        document.getElementById("inputZone").value = "";
-        document.getElementById("inputDate").value = "";
-        document.getElementById("inputVisite").value = "Non";
-        document.getElementById("inputObs").value = "";
-
-        // 5) Rechargement de la liste depuis Supabase
-        await loadPlans();
-        alert("✅ Plan de prévention importé.");
-    } catch (e) {
-        console.error(e);
-        alert("❌ Erreur : " + (e.message || e));
-    } finally {
-        btn.disabled = false;
-        btn.textContent = originalLabel;
-    }
-}
-
-// ============================
-// Dashboard
-// ============================
-function updateDashboard() {
-    const now = new Date();
-
-    let actifs = 0;
-    let expirant = 0;
-    let sansVisite = 0;
-
-    plans.forEach(p => {
-        const d = new Date(p.dateValidite);
-        const diff = (d - now) / (1000 * 3600 * 24);
-
-        if (d >= now) actifs++;
-        if (diff <= 7 && diff >= 0) expirant++;
-        if ((p.visite || "Non") === "Non") sansVisite++;
-    });
-
-    document.getElementById("dashActifs").textContent = actifs;
-    document.getElementById("dashExpirant").textContent = expirant;
-    document.getElementById("dashSansVisite").textContent = sansVisite;
-}
-
-// ============================
-// Alertes critiques
-// ============================
-function updateAlertes() {
-    const now = new Date();
-    const alertBox = document.getElementById("alertes");
-    const alertList = document.getElementById("alertList");
-
-    alertList.innerHTML = "";
-    let count = 0;
-
-    plans.forEach(p => {
-        const d = new Date(p.dateValidite);
-        const diff = (d - now) / (1000 * 3600 * 24);
-
-        if ((p.visite || "Non") === "Non" && diff <= 7 && diff >= 0) {
-            const li = document.createElement("li");
-            li.textContent = `${p.nom} – visite non faite, expire dans ${Math.ceil(diff)} jours`;
-            alertList.appendChild(li);
-            count++;
-        }
-    });
-
-    alertBox.style.display = count > 0 ? "block" : "none";
-
-    if (count > 0 && count !== lastCriticalCount && "Notification" in window) {
-        if (Notification.permission === "granted") {
-            new Notification("Plans de prévention critiques", {
-                body: `${count} plan(s) sans visite et proches de l'échéance.`,
-            });
-        } else if (Notification.permission !== "denied") {
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    new Notification("Plans de prévention critiques", {
-                        body: `${count} plan(s) sans visite et proches de l'échéance.`,
-                    });
-                }
-            });
-        }
-    }
-
-    lastCriticalCount = count;
-}
-
-// ============================
-// Édition
-// ============================
-function editPlan(index) {
-    editIndex = index;
-    const p = plans[index];
-
-    document.getElementById("editVisite").value = p.visite || "Non";
-    document.getElementById("editObs").value = p.observations || "";
-
-    document.getElementById("modalEdit").style.display = "flex";
-}
-
-function closeModal() {
-    document.getElementById("modalEdit").style.display = "none";
-    editIndex = null;
-}
-
-async function saveEdit() {
-    if (editIndex === null) return;
-
-    const plan = plans[editIndex];
-    const newVisite = document.getElementById("editVisite").value;
-    const newObs    = document.getElementById("editObs").value.trim();
-
-    const { error } = await supabaseClient
-        .from("plan_prevention")
-        .update({ visite: newVisite, observations: newObs })
-        .eq("id", plan.id);
-
-    if (error) {
-        alert("❌ Erreur sauvegarde : " + error.message);
-        return;
-    }
-
-    // Met à jour la copie locale puis ferme la modale
-    plans[editIndex].visite = newVisite;
-    plans[editIndex].observations = newObs;
-
-    closeModal();
-    afficherPlans();
-    remplirFiltres();
-}
-
-// ============================
-// Export CSV (compatible Excel)
-// ============================
-function exportExcel() {
-    if (!plans.length) { alert("Aucun plan à exporter."); return; }
-
-    /* CSV avec séparateur ";" (par défaut Excel français) + BOM UTF-8 pour accents */
-    const sep = ";";
-    const headers = ["Nom PDF", "Entreprise", "Zone", "Date validité", "Visite", "Observations", "URL PDF"];
-    const escapeCsv = (v) => {
-        const s = (v === null || v === undefined) ? "" : String(v);
-        /* Double-quote si le champ contient le séparateur, un guillemet ou un saut de ligne */
-        if (s.includes(sep) || s.includes('"') || s.includes("\n") || s.includes("\r")) {
-            return '"' + s.replace(/"/g, '""') + '"';
-        }
-        return s;
-    };
-
-    const rows = plans.map(p => [
-        p.nom, p.entreprise, p.zone, p.dateValidite,
-        p.visite || "Non", p.observations || "", p.url || ""
-    ].map(escapeCsv).join(sep));
-
-    const csv = "\uFEFF" + headers.join(sep) + "\n" + rows.join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const today = new Date().toISOString().slice(0, 10);
-    a.href = url;
-    a.download = `plans_prevention_${today}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-}
-
-// ============================
-// Initialisation
-// ============================
-afficherPlans();
-remplirFiltres();
-
-/* Re-filtrer automatiquement dès qu'un filtre ou la recherche change */
-["filtreEntreprise", "filtreZone", "filtreVisite"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener("change", afficherPlans);
+const equipier = localStorage.getItem("equipierSelectionne") || localStorage.getItem("nom") || "";
+document.getElementById("agent").value = equipier;
+document.getElementById("equipierAffiche").textContent = equipier;
+document.getElementById("statut").textContent = localStorage.getItem("statut");
+document.getElementById("heureDebut").textContent = new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+
+document.getElementById("agent").addEventListener("input", () => {
+    document.getElementById("equipierAffiche").textContent = document.getElementById("agent").value;
 });
-const searchEl = document.getElementById("searchInput");
-if (searchEl) {
-    /* Léger debounce pour éviter de re-render à chaque touche */
-    let t;
-    searchEl.addEventListener("input", () => {
-        clearTimeout(t);
-        t = setTimeout(afficherPlans, 120);
-    });
-}
-</script><!-- ============================
-     BOUTON MENU
-============================ -->
-<script>
-function goMenu() {
-    window.location.href = "index.html";
-}
+
+document.getElementById("save").addEventListener("click", async () => {
+    const btn = document.getElementById("save");
+    btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
+    try {
+        const now = new Date();
+        const heureArr = document.getElementById("heureArrivee").value;
+        let heureArrTs = null;
+        if (heureArr) { const [h,m] = heureArr.split(":"); heureArrTs = new Date(now.getFullYear(),now.getMonth(),now.getDate(),h,m).toISOString(); }
+
+        const { error } = await supabaseClient.from("interventions_syope").insert({
+            type_intervention: document.getElementById("motif").value,
+            localisation: document.getElementById("localisation").value || document.getElementById("lieu").value,
+            victime_genre: document.getElementById("sexe").value,
+            victime_age_estime: parseInt(document.getElementById("age").value) || null,
+            bilan: document.getElementById("circonstances").value,
+            suite_donnee: document.getElementById("devenir").value,
+            heure_arrivee: heureArrTs,
+            gestes_effectues: [document.getElementById("transmission").value].filter(Boolean),
+            smur_appele: false,
+            sapeurs_pompiers: false,
+            hospitalisation: false
+        });
+        if (error) throw error;
+        showToast("✅ Intervention SYOPE enregistrée !");
+        setTimeout(() => location.href="index.html", 1200);
+    } catch(e) {
+        showToast("❌ "+e.message, true);
+        btn.disabled = false; btn.textContent = "💾 Enregistrer";
+    }
+});
 </script>
-
-<!-- 🔐 Sécurité -->
 <script src="security.js"></script>
-
-<!-- 🎨 Thème global -->
 <script src="global.js"></script>
-
 <script src="notifications_global.js"></script>
 </body>
 </html>

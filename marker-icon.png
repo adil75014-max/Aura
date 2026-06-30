@@ -1,0 +1,26 @@
+-- ═══════════════════════════════════════════════════════════════
+--  À EXÉCUTER **APRÈS** avoir déployé :
+--    1. gestion_de_compte.html (nouveau, qui passe par admin-user-ops)
+--    2. l'edge function admin-user-ops
+--  Sinon l'édition/suppression de comptes cassera entre-temps.
+--  ----------------------------------------------------------------
+--  Ferme l'escalade de privilège via la clé anon publique :
+--  on retire à anon UPDATE et DELETE sur users, et on ne redonne que
+--  l'UPDATE des colonnes non sensibles (site_code, service).
+--  → plus possible de se mettre superadmin, de voler un badge, ni de
+--    supprimer un compte en tapant directement l'API REST.
+-- ═══════════════════════════════════════════════════════════════
+
+REVOKE UPDATE, DELETE ON public.users FROM anon, authenticated;
+
+-- Réaffectation site/service reste possible côté client (faible risque) :
+GRANT UPDATE (site_code, service) ON public.users TO anon, authenticated;
+
+-- Vérification : anon ne doit plus avoir que SELECT(none) + UPDATE(site_code,service)
+SELECT grantee, privilege_type, column_name
+FROM information_schema.column_privileges
+WHERE table_schema='public' AND table_name='users' AND grantee IN ('anon','authenticated')
+ORDER BY grantee, privilege_type, column_name;
+
+-- Rappel : les rôles anon/authenticated n'ont déjà plus INSERT/TRUNCATE/
+-- REFERENCES/TRIGGER (retirés lors des étapes précédentes).

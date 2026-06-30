@@ -1,0 +1,113 @@
+// supabase/functions/admin-user-ops/index.ts
+// ─────────────────────────────────────────────────────────────────────────
+//  OPÉRATIONS ADMIN SUR LES COMPTES — VERSION SÉCURISÉE
+//  Remplace les UPDATE/DELETE directs sur `users` (qui passaient par la clé
+//  anon publique → escalade de privilège : n'importe qui pouvait se mettre
+//  superadmin, voler un badge, supprimer un compte).
+//  Ici tout est vérifié côté serveur : l'appelant prouve qu'il est admin
+//  (mot de passe bcrypt), et les opérations sensibles sur un compte
+//  privilégié exigent d'être superadmin.
+//
+//  Actions : assignBadge | clearBadge | updateUser | deleteUser
+//  ⚠️ Déployer AVEC le patch gestion_de_compte.html + le SQL de retrait des
+//     droits anon. verify_jwt = false (auth custom par mot de passe admin).
+// ─────────────────────────────────────────────────────────────────────────
+
+import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
+import bcrypt from "https://esm.sh/bcryptjs@2.4.3";
+
+const URL = Deno.env.get("URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
+const supabase = createClient(URL, SERVICE_ROLE_KEY);
+
+const PRIVILEGED = ["admin", "superadmin"];
+
+const headers = {
+  "Content-Type": "application/json",
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+function err(message: string, status: number) {
+  return new Response(JSON.stringify({ error: message }), { status, headers });
+}
+function ok(payload: unknown = { success: true }) {
+  return new Response(JSON.stringify(payload), { status: 200, headers });
+}
+function likeSafe(s: string) { return s.replace(/[%_\\]/g, (m) => "\\" + m); }
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
+  if (req.method !== "POST") return err("Méthode non autorisée", 405);
+
+  try {
+    const { adminUser, adminPass, action, targetId, badgeuid, nom, role } = await req.json();
+
+    // ── 1. Authentifier l'appelant ──
+    if (!adminUser || !adminPass) return err("Authentification administrateur requise", 401);
+    const { data: admin, error: aErr } = await supabase
+      .from("users").select("id, role, password_hash").ilike("nom", likeSafe(adminUser)).limit(1).maybeSingle();
+    if (aErr) { console.error("lookup admin"); return err("Erreur base de données", 500); }
+    if (!admin || !admin.password_hash || !(await bcrypt.compare(adminPass, admin.password_hash))) {
+      return err("Identifiants administrateur invalides", 401);
+    }
+    const callerRole = String(admin.role || "").toLowerCase();
+    if (!PRIVILEGED.includes(callerRole)) return err("Droits insuffisants", 403);
+    const isSuper = callerRole === "superadmin";
+
+    if (!action || !targetId) return err("Paramètres manquants", 400);
+
+    // ── 2. Charger la cible + garde "compte privilégié → superadmin requis" ──
+    const { data: target, error: tErr } = await supabase
+      .from("users").select("id, role").eq("id", targetId).maybeSingle();
+    if (tErr) { console.error("lookup target"); return err("Erreur base de données", 500); }
+    if (!target) return err("Utilisateur introuvable", 404);
+    const targetPriv = PRIVILEGED.includes(String(target.role || "").toLowerCase());
+    if (targetPriv && !isSuper) return err("Action sur un compte privilégié : superadmin requis", 403);
+
+    // ── 3. Exécuter ──
+    if (action === "assignBadge") {
+      if (!badgeuid) return err("Badge manquant", 400);
+      // Empêcher un badge déjà attribué à un AUTRE compte (login ambigu / vol)
+      const { data: dup } = await supabase.from("users").select("id").eq("badgeuid", badgeuid).neq("id", targetId).maybeSingle();
+      if (dup) return err("Ce badge est déjà attribué à un autre compte", 409);
+      const { error } = await supabase.from("users").update({ badgeuid }).eq("id", targetId);
+      if (error) return err("Erreur base de données", 500);
+      return ok();
+    }
+
+    if (action === "clearBadge") {
+      const { error } = await supabase.from("users").update({ badgeuid: null }).eq("id", targetId);
+      if (error) return err("Erreur base de données", 500);
+      return ok();
+    }
+
+    if (action === "updateUser") {
+      const patch: Record<string, unknown> = {};
+      if (typeof nom === "string" && nom.trim()) patch.nom = nom.trim();
+      if (typeof role === "string" && role.trim()) {
+        const newRole = role.trim().toLowerCase();
+        // Promouvoir vers un rôle privilégié exige superadmin
+        if (PRIVILEGED.includes(newRole) && !isSuper) return err("Attribution d'un rôle privilégié : superadmin requis", 403);
+        patch.role = newRole;
+      }
+      if (Object.keys(patch).length === 0) return err("Rien à modifier", 400);
+      const { error } = await supabase.from("users").update(patch).eq("id", targetId);
+      if (error) return err("Erreur base de données", 500);
+      return ok();
+    }
+
+    if (action === "deleteUser") {
+      if (target.id === admin.id) return err("Impossible de supprimer son propre compte", 403);
+      const { error } = await supabase.from("users").delete().eq("id", targetId);
+      if (error) return err("Erreur base de données", 500);
+      return ok();
+    }
+
+    return err("Action inconnue", 400);
+  } catch (_e) {
+    console.error("admin-user-ops internal error");
+    return err("Erreur interne", 500);
+  }
+});

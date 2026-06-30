@@ -1,17 +1,361 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Redirection…</title>
-<meta http-equiv="refresh" content="0; url=consulter_pf.html">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
-<script>
-    // Préserve le query string et le hash le cas échéant
-    var dest = "consulter_pf.html" + (location.search || "") + (location.hash || "");
-    location.replace(dest);
-</script>
+<meta charset="UTF-8">
+<title>Compte rendu incendie / technique / travaux</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="vendor/html2canvas.min.js" crossorigin="anonymous"></script>
+<script src="vendor/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<style>
+:root{--bg:#06080d;--panel:rgba(12,16,28,.85);--glass:rgba(255,255,255,.03);--bdr:rgba(255,255,255,.06);--bdr2:rgba(255,255,255,.1);--focus:rgba(212,175,55,.35);--tx:#b8bfcc;--txd:rgba(255,255,255,.3);--txb:#eef1f6;--gold:#d4af37;--goldg:rgba(212,175,55,.15);--fire:#ef4444;--firebg:rgba(239,68,68,.08);--firebd:rgba(239,68,68,.18);--tech:#3b82f6;--techbg:rgba(59,130,246,.08);--techbd:rgba(59,130,246,.18);--work:#f59e0b;--workbg:rgba(245,158,11,.08);--workbd:rgba(245,158,11,.18);--infobg:rgba(107,114,128,.08);--infobd:rgba(107,114,128,.18);--green:#34d399;--r:14px}
+*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,.012) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.012) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0}
+body::after{content:'';position:fixed;top:-300px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(212,175,55,.04),transparent 60%);pointer-events:none;z-index:0}
+.container{position:relative;z-index:1;max-width:860px;margin:0 auto;padding:32px 20px 80px}
+.page-header{display:flex;align-items:center;gap:16px;margin-bottom:10px}.header-icon{width:54px;height:54px;border-radius:var(--r);background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(245,158,11,.08));border:1px solid rgba(239,68,68,.2);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0}
+.header-text h1{font-size:1.45rem;font-weight:700;color:var(--txb);letter-spacing:-.02em;line-height:1.2}.header-text p{font-size:.75rem;color:var(--txd);margin-top:3px;letter-spacing:.04em}
+.page-nav{display:flex;align-items:center;gap:8px;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--bdr)}
+.nav-back{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;background:var(--glass);border:1px solid var(--bdr);color:var(--txd);font-size:.78rem;font-weight:500;cursor:pointer;text-decoration:none;transition:.25s;font-family:'DM Sans',sans-serif}.nav-back:hover{background:var(--goldg);border-color:var(--focus);color:var(--gold)}
+.nav-status{margin-left:auto;display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--txd);background:var(--glass);border:1px solid var(--bdr);padding:5px 10px;border-radius:7px}.nav-status .dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pd 2s ease-in-out infinite}@keyframes pd{0%,100%{opacity:1;box-shadow:0 0 4px var(--green)}50%{opacity:.4;box-shadow:none}}
+.groupe{margin-bottom:16px;border-radius:var(--r);border:1px solid var(--bdr);background:var(--panel);backdrop-filter:blur(16px);overflow:hidden;transition:border-color .3s}.groupe.open{border-color:var(--bdr2)}
+.groupe-header{padding:18px 20px;font-size:.95rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:12px;color:var(--txb);transition:background .25s;user-select:none}.groupe-header:hover{background:rgba(255,255,255,.02)}
+.gi{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.gc{margin-left:auto;width:24px;height:24px;border-radius:6px;background:rgba(255,255,255,.04);display:flex;align-items:center;justify-content:center;transition:transform .35s cubic-bezier(.4,0,.2,1),background .25s;flex-shrink:0}.gc svg{width:12px;height:12px;fill:none;stroke:var(--txd);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.groupe.open .gc{transform:rotate(180deg);background:rgba(255,255,255,.08)}
+.groupe[data-color="info"] .gi{background:var(--infobg);border:1px solid var(--infobd)}.groupe[data-color="fire"] .gi{background:var(--firebg);border:1px solid var(--firebd)}.groupe[data-color="tech"] .gi{background:var(--techbg);border:1px solid var(--techbd)}.groupe[data-color="work"] .gi{background:var(--workbg);border:1px solid var(--workbd)}
+.groupe[data-color="fire"].open{border-color:var(--firebd)}.groupe[data-color="tech"].open{border-color:var(--techbd)}.groupe[data-color="work"].open{border-color:var(--workbd)}
+.groupe-content{max-height:0;overflow:hidden;transition:max-height .5s cubic-bezier(.4,0,.2,1),padding .3s;padding:0 20px}.groupe.open .groupe-content{max-height:8000px;padding:4px 20px 24px}
+.section{border-radius:12px;border:1px solid var(--bdr);background:rgba(255,255,255,.015);margin-bottom:12px;overflow:hidden;transition:border-color .25s}.section.open{border-color:var(--bdr2)}
+.section-header{padding:14px 16px;font-size:.85rem;font-weight:500;color:var(--tx);cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .2s,color .2s;user-select:none}.section-header:hover{background:rgba(255,255,255,.02);color:var(--txb)}
+.sc{margin-left:auto;transition:transform .3s;color:var(--txd);font-size:.7rem}.section.open .sc{transform:rotate(180deg)}
+.section-content{max-height:0;overflow:hidden;transition:max-height .4s cubic-bezier(.4,0,.2,1),padding .3s;padding:0 16px}.section.open .section-content{max-height:2000px;padding:4px 16px 20px}
+label{display:block;font-size:.72rem;font-weight:600;color:var(--txd);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:16px}label:first-child{margin-top:0}
+input[type="text"],input[type="date"],textarea{width:100%;padding:12px 14px;border-radius:10px;border:1px solid var(--bdr);background:rgba(255,255,255,.04);color:var(--txb);font-family:'DM Sans',sans-serif;font-size:.88rem;transition:.25s;outline:none;margin-bottom:4px}textarea{min-height:90px;resize:vertical;line-height:1.6}
+input[type="text"]:focus,input[type="date"]:focus,textarea:focus{border-color:var(--focus);background:rgba(212,175,55,.03);box-shadow:0 0 0 3px rgba(212,175,55,.06)}input[type="text"]:disabled{opacity:.4;cursor:not-allowed}
+.cg{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;margin-bottom:4px}.cg input[type="radio"],.cg input[type="checkbox"]{display:none}
+.cg label{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:8px;border:1px solid var(--bdr);background:var(--glass);font-size:.8rem;font-weight:500;color:var(--tx);cursor:pointer;transition:.25s;text-transform:none;letter-spacing:0;margin:0}.cg label:hover{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
+.cg label .dot{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.2);transition:.25s;flex-shrink:0}
+.cg label .cb{width:14px;height:14px;border-radius:4px;border:2px solid rgba(255,255,255,.2);transition:.25s;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.55rem;color:transparent}
+.cg input[type="radio"]:checked+label{background:var(--goldg);border-color:var(--focus);color:var(--gold)}.cg input[type="radio"]:checked+label .dot{border-color:var(--gold);background:var(--gold);box-shadow:inset 0 0 0 3px var(--bg)}
+.cg input[type="checkbox"]:checked+label{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.25);color:var(--tech)}.cg input[type="checkbox"]:checked+label .cb{border-color:var(--tech);background:var(--tech);color:#fff}
+.cl{display:block;font-size:.72rem;font-weight:600;color:var(--txd);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:16px}
+.actions-row{display:flex;gap:12px;margin-top:32px;flex-wrap:wrap}.btn{flex:1;min-width:200px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:14px 24px;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:.92rem;font-weight:600;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent);opacity:0;transition:opacity .3s}.btn:hover::after{opacity:1}
+.btn-pdf{background:linear-gradient(135deg,var(--gold),#c9a22e);color:#0a0a0a;box-shadow:0 4px 20px rgba(212,175,55,.2)}.btn-pdf:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(212,175,55,.35)}
+.btn-mail{background:var(--glass);border:1px solid var(--bdr);color:var(--tx)}.btn-mail:hover{background:rgba(59,130,246,.08);border-color:var(--techbd);color:var(--tech);transform:translateY(-2px)}
+@media(max-width:600px){.container{padding:16px 12px 60px}.page-header{flex-wrap:wrap;gap:12px}.groupe-header{padding:14px 16px;font-size:.88rem}.gi{width:30px;height:30px;font-size:.9rem}.section-header{font-size:.82rem;padding:12px 14px}.actions-row{flex-direction:column}.btn{min-width:100%}.cg{gap:6px}.cg label{padding:6px 10px;font-size:.75rem}}
+</style>
 </head>
-<body style="font-family:system-ui;background:#0b0d10;color:#e6e8eb;text-align:center;padding:80px 20px;">
-    <p>Redirection vers <a href="consulter_pf.html" style="color:#d4af37;">consulter_pf.html</a>…</p>
+<body>
+<div class="container">
+<header class="page-header"><div class="header-icon">🧯</div><div class="header-text"><h1>Compte rendu</h1><p>Incendie · Technique · Travaux</p></div></header>
+<nav class="page-nav"><a class="nav-back" href="index.html">← Retour menu</a><div class="nav-status"><div class="dot"></div> Brouillon</div></nav>
+
+<div class="groupe open" data-color="info"><div class="groupe-header" onclick="tg(this)"><div class="gi">📋</div>Informations générales<div class="gc"><svg viewBox="0 0 12 8"><polyline points="1,1 6,6 11,1"/></svg></div></div><div class="groupe-content">
+<label>Date</label><input type="date" id="date">
+<label>Service</label><div class="cg"><input type="radio" name="service" id="sj" value="Jour" checked><label for="sj"><span class="dot"></span> Jour (7h30–19h30)</label><input type="radio" name="service" id="sn" value="Nuit"><label for="sn"><span class="dot"></span> Nuit (19h30–7h30)</label></div>
+<label>Chef d'équipe</label><input type="text" id="chef" placeholder="Nom du chef d'équipe">
+<label>Site</label><input type="text" value="Le Bon Marché · SEGEP RG · Bâtiment 3" disabled>
+</div></div>
+
+<div class="groupe" data-color="fire"><div class="groupe-header" onclick="tg(this)"><div class="gi">🔥</div>Incendie<div class="gc"><svg viewBox="0 0 12 8"><polyline points="1,1 6,6 11,1"/></svg></div></div><div class="groupe-content">
+<div class="section"><div class="section-header" onclick="ts(this)">💧 Fuite d'eau<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="fuite" id="fn" value="NON" checked><label for="fn"><span class="dot"></span> NON</label><input type="radio" name="fuite" id="fo" value="OUI"><label for="fo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="fuite_details" placeholder="Décrire la fuite…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="fm"><label for="fm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="fr"><label for="fr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="ft"><label for="ft"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="f1"><label for="f1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="fuite_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_fuite" id="mfo" value="OUI"><label for="mfo"><span class="dot"></span> OUI</label><input type="radio" name="mc_fuite" id="mfn" value="NON" checked><label for="mfn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">⚙️ Fonctionnement moteurs<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="moteurs" id="mn" value="NON" checked><label for="mn"><span class="dot"></span> NON</label><input type="radio" name="moteurs" id="mo" value="OUI"><label for="mo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="moteurs_details" placeholder="Dysfonctionnement…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="mm"><label for="mm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="mr"><label for="mr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="mt"><label for="mt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="m1"><label for="m1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="moteurs_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_moteurs" id="mmo" value="OUI"><label for="mmo"><span class="dot"></span> OUI</label><input type="radio" name="mc_moteurs" id="mmn" value="NON" checked><label for="mmn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">⚡ Coupure EDF / Anomalies électriques<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="edf" id="en" value="NON" checked><label for="en"><span class="dot"></span> NON</label><input type="radio" name="edf" id="eo" value="OUI"><label for="eo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="edf_details" placeholder="Anomalie électrique…"></textarea><label>Anomalies au retour à la normale</label><textarea id="edf_retour" placeholder="Décrire…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="em"><label for="em"><span class="cb">✓</span> Mail</label><input type="checkbox" id="er"><label for="er"><span class="cb">✓</span> Radio</label><input type="checkbox" id="et2"><label for="et2"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="e1"><label for="e1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="edf_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_edf" id="meo" value="OUI"><label for="meo"><span class="dot"></span> OUI</label><input type="radio" name="mc_edf" id="men" value="NON" checked><label for="men"><span class="dot"></span> NON</label></div></div></div>
+</div></div>
+
+<div class="groupe" data-color="tech"><div class="groupe-header" onclick="tg(this)"><div class="gi">🛠</div>Technique<div class="gc"><svg viewBox="0 0 12 8"><polyline points="1,1 6,6 11,1"/></svg></div></div><div class="groupe-content">
+<div class="section"><div class="section-header" onclick="ts(this)">💡 Éclairage bâtiments<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="eclairage" id="xn" value="NON" checked><label for="xn"><span class="dot"></span> NON</label><input type="radio" name="eclairage" id="xo" value="OUI"><label for="xo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="eclairage_details" placeholder="Problème d'éclairage…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="xm"><label for="xm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="xr"><label for="xr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="xt"><label for="xt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="x1"><label for="x1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="eclairage_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_eclairage" id="mxo" value="OUI"><label for="mxo"><span class="dot"></span> OUI</label><input type="radio" name="mc_eclairage" id="mxn" value="NON" checked><label for="mxn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🛗 Panne / Désincarcération ascenseur<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="ascenseur" id="an" value="NON" checked><label for="an"><span class="dot"></span> NON</label><input type="radio" name="ascenseur" id="ao" value="OUI"><label for="ao"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="ascenseur_details" placeholder="Décrire la panne…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="am"><label for="am"><span class="cb">✓</span> Mail</label><input type="checkbox" id="ar"><label for="ar"><span class="cb">✓</span> Radio</label><input type="checkbox" id="at2"><label for="at2"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="a1"><label for="a1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="ascenseur_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_ascenseur" id="mao" value="OUI"><label for="mao"><span class="dot"></span> OUI</label><input type="radio" name="mc_ascenseur" id="man" value="NON" checked><label for="man"><span class="dot"></span> NON</label></div></div></div>
+</div></div>
+
+<div class="groupe" data-color="work"><div class="groupe-header" onclick="tg(this)"><div class="gi">🏗</div>Travaux<div class="gc"><svg viewBox="0 0 12 8"><polyline points="1,1 6,6 11,1"/></svg></div></div><div class="groupe-content">
+<div class="section"><div class="section-header" onclick="ts(this)">🚪 Ouvertures / Fermetures locaux<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="ouverture" id="on2" value="NON" checked><label for="on2"><span class="dot"></span> NON</label><input type="radio" name="ouverture" id="oo" value="OUI"><label for="oo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="ouverture_details" placeholder="Ouvertures/fermetures…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="om"><label for="om"><span class="cb">✓</span> Mail</label><input type="checkbox" id="or2"><label for="or2"><span class="cb">✓</span> Radio</label><input type="checkbox" id="ot"><label for="ot"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="o1"><label for="o1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="ouverture_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_ouverture" id="mouo" value="OUI"><label for="mouo"><span class="dot"></span> OUI</label><input type="radio" name="mc_ouverture" id="moun" value="NON" checked><label for="moun"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🌙 Effectifs nuit<span class="sc">▾</span></div><div class="section-content"><label>Effectif théorique</label><input type="text" id="effectif_theorique" placeholder="Ex : 4 agents"><label>Effectif réel</label><input type="text" id="effectif_reel" placeholder="Ex : 3 agents"><label>Issues de secours ouvertes</label><textarea id="issues_secours" placeholder="Lister les issues…"></textarea></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🚧 Travaux sur voirie<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="voirie" id="vn" value="NON" checked><label for="vn"><span class="dot"></span> NON</label><input type="radio" name="voirie" id="vo" value="OUI"><label for="vo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="voirie_details" placeholder="Travaux voirie…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="vm"><label for="vm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="vr"><label for="vr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="vt"><label for="vt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="v1"><label for="v1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="voirie_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_voirie" id="mvo" value="OUI"><label for="mvo"><span class="dot"></span> OUI</label><input type="radio" name="mc_voirie" id="mvn" value="NON" checked><label for="mvn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🏬 Rive Droite – Anomalies<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="rd" id="rn" value="NON" checked><label for="rn"><span class="dot"></span> NON</label><input type="radio" name="rd" id="ro" value="OUI"><label for="ro"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="rd_details" placeholder="Anomalies RD…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="rm"><label for="rm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="rr"><label for="rr"><span class="cb">✓</span> Radio</label><input type="checkbox" id="rt"><label for="rt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="r1"><label for="r1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="rd_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_rd" id="mro" value="OUI"><label for="mro"><span class="dot"></span> OUI</label><input type="radio" name="mc_rd" id="mrn" value="NON" checked><label for="mrn"><span class="dot"></span> NON</label></div></div></div>
+<div class="section"><div class="section-header" onclick="ts(this)">🏭 Bagneux – Anomalies<span class="sc">▾</span></div><div class="section-content"><div class="cg"><input type="radio" name="bg" id="bn" value="NON" checked><label for="bn"><span class="dot"></span> NON</label><input type="radio" name="bg" id="bo" value="OUI"><label for="bo"><span class="dot"></span> OUI</label></div><label>Détails</label><textarea id="bg_details" placeholder="Anomalies Bagneux…"></textarea><span class="cl">Service technique prévenu par</span><div class="cg"><input type="checkbox" id="bm"><label for="bm"><span class="cb">✓</span> Mail</label><input type="checkbox" id="br"><label for="br"><span class="cb">✓</span> Radio</label><input type="checkbox" id="bt"><label for="bt"><span class="cb">✓</span> Téléphone</label><input type="checkbox" id="b1"><label for="b1"><span class="cb">✓</span> Mission One</label></div><label>Interlocuteur</label><input type="text" id="bg_interlocuteur" placeholder="Nom"><label>Main courante effectuée</label><div class="cg"><input type="radio" name="mc_bg" id="mbo" value="OUI"><label for="mbo"><span class="dot"></span> OUI</label><input type="radio" name="mc_bg" id="mbn" value="NON" checked><label for="mbn"><span class="dot"></span> NON</label></div></div></div>
+</div></div>
+
+<div class="actions-row"><button class="btn btn-pdf" onclick="exportPDF()">📄 Exporter en PDF</button><button class="btn btn-mail" onclick="envoyerMail()">📧 Envoyer par mail</button></div>
+</div>
+<script>
+function tg(h){const g=h.closest('.groupe'),w=g.classList.contains('open');document.querySelectorAll('.groupe').forEach(x=>x.classList.remove('open'));if(!w)g.classList.add('open');}
+function ts(h){h.closest('.section').classList.toggle('open');}
+async function exportPDF(){
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const M=15, PW=180, BOT=275;
+    let y=0, pageNum=0;
+
+    /* ── HELPERS ── */
+    function newPage(){
+        if(pageNum>0) pdf.addPage();
+        pageNum++;
+        y=15;
+        // Filet haut discret
+        pdf.setDrawColor(200,200,200);
+        pdf.setLineWidth(0.3);
+        pdf.line(M,12,M+PW,12);
+    }
+    function ensureSpace(n){if(y+n>BOT){footer();newPage();}}
+    function footer(){
+        pdf.setDrawColor(180);pdf.setLineWidth(0.2);pdf.line(M,283,M+PW,283);
+        pdf.setFontSize(7);pdf.setTextColor(140);
+        pdf.text('Le Bon Marche \u00b7 SEGEP RG \u00b7 Batiment 3  |  Document confidentiel',M,288);
+        pdf.text('Page '+pageNum,M+PW,288,{align:'right'});
+    }
+    function radioVal(name){const el=document.querySelector('input[name="'+name+'"]:checked');return el?el.value:'\u2014';}
+    function checkVals(ids){return ids.filter(id=>{const el=document.getElementById(id);return el&&el.checked}).map(id=>{const el=document.getElementById(id);const lb=el.nextElementSibling;return lb?lb.textContent.replace(/[✓]/g,'').trim():id}).join(', ')||'Aucun';}
+    function inputVal(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+
+    /* ── SECTION HEADER (bandeau coloré) ── */
+    function sectionBanner(txt,r,g,b){
+        ensureSpace(16);
+        pdf.setFillColor(r,g,b);
+        pdf.roundedRect(M,y,PW,11,2,2,'F');
+        pdf.setFontSize(13);pdf.setTextColor(255);
+        pdf.text(txt,M+6,y+8);
+        y+=15;
+    }
+
+    /* ── SOUS-SECTION AVEC TABLEAU ── */
+    function writeEvent(label, radioName, detailsId, checkIds, interlocuteurId, mcName, extraId){
+        const evt = radioVal(radioName);
+        const details = inputVal(detailsId);
+        const prevenu = checkVals(checkIds);
+        const inter = inputVal(interlocuteurId);
+        const mc = mcName ? radioVal(mcName) : '';
+        const extra = extraId ? inputVal(extraId) : '';
+
+        // N'afficher que si "OUI" ou si des détails sont renseignés
+        const hasContent = evt==='OUI' || details || inter || extra;
+
+        ensureSpace(hasContent ? 40 : 12);
+
+        // Ligne de sous-titre
+        pdf.setFontSize(10);
+        pdf.setTextColor(40,60,100);
+        pdf.setFont(undefined,'bold');
+        pdf.text(label, M, y);
+
+        // Pastille statut à droite
+        if(evt==='OUI'){
+            pdf.setFillColor(255,230,230);pdf.setDrawColor(220,60,60);
+            pdf.roundedRect(M+PW-22,y-4,20,6,2,2,'FD');
+            pdf.setFontSize(7);pdf.setTextColor(200,40,40);
+            pdf.text('OUI',M+PW-17,y-0.5);
+        } else {
+            pdf.setFillColor(230,245,230);pdf.setDrawColor(60,160,60);
+            pdf.roundedRect(M+PW-22,y-4,20,6,2,2,'FD');
+            pdf.setFontSize(7);pdf.setTextColor(40,130,40);
+            pdf.text('NON',M+PW-17,y-0.5);
+        }
+        y+=3;
+        pdf.setFont(undefined,'normal');
+
+        if(!hasContent){y+=4;return;}
+
+        // Tableau détaillé
+        const rows=[];
+        if(details) rows.push(['Details',details]);
+        if(extra) rows.push(['Retour a la normale',extra]);
+        if(prevenu!=='Aucun') rows.push(['Prevenu par',prevenu]);
+        if(inter) rows.push(['Interlocuteur',inter]);
+        if(mc) rows.push(['Main courante',mc]);
+
+        if(rows.length){
+            const colW1=38, colW2=PW-colW1;
+            const startY=y;
+
+            rows.forEach(([lbl,val])=>{
+                ensureSpace(12);
+                const lines=pdf.splitTextToSize(String(val),colW2-6);
+                const rowH=Math.max(7,lines.length*4.5+3);
+
+                // Fond alterné
+                pdf.setFillColor(248,249,252);
+                pdf.rect(M,y,PW,rowH,'F');
+                pdf.setDrawColor(220);pdf.setLineWidth(0.15);
+                pdf.rect(M,y,PW,rowH,'S');
+                pdf.line(M+colW1,y,M+colW1,y+rowH);
+
+                // Label
+                pdf.setFontSize(8);pdf.setTextColor(100);
+                pdf.text(lbl,M+3,y+5);
+
+                // Valeur
+                pdf.setFontSize(9);pdf.setTextColor(30);
+                let ly=y+5;
+                lines.forEach(l=>{pdf.text(l,M+colW1+3,ly);ly+=4.5;});
+
+                y+=rowH;
+            });
+        }
+        y+=5;
+    }
+
+    /* ══════════════════════════════════════════════
+       PAGE 1 — EN-TÊTE PROFESSIONNEL
+    ══════════════════════════════════════════════ */
+    newPage();
+
+    // Bandeau header
+    pdf.setFillColor(15,25,50);
+    pdf.rect(0,0,210,52,'F');
+    // Filet doré
+    pdf.setFillColor(200,170,50);
+    pdf.rect(0,52,210,1.5,'F');
+
+    pdf.setFontSize(22);pdf.setTextColor(255);
+    pdf.text('COMPTE RENDU',M,25);
+
+    pdf.setFontSize(11);pdf.setTextColor(200,170,50);
+    pdf.text('Incendie  |  Technique  |  Travaux',M,34);
+
+    pdf.setFontSize(9);pdf.setTextColor(180);
+    pdf.text('Le Bon Marche  \u00b7  SEGEP RG  \u00b7  Batiment 3',M,44);
+
+    y=62;
+
+    /* ── CARTOUCHE INFORMATIONS ── */
+    // Cadre
+    pdf.setFillColor(245,247,252);
+    pdf.setDrawColor(200);pdf.setLineWidth(0.3);
+    pdf.roundedRect(M,y,PW,30,3,3,'FD');
+
+    const dateVal = inputVal('date') || new Date().toLocaleDateString('fr-FR');
+    const serviceVal = radioVal('service');
+    const chefVal = inputVal('chef') || '\u2014';
+
+    pdf.setFontSize(9);pdf.setTextColor(100);
+    pdf.text('Date',M+6,y+8);pdf.text('Service',M+65,y+8);pdf.text('Chef d\'equipe',M+120,y+8);
+
+    pdf.setFontSize(11);pdf.setTextColor(20);pdf.setFont(undefined,'bold');
+    pdf.text(dateVal,M+6,y+16);
+    pdf.text(serviceVal==='Jour'?'Jour (7h30 \u2013 19h30)':'Nuit (19h30 \u2013 7h30)',M+65,y+16);
+    pdf.text(chefVal,M+120,y+16);
+    pdf.setFont(undefined,'normal');
+
+    // Ligne en bas du cartouche
+    pdf.setFontSize(8);pdf.setTextColor(130);
+    pdf.text('Genere le '+new Date().toLocaleString('fr-FR'),M+6,y+26);
+
+    y+=38;
+
+    /* ── SYNTHÈSE RAPIDE ── */
+    ensureSpace(20);
+    pdf.setFontSize(10);pdf.setTextColor(40,60,100);pdf.setFont(undefined,'bold');
+    pdf.text('SYNTHESE',M,y);y+=6;
+    pdf.setFont(undefined,'normal');
+
+    const sections=[
+        {lbl:'Fuite d\'eau',name:'fuite'},
+        {lbl:'Moteurs',name:'moteurs'},
+        {lbl:'Coupure EDF',name:'edf'},
+        {lbl:'Eclairage',name:'eclairage'},
+        {lbl:'Ascenseur',name:'ascenseur'},
+        {lbl:'Ouvertures',name:'ouverture'},
+        {lbl:'Voirie',name:'voirie'},
+        {lbl:'Rive Droite',name:'rd'},
+        {lbl:'Bagneux',name:'bg'}
+    ];
+
+    // Grille 3 colonnes
+    const colW=PW/3;
+    sections.forEach((s,i)=>{
+        const col=i%3;
+        const row=Math.floor(i/3);
+        if(col===0 && i>0) ensureSpace(8);
+        const x=M+col*colW;
+        const sy=y+row*8;
+
+        const val=radioVal(s.name);
+        pdf.setFontSize(8);pdf.setTextColor(80);
+        pdf.text(s.lbl,x,sy);
+
+        if(val==='OUI'){
+            pdf.setFillColor(255,220,220);pdf.setDrawColor(200,60,60);
+            pdf.roundedRect(x+colW-22,sy-3.5,16,5,1.5,1.5,'FD');
+            pdf.setFontSize(6.5);pdf.setTextColor(180,30,30);
+            pdf.text('OUI',x+colW-19,sy-0.5);
+        } else {
+            pdf.setFillColor(220,245,220);pdf.setDrawColor(60,160,60);
+            pdf.roundedRect(x+colW-22,sy-3.5,16,5,1.5,1.5,'FD');
+            pdf.setFontSize(6.5);pdf.setTextColor(30,120,30);
+            pdf.text('RAS',x+colW-19,sy-0.5);
+        }
+    });
+    y+=Math.ceil(sections.length/3)*8+8;
+
+    /* ══════════════════════════════════════════════
+       SECTION INCENDIE
+    ══════════════════════════════════════════════ */
+    sectionBanner('INCENDIE',180,50,50);
+    writeEvent('Fuite d\'eau','fuite','fuite_details',['fm','fr','ft','f1'],'fuite_interlocuteur','mc_fuite');
+    writeEvent('Fonctionnement moteurs','moteurs','moteurs_details',['mm','mr','mt','m1'],'moteurs_interlocuteur','mc_moteurs');
+    writeEvent('Coupure EDF / Anomalies electriques','edf','edf_details',['em','er','et2','e1'],'edf_interlocuteur','mc_edf','edf_retour');
+
+    /* ══════════════════════════════════════════════
+       SECTION TECHNIQUE
+    ══════════════════════════════════════════════ */
+    sectionBanner('TECHNIQUE',50,100,180);
+    writeEvent('Eclairage batiments','eclairage','eclairage_details',['xm','xr','xt','x1'],'eclairage_interlocuteur','mc_eclairage');
+    writeEvent('Panne / Desincarceration ascenseur','ascenseur','ascenseur_details',['am','ar','at2','a1'],'ascenseur_interlocuteur','mc_ascenseur');
+
+    /* ══════════════════════════════════════════════
+       SECTION TRAVAUX
+    ══════════════════════════════════════════════ */
+    sectionBanner('TRAVAUX',190,140,20);
+    writeEvent('Ouvertures / Fermetures locaux','ouverture','ouverture_details',['om','or2','ot','o1'],'ouverture_interlocuteur','mc_ouverture');
+
+    // Effectifs nuit (section spéciale)
+    const effTh=inputVal('effectif_theorique');
+    const effRe=inputVal('effectif_reel');
+    const issuesVal=inputVal('issues_secours');
+    if(effTh||effRe||issuesVal){
+        ensureSpace(30);
+        pdf.setFontSize(10);pdf.setTextColor(40,60,100);pdf.setFont(undefined,'bold');
+        pdf.text('Effectifs nuit',M,y);y+=6;pdf.setFont(undefined,'normal');
+
+        pdf.setFillColor(248,249,252);pdf.roundedRect(M,y,PW,18,2,2,'F');
+        pdf.setDrawColor(220);pdf.roundedRect(M,y,PW,18,2,2,'S');
+
+        pdf.setFontSize(8);pdf.setTextColor(100);
+        pdf.text('Theorique',M+6,y+6);pdf.text('Reel',M+65,y+6);
+
+        pdf.setFontSize(10);pdf.setTextColor(20);
+        pdf.text(effTh||'\u2014',M+6,y+13);pdf.text(effRe||'\u2014',M+65,y+13);
+        y+=22;
+
+        if(issuesVal){
+            pdf.setFontSize(8);pdf.setTextColor(100);pdf.text('Issues de secours ouvertes :',M,y);y+=5;
+            pdf.setFontSize(9);pdf.setTextColor(30);
+            pdf.splitTextToSize(issuesVal,PW-4).forEach(l=>{ensureSpace(5);pdf.text(l,M+4,y);y+=4.5;});
+            y+=4;
+        }
+    }
+
+    writeEvent('Travaux sur voirie','voirie','voirie_details',['vm','vr','vt','v1'],'voirie_interlocuteur','mc_voirie');
+    writeEvent('Rive Droite \u2013 Anomalies','rd','rd_details',['rm','rr','rt','r1'],'rd_interlocuteur','mc_rd');
+    writeEvent('Bagneux \u2013 Anomalies','bg','bg_details',['bm','br','bt','b1'],'bg_interlocuteur','mc_bg');
+
+    // Footer dernière page
+    footer();
+
+    pdf.save('Compte_Rendu_LBM_'+new Date().toISOString().split('T')[0]+'.pdf');
+}
+async function envoyerMail(){await exportPDF();window.location.href='mailto:?subject=Compte rendu — Le Bon Marché Sécurité&body=Veuillez trouver ci-joint le compte rendu de la vacation.\n\nCordialement,\nService Sécurité Incendie';}
+document.getElementById('date').valueAsDate=new Date();
+</script>
+<script src="security.js"></script><script src="global.js"></script>
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script src="notifications_global.js"></script>
 </body>
 </html>

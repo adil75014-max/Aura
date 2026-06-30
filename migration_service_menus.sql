@@ -1,35 +1,805 @@
--- ═══════════════════════════════════════════════════════════════
---  MIGRATION : ajout du site « Entrepôt Bagneux » (code EBAG)
---  ----------------------------------------------------------------
---  À exécuter dans Supabase Studio → SQL Editor → New query.
---  Idempotent : ré-exécutable sans risque.
---  Pré-requis : la table `sites` et `services` existent déjà
---  (migration_sites_services.sql).
--- ═══════════════════════════════════════════════════════════════
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+    <meta charset="UTF-8">
+    <title>Form Builder - LBM Sécurité</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
--- ─── 1. Le site ────────────────────────────────────────────────
-INSERT INTO public.sites (code, nom) VALUES
-    ('EBAG', 'Entrepôt Bagneux')
-ON CONFLICT (code) DO UPDATE SET nom = EXCLUDED.nom;
+    <style>
+        body {
+            background: radial-gradient(circle at top left, #2b3350, #111522 50%, #05060a);
+            color: #fff;
+            font-family: system-ui, sans-serif;
+            padding: 20px;
+        }
 
--- ─── 2. Les services incendie + sûreté (au cas où ils manquent) ─
---  Ils sont globaux : un site n'a pas de liste de services dédiée,
---  toute combinaison site × service est valide dès que les deux
---  existent. On se contente donc de garantir leur présence.
-INSERT INTO public.services (code, nom, couleur) VALUES
-    ('incendie', 'Sécurité Incendie', '#ef4444'),
-    ('surete',   'Sûreté',            '#3b82f6')
-ON CONFLICT (code) DO NOTHING;
+        h1 {
+            text-align: center;
+            margin-bottom: 25px;
+            color: #6fb3ff;
+            font-size: 1.7rem;
+            font-weight: 600;
+        }
 
--- ─── 3. Vérification ───────────────────────────────────────────
-SELECT code, nom FROM public.sites    WHERE code = 'EBAG';
-SELECT code, nom FROM public.services WHERE code IN ('incendie', 'surete');
+        .menu-return {
+            display: flex;
+            justify-content: flex-start;
+            margin-bottom: 25px;
+        }
 
--- ═══════════════════════════════════════════════════════════════
---  ENSUITE (optionnel) : affecter un agent à ce site/service.
---  Soit via l'UI gestion_de_compte.html (recommandé), soit en SQL :
---
---    UPDATE public.users
---    SET site_code = 'EBAG', service = 'incendie'   -- ou 'surete'
---    WHERE nom = 'NOM_EXACT_DE_L_AGENT';
--- ═══════════════════════════════════════════════════════════════
+        .menu-return button {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 8px 16px;
+            border-radius: 10px;
+            color: #6fb3ff;
+            font-size: 0.9rem;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: 0.25s;
+        }
+
+        .menu-return button:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        .builder-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        @media (min-width: 900px) {
+            .builder-layout {
+                display: grid;
+                grid-template-columns: 280px 1fr;
+                align-items: flex-start;
+            }
+        }
+
+        .panel {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(14px);
+            padding: 18px;
+            border-radius: 14px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .panel h2 {
+            color: #6fb3ff;
+            margin-bottom: 12px;
+            font-size: 1.1rem;
+        }
+
+        .panel small {
+            opacity: 0.8;
+            font-size: 0.8rem;
+        }
+
+        .field-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.10);
+            border: 1px solid rgba(255,255,255,0.18);
+            padding: 8px 10px;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 0.8rem;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: 0.25s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: rgba(255,255,255,0.18);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4da3ff, #7b5cff);
+            border-color: rgba(255,255,255,0.25);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #3a8be0, #6a4ae0);
+        }
+
+        .btn-danger {
+            border-color: rgba(255,80,80,0.4);
+            color: #ff8080;
+        }
+
+        .btn-danger:hover {
+            background: rgba(255,80,80,0.2);
+        }
+
+        .builder-canvas {
+            min-height: 200px;
+            border-radius: 14px;
+            border: 1px dashed rgba(255,255,255,0.25);
+            padding: 12px;
+            background: radial-gradient(circle at top left, rgba(255,255,255,0.06), rgba(0,0,0,0.2));
+        }
+
+        .builder-empty {
+            text-align: center;
+            opacity: 0.7;
+            font-size: 0.85rem;
+            padding: 30px 10px;
+        }
+
+        .field-block {
+            background: rgba(0,0,0,0.35);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.12);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            cursor: grab;
+        }
+
+        .field-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .field-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .field-type {
+            font-size: 0.7rem;
+            opacity: 0.7;
+        }
+
+        .field-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .field-body {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 0.8rem;
+        }
+
+        .field-body input[type="text"],
+        .field-body textarea {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-size: 0.8rem;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .builder-footer {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .report-list {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .report-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            backdrop-filter: blur(14px);
+            padding: 10px;
+            border-radius: 12px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .report-card h3 {
+            margin: 0 0 4px 0;
+            color: #6fb3ff;
+            font-size: 0.95rem;
+        }
+
+        .report-actions {
+            margin-top: 6px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .meta-row {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .meta-row label {
+            font-size: 0.8rem;
+            opacity: 0.85;
+        }
+
+        .meta-row input {
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255,255,255,0.08);
+            color: #fff;
+            font-size: 0.8rem;
+        }
+
+        #replaceMenu {
+            margin-top: 25px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>Form Builder Premium</h1>
+
+<div class="menu-return">
+    <button onclick="window.location.href='index.html'">⟵ Menu</button>
+</div>
+
+<div class="builder-layout">
+
+    <!-- PALETTE -->
+    <div class="panel">
+        <h2>Champs disponibles</h2>
+        <small>Ajoute des champs</small>
+
+        <div class="meta-row">
+            <label>Titre du modèle</label>
+            <input type="text" id="modelTitle" placeholder="Ex : Intervention magasin / ADS blessé">
+        </div>
+
+        <div class="meta-row">
+            <label>Site par défaut</label>
+            <input type="text" id="modelSite" placeholder="Ex : Le Bon Marché / La Grande Épicerie">
+        </div>
+
+        <div class="field-toolbar">
+            <button class="btn" onclick="addField('text')">✏️ Texte court</button>
+            <button class="btn" onclick="addField('textarea')">📝 Texte long</button>
+            <button class="btn" onclick="addField('number')"># Numérique</button>
+            <button class="btn" onclick="addField('date')">📅 Date</button>
+            <button class="btn" onclick="addField('time')">⏰ Heure</button>
+            <button class="btn" onclick="addField('select')">🔽 Liste</button>
+            <button class="btn" onclick="addField('checkbox')">☑️ Cases</button>
+            <button class="btn" onclick="addField('radio')">🔘 Radios</button>
+            <button class="btn" onclick="addField('photo')">📷 Photo</button>
+
+            <button class="btn" onclick="addField('title')">🏷 Titre</button>
+            <button class="btn" onclick="addField('subtitle')">🪪 Sous-titre</button>
+            <button class="btn" onclick="addField('section')">📂 Section</button>
+            <button class="btn" onclick="addField('separator')">➖ Séparateur</button>
+            <button class="btn" onclick="addField('info')">ℹ️ Info</button>
+
+            <button class="btn" onclick="addField('location')">📍 Localisation</button>
+            <button class="btn" onclick="addField('qrcode')">📡 QR Code</button>
+            <button class="btn" onclick="addField('equipier')">👤 Équipier</button>
+            <button class="btn" onclick="addField('siteSelector')">🏢 Sélecteur de site</button>
+        </div>
+
+        <h2 style="margin-top:18px;">Actions</h2>
+
+        <div class="builder-footer">
+            <button class="btn btn-danger" onclick="clearBuilder()">🧹 Vider</button>
+            <button class="btn btn-primary" onclick="saveModel()">💾 Enregistrer modèle</button>
+            <button class="btn" onclick="useAsIntervention()">📄 Utiliser comme intervention</button>
+            <button class="btn" onclick="openReplaceMenu()">🔄 Remplacer intervention</button>
+        </div>
+    </div>
+
+    <!-- CANVAS -->
+    <div class="panel">
+        <h2>Structure du rapport</h2>
+        <small>Glisse les blocs pour les réorganiser.</small>
+        <div id="builderCanvas" class="builder-canvas">
+            <div id="builderEmpty" class="builder-empty">
+                Aucun champ pour l’instant.<br>
+                Ajoute des champs à gauche.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- LISTE DES MODÈLES -->
+<div class="panel" style="margin-top:25px;">
+    <h2>Modèles enregistrés</h2>
+    <div id="modelList" class="report-list"></div>
+</div>
+
+<!-- LISTE DES INTERVENTIONS POUR REMPLACEMENT -->
+<div id="replaceMenu" class="panel" style="display:none;">
+    <h2>Remplacer une intervention existante</h2>
+    <small>Choisis une intervention à remplacer par ce modèle.</small>
+    <div id="interventionList" class="report-list"></div>
+</div>
+
+<script>
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
+
+
+// --- SUPABASE RAPPORTS LOADER ---
+async function loadRapportsFromSupabase() {
+    try {
+        const { data, error } = await supabaseClient
+            .from("rapports")
+            .select("*")
+            .order("created_at", { ascending: false });
+        if (error) throw error;
+        return (data || []).map(r => ({
+            id: r.id,
+            type: r.type || "",
+            date: new Date(r.created_at).toLocaleDateString("fr-FR"),
+            heure: new Date(r.created_at).toLocaleTimeString("fr-FR", {hour:"2-digit",minute:"2-digit"}),
+            agent: (r.meta && r.meta.agent_nom) || "—",
+            titre: r.titre || "",
+            description: r.description || "",
+            localisation: r.localisation || "",
+            statut: r.statut || "ouvert",
+            priorite: r.priorite || "normale",
+            data: r.meta && r.meta.form_data ? r.meta.form_data : {},
+            source: (r.meta && r.meta.source) || "rapport",
+            _raw: r
+        }));
+    } catch(e) {
+        console.error("Erreur chargement rapports:", e);
+        return [];
+    }
+}
+
+async function deleteRapportSupabase(id) {
+    const { error } = await supabaseClient.from("rapports").delete().eq("id", id);
+    if (error) { showToast("❌ " + error.message, true); return false; }
+    showToast("✅ Rapport supprimé");
+    return true;
+}
+
+let fields = [];
+let dragSrcEl = null;
+let touchDragging = false;
+let touchClone = null;
+let touchStartY = 0;
+let currentIndex = null;
+
+/* ---------- Helpers ---------- */
+function uid() {
+    return 'f_' + Math.random().toString(36).substring(2, 9);
+}
+
+/* ---------- Ajout de champs ---------- */
+function addField(type) {
+    const id = uid();
+    const base = {
+        id,
+        type,
+        label: '',
+        placeholder: '',
+        options: '',
+        info: '',
+    };
+
+    switch (type) {
+        case 'text': base.label = 'Texte'; break;
+        case 'textarea': base.label = 'Description'; break;
+        case 'number': base.label = 'Valeur numérique'; break;
+        case 'date': base.label = 'Date'; break;
+        case 'time': base.label = 'Heure'; break;
+        case 'select': base.label = 'Liste déroulante'; base.options = 'Option 1; Option 2'; break;
+        case 'checkbox': base.label = 'Cases à cocher'; base.options = 'Option A; Option B'; break;
+        case 'radio': base.label = 'Boutons radio'; base.options = 'Option 1; Option 2'; break;
+        case 'photo': base.label = 'Photo'; break;
+        case 'title': base.label = 'Titre de section'; break;
+        case 'subtitle': base.label = 'Sous-titre'; break;
+        case 'section': base.label = 'Section'; break;
+        case 'separator': base.label = 'Séparateur'; break;
+        case 'info': base.label = 'Bloc info'; base.info = 'Information'; break;
+        case 'location': base.label = 'Localisation'; break;
+        case 'qrcode': base.label = 'QR Code'; break;
+        case 'equipier': base.label = 'Équipier'; break;
+        case 'siteSelector': base.label = 'Sélecteur de site'; break;
+    }
+
+    fields.push(base);
+    renderFields();
+}
+
+/* ---------- Render ---------- */
+function renderFields() {
+    const canvas = document.getElementById("builderCanvas");
+    const empty = document.getElementById("builderEmpty");
+
+    canvas.innerHTML = "";
+
+    if (fields.length === 0) {
+        empty.style.display = "block";
+        return;
+    }
+
+    empty.style.display = "none";
+
+    fields.forEach((f, index) => {
+        const block = document.createElement("div");
+        block.className = "field-block";
+        block.setAttribute("draggable", "true");
+        block.dataset.id = f.id;
+        block.dataset.index = index;
+
+        block.innerHTML = `
+            <div class="field-header">
+                <div class="field-title">
+                    <span class="drag-handle">☰</span>
+                    <span>${esc(f.label)||'(Sans titre)'}</span>
+                    <span class="field-type">· ${esc(f.type)}</span>
+                </div>
+                <div class="field-actions">
+                    <button class="btn" onclick="moveFieldUp('${f.id}')">↑</button>
+                    <button class="btn" onclick="moveFieldDown('${f.id}')">↓</button>
+                    <button class="btn btn-danger" onclick="deleteField('${f.id}')">🗑</button>
+                </div>
+            </div>
+
+            <div class="field-body">
+                <input type="text" placeholder="Label" value="${f.label}"
+                    oninput="updateField('${f.id}','label',this.value)">
+                ${renderFieldOptionsEditor(f)}
+            </div>
+        `;
+
+        /* PC drag */
+        block.addEventListener("dragstart", dragStart);
+        block.addEventListener("dragover", dragOver);
+        block.addEventListener("drop", dragDrop);
+        block.addEventListener("dragend", dragEnd);
+
+        /* Mobile drag */
+        block.addEventListener("touchstart", touchStart, { passive: false });
+        block.addEventListener("touchmove", touchMove, { passive: false });
+        block.addEventListener("touchend", touchEnd);
+
+        canvas.appendChild(block);
+    });
+}
+
+function renderFieldOptionsEditor(f) {
+    if (['select','checkbox','radio'].includes(f.type)) {
+        return `
+            <textarea placeholder="Options séparées par ;"
+                oninput="updateField('${f.id}','options',this.value)">${f.options}</textarea>
+        `;
+    }
+
+    if (['title','subtitle','section','separator','info','photo','location','qrcode','equipier','siteSelector'].includes(f.type)) {
+        return `
+            <textarea placeholder="Info (facultatif)"
+                oninput="updateField('${f.id}','info',this.value)">${f.info}</textarea>
+        `;
+    }
+
+    return `
+        <input type="text" placeholder="Placeholder" value="${f.placeholder}"
+            oninput="updateField('${f.id}','placeholder',this.value)">
+    `;
+}
+
+/* ---------- PC Drag & Drop ---------- */
+function dragStart(e) {
+    dragSrcEl = this;
+    this.classList.add("dragging");
+}
+
+function dragOver(e) {
+    e.preventDefault();
+    const canvas = document.getElementById("builderCanvas");
+    const blocks = [...canvas.children];
+    const target = e.target.closest(".field-block");
+    if (!target || target === dragSrcEl) return;
+
+    const srcIndex = blocks.indexOf(dragSrcEl);
+    const targetIndex = blocks.indexOf(target);
+
+    if (srcIndex < targetIndex) {
+        canvas.insertBefore(dragSrcEl, target.nextSibling);
+    } else {
+        canvas.insertBefore(dragSrcEl, target);
+    }
+}
+
+function dragDrop() {
+    reorderFields();
+}
+
+function dragEnd() {
+    this.classList.remove("dragging");
+}
+
+/* ---------- Mobile Drag (tactile) ---------- */
+function touchStart(e) {
+    e.preventDefault();
+    touchDragging = true;
+
+    const block = e.target.closest(".field-block");
+    currentIndex = [...block.parentNode.children].indexOf(block);
+
+    touchClone = block.cloneNode(true);
+    touchClone.style.position = "fixed";
+    touchClone.style.left = "0";
+    touchClone.style.right = "0";
+    touchClone.style.zIndex = "9999";
+    touchClone.style.opacity = "0.85";
+    touchClone.style.transform = "scale(1.03)";
+    touchClone.style.pointerEvents = "none";
+
+    document.body.appendChild(touchClone);
+
+    touchStartY = e.touches[0].clientY;
+    touchClone.style.top = touchStartY + "px";
+}
+
+function touchMove(e) {
+    if (!touchDragging) return;
+
+    const y = e.touches[0].clientY;
+    touchClone.style.top = y + "px";
+
+    const canvas = document.getElementById("builderCanvas");
+    const blocks = [...canvas.children];
+
+    blocks.forEach((b, i) => {
+        const rect = b.getBoundingClientRect();
+        if (y > rect.top && y < rect.bottom) {
+            if (i !== currentIndex) {
+                canvas.insertBefore(blocks[currentIndex], i > currentIndex ? b.nextSibling : b);
+                currentIndex = i;
+            }
+        }
+    });
+}
+
+function touchEnd() {
+    if (!touchDragging) return;
+    touchDragging = false;
+
+    if (touchClone) touchClone.remove();
+    touchClone = null;
+
+    reorderFields();
+}
+
+/* ---------- Reorder ---------- */
+function reorderFields() {
+    const canvas = document.getElementById("builderCanvas");
+    const blocks = [...canvas.children];
+    const newOrder = [];
+
+    blocks.forEach(b => {
+        const id = b.dataset.id;
+        const f = fields.find(x => x.id === id);
+        if (f) newOrder.push(f);
+    });
+
+    fields = newOrder;
+}
+
+/* ---------- Boutons ↑ ↓ ---------- */
+function moveFieldUp(id) {
+    const index = fields.findIndex(f => f.id === id);
+    if (index > 0) {
+        [fields[index - 1], fields[index]] = [fields[index], fields[index - 1]];
+        renderFields();
+    }
+}
+
+function moveFieldDown(id) {
+    const index = fields.findIndex(f => f.id === id);
+    if (index < fields.length - 1) {
+        [fields[index + 1], fields[index]] = [fields[index], fields[index + 1]];
+        renderFields();
+    }
+}
+
+/* ---------- Update / Delete ---------- */
+function updateField(id, key, value) {
+    const f = fields.find(x => x.id === id);
+    if (!f) return;
+    f[key] = value;
+}
+
+function deleteField(id) {
+    fields = fields.filter(f => f.id !== id);
+    renderFields();
+}
+
+function clearBuilder() {
+    if (!confirm("Vider tous les champs ?")) return;
+    fields = [];
+    renderFields();
+}
+
+
+/* ---------- Modèles → Supabase ---------- */
+
+async function saveModel() {
+    if (fields.length === 0) return alert("Ajoute des champs avant d'enregistrer.");
+
+    const title = document.getElementById("modelTitle").value.trim() || "Modèle sans titre";
+    const site = document.getElementById("modelSite").value.trim() || "";
+
+    const { error } = await supabaseClient.from("rapport_modeles").insert({
+        titre: title,
+        site: site || null,
+        fields: fields
+    });
+
+    if (error) {
+        showToast("❌ Erreur : " + error.message, true);
+        return;
+    }
+
+    showToast("✅ Modèle « " + title + " » enregistré !");
+    loadModels();
+}
+
+async function loadModels() {
+    const container = document.getElementById("modelList");
+    container.innerHTML = "<p style='opacity:0.5'>Chargement…</p>";
+
+    const { data, error } = await supabaseClient
+        .from("rapport_modeles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+    if (error) {
+        container.innerHTML = "<p style='color:#f87171'>Erreur : " + error.message + "</p>";
+        return;
+    }
+
+    if (!data || data.length === 0) {
+        container.innerHTML = "<p style='opacity:0.7;font-size:0.85rem;'>Aucun modèle enregistré.</p>";
+        return;
+    }
+
+    container.innerHTML = "";
+    data.forEach(m => {
+        const nbFields = (m.fields || []).length;
+        const card = document.createElement("div");
+        card.className = "report-card";
+        card.innerHTML = `
+            <h3>${esc(m.titre)}</h3>
+            <div style="font-size:0.8rem;opacity:0.9;">
+                <strong>Site :</strong> ${esc(m.site)||"—"}<br>
+                <strong>Champs :</strong> ${nbFields}<br>
+                <strong>Créé le :</strong> ${new Date(m.created_at).toLocaleDateString("fr-FR")}
+            </div>
+            <div class="report-actions">
+                <button class="btn btn-primary" onclick="lancerModele('${m.id}')">▶ Lancer</button>
+                <button class="btn" onclick="chargerDansBuilder('${m.id}')">🛠 Charger</button>
+                <button class="btn btn-danger" onclick="supprimerModele('${m.id}')">🗑</button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+async function chargerDansBuilder(id) {
+    const { data } = await supabaseClient.from("rapport_modeles").select("*").eq("id", id).single();
+    if (!data) { alert("Modèle introuvable."); return; }
+    document.getElementById("modelTitle").value = data.titre || "";
+    document.getElementById("modelSite").value = data.site || "";
+    fields = data.fields || [];
+    renderFields();
+    showToast("🛠 Modèle chargé dans le builder");
+}
+
+async function supprimerModele(id) {
+    if (!confirm("Supprimer ce modèle ?")) return;
+    await supabaseClient.from("rapport_modeles").delete().eq("id", id);
+    loadModels();
+}
+
+function lancerModele(id) {
+    location.href = "rapport_dynamique.html?modele=" + id;
+}
+
+async function useAsIntervention() {
+    if (fields.length === 0) return alert("Ajoute des champs avant.");
+    await saveModel();
+}
+
+function openReplaceMenu() {
+    const menu = document.getElementById("replaceMenu");
+    menu.style.display = menu.style.display === "none" ? "block" : "none";
+    if (menu.style.display === "block") loadInterventionsForReplace();
+}
+
+async function loadInterventionsForReplace() {
+    const container = document.getElementById("interventionList");
+    container.innerHTML = "<p style='opacity:0.5'>Chargement…</p>";
+    const rapports = await loadRapportsFromSupabase();
+    if (rapports.length === 0) {
+        container.innerHTML = "<p style='opacity:0.7;font-size:0.85rem;'>Aucune intervention.</p>";
+        return;
+    }
+    container.innerHTML = "";
+    rapports.forEach(r => {
+        const card = document.createElement("div");
+        card.className = "report-card";
+        card.innerHTML = `
+            <h3>${esc(r.titre || r.type || 'Intervention')}</h3>
+            <div style="font-size:0.8rem;opacity:0.9;">
+                <strong>Date :</strong> ${esc(r.date)||'—'} — <strong>Agent :</strong> ${esc(r.agent)||'—'}
+            </div>
+            <div class="report-actions">
+                <button class="btn" onclick="replaceIntervention('${r.id}')">🔄 Remplacer</button>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+async function replaceIntervention(id) {
+    if (fields.length === 0) return alert("Ajoute des champs avant.");
+    const title = document.getElementById("modelTitle").value.trim() || "Intervention personnalisée";
+    const site = document.getElementById("modelSite").value.trim() || "";
+
+    const { error } = await supabaseClient.from("rapports").update({
+        titre: title, localisation: site,
+        meta: { form_fields: fields, source: "builder", agent_nom: localStorage.getItem("nom") || null }
+    }).eq("id", id);
+
+    if (error) { showToast("❌ " + error.message, true); return; }
+    showToast("✅ Intervention remplacée.");
+    document.getElementById("replaceMenu").style.display = "none";
+}
+
+/* ---------- Init ---------- */
+loadModels();
+renderFields();
+</script>
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script src="security.js"></script>
+<script src="global.js"></script>
+<script src="notifications_global.js"></script>
+</body>
+</html>

@@ -6,328 +6,288 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Interventions Entreprises Extérieures — Liste journalière</title>
+<title>Consultation des Anomalies — Aura Sentinelle</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- 🎨 Design global -->
-<link rel="stylesheet" href="global.css">
-
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="vendor/xlsx.full.min.js" crossorigin="anonymous"></script>
 <style>
-/* 🎨 Styles spécifiques à cette page */
-
-h1 { 
-    color: var(--accent); 
-    margin-bottom: 20px; 
-    text-align: center;
-}
-
-h2 { 
-    color: var(--accent); 
-    margin-top: 30px; 
-}
-
-/* Champ de recherche */
-input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 20px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--bg2);
-    color: var(--text);
-}
-
-/* Bloc rapport */
-.rapport {
-    background: var(--card);
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 15px;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-}
-
-/* Compteurs */
-.compteur {
-    background: var(--card);
-    padding: 15px;
-    border-radius: 10px;
-    margin-bottom: 20px;
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow);
-}
-
-/* Bouton retour */
-.menu-return {
-    display: flex;
-    justify-content: flex-start;
-    margin-bottom: 20px;
-}
-
-.menu-return button {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 8px 16px;
-    border-radius: 10px;
-    color: var(--accent);
-    font-size: 0.9rem;
-    cursor: pointer;
-    font-weight: 500;
-    transition: 0.25s;
-}
-
-.menu-return button:hover {
-    background: var(--accent);
-    color: #000;
-}
+:root{--bg-deep:#06080d;--bg-panel:rgba(12,16,28,0.85);--bg-glass:rgba(255,255,255,0.03);--bg-glass-hover:rgba(255,255,255,0.06);--border:rgba(255,255,255,0.06);--border-active:rgba(212,175,55,0.25);--text:#c8cdd8;--text-dim:rgba(255,255,255,0.35);--text-bright:#eef1f6;--gold:#d4af37;--gold-dim:rgba(212,175,55,0.6);--blue:#4da3ff;--green:#34d399;--yellow:#fbbf24;--orange:#fb923c;--red:#f87171;--crit-1:#6b7280;--crit-2:#34d399;--crit-3:#fbbf24;--crit-4:#fb923c;--crit-5:#ef4444;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg-deep);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.015) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;z-index:0;}
+body::after{content:'';position:fixed;top:-200px;right:-100px;width:600px;height:600px;background:radial-gradient(circle,rgba(212,175,55,0.06),transparent 70%);pointer-events:none;z-index:0;}
+.page{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:28px 24px 60px;}
+.page-header{display:flex;align-items:center;gap:16px;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--border);}
+.header-icon{width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(212,175,55,0.04));border:1px solid rgba(212,175,55,0.2);display:flex;align-items:center;justify-content:center;font-size:1.5rem;flex-shrink:0;}
+.header-text h1{font-size:1.5rem;font-weight:700;color:var(--text-bright);letter-spacing:-0.02em;line-height:1.2;}
+.header-text p{font-size:0.78rem;color:var(--text-dim);margin-top:3px;letter-spacing:0.04em;}
+.header-badge{margin-left:auto;display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:0.68rem;color:var(--gold-dim);background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.12);padding:6px 12px;border-radius:8px;letter-spacing:0.06em;}
+.header-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--gold);animation:blink 2.5s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.filter-panel{background:var(--bg-panel);border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:28px;backdrop-filter:blur(16px);position:relative;overflow:hidden;}
+.filter-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(212,175,55,0.2),transparent);}
+.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;}
+.filter-group label{display:block;font-size:0.72rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:7px;}
+.filter-group select,.filter-group input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-glass);color:var(--text-bright);font-family:'DM Sans',sans-serif;font-size:0.88rem;transition:all 0.25s;appearance:none;-webkit-appearance:none;outline:none;}
+.filter-group select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23666' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+.filter-group select:focus,.filter-group input:focus{border-color:var(--border-active);background:rgba(212,175,55,0.04);box-shadow:0 0 0 3px rgba(212,175,55,0.06);}
+.filter-group select option{background:#0c1020;color:var(--text);}
+.filter-actions{display:flex;gap:10px;margin-top:20px;flex-wrap:wrap;}
+.btn{display:inline-flex;align-items:center;gap:7px;padding:11px 20px;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.3s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden;}
+.btn::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.1),transparent);opacity:0;transition:opacity 0.3s;}
+.btn:hover::after{opacity:1;}
+.btn-primary{background:linear-gradient(135deg,var(--gold),#c9a22e);color:#0a0a0a;box-shadow:0 4px 16px rgba(212,175,55,0.2);}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(212,175,55,0.35);}
+.btn-secondary{background:var(--bg-glass);color:var(--text);border:1px solid var(--border);}
+.btn-secondary:hover{background:var(--bg-glass-hover);border-color:rgba(255,255,255,0.12);transform:translateY(-1px);}
+.btn-lever{background:linear-gradient(135deg,var(--green),#2cb583);color:#0a0a0a;box-shadow:0 4px 16px rgba(52,211,153,0.2);}
+.btn-lever:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(52,211,153,0.35);}
+.section-header{display:flex;align-items:center;gap:12px;margin-top:36px;margin-bottom:16px;}
+.section-header h2{font-size:1.05rem;font-weight:600;color:var(--text-bright);letter-spacing:-0.01em;}
+.section-tag{font-family:'JetBrains Mono',monospace;font-size:0.65rem;padding:4px 10px;border-radius:6px;font-weight:600;letter-spacing:0.04em;}
+.tag-open{background:rgba(248,113,113,0.1);color:var(--red);border:1px solid rgba(248,113,113,0.15);}
+.tag-resolved{background:rgba(52,211,153,0.1);color:var(--green);border:1px solid rgba(52,211,153,0.15);}
+.section-count{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:var(--text-dim);}
+.table-wrap{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--bg-panel);backdrop-filter:blur(16px);}
+table{width:100%;border-collapse:collapse;}
+th{padding:13px 16px;font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);background:rgba(255,255,255,0.02);border-bottom:1px solid var(--border);text-align:left;white-space:nowrap;}
+td{padding:14px 16px;font-size:0.85rem;border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle;}
+tbody tr{transition:background 0.2s;}
+tbody tr:hover{background:rgba(212,175,55,0.03);}
+tbody tr:last-child td{border-bottom:none;}
+.cat-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:7px;font-size:0.76rem;font-weight:500;background:rgba(77,163,255,0.08);color:var(--blue);border:1px solid rgba(77,163,255,0.12);white-space:nowrap;}
+.severity{display:inline-flex;align-items:center;gap:8px;}
+.severity-bar{display:flex;gap:3px;}
+.severity-pip{width:6px;height:18px;border-radius:3px;background:rgba(255,255,255,0.06);transition:background 0.3s,box-shadow 0.3s;}
+.severity[data-level="1"] .severity-pip:nth-child(1){background:var(--crit-1);}
+.severity[data-level="2"] .severity-pip:nth-child(-n+2){background:var(--crit-2);}
+.severity[data-level="3"] .severity-pip:nth-child(-n+3){background:var(--crit-3);}
+.severity[data-level="4"] .severity-pip:nth-child(-n+4){background:var(--crit-4);}
+.severity[data-level="5"] .severity-pip:nth-child(-n+5){background:var(--crit-5);box-shadow:0 0 8px rgba(239,68,68,0.4);}
+.severity-label{font-family:'JetBrains Mono',monospace;font-size:0.68rem;font-weight:600;letter-spacing:0.04em;}
+.sev-1 .severity-label{color:var(--crit-1);}.sev-2 .severity-label{color:var(--crit-2);}.sev-3 .severity-label{color:var(--crit-3);}.sev-4 .severity-label{color:var(--crit-4);}.sev-5 .severity-label{color:var(--crit-5);}
+.date-cell{font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--text);}
+.btn-open{padding:6px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:500;cursor:pointer;transition:all 0.25s;}
+.btn-open:hover{background:rgba(212,175,55,0.08);border-color:var(--border-active);color:var(--gold);}
+.detail-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);z-index:9998;opacity:0;pointer-events:none;transition:opacity 0.35s;}
+.detail-overlay.show{opacity:1;pointer-events:auto;}
+.detail-panel{position:fixed;top:0;right:-520px;width:min(480px,90vw);height:100%;background:linear-gradient(180deg,#0c1020,#080c18);border-left:1px solid var(--border);z-index:9999;transition:right 0.4s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-20px 0 60px rgba(0,0,0,0.5);}
+.detail-panel.show{right:0;}
+.detail-header{display:flex;align-items:center;gap:12px;padding:20px 24px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.detail-header h3{font-size:1.05rem;font-weight:600;color:var(--text-bright);}
+.detail-close{margin-left:auto;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:var(--text-dim);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;}
+.detail-close:hover{background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.2);color:var(--red);}
+.detail-body{flex:1;overflow-y:auto;padding:24px;}
+.detail-body::-webkit-scrollbar{width:4px;}.detail-body::-webkit-scrollbar-track{background:transparent;}.detail-body::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.08);border-radius:4px;}
+.detail-field{margin-bottom:18px;}
+.detail-field .field-label{font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-dim);margin-bottom:5px;}
+.detail-field .field-value{font-size:0.9rem;color:var(--text-bright);line-height:1.6;}
+.detail-field .field-value.mono{font-family:'JetBrains Mono',monospace;font-size:0.82rem;}
+.detail-photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:6px;}
+.detail-photos img{width:100%;border-radius:10px;border:1px solid var(--border);aspect-ratio:4/3;object-fit:cover;transition:transform 0.3s,border-color 0.3s;cursor:pointer;}
+.detail-photos img:hover{transform:scale(1.03);border-color:var(--border-active);}
+.detail-footer{padding:18px 24px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:10px;}
+.empty-state{text-align:center;padding:48px 20px;color:var(--text-dim);font-size:0.88rem;}
+.empty-state-icon{font-size:2.4rem;margin-bottom:12px;opacity:0.4;}
+@keyframes slideUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+.animate-in{animation:slideUp 0.5s cubic-bezier(.4,0,.2,1) forwards;opacity:0;}
+@media(max-width:700px){.page{padding:16px 14px 40px;}.page-header{flex-wrap:wrap;}.header-badge{margin-left:0;}.filter-grid{grid-template-columns:1fr;}th,td{padding:10px 10px;font-size:0.78rem;}.section-header{flex-wrap:wrap;}.section-count{margin-left:0;width:100%;}}
 </style>
 </head>
+<body>
+<div class="page">
+    <header class="page-header animate-in">
+        <div class="header-icon">⚠️</div>
+        <div class="header-text">
+            <h1>Consultation des Anomalies</h1>
+            <p>Aura Sentinelle — Classification IA par criticité</p>
+        </div>
+        <div class="header-badge">LIVE</div>
+    </header>
+
+    <div class="filter-panel animate-in" style="animation-delay:0.1s;">
+        <div class="filter-grid">
+            <div class="filter-group">
+                <label>Période</label>
+                <select id="typeFiltre">
+                    <option value="jour">Par jour</option>
+                    <option value="mois">Par mois</option>
+                    <option value="annee">Par année</option>
+                    <option value="periode">Personnalisé</option>
+                </select>
+            </div>
+            <div class="filter-group" id="filtreJour"><label>Date</label><input type="date" id="filtreDate"></div>
+            <div class="filter-group" id="filtreMois" style="display:none;"><label>Mois</label><input type="month" id="filtreMonth"></div>
+            <div class="filter-group" id="filtreAnnee" style="display:none;"><label>Année</label><input type="number" id="filtreYear" min="2000" max="2100" placeholder="2026"></div>
+            <div class="filter-group" id="filtrePeriodeDu" style="display:none;"><label>Du</label><input type="date" id="dateDebut"></div>
+            <div class="filter-group" id="filtrePeriodeAu" style="display:none;"><label>Au</label><input type="date" id="dateFin"></div>
+            <div class="filter-group">
+                <label>Catégorie IA</label>
+                <select id="filtreCategorie">
+                    <option value="all">Toutes les catégories</option>
+                    <option>Défaut SSI</option><option>Extincteur</option><option>RIA</option><option>SPK</option>
+                    <option>Colonne sèche</option><option>BES</option><option>ECM</option><option>PCF</option>
+                    <option>EAS</option><option>Plan évacuation</option><option>Escalator</option>
+                    <option>Monte-charge / Ascenseur</option><option>Lecteur de badge</option>
+                    <option>Lien technique</option><option>Lien menuiserie</option>
+                    <option>Vacuité des dégagements</option><option>IS</option>
+                    <option>Baie accessible</option><option>Ouvrant</option><option>Coffret de relayage</option>
+                </select>
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button class="btn btn-primary" onclick="chargerAnomalies()"><span>🔍</span> Rechercher</button>
+            <button class="btn btn-secondary" onclick="exporterMultiFeuilles()"><span>📤</span> Export Excel multi‑feuilles</button>
+        </div>
+    </div>
+
+    <div class="section-header animate-in" style="animation-delay:0.2s;">
+        <span style="font-size:1.1rem;">🔴</span><h2>Anomalies non levées</h2>
+        <span class="section-tag tag-open">OUVERTES</span>
+        <span class="section-count" id="countNonLevees">0 résultat(s)</span>
+    </div>
+    <div class="table-wrap animate-in" style="animation-delay:0.25s;">
+        <table><thead><tr><th>Date</th><th>Lieu</th><th>Catégorie IA</th><th>Criticité</th><th></th></tr></thead>
+        <tbody id="tableNonLevees"></tbody></table>
+        <div class="empty-state" id="emptyNonLevees" style="display:none;"><div class="empty-state-icon">✅</div>Aucune anomalie ouverte</div>
+    </div>
+
+    <div class="section-header animate-in" style="animation-delay:0.3s;">
+        <span style="font-size:1.1rem;">🟢</span><h2>Anomalies levées</h2>
+        <span class="section-tag tag-resolved">RÉSOLUES</span>
+        <span class="section-count" id="countLevees">0 résultat(s)</span>
+    </div>
+    <div class="table-wrap animate-in" style="animation-delay:0.35s;">
+        <table><thead><tr><th>Date</th><th>Lieu</th><th>Catégorie IA</th><th>Criticité</th><th>Date levée</th><th></th></tr></thead>
+        <tbody id="tableLevees"></tbody></table>
+        <div class="empty-state" id="emptyLevees" style="display:none;"><div class="empty-state-icon">📋</div>Aucune anomalie levée pour cette période</div>
+    </div>
+</div>
+
+<div class="detail-overlay" id="detailOverlay" onclick="fermerDetail()"></div>
+<div class="detail-panel" id="detailPanel">
+    <div class="detail-header"><span style="font-size:1.2rem;">📋</span><h3>Détail de l'anomalie</h3><button class="detail-close" onclick="fermerDetail()">✕</button></div>
+    <div class="detail-body" id="detailContent"></div>
+    <div class="detail-footer">
+        <button class="btn btn-lever" onclick="leverAnomalie()" id="btnLever"><span>✔</span> Lever l'anomalie</button>
+        <button class="btn btn-secondary" onclick="fermerDetail()">Fermer</button>
+    </div>
+</div>
+
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
+<script>
+let anomalieCourante = null;
+const SEV_LABELS = {1:'FAIBLE',2:'MODÉRÉ',3:'MOYEN',4:'ÉLEVÉ',5:'CRITIQUE'};
 
-<body>
-
-<!-- 🔐 LOGIN -->
-
-
-<h1>Interventions Entreprises Extérieures — Liste journalière</h1>
-
-<!-- 🔵 BOUTON MENU STANDARD -->
-<div class="menu-return">
-    <button onclick="goMenu()">⟵ Menu</button>
-</div>
-
-<div class="info">Date du jour : <span id="dateDuJour"></span></div>
-
-<!-- ============================
-     COMPTEURS
-============================ -->
-<div class="compteur">
-    <h3 style="color:var(--accent); margin-top:0;">Compteurs du jour</h3>
-    <p>Total : <span id="countTotal">0</span></p>
-    <p>8h → 20h : <span id="countDay">0</span></p>
-    <p>20h → 8h : <span id="countNight">0</span></p>
-</div>
-
-<input type="text" id="search" placeholder="Rechercher (entreprise, agent, localisation)…">
-
-<h2>🕗 8h → 20h</h2>
-<div id="dayShift"></div>
-
-<h2>🌙 20h → 8h</h2>
-<div id="nightShift"></div><script>
-// Fallback showToast si global.js pas encore chargé
-if (typeof showToast !== "function") {
-    window.showToast = function(msg, isError) { alert(msg); };
-}
-
-/* ============================================================
-   DATE DU JOUR
-============================================================ */
-const today = new Date().toLocaleDateString("fr-FR");
-document.getElementById("dateDuJour").textContent = today;
-
-/* ============================================================
-   HELPERS
-============================================================ */
-function fmtHeure(iso) {
-    if (!iso) return null;
-    return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-}
-
-function escapeHtml(s) {
-    const d = document.createElement("div");
-    d.textContent = s == null ? "" : String(s);
-    return d.innerHTML;
-}
-
-function mapRow(r) {
-    return {
-        id:           r.id,
-        entreprise:   r.entreprise || "—",
-        responsable:  r.responsable || "—",
-        telephone:    r.telephone || "",
-        zone:         r.zone || "—",
-        typeTravaux:  r.type_travaux || "—",
-        heureDebut:   fmtHeure(r.heure_arrivee),
-        heureFin:     fmtHeure(r.heure_depart),
-        statut:       r.statut || "—"
-    };
-}
-
-/* ============================================================
-   CHARGER LES INTERVENTIONS DU JOUR
-============================================================ */
-let listeJour = [];
-
-async function chargerRapports() {
-    const todayISO = new Date().toISOString().split("T")[0];
-    const { data, error } = await supabaseClient
-        .from("interventions_exterieures")
-        .select("*")
-        .gte("created_at", todayISO + "T00:00:00")
-        .lte("created_at", todayISO + "T23:59:59")
-        .order("created_at", { ascending: false });
-
-    if (error) { showToast("❌ " + error.message, true); return; }
-
-    listeJour = (data || []).map(mapRow);
-    afficher(listeJour);
-    updateCounters(listeJour);
-}
-
-/* ============================================================
-   AFFICHAGE PAR TRANCHE HORAIRE
-============================================================ */
-function afficher(liste) {
-    const day = document.getElementById("dayShift");
-    const night = document.getElementById("nightShift");
-
-    day.innerHTML = "";
-    night.innerHTML = "";
-
-    if (liste.length === 0) {
-        day.innerHTML = "<p>Aucune intervention en cours aujourd'hui.</p>";
-        night.innerHTML = "";
-        return;
-    }
-
-    liste.forEach(r => {
-        const div = document.createElement("div");
-        div.className = "rapport";
-
-        const enCours = !r.heureFin;
-        const tel = r.telephone
-            ? `<p><strong>Téléphone :</strong> ${escapeHtml(r.telephone)}</p>` : "";
-
-        const sortieBlock = enCours
-            ? `
-                <label style="display:block; margin-top:10px;">Heure de départ :</label>
-                <input type="time" id="depart_${r.id}" style="width:100%; padding:8px; border-radius:6px;
-                       background:var(--bg2); color:var(--text); border:1px solid var(--border); margin-top:4px;">
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <button onclick="cloturer('${r.id}')"
-                            style="flex:1; padding:10px; background:var(--accent); color:#000;
-                                   border:none; border-radius:8px; cursor:pointer; font-weight:600;">
-                        ✅ Clôturer
-                    </button>
-                    <button onclick="supprimer('${r.id}')"
-                            style="flex:1; padding:10px; background:#ef4444; color:white;
-                                   border:none; border-radius:8px; cursor:pointer; font-weight:600;">
-                        🗑 Supprimer
-                    </button>
-                </div>`
-            : `
-                <p style="color:#4ade80; font-weight:600; margin-top:10px;">✓ Terminée</p>
-                <button onclick="supprimer('${r.id}')"
-                        style="width:100%; padding:10px; background:#ef4444; color:white;
-                               border:none; border-radius:8px; cursor:pointer; font-weight:600;">
-                    🗑 Supprimer
-                </button>`;
-
-        div.innerHTML = `
-            <p><strong>Entreprise :</strong> ${escapeHtml(r.entreprise)}</p>
-            <p><strong>Type de travaux :</strong> ${escapeHtml(r.typeTravaux)}</p>
-            <p><strong>Responsable :</strong> ${escapeHtml(r.responsable)}</p>
-            ${tel}
-            <p><strong>Zone :</strong> ${escapeHtml(r.zone)}</p>
-            <p><strong>Heure d'arrivée :</strong> ${r.heureDebut || "—"}</p>
-            <p><strong>Heure de départ :</strong> ${r.heureFin || "—"}</p>
-            ${sortieBlock}
-        `;
-
-        // Tranche selon l'heure d'arrivée
-        const heure = r.heureDebut;
-        if (!heure) { day.appendChild(div); return; }
-        const h = parseInt(heure.split(":")[0]);
-        if (h >= 8 && h < 20) day.appendChild(div);
-        else night.appendChild(div);
-    });
-}
-
-/* ============================================================
-   COMPTEURS
-============================================================ */
-function updateCounters(liste) {
-    let total = liste.length, day = 0, night = 0;
-    liste.forEach(r => {
-        const heure = r.heureDebut;
-        if (!heure) { day++; return; }
-        const h = parseInt(heure.split(":")[0]);
-        if (h >= 8 && h < 20) day++; else night++;
-    });
-    document.getElementById("countTotal").textContent = total;
-    document.getElementById("countDay").textContent = day;
-    document.getElementById("countNight").textContent = night;
-}
-
-/* ============================================================
-   CLÔTURER UNE INTERVENTION
-============================================================ */
-async function cloturer(id) {
-    const heure = document.getElementById("depart_" + id).value;
-    if (!heure) { alert("Veuillez entrer une heure de départ."); return; }
-
-    const now = new Date();
-    const [h, m] = heure.split(":");
-    const ts = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).toISOString();
-
-    const { error } = await supabaseClient
-        .from("interventions_exterieures")
-        .update({ heure_depart: ts, statut: "termine" })
-        .eq("id", id);
-
-    if (error) { showToast("❌ " + error.message, true); return; }
-    showToast("✅ Intervention clôturée");
-    chargerRapports();
-}
-
-/* ============================================================
-   SUPPRIMER UNE INTERVENTION
-============================================================ */
-async function supprimer(id) {
-    if (!confirm("Supprimer définitivement cette intervention ?")) return;
-
-    const { error } = await supabaseClient
-        .from("interventions_exterieures")
-        .delete()
-        .eq("id", id);
-
-    if (error) { showToast("❌ " + error.message, true); return; }
-    showToast("🗑 Intervention supprimée");
-    chargerRapports();
-}
-
-/* ============================================================
-   RECHERCHE LOCALE (pas de re-fetch)
-============================================================ */
-document.getElementById("search").addEventListener("input", function () {
-    const q = this.value.toLowerCase();
-    const filtered = listeJour.filter(r =>
-        r.entreprise.toLowerCase().includes(q) ||
-        r.responsable.toLowerCase().includes(q) ||
-        r.zone.toLowerCase().includes(q) ||
-        r.typeTravaux.toLowerCase().includes(q)
-    );
-    afficher(filtered);
-    updateCounters(filtered);
+document.getElementById("typeFiltre").addEventListener("change", () => {
+    const t = document.getElementById("typeFiltre").value;
+    document.getElementById("filtreJour").style.display      = t==="jour"?"":"none";
+    document.getElementById("filtreMois").style.display      = t==="mois"?"":"none";
+    document.getElementById("filtreAnnee").style.display     = t==="annee"?"":"none";
+    document.getElementById("filtrePeriodeDu").style.display = t==="periode"?"":"none";
+    document.getElementById("filtrePeriodeAu").style.display = t==="periode"?"":"none";
 });
 
-/* ============================================================
-   LANCEMENT
-============================================================ */
-chargerRapports();
+function construireRequeteBase() {
+    const type = document.getElementById("typeFiltre").value;
+    const cat  = document.getElementById("filtreCategorie").value;
+    let query = supabaseClient.from("rapports").select("*").eq("anomalie",true).order("created_at",{ascending:false});
+    if (type==="jour") { const d=document.getElementById("filtreDate").value; if(d) query=query.gte("created_at",d+"T00:00:00").lte("created_at",d+"T23:59:59"); }
+    if (type==="mois") { const m=document.getElementById("filtreMonth").value; if(m) query=query.gte("created_at",m+"-01T00:00:00").lte("created_at",m+"-31T23:59:59"); }
+    if (type==="annee") { const y=document.getElementById("filtreYear").value; if(y) query=query.gte("created_at",y+"-01-01T00:00:00").lte("created_at",y+"-12-31T23:59:59"); }
+    if (type==="periode") { const d1=document.getElementById("dateDebut").value,d2=document.getElementById("dateFin").value; if(d1&&d2) query=query.gte("created_at",d1+"T00:00:00").lte("created_at",d2+"T23:59:59"); }
+    if (cat!=="all") query=query.contains("meta",{ai_categorie:cat});
+    return query;
+}
 
-function goMenu() { window.location.href = "index.html"; }
+async function chargerAnomalies() {
+    const {data,error} = await construireRequeteBase();
+    if (error) { showToast("❌ "+error.message,true); return; }
+    afficherAnomalies(data||[]);
+}
+
+function afficherAnomalies(anomalies) {
+    const tbNL=document.getElementById("tableNonLevees"), tbL=document.getElementById("tableLevees");
+    tbNL.innerHTML=""; tbL.innerHTML="";
+    const nonLevees=anomalies.filter(a=>a.statut!=="cloture"), levees=anomalies.filter(a=>a.statut==="cloture");
+    document.getElementById("countNonLevees").textContent=nonLevees.length+" résultat(s)";
+    document.getElementById("countLevees").textContent=levees.length+" résultat(s)";
+    document.getElementById("emptyNonLevees").style.display=nonLevees.length===0?"":"none";
+    document.getElementById("emptyLevees").style.display=levees.length===0?"":"none";
+    nonLevees.forEach(a=>tbNL.appendChild(buildRow(a,false)));
+    levees.forEach(a=>tbL.appendChild(buildRow(a,true)));
+}
+
+function buildRow(a,isLevee) {
+    const cat=(a.meta&&a.meta.ai_categorie)||a.type||"Non classé";
+    const grav=(a.meta&&a.meta.ai_gravite)||1;
+    const dt=new Date(a.created_at).toLocaleDateString("fr-FR");
+    const tr=document.createElement("tr");
+    let html=`<td><div class="date-cell">${dt}</div></td><td>${escapeHtml(a.localisation||"—")}</td><td><span class="cat-badge">${escapeHtml(cat)}</span></td><td>${buildSev(grav)}</td>`;
+    if (isLevee) { const ld=a.updated_at?new Date(a.updated_at).toLocaleDateString("fr-FR"):"—"; html+=`<td><div class="date-cell">${ld}</div></td>`; }
+    html+=`<td><button class="btn-open" onclick="ouvrirDetail('${escapeAttr(a.id)}')">Ouvrir</button></td>`;
+    tr.innerHTML=html; return tr;
+}
+
+function buildSev(level) {
+    const l=Math.min(5,Math.max(1,parseInt(level)||1));
+    return `<div class="severity sev-${l}" data-level="${l}"><div class="severity-bar"><div class="severity-pip"></div><div class="severity-pip"></div><div class="severity-pip"></div><div class="severity-pip"></div><div class="severity-pip"></div></div><span class="severity-label">${SEV_LABELS[l]}</span></div>`;
+}
+
+async function ouvrirDetail(id) {
+    const {data,error}=await supabaseClient.from("rapports").select("*").eq("id",id).single();
+    if (error){showToast("❌ "+error.message,true);return;}
+    anomalieCourante=data;
+    const cat=(data.meta&&data.meta.ai_categorie)||data.type||"Non classé";
+    const grav=(data.meta&&data.meta.ai_gravite)||1;
+    const dt=new Date(data.created_at).toLocaleDateString("fr-FR");
+    let photosHTML="";
+    if (data.meta&&data.meta.photos&&data.meta.photos.length>0) {
+        photosHTML=`<div class="detail-field"><div class="field-label">Photos / Vidéos</div><div class="detail-photos">${data.meta.photos.map(p=>`<img src="${escapeAttr(p)}" alt="Photo anomalie">`).join("")}</div></div>`;
+    }
+    document.getElementById("detailContent").innerHTML=`
+        <div class="detail-field"><div class="field-label">Date de détection</div><div class="field-value mono">${dt}</div></div>
+        <div class="detail-field"><div class="field-label">Localisation</div><div class="field-value">${escapeHtml(data.localisation||"—")}</div></div>
+        <div class="detail-field"><div class="field-label">Catégorie IA</div><div class="field-value"><span class="cat-badge">${escapeHtml(cat)}</span></div></div>
+        <div class="detail-field"><div class="field-label">Niveau de criticité</div><div class="field-value">${buildSev(grav)}</div></div>
+        <div class="detail-field"><div class="field-label">Description / Rapport</div><div class="field-value">${escapeHtml(data.description||data.titre||"—")}</div></div>
+        ${data.statut==="cloture"?`<div class="detail-field"><div class="field-label">Date de levée</div><div class="field-value mono">${data.updated_at?new Date(data.updated_at).toLocaleDateString("fr-FR"):"—"}</div></div>`:""}
+        ${photosHTML}`;
+    document.getElementById("btnLever").style.display=data.statut==="cloture"?"none":"";
+    document.getElementById("detailOverlay").classList.add("show");
+    document.getElementById("detailPanel").classList.add("show");
+}
+
+function fermerDetail() {
+    document.getElementById("detailOverlay").classList.remove("show");
+    document.getElementById("detailPanel").classList.remove("show");
+}
+
+async function leverAnomalie() {
+    if (!anomalieCourante) return;
+    const {error}=await supabaseClient.from("rapports").update({statut:"cloture",anomalie:false}).eq("id",anomalieCourante.id);
+    if (error){showToast("❌ "+error.message,true);return;}
+    showToast("✅ Anomalie levée !"); fermerDetail(); chargerAnomalies();
+}
+
+async function exporterMultiFeuilles() {
+    const {data,error}=await construireRequeteBase();
+    if (error){showToast("❌ "+error.message,true);return;}
+    const nonLevees=(data||[]).filter(a=>a.statut!=="cloture"), levees=(data||[]).filter(a=>a.statut==="cloture");
+    const wb=XLSX.utils.book_new();
+    function toSheet(rows){return XLSX.utils.json_to_sheet(rows.map(a=>({Date:new Date(a.created_at).toLocaleDateString("fr-FR"),Lieu:a.localisation||"","Catégorie IA":(a.meta&&a.meta.ai_categorie)||a.type||"",Criticité:(a.meta&&a.meta.ai_gravite)||1,Description:a.description||a.titre||"",Statut:a.statut||"","Date levée":a.statut==="cloture"&&a.updated_at?new Date(a.updated_at).toLocaleDateString("fr-FR"):""})));}
+    XLSX.utils.book_append_sheet(wb,toSheet(nonLevees),"Non levées");
+    XLSX.utils.book_append_sheet(wb,toSheet(levees),"Levées");
+    XLSX.writeFile(wb,"anomalies_"+new Date().toISOString().split("T")[0]+".xlsx");
+    showToast("✅ Export Excel généré !");
+}
+
+chargerAnomalies();
 </script>
-
-<!-- 🔐 Sécurité -->
 <script src="security.js"></script>
-
-<!-- 🎨 Thème global -->
 <script src="global.js"></script>
-
 <script src="notifications_global.js"></script>
 </body>
 </html>

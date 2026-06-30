@@ -1,0 +1,130 @@
+// ════════════════════════════════════════════════════════════════════
+//  lp-send-qr — envoie le QR code du laissez-passer à l'intervenant
+//  VERSION DURCIE : les champs saisis dans le LP (zone, demandeur, société,
+//  intervenants, nature) sont désormais ÉCHAPPÉS avant d'être insérés dans
+//  le HTML de l'email → plus d'injection HTML / de lien de phishing glissé
+//  dans un email envoyé depuis le domaine.
+//
+//  ⚠️ Reste à traiter (auth) : comme send-rapport-mail, cette fonction peut
+//  être appelée par quiconque possède la clé anon → relais d'email. À
+//  verrouiller lors du passage à la vraie auth.
+// ════════════════════════════════════════════════════════════════════
+
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, content-type, apikey",
+  "Content-Type": "application/json; charset=utf-8",
+};
+
+// Échappement HTML (anti-injection dans le corps de l'email)
+function esc(s: unknown): string {
+  return String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c] as string));
+}
+
+function fmtFR(iso: string) {
+  try { return new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }); }
+  catch { return iso; }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
+
+  try {
+    const body = await req.json();
+    const {
+      email_intervenant, nom_demandeur, societe_intervenante,
+      marque_zone, nature_travaux, debut_intervention, fin_intervention,
+      noms_intervenants, qr_token, base_url,
+    } = body || {};
+
+    if (!email_intervenant) {
+      return new Response(JSON.stringify({ error: "email_intervenant manquant" }), { status: 400, headers: CORS });
+    }
+    if (!qr_token) {
+      return new Response(JSON.stringify({ error: "qr_token manquant" }), { status: 400, headers: CORS });
+    }
+
+    const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+    const FROM = Deno.env.get("RESEND_FROM") || Deno.env.get("LP_MAIL_FROM") || "Aura Sentinelle <onboarding@resend.dev>";
+
+    const root = (base_url || Deno.env.get("LP_BASE_URL") || "").replace(/\/+$/, "");
+    const scanUrl = root ? `${root}/lp_scan.html?t=${encodeURIComponent(qr_token)}` : qr_token;
+
+    const qrImg = "https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=10&data="
+                + encodeURIComponent(scanUrl);
+
+    // ── Champs échappés ──
+    const eZone   = esc(marque_zone || "le site");
+    const eDem    = esc(nom_demandeur || "—");
+    const eSoc    = esc(societe_intervenante || "—");
+    const eInterv = esc(noms_intervenants || "—").replace(/\n/g, "<br>");
+    const eNature = esc(nature_travaux || "—");
+
+    const html = `
+<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;color:#111;">
+  <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e5e7eb;">
+    <div style="background:#0e1626;color:#fff;padding:20px 24px;">
+      <div style="font-size:20px;font-weight:800;">Laissez-passer validé</div>
+      <div style="opacity:.8;font-size:13px;margin-top:4px;">Aura — Sécurité &amp; Sûreté</div>
+    </div>
+    <div style="padding:24px;">
+      <p style="font-size:15px;line-height:1.5;">Bonjour,</p>
+      <p style="font-size:15px;line-height:1.5;">
+        Votre laissez-passer pour l'intervention chez <strong>${eZone}</strong>
+        a été <strong style="color:#16a34a;">validé</strong> par le service sûreté.
+        Présentez le QR code ci-dessous à l'agent à votre arrivée.
+      </p>
+      <div style="text-align:center;margin:24px 0;">
+        <img src="${qrImg}" alt="QR code laissez-passer" width="240" height="240"
+             style="border:1px solid #e5e7eb;border-radius:12px;padding:8px;background:#fff;">
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <tr><td style="padding:6px 0;color:#6b7280;width:42%;">Demandeur</td><td style="padding:6px 0;font-weight:600;">${eDem}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Société</td><td style="padding:6px 0;font-weight:600;">${eSoc}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Intervenant(s)</td><td style="padding:6px 0;font-weight:600;">${eInterv}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Nature</td><td style="padding:6px 0;font-weight:600;">${eNature}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Début</td><td style="padding:6px 0;font-weight:600;">${debut_intervention ? fmtFR(debut_intervention) : "—"}</td></tr>
+        <tr><td style="padding:6px 0;color:#6b7280;">Fin</td><td style="padding:6px 0;font-weight:600;">${fin_intervention ? fmtFR(fin_intervention) : "—"}</td></tr>
+      </table>
+      <p style="font-size:12px;color:#6b7280;margin-top:20px;line-height:1.5;">
+        Ce QR code est strictement personnel et valable uniquement sur la fenêtre horaire indiquée.
+        L'accès sera refusé en dehors de cette période ou si le laissez-passer est annulé.
+      </p>
+    </div>
+  </div>
+</body></html>`;
+
+    if (!RESEND_API_KEY) {
+      return new Response(JSON.stringify({
+        ok: false, sent: false,
+        reason: "RESEND_API_KEY non configurée — secret à ajouter dans Supabase",
+        scan_url: scanUrl, qr_image: qrImg,
+      }), { status: 200, headers: CORS });
+    }
+
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + RESEND_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: FROM,
+        to: [email_intervenant],
+        subject: "Votre laissez-passer validé — QR code d'accès",
+        html,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return new Response(JSON.stringify({ ok: false, sent: false, provider_error: data, scan_url: scanUrl, qr_image: qrImg }),
+                          { status: 200, headers: CORS });
+    }
+
+    return new Response(JSON.stringify({ ok: true, sent: true, id: data?.id, scan_url: scanUrl }),
+                        { status: 200, headers: CORS });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: String((e as Error)?.message || e) }), { status: 500, headers: CORS });
+  }
+});

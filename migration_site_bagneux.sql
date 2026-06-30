@@ -6,496 +6,652 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Vérification en cours</title>
+<title>Aura Sentinelle LBM – Login</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="vendor/jspdf.umd.min.js" crossorigin="anonymous"></script>
+
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
+    body {
+        background: radial-gradient(circle at top left, #2b1b1b, #120b0b 50%, #050305);
+        color: white;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
 
-.header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-.back-btn{background:rgba(77,163,255,0.12);border:1px solid rgba(77,163,255,0.3);color:#4da3ff;padding:8px 14px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';transition:.2s}
-.back-btn:hover{background:#4da3ff;color:#0b0e17}
-.header h1{font-size:1.3rem;color:#4da3ff;flex:1;letter-spacing:-.5px}
+    .login-box {
+        width: 90%;
+        max-width: 360px;
+        background: rgba(10, 5, 5, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        box-shadow: 0 3px 18px rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(14px);
+        overflow: hidden;
+        padding-bottom: 12px;
+    }
 
-.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;margin-bottom:16px}
-.card h2{font-size:1.05rem;color:#4da3ff;margin-bottom:12px}
+    .content {
+        padding: 0;
+        text-align: center;
+    }
 
-.progress-bg{background:rgba(255,255,255,0.08);border-radius:99px;height:12px;overflow:hidden;margin:8px 0 4px}
-.progress-fill{height:100%;background:linear-gradient(90deg,#4da3ff,#00c878);border-radius:99px;transition:width .4s}
-.progress-text{text-align:right;font-size:.8rem;color:#6b7a99}
+    .logo {
+        width: 65%;
+        max-width: 140px;
+        margin: 12px auto 6px auto;
+        display: block;
+        border-radius: 10px;
+        padding: 4px;
+        box-shadow: 0 0 14px rgba(255, 140, 0, 0.4);
+    }
 
-/* GROUPE */
-.group-header{background:linear-gradient(135deg,rgba(77,163,255,0.15),rgba(77,163,255,0.05));border:1px solid rgba(77,163,255,0.3);border-radius:12px;padding:12px 16px;margin:14px 0 8px;display:flex;align-items:center;gap:10px}
-.group-header .g-icon{font-size:1.2rem}
-.group-header .g-label{font-weight:700;font-size:1rem;color:#4da3ff;flex:1}
-.group-header .g-num{width:26px;height:26px;border-radius:50%;background:rgba(77,163,255,0.25);color:#4da3ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem}
+    .header-photo {
+        width: 100%;
+        height: 90px;
+        background: url('https://upload.wikimedia.org/wikipedia/commons/4/4c/Le_Bon_March%C3%A9_Paris.jpg');
+        background-size: cover;
+        background-position: center;
+        filter: brightness(0.8) saturate(1.1);
+    }
 
-/* LIBELLE */
-.libelle-box{background:rgba(255,180,50,0.08);border:1px solid rgba(255,180,50,0.2);border-radius:10px;padding:12px 14px;margin:8px 0;display:flex;gap:10px;align-items:flex-start}
-.libelle-box .l-icon{color:#ffb432;font-size:1.1rem;flex-shrink:0}
-.libelle-box .l-text{font-size:.9rem;color:#cbd2e0;line-height:1.5}
+    .app-name {
+        font-size: 0.75rem;
+        opacity: 0.9;
+        letter-spacing: 0.8px;
+        text-transform: uppercase;
+        color: #ffd27f;
+        margin-top: 8px;
+    }
 
-/* FIELD CARD */
-.field{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:14px;margin-bottom:10px;transition:.2s}
-.field.filled{border-color:rgba(0,200,120,0.3);background:rgba(0,200,120,0.04)}
-.field-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
-.field-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0;background:rgba(77,163,255,0.15);color:#4da3ff;margin-top:2px}
-.field.filled .field-num{background:rgba(0,200,120,0.2);color:#00c878}
-.field-info{flex:1;min-width:0}
-.field-label{font-weight:600;font-size:.95rem;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.field-label .req{color:#f87171;font-size:.85rem}
-.field-zone{font-size:.78rem;color:#6b7a99;margin-top:2px}
-.field-type-tag{font-size:.7rem;color:#6b7a99;background:rgba(255,255,255,0.05);padding:2px 8px;border-radius:5px}
+    .secure {
+        font-size: 0.7rem;
+        opacity: 0.7;
+        margin-bottom: 10px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+    }
 
-/* INPUTS */
-.fld-input,.fld-textarea,.fld-select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.05);color:#e0e4ef;font:.92rem 'DM Sans';transition:.2s}
-.fld-input:focus,.fld-textarea:focus,.fld-select:focus{outline:none;border-color:#4da3ff;box-shadow:0 0 0 3px rgba(77,163,255,0.15)}
-.fld-textarea{min-height:60px;resize:vertical}
+    label {
+        display: block;
+        margin-top: 8px;
+        font-size: 0.8rem;
+        opacity: 0.9;
+        text-align: left;
+        width: 86%;
+        margin-left: auto;
+        margin-right: auto;
+    }
 
-/* CHECKBOX / OUI-NON */
-.toggle-row{display:flex;gap:8px}
-.toggle-btn{flex:1;padding:10px;text-align:center;border-radius:8px;cursor:pointer;font:600 .9rem 'DM Sans';border:2px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#8899bb;transition:.2s}
-.toggle-btn.active.yes{background:rgba(0,200,120,0.2);color:#00c878;border-color:#00c878}
-.toggle-btn.active.no{background:rgba(239,68,68,0.2);color:#f87171;border-color:#ef4444}
-.toggle-btn:hover{transform:translateY(-1px)}
+    input {
+        width: 86%;
+        padding: 8px 10px;
+        margin-top: 4px;
+        border-radius: 7px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.06);
+        color: white;
+        font-size: 0.85rem;
+    }
 
-/* CHECKBOX */
-.cbx-row{display:flex;align-items:center;gap:10px;padding:10px;background:rgba(255,255,255,0.04);border-radius:8px;cursor:pointer;border:1px solid rgba(255,255,255,0.08)}
-.cbx-row input{width:auto;cursor:pointer;transform:scale(1.3)}
-.cbx-row.checked{background:rgba(0,200,120,0.1);border-color:#00c878}
+    button {
+        margin-top: 14px;
+        width: 86%;
+        padding: 10px;
+        background: linear-gradient(135deg, #ffb347, #ff7b47);
+        border: none;
+        border-radius: 8px;
+        color: #1b0f08;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 700;
+        box-shadow: 0 3px 12px rgba(255, 140, 0, 0.55);
+    }
 
-/* RADIO */
-.radio-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
-.radio-opt{padding:10px;background:rgba(255,255,255,0.04);border:2px solid rgba(255,255,255,0.08);border-radius:8px;cursor:pointer;font:.88rem 'DM Sans';color:#cbd2e0;text-align:center;transition:.2s}
-.radio-opt:hover{border-color:rgba(77,163,255,0.4)}
-.radio-opt.active{background:rgba(77,163,255,0.2);border-color:#4da3ff;color:#4da3ff;font-weight:600}
+    .badge-hint {
+        margin-top: 10px;
+        font-size: 0.85rem;
+        opacity: 0.8;
+    }
 
-/* SIGNATURE */
-.sig-box{background:#fff;border-radius:8px;border:2px solid rgba(255,255,255,0.1);overflow:hidden;margin-top:6px}
-.sig-canvas{display:block;width:100%;height:140px;cursor:crosshair;touch-action:none}
-.sig-actions{display:flex;gap:6px;margin-top:6px}
-.sig-actions button{flex:1;padding:8px;font-size:.85rem;border-radius:8px;border:none;cursor:pointer;font:600 .85rem 'DM Sans'}
+    .error {
+        margin-top: 10px;
+        color: #ff6b6b;
+        text-align: center;
+        font-size: 0.8rem;
+        display: none;
+    }
 
-/* GPS */
-.gps-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.gps-row input{flex:1;min-width:100px}
-.gps-btn{padding:10px 14px;background:rgba(77,163,255,0.15);color:#4da3ff;border:1px solid rgba(77,163,255,0.3);border-radius:8px;cursor:pointer;font:600 .85rem 'DM Sans';white-space:nowrap}
-
-/* IMAGE */
-.img-upload{display:block;padding:16px;background:rgba(77,163,255,0.06);border:2px dashed rgba(77,163,255,0.3);border-radius:10px;text-align:center;cursor:pointer;color:#4da3ff;font-weight:600;font-size:.9rem}
-.img-upload:hover{background:rgba(77,163,255,0.1)}
-.img-preview{margin-top:8px;max-width:100%;max-height:200px;border-radius:8px;border:1px solid rgba(255,255,255,0.1)}
-
-/* COMMENTAIRE */
-.fld-comment{margin-top:8px;width:100%;padding:8px 10px;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.15);color:#cbd2e0;font:.82rem 'DM Sans';resize:none;height:36px}
-
-.fld-time{font-size:.72rem;color:#6b7a99;margin-top:4px;display:inline-block}
-
-.btn{padding:12px 16px;border:none;border-radius:10px;font:600 .95rem 'DM Sans';cursor:pointer;width:100%;transition:.2s;margin-top:10px}
-.btn-primary{background:linear-gradient(135deg,#4da3ff,#2b7de9);color:#fff}
-.btn-success{background:linear-gradient(135deg,#00c878,#00a060);color:#fff}
-.btn-secondary{background:rgba(255,255,255,0.08);color:#8899bb;border:1px solid rgba(255,255,255,0.12)}
+    .footer {
+        margin-top: 10px;
+        font-size: 0.65rem;
+        opacity: 0.6;
+        padding-bottom: 8px;
+    }
 </style>
 </head>
+
 <body>
 
-<div class="header">
-    <button class="back-btn" onclick="location.href='verifications_admin.html'">⟵</button>
-    <h1 id="verifTitle">Vérification</h1>
-</div>
+<div class="login-box">
+    <div class="content">
 
-<div class="card">
-    <div class="progress-bg"><div class="progress-fill" id="progressBar" style="width:0%"></div></div>
-    <div class="progress-text" id="progressText">0 / 0</div>
-</div>
+        <!-- Logo Groupe Bon Marché -->
+        <div style="
+            display: flex;
+            justify-content: center;
+            padding: 18px 0 6px;
+            background: rgba(0,0,0,0.3);
+        ">
+            <img src="le_bon_marche_logo.jpeg" alt="Groupe Bon Marché" style="
+                width: 100px;
+                height: auto;
+                border-radius: 8px;
+            ">
+        </div>
 
-<div id="checkpointsList"></div>
+        <img src="logo.png" class="logo">
 
-<div class="card">
-    <label style="color:#8899bb;font-size:.85rem">Commentaire général</label>
-    <textarea id="commentaireGeneral" style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:#e0e4ef;font:.9rem 'DM Sans';min-height:60px;resize:vertical;margin-top:6px" placeholder="Observations générales…"></textarea>
-</div>
+        <div class="header-photo"></div>
 
-<div class="card">
-    <button class="btn btn-success" onclick="terminerVerification()">✅ Terminer la vérification</button>
-    <button class="btn btn-primary" onclick="exportPDF()" style="margin-top:8px">📄 Exporter PDF</button>
-    <button class="btn btn-secondary" onclick="sauvegarder(true)">💾 Sauvegarder (sans terminer)</button>
+        <div class="app-name">Aura Sentinelle – Main courante électronique</div>
+        <div class="secure">Authentification requise</div>
+
+        <label for="username">Nom d'utilisateur</label>
+        <input type="text" id="username" placeholder="Votre identifiant" autocomplete="off">
+
+        <!-- Honeypot anti-bot — invisible pour les humains -->
+        <div style="position:absolute;left:-9999px;top:-9999px;" aria-hidden="true">
+            <label for="website">Website</label>
+            <input type="text" id="hp_field" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        <label for="password">Mot de passe</label>
+        <input type="password" id="password" placeholder="Votre mot de passe" autocomplete="off">
+
+        <button id="loginBtn" onclick="login()">Se connecter</button>
+
+        <!-- Bouton scan badge NFC -->
+        <button id="nfcBtn" onclick="startNFCLogin()" style="
+            margin-top: 10px;
+            width: 86%;
+            padding: 10px;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,210,127,0.35);
+            border-radius: 8px;
+            color: #ffd27f;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+        ">
+            🪪 Se connecter avec le badge NFC
+        </button>
+
+        <div id="nfcStatus" class="badge-hint" style="min-height:1.2em;"></div>
+
+        <div class="error" id="errorMsg"></div>
+
+        <div class="footer">© <span id="year"></span> Aura Sentinelle LBM</div>
+    </div>
 </div>
 
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
+
 <script>
-if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
-
-let verifId = null;
-let verifData = null;
-
-const TYPE_ICONS = {
-    groupe:"📁",menu:"▾",checkbox:"☑",textarea:"≡",heure:"🕐",signature:"✍",
-    libelle:"🏷",ouinon:"⊙",nombre:"#",gps:"📍",radio:"◉",image:"📤",
-    texte:"✎",email:"✉",date:"📅",codebarre:"▦",photo:"🖼",liste_perso:"≣"
-};
-
-async function charger() {
-    const params = new URLSearchParams(location.search);
-    verifId = params.get("id");
-    if (!verifId) {
-        document.getElementById("checkpointsList").innerHTML = '<div class="card" style="text-align:center;padding:30px;color:#6b7a99">Aucun ID de vérification.</div>';
-        return;
+/* ═══════════════════════════════════════════════════════
+   AUTO-REDIRECT si déjà connecté
+   --------------------------------------------------------
+   Si un utilisateur arrive sur login.html alors qu'il a déjà
+   une session valide (nom + role + loginTime non expiré),
+   on le renvoie direct vers index.html. Ça évite que le bouton
+   retour du navigateur le coince sur une page de login en
+   apparence déconnecté alors qu'il l'est toujours.
+   ═══════════════════════════════════════════════════════ */
+(function () {
+    function _checkAlreadyLogged() {
+        try {
+            var nom = localStorage.getItem("nom");
+            var role = localStorage.getItem("role");
+            var loginTime = parseInt(localStorage.getItem("loginTime") || "0", 10);
+            var MAX_MS = 8 * 60 * 60 * 1000;
+            if (nom && role && loginTime && (Date.now() - loginTime) < MAX_MS) {
+                // Session valide → on retourne sur l'app
+                window.location.replace("index.html");
+                return true;
+            }
+        } catch (e) {}
+        return false;
     }
 
-    const { data, error } = await supabaseClient
-        .from("verifications").select("*").eq("id", verifId).single();
-    if (error || !data) { alert("Vérification introuvable."); return; }
+    /* ─── Auto-login depuis ?badge=UID ─────────────────────────────
+       Contournement iOS : Safari iOS n'a pas accès au NFC via Web NFC,
+       mais depuis iOS 14, un iPhone qui détecte un tag NFC contenant un
+       record URL (NDEF URI) ouvre Safari automatiquement sur cette URL.
+       Si chaque badge est programmé avec
+         https://app/login.html?badge=SON_UID
+       on récupère le UID ici et on déclenche un login badge identique
+       à celui d'Android. Marche aussi sur Android (au passage). */
+    function _handleBadgeURLParam() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            var badge = params.get("badge");
+            if (!badge) return false;
 
-    verifData = data;
-    document.getElementById("verifTitle").textContent = data.type || "Vérification";
-    if (data.commentaire) document.getElementById("commentaireGeneral").value = data.commentaire;
+            badge = badge.trim();
+            // Format raisonnable : alphanum + :, -, _, longueur 4..64
+            if (!/^[A-Za-z0-9:_-]{4,64}$/.test(badge)) return false;
 
-    // Migration : si les anciens checkpoints n'ont pas de "type", les transformer en "ouinon"
-    const cps = (verifData.meta && verifData.meta.checkpoints) || [];
-    cps.forEach(cp => {
-        if (!cp.type) cp.type = "ouinon";
-        if (cp.resultat && !cp.valeur) {
-            cp.valeur = cp.resultat === "conforme" ? "oui" : (cp.resultat === "non_conforme" ? "non" : "na");
-        }
+            // Vire le paramètre de l'URL → pas de UID dans l'historique
+            // du navigateur ni dans un partage de lien.
+            try { history.replaceState(null, "", window.location.pathname); } catch(e) {}
+
+            // Attend que supabaseClient et loginWithBadge soient prêts
+            // (les <script src=…> sont chargés après cette IIFE).
+            var tries = 0;
+            (function tryLogin() {
+                if (typeof window.supabaseClient !== "undefined"
+                    && typeof window.loginWithBadge === "function") {
+                    var statusEl = document.getElementById("nfcStatus");
+                    if (statusEl) {
+                        statusEl.innerHTML = "📡 Badge détecté via URL — connexion…";
+                        statusEl.style.color = "#9be7ff";
+                    }
+                    window.loginWithBadge(badge);
+                } else if (tries++ < 50) {
+                    setTimeout(tryLogin, 100);
+                }
+            })();
+            return true;
+        } catch (e) { return false; }
+    }
+
+    // Ordre important : on traite le paramètre badge AVANT le check de
+    // session, pour qu'un tap badge puisse écraser une session existante
+    // (passation de poste, changement d'agent…).
+    if (_handleBadgeURLParam()) return;
+
+    // 1. Check immédiat au chargement initial (utilise replace pour ne pas
+    //    polluer l'historique).
+    _checkAlreadyLogged();
+
+    // 2. Check sur 'pageshow' : ce listener se déclenche aussi quand la
+    //    page est servie depuis le back-forward cache (bfcache) lors d'un
+    //    "Retour" navigateur, où les scripts inline ne sont PAS ré-exécutés.
+    //    Sans ça, l'utilisateur croit être déconnecté alors que sa session
+    //    est intacte en localStorage.
+    window.addEventListener("pageshow", function (e) {
+        // e.persisted = true si la page vient du bfcache
+        if (e.persisted) _checkAlreadyLogged();
     });
+})();
 
-    renderCheckpoints();
-    majProgression();
+document.getElementById("year").textContent = new Date().getFullYear();
+
+// Audit log local (security.js n'est pas chargé sur login)
+function auditLog(action, detail) {
+    try {
+        if (typeof supabaseClient !== "undefined") {
+            supabaseClient.from("security_audit").insert({
+                action: action, detail: String(detail || "").substring(0, 500),
+                agent: "login_page", page: "login.html",
+                user_agent: navigator.userAgent.substring(0, 200),
+                created_at: new Date().toISOString()
+            }).then(function(){}).catch(function(){});
+        }
+    } catch(e) {}
 }
 
-function isFillable(cp) {
-    return cp.type !== "groupe" && cp.type !== "libelle";
+/* ═══════════════════════════════════════════════════════
+   ANTI-BRUTEFORCE — Côté client + serveur
+═══════════════════════════════════════════════════════ */
+var MAX_ATTEMPTS = 5;
+var LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
+var DELAY_BASE_MS = 1000; // Délai progressif
+
+function getLoginAttempts() {
+    try {
+        var data = JSON.parse(localStorage.getItem("_login_attempts") || "{}");
+        return data;
+    } catch(e) { return {}; }
 }
 
-function renderCheckpoints() {
-    const div = document.getElementById("checkpointsList");
-    const cps = (verifData.meta && verifData.meta.checkpoints) || [];
+function saveLoginAttempts(data) {
+    localStorage.setItem("_login_attempts", JSON.stringify(data));
+}
 
-    if (cps.length === 0) {
-        div.innerHTML = '<div class="card" style="text-align:center;padding:20px;color:#6b7a99">Aucun élément.</div>';
+function isLockedOut() {
+    var data = getLoginAttempts();
+    if (data.count >= MAX_ATTEMPTS && data.lockedUntil) {
+        if (Date.now() < data.lockedUntil) {
+            var remaining = Math.ceil((data.lockedUntil - Date.now()) / 60000);
+            return remaining;
+        }
+        // Lock expiré → reset
+        saveLoginAttempts({});
+    }
+    return 0;
+}
+
+function recordFailedAttempt() {
+    var data = getLoginAttempts();
+    data.count = (data.count || 0) + 1;
+    data.lastAttempt = Date.now();
+    if (data.count >= MAX_ATTEMPTS) {
+        data.lockedUntil = Date.now() + LOCKOUT_MS;
+    }
+    saveLoginAttempts(data);
+    return data.count;
+}
+
+function resetAttempts() {
+    saveLoginAttempts({});
+}
+
+/* ═══════════════════════════════════════════════════════
+   SANITISATION — Anti-injection SQL/XSS
+═══════════════════════════════════════════════════════ */
+function sanitizeInput(str) {
+    if (!str) return "";
+    return str.replace(/[<>"'`;\\\/\{\}\[\]]/g, "").trim().substring(0, 128);
+}
+
+/* ═══════════════════════════════════════════════════════
+   LOGIN
+═══════════════════════════════════════════════════════ */
+async function login() {
+    var username = sanitizeInput(document.getElementById("username").value);
+    var password = document.getElementById("password").value.trim();
+    var errorMsg = document.getElementById("errorMsg");
+    var loginBtn = document.getElementById("loginBtn");
+
+    errorMsg.style.display = "none";
+
+    // Anti-bot honeypot
+    var hp = document.getElementById("hp_field");
+    if (hp && hp.value.length > 0) {
+        auditLog("BOT_DETECTED", "honeypot filled");
+        errorMsg.textContent = "Erreur de sécurité.";
+        errorMsg.style.display = "block";
         return;
     }
 
-    let groupCount = 0;
-    let fieldCount = 0;
-    div.innerHTML = cps.map((cp, i) => {
-        if (cp.type === "groupe") {
-            groupCount++;
-            return `
-            <div class="group-header">
-                <div class="g-num">${groupCount}</div>
-                <span class="g-icon">📁</span>
-                <span class="g-label">${escapeHtml(cp.label)}</span>
-            </div>`;
-        }
-        if (cp.type === "libelle") {
-            return `
-            <div class="libelle-box">
-                <span class="l-icon">ℹ️</span>
-                <div class="l-text">${escapeHtml(cp.label)}</div>
-            </div>`;
-        }
-
-        fieldCount++;
-        const filled = isFilled(cp);
-        const req = cp.required ? '<span class="req">*</span>' : '';
-        const time = cp.horodatage ? `<div class="fld-time">⏱ ${cp.horodatage}</div>` : "";
-        const zone = cp.zone ? `<div class="field-zone">📍 ${escapeHtml(cp.zone)}</div>` : "";
-        const typeIcon = TYPE_ICONS[cp.type] || "•";
-
-        return `
-        <div class="field ${filled ? 'filled' : ''}">
-            <div class="field-top">
-                <div class="field-num">${fieldCount}</div>
-                <div class="field-info">
-                    <div class="field-label">
-                        <span>${escapeHtml(cp.label)} ${req}</span>
-                        <span class="field-type-tag">${typeIcon}</span>
-                    </div>
-                    ${zone}
-                </div>
-            </div>
-            ${renderInput(cp, i)}
-            <textarea class="fld-comment" placeholder="Commentaire…" oninput="setComment(${i},this.value)">${escapeHtml(cp.commentaire||"")}</textarea>
-            ${time}
-        </div>`;
-    }).join("");
-}
-
-function isFilled(cp) {
-    if (cp.type === "checkbox") return cp.valeur === true;
-    if (cp.type === "ouinon" || cp.type === "radio" || cp.type === "menu" || cp.type === "liste_perso") return cp.valeur != null && cp.valeur !== "";
-    if (cp.type === "signature" || cp.type === "image" || cp.type === "photo") return !!cp.valeur;
-    if (cp.type === "gps") return cp.valeur && cp.valeur.lat;
-    return cp.valeur != null && cp.valeur !== "";
-}
-
-function renderInput(cp, idx) {
-    const v = cp.valeur;
-    const opts = cp.options || [];
-    switch(cp.type) {
-        case "ouinon":
-            return `
-            <div class="toggle-row">
-                <div class="toggle-btn yes ${v==='oui'?'active':''}" onclick="setValeur(${idx},'oui')">✅ Oui</div>
-                <div class="toggle-btn no ${v==='non'?'active':''}" onclick="setValeur(${idx},'non')">❌ Non</div>
-                <div class="toggle-btn ${v==='na'?'active no':''}" onclick="setValeur(${idx},'na')">➖ N/A</div>
-            </div>`;
-        case "checkbox":
-            return `
-            <div class="cbx-row ${v?'checked':''}" onclick="setValeur(${idx},${!v})">
-                <input type="checkbox" ${v?'checked':''}>
-                <span>${v ? '✅ Coché' : 'Cliquer pour cocher'}</span>
-            </div>`;
-        case "menu":
-            return `<select class="fld-select" onchange="setValeur(${idx},this.value)">
-                <option value="">— Sélectionner —</option>
-                ${opts.map(o => `<option value="${escapeAttr(o)}" ${v===o?'selected':''}>${escapeHtml(o)}</option>`).join("")}
-            </select>`;
-        case "radio":
-        case "liste_perso":
-            return `<div class="radio-grid">
-                ${opts.map(o => `<div class="radio-opt ${v===o?'active':''}" onclick="setValeur(${idx},'${escapeAttr(o)}')">${escapeHtml(o)}</div>`).join("")}
-            </div>`;
-        case "texte":
-            return `<input type="text" class="fld-input" value="${escapeAttr(v||'')}" oninput="setValeurDebounced(${idx},this.value)" placeholder="Saisir…">`;
-        case "textarea":
-            return `<textarea class="fld-textarea" oninput="setValeurDebounced(${idx},this.value)" placeholder="Saisir…">${escapeHtml(v||'')}</textarea>`;
-        case "nombre":
-            return `<input type="number" class="fld-input" value="${escapeAttr(v||'')}" oninput="setValeurDebounced(${idx},this.value)" placeholder="0">`;
-        case "email":
-            return `<input type="email" class="fld-input" value="${escapeAttr(v||'')}" oninput="setValeurDebounced(${idx},this.value)" placeholder="exemple@domaine.com">`;
-        case "date":
-            return `<input type="date" class="fld-input" value="${escapeAttr(v||'')}" onchange="setValeur(${idx},this.value)">`;
-        case "heure":
-            return `<input type="time" class="fld-input" value="${escapeAttr(v||'')}" onchange="setValeur(${idx},this.value)">`;
-        case "gps":
-            const gps = v || {};
-            return `<div class="gps-row">
-                <input type="text" class="fld-input" placeholder="Latitude" value="${escapeAttr(gps.lat||'')}" readonly style="flex:1">
-                <input type="text" class="fld-input" placeholder="Longitude" value="${escapeAttr(gps.lng||'')}" readonly style="flex:1">
-                <button class="gps-btn" onclick="captureGPS(${idx})">📍 Localiser</button>
-            </div>`;
-        case "image":
-        case "photo":
-            const imgPreview = v ? `<img src="${v}" class="img-preview">` : '';
-            const captureAttr = cp.type === "photo" ? 'capture="environment"' : '';
-            return `
-                <label class="img-upload">
-                    📷 ${cp.type === 'photo' ? 'Prendre une photo' : 'Téléverser une image'}
-                    <input type="file" accept="image/*" ${captureAttr} style="display:none" onchange="captureImage(${idx},this)">
-                </label>
-                ${imgPreview}`;
-        case "signature":
-            const sigPreview = v ? `<img src="${v}" style="max-width:200px;background:#fff;border-radius:8px;margin-top:6px">` : '';
-            return `
-                <div class="sig-box">
-                    <canvas class="sig-canvas" id="sig_${idx}" width="600" height="140"></canvas>
-                </div>
-                <div class="sig-actions">
-                    <button class="btn-secondary" onclick="clearSig(${idx})">🗑 Effacer</button>
-                    <button class="btn-primary" onclick="saveSig(${idx})">✅ Valider</button>
-                </div>
-                ${sigPreview}`;
-        case "codebarre":
-            return `<div class="gps-row">
-                <input type="text" class="fld-input" value="${escapeAttr(v||'')}" placeholder="Saisir ou scanner…" oninput="setValeurDebounced(${idx},this.value)">
-                <button class="gps-btn" onclick="alert('Pour scanner, utilisez l\\'appareil photo de votre téléphone et collez le code ici.')">▦ Scanner</button>
-            </div>`;
-        default:
-            return `<input type="text" class="fld-input" value="${escapeAttr(v||'')}" oninput="setValeurDebounced(${idx},this.value)">`;
-    }
-}
-
-function escapeHtml(s) { if(!s)return""; return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-function escapeAttr(s) { if(!s)return""; return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
-
-function majProgression() {
-    const cps = (verifData.meta && verifData.meta.checkpoints) || [];
-    const fillable = cps.filter(isFillable);
-    const total = fillable.length;
-    const done = fillable.filter(isFilled).length;
-    const pct = total === 0 ? 0 : Math.round((done / total) * 100);
-    document.getElementById("progressBar").style.width = pct + "%";
-    document.getElementById("progressText").textContent = `${done} / ${total} — ${pct}%`;
-}
-
-async function setValeur(index, valeur) {
-    verifData.meta.checkpoints[index].valeur = valeur;
-    verifData.meta.checkpoints[index].horodatage = new Date().toLocaleString("fr-FR");
-    if (navigator.vibrate) navigator.vibrate(40);
-    renderCheckpoints();
-    majProgression();
-    await sauvegarder();
-}
-
-function setValeurDebounced(index, valeur) {
-    verifData.meta.checkpoints[index].valeur = valeur;
-    verifData.meta.checkpoints[index].horodatage = new Date().toLocaleString("fr-FR");
-    clearTimeout(window._saveTimer);
-    window._saveTimer = setTimeout(() => { majProgression(); sauvegarder(); }, 600);
-}
-
-function setComment(index, val) {
-    verifData.meta.checkpoints[index].commentaire = val;
-    clearTimeout(window._saveTimer);
-    window._saveTimer = setTimeout(sauvegarder, 800);
-}
-
-function captureGPS(idx) {
-    if (!navigator.geolocation) { alert("Géolocalisation indisponible."); return; }
-    navigator.geolocation.getCurrentPosition(pos => {
-        verifData.meta.checkpoints[idx].valeur = { lat: pos.coords.latitude.toFixed(6), lng: pos.coords.longitude.toFixed(6) };
-        verifData.meta.checkpoints[idx].horodatage = new Date().toLocaleString("fr-FR");
-        renderCheckpoints(); majProgression(); sauvegarder();
-    }, err => alert("Impossible de localiser : " + err.message));
-}
-
-function captureImage(idx, input) {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = e => {
-        verifData.meta.checkpoints[idx].valeur = e.target.result;
-        verifData.meta.checkpoints[idx].horodatage = new Date().toLocaleString("fr-FR");
-        renderCheckpoints(); majProgression(); sauvegarder();
-    };
-    reader.readAsDataURL(file);
-}
-
-let _sigState = {};
-function initSignature(idx) {
-    const canvas = document.getElementById("sig_" + idx);
-    if (!canvas || canvas._init) return;
-    canvas._init = true;
-    const ctx = canvas.getContext("2d");
-    ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.lineCap = "round";
-    let drawing = false;
-    function getPos(e) {
-        const r = canvas.getBoundingClientRect();
-        const t = e.touches ? e.touches[0] : e;
-        return { x: (t.clientX - r.left) * (canvas.width / r.width), y: (t.clientY - r.top) * (canvas.height / r.height) };
-    }
-    function start(e) { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
-    function move(e) { if (!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
-    function end() { drawing = false; }
-    canvas.addEventListener("mousedown", start); canvas.addEventListener("mousemove", move);
-    canvas.addEventListener("mouseup", end); canvas.addEventListener("mouseleave", end);
-    canvas.addEventListener("touchstart", start); canvas.addEventListener("touchmove", move);
-    canvas.addEventListener("touchend", end);
-}
-
-function clearSig(idx) {
-    const canvas = document.getElementById("sig_" + idx);
-    if (!canvas) return;
-    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function saveSig(idx) {
-    const canvas = document.getElementById("sig_" + idx);
-    if (!canvas) return;
-    const data = canvas.toDataURL("image/png");
-    verifData.meta.checkpoints[idx].valeur = data;
-    verifData.meta.checkpoints[idx].horodatage = new Date().toLocaleString("fr-FR");
-    renderCheckpoints(); majProgression(); sauvegarder();
-}
-
-// Init des canvas signature après chaque rendu
-const origRender = renderCheckpoints;
-renderCheckpoints = function() {
-    origRender();
-    const cps = (verifData && verifData.meta && verifData.meta.checkpoints) || [];
-    cps.forEach((cp, i) => { if (cp.type === "signature") setTimeout(() => initSignature(i), 50); });
-};
-
-async function sauvegarder(showMsg) {
-    if (!verifId || !verifData) return;
-    const commentaire = document.getElementById("commentaireGeneral").value.trim();
-    const { error } = await supabaseClient.from("verifications").update({
-        meta: verifData.meta, commentaire: commentaire
-    }).eq("id", verifId);
-    if (showMsg) showToast(error ? "❌ " + error.message : "💾 Sauvegardé");
-}
-
-async function terminerVerification() {
-    const cps = verifData.meta.checkpoints || [];
-    const fillable = cps.filter(isFillable);
-    const reqMissing = fillable.filter(c => c.required && !isFilled(c));
-    if (reqMissing.length) {
-        alert("⚠️ " + reqMissing.length + " champ(s) obligatoire(s) non rempli(s).");
+    // Vérifier le verrouillage anti-bruteforce
+    var lockMin = isLockedOut();
+    if (lockMin > 0) {
+        errorMsg.textContent = "⛔ Compte verrouillé. Réessayez dans " + lockMin + " minute(s).";
+        errorMsg.style.display = "block";
         return;
     }
-    const nonTraite = fillable.filter(c => !isFilled(c)).length;
-    if (nonTraite > 0 && !confirm(`${nonTraite} élément(s) non rempli(s). Terminer quand même ?`)) return;
 
-    const commentaire = document.getElementById("commentaireGeneral").value.trim();
-    await supabaseClient.from("verifications").update({
-        resultat: "termine", commentaire, meta: verifData.meta
-    }).eq("id", verifId);
-
-    showToast("✅ Vérification terminée");
-    setTimeout(() => location.href = "verifications_admin.html", 1200);
-}
-
-async function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF("p", "mm", "a4");
-    const M = 12, PW = 186, BOT = 280;
-    let y = 20;
-    function ensureSpace(n) { if (y + n > BOT) { pdf.addPage(); y = 15; } }
-
-    pdf.setFillColor(15, 20, 35); pdf.rect(0, 0, 210, 35, "F");
-    pdf.setFontSize(16); pdf.setTextColor(77, 163, 255);
-    pdf.text("Vérification — " + (verifData.type || ""), M, 22);
-    pdf.setFontSize(9); pdf.setTextColor(180);
-    pdf.text(new Date().toLocaleString("fr-FR") + " — " + (verifData.agent_nom || localStorage.getItem("nom") || ""), M, 30);
-    y = 42;
-
-    const cps = verifData.meta.checkpoints || [];
-    cps.forEach((cp, i) => {
-        ensureSpace(15);
-        if (cp.type === "groupe") {
-            pdf.setFillColor(77, 163, 255); pdf.rect(M, y - 4, PW, 7, "F");
-            pdf.setFontSize(11); pdf.setTextColor(255); pdf.text("📁 " + cp.label, M + 3, y); y += 8; return;
-        }
-        if (cp.type === "libelle") {
-            pdf.setFontSize(9); pdf.setTextColor(120, 100, 50);
-            pdf.splitTextToSize("ℹ️ " + cp.label, PW).forEach(l => { ensureSpace(5); pdf.text(l, M, y); y += 4.5; });
-            y += 2; return;
-        }
-        pdf.setFontSize(10); pdf.setTextColor(0);
-        pdf.text(`${i + 1}. ${cp.label}${cp.required ? " *" : ""}`, M, y); y += 5;
-        let val = cp.valeur;
-        if (val && typeof val === "object" && val.lat) val = `Lat ${val.lat}, Lng ${val.lng}`;
-        if (typeof val === "string" && val.startsWith("data:image")) val = "[Image / Signature]";
-        if (val == null || val === "") val = "(non renseigné)";
-        pdf.setFontSize(9); pdf.setTextColor(60); pdf.text("→ " + String(val).substring(0, 80), M + 5, y); y += 5;
-        if (cp.commentaire) { pdf.setTextColor(80); pdf.splitTextToSize(cp.commentaire, PW - 10).forEach(l => { ensureSpace(5); pdf.text(l, M + 8, y); y += 4.5; }); }
-        if (cp.zone) { pdf.setFontSize(8); pdf.setTextColor(130); pdf.text("Zone : " + cp.zone, M + 5, y); y += 4; }
-        y += 2;
-    });
-
-    const comment = document.getElementById("commentaireGeneral").value.trim();
-    if (comment) {
-        ensureSpace(15);
-        pdf.setFontSize(10); pdf.setTextColor(0); pdf.text("Commentaire général :", M, y); y += 5;
-        pdf.setFontSize(9); pdf.setTextColor(60);
-        pdf.splitTextToSize(comment, PW).forEach(l => { ensureSpace(5); pdf.text(l, M + 4, y); y += 4.5; });
+    if (!username || !password) {
+        errorMsg.textContent = "Veuillez remplir tous les champs.";
+        errorMsg.style.display = "block";
+        return;
     }
-    pdf.setFontSize(7); pdf.setTextColor(140); pdf.text("LBM Sécurité — SEGEP RG", M, 290);
-    pdf.save(`Verification_${(verifData.type||"").replace(/[^a-zA-Z0-9]/g,"_")}_${new Date().toISOString().split("T")[0]}.pdf`);
-    showToast("📄 PDF exporté");
+
+    // Délai progressif anti-bruteforce
+    var attempts = getLoginAttempts();
+    var delay = (attempts.count || 0) * DELAY_BASE_MS;
+    if (delay > 0) {
+        loginBtn.disabled = true;
+        loginBtn.textContent = "Patientez...";
+        await new Promise(function(r){ setTimeout(r, delay); });
+    }
+
+    loginBtn.disabled = true;
+    loginBtn.textContent = "Connexion...";
+
+    var form = new URLSearchParams();
+    form.append("username", username);
+    form.append("password", password);
+
+    try {
+        var res = await fetch(FUNCTIONS_BASE + "/super-action", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: form.toString()
+        });
+
+        var raw = await res.text();
+        var data = null;
+        try { data = JSON.parse(raw); } catch(e) {}
+
+        if (!res.ok || !data || !data.user) {
+            var failCount = recordFailedAttempt();
+            var remaining = MAX_ATTEMPTS - failCount;
+
+            // (Les tentatives sont désormais enregistrées côté serveur par
+            //  l'edge function — plus d'insertion client dans login_attempts.)
+
+            if (res.status === 429) {
+                errorMsg.textContent = (data && data.error) || "⛔ Trop de tentatives. Réessayez plus tard.";
+            } else if (remaining <= 0) {
+                errorMsg.textContent = "⛔ Trop de tentatives. Compte verrouillé 15 minutes.";
+            } else {
+                errorMsg.textContent = (data && data.error) || "Identifiants incorrects. " + remaining + " tentative(s) restante(s).";
+            }
+            errorMsg.style.display = "block";
+            loginBtn.disabled = false;
+            loginBtn.textContent = "Se connecter";
+            return;
+        }
+
+        // Succès → reset compteur
+        resetAttempts();
+
+        // (Connexion réussie : enregistrée côté serveur par l'edge function.)
+
+        // Stockage session
+        localStorage.setItem("nom", data.user.nom);
+        localStorage.setItem("role", data.user.role);
+        localStorage.setItem("loginTime", Date.now().toString());
+
+        // ─── Multi-tenant : récupérer site + service depuis la BDD ───
+        try {
+            var tenantRes = await supabaseClient
+                .from("users")
+                .select("site_code, service")
+                .ilike("nom", username)
+                .limit(1)
+                .maybeSingle();
+
+            if (tenantRes && tenantRes.data) {
+                localStorage.setItem("site_code", tenantRes.data.site_code || "LBM");
+                localStorage.setItem("service", (tenantRes.data.service || "incendie").toLowerCase());
+            } else {
+                // Valeurs par défaut si pas trouvé
+                localStorage.setItem("site_code", "LBM");
+                localStorage.setItem("service", "incendie");
+            }
+        } catch(e) {
+            localStorage.setItem("site_code", "LBM");
+            localStorage.setItem("service", "incendie");
+        }
+
+        window.location.href = "index.html";
+
+    } catch(err) {
+        errorMsg.textContent = "Erreur réseau.";
+        errorMsg.style.display = "block";
+        loginBtn.disabled = false;
+        loginBtn.textContent = "Se connecter";
+    }
 }
 
-charger();
+/* ═══════════════════════════════════════════════════════
+   LOGIN PAR BADGE NFC (Web NFC API — Chrome Android, HTTPS)
+═══════════════════════════════════════════════════════ */
+var _nfcScanning = false;
+var _nfcReader = null;
+
+async function startNFCLogin() {
+    var statusEl = document.getElementById("nfcStatus");
+    var btn = document.getElementById("nfcBtn");
+    var errorMsg = document.getElementById("errorMsg");
+    errorMsg.style.display = "none";
+
+    // 1. Vérifier le verrouillage anti-bruteforce
+    var lockMin = isLockedOut();
+    if (lockMin > 0) {
+        errorMsg.textContent = "⛔ Verrouillé. Réessayez dans " + lockMin + " minute(s).";
+        errorMsg.style.display = "block";
+        return;
+    }
+
+    // 2. Vérifier le support Web NFC
+    if (!("NDEFReader" in window)) {
+        // Détection iOS (iPhone, iPad ou iPad reportant comme Mac)
+        var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        if (isIOS) {
+            statusEl.innerHTML =
+                "📱 <b>Sur iPhone, pas besoin de cliquer ici.</b><br>" +
+                "Pose simplement ton téléphone sur ton badge — iOS ouvrira " +
+                "automatiquement la page de connexion.<br>" +
+                "<small style=\"opacity:0.75\">" +
+                "Requiert iPhone XS ou plus récent + iOS 14+, et un badge " +
+                "programmé avec l'URL de l'application. " +
+                "Si rien ne se passe, demande à un admin de re-programmer ton badge." +
+                "</small>";
+        } else {
+            statusEl.innerHTML =
+                "ℹ️ Web NFC non supporté sur ce navigateur.<br>" +
+                "Utilise Chrome sur Android (HTTPS requis), ou pose ton " +
+                "téléphone sur ton badge si celui-ci est programmé en URL.";
+        }
+        statusEl.style.color = "#ff9ba8";
+        return;
+    }
+
+    // 3. Si déjà en scan, ne pas relancer
+    if (_nfcScanning) {
+        statusEl.innerHTML = "📡 Déjà en scan… présentez un badge.";
+        return;
+    }
+
+    try {
+        _nfcReader = new NDEFReader();
+        await _nfcReader.scan();
+        _nfcScanning = true;
+
+        btn.disabled = true;
+        btn.textContent = "📡 En attente du badge…";
+        statusEl.innerHTML = "Approchez votre badge NFC de l'appareil.";
+        statusEl.style.color = "#9be7ff";
+
+        _nfcReader.onreading = async function(event) {
+            var uid = event.serialNumber;
+            statusEl.innerHTML = "✅ Badge détecté : " + uid + " — vérification…";
+            await loginWithBadge(uid);
+        };
+
+        _nfcReader.onreadingerror = function() {
+            statusEl.innerHTML = "❌ Erreur de lecture, réessayez.";
+            statusEl.style.color = "#ff9ba8";
+        };
+
+    } catch(err) {
+        _nfcScanning = false;
+        btn.disabled = false;
+        btn.textContent = "🪪 Se connecter avec le badge NFC";
+        statusEl.innerHTML = "⚠️ NFC : " + (err.message || err.name || "indisponible") + ".";
+        statusEl.style.color = "#ff9ba8";
+
+        // Messages d'aide selon l'erreur
+        if (err.name === "NotAllowedError") {
+            statusEl.innerHTML += " (Permission refusée — autorisez le NFC dans les paramètres du site.)";
+        } else if (err.name === "NotSupportedError") {
+            statusEl.innerHTML += " (Appareil incompatible.)";
+        } else if (err.name === "SecurityError") {
+            statusEl.innerHTML += " (HTTPS requis — pas accessible en HTTP.)";
+        }
+    }
+}
+
+async function loginWithBadge(uid) {
+    var statusEl = document.getElementById("nfcStatus");
+    var errorMsg = document.getElementById("errorMsg");
+    var btn = document.getElementById("nfcBtn");
+
+    if (!uid) {
+        statusEl.innerHTML = "❌ UID vide.";
+        return;
+    }
+
+    // Anti-bruteforce check
+    var lockMin = isLockedOut();
+    if (lockMin > 0) {
+        statusEl.innerHTML = "⛔ Verrouillé. Réessayez dans " + lockMin + " minute(s).";
+        return;
+    }
+
+    try {
+        // Recherche du badge dans la table users
+        var { data, error } = await supabaseClient
+            .from("users")
+            .select("id, nom, role, site_code, service, badgeuid")
+            .eq("badgeuid", uid)
+            .maybeSingle();
+
+        if (error) {
+            statusEl.innerHTML = "❌ Erreur Supabase : " + error.message;
+            statusEl.style.color = "#ff9ba8";
+            return;
+        }
+
+        if (!data) {
+            recordFailedAttempt();
+            statusEl.innerHTML = "❌ Badge inconnu (UID : " + uid + "). Inscrivez-le dans 'Gestion des comptes' d'abord.";
+            statusEl.style.color = "#ff9ba8";
+
+            // Audit de la tentative échouée
+            try {
+                supabaseClient.from("login_attempts").insert({
+                    username: "BADGE:" + uid.substring(0, 30),
+                    success: false,
+                    ip_hint: "badge_unknown",
+                    created_at: new Date().toISOString()
+                });
+            } catch(e) {}
+            return;
+        }
+
+        // ✅ Badge trouvé → ouvrir la session
+        resetAttempts();
+        statusEl.innerHTML = "✅ Bienvenue " + data.nom + " — connexion…";
+        statusEl.style.color = "#4ade80";
+
+        localStorage.setItem("nom", data.nom);
+        localStorage.setItem("role", data.role || "agent");
+        localStorage.setItem("loginTime", Date.now().toString());
+        localStorage.setItem("site_code", data.site_code || "LBM");
+        localStorage.setItem("service", (data.service || "incendie").toLowerCase());
+
+        // Audit de connexion réussie
+        try {
+            supabaseClient.from("login_attempts").insert({
+                username: data.nom,
+                success: true,
+                ip_hint: "BADGE:" + uid.substring(0, 30),
+                created_at: new Date().toISOString()
+            });
+        } catch(e) {}
+
+        setTimeout(function() {
+            window.location.href = "index.html";
+        }, 600);
+
+    } catch(e) {
+        statusEl.innerHTML = "❌ Erreur réseau : " + e.message;
+        statusEl.style.color = "#ff9ba8";
+    }
+}
 </script>
-<script src="security.js"></script>
-<script src="global.js"></script>
-<script src="notifications_global.js"></script>
+
 </body>
 </html>

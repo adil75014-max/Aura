@@ -5,409 +5,262 @@
 <meta http-equiv="X-Frame-Options" content="DENY">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DAI Hors Service</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #eef1f5;
-            margin: 0;
-            padding: 0;
-        }
-
-        .container {
-            max-width: 900px;
-            margin: auto;
-            padding: 20px;
-        }
-
-        h2 {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        /* Bouton menu */
-        .menu-btn {
-            background: #007bff;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-            margin-bottom: 20px;
-        }
-
-        .menu-btn:hover {
-            background: #0056b3;
-        }
-
-        /* Formulaire */
-        form {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        label {
-            font-weight: bold;
-            margin-top: 10px;
-            display: block;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            margin-top: 5px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 16px;
-        }
-
-        button[type="submit"] {
-            width: 100%;
-            padding: 14px;
-            margin-top: 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            cursor: pointer;
-        }
-
-        button[type="submit"]:hover {
-            background: #0056b3;
-        }
-
-        /* Messages */
-        .success, .error {
-            margin-top: 15px;
-            padding: 12px;
-            border-radius: 8px;
-        }
-
-        .success {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .error {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        /* Tableau responsive — structure stricte pour alignement parfait */
-        .table-wrapper {
-            margin-top: 30px;
-            overflow-x: auto;              /* scroll horizontal si écran trop petit */
-            border-radius: 12px;
-            background: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        table {
-            width: 100%;
-            min-width: 900px;              /* plancher pour garder la lisibilité */
-            margin-top: 0;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            table-layout: fixed;            /* respect strict des largeurs colgroup */
-        }
-
-        /* Largeurs explicites — garantissent l'alignement face à face */
-        col.col-site    { width: 16%; }
-        col.col-zone    { width:  8%; }
-        col.col-boucle  { width:  8%; }
-        col.col-point   { width:  8%; }
-        col.col-adresse { width: 12%; }
-        col.col-date    { width: 13%; }
-        col.col-motif   { width: 20%; }
-        col.col-action  { width: 15%; }
-
-        th, td {
-            padding: 12px 10px;
-            border-bottom: 1px solid #ddd;
-            text-align: center;
-            font-size: 14px;
-            vertical-align: middle;
-            word-break: break-word;         /* coupe les mots trop longs plutôt que de déborder */
-        }
-
-        th {
-            background: #007bff;
-            color: white;
-            white-space: nowrap;            /* entêtes jamais cassées */
-        }
-
-        /* Cellules au contenu potentiellement long : on wrap sur plusieurs lignes */
-        td.cell-wrap {
-            text-align: left;
-            line-height: 1.4;
-            white-space: normal;
-        }
-
-        /* Cellules courtes : troncature avec tooltip */
-        td.cell-short {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        /* Bouton "Remettre en service" — désormais un vrai bouton avec taille propre */
-        .btn-rs {
-            background: #28a745;
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: none;
-            color: white;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: 600;
-            white-space: normal;            /* autorise le retour à la ligne si besoin */
-            line-height: 1.2;
-            max-width: 100%;
-            transition: background 0.15s;
-        }
-
-        .btn-rs:hover {
-            background: #1e7e34;
-        }
-
-        /* État vide */
-        .empty-row td {
-            text-align: center;
-            padding: 30px 16px;
-            color: #94a3b8;
-            font-style: italic;
-        }
-
-        /* MOBILE OPTIMISATION */
-        @media (max-width: 600px) {
-            th, td {
-                font-size: 12px;
-                padding: 8px 6px;
-            }
-
-            button[type="submit"] {
-                font-size: 16px;
-            }
-
-            input, select, textarea {
-                font-size: 14px;
-            }
-
-            .btn-rs {
-                font-size: 11px;
-                padding: 6px 8px;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Vidéosurveillance — LBM Sûreté</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="global.css">
+<style>
+body { display:flex; justify-content:center; padding:20px; }
+.page-container { width:100%; max-width:700px; }
+h1 { text-align:center; margin-bottom:8px; color:var(--accent); font-size:1.6rem; }
+.subtitle { text-align:center; opacity:0.7; font-size:0.85rem; margin-bottom:20px; }
+.section { background:var(--card); border:1px solid var(--border); padding:18px; border-radius:14px; margin-bottom:18px; box-shadow:var(--shadow); }
+.section h2 { color:var(--accent); margin-bottom:10px; font-size:1.05rem; }
+label { display:block; margin-top:12px; font-size:0.9rem; font-weight:600; }
+textarea, input[type="text"], input[type="number"], input[type="datetime-local"], select {
+    width:100%; padding:10px; background:var(--bg2); border:1px solid var(--border);
+    border-radius:10px; color:var(--text); margin-top:6px; font-size:0.9rem; box-sizing:border-box;
+}
+.btn { background:var(--accent); border:none; padding:13px 16px; border-radius:10px; color:#000; font-weight:700; cursor:pointer; width:100%; margin-top:16px; font-size:1rem; }
+.btn:disabled { opacity:0.6; cursor:not-allowed; }
+.tabs { display:flex; gap:8px; margin-bottom:18px; }
+.tab { flex:1; padding:12px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); cursor:pointer; font-weight:600; font-size:0.92rem; }
+.tab.active { background:var(--accent); color:#000; border-color:var(--accent); }
+.menu-return { margin-bottom:14px; }
+.menu-return button { background:var(--bg2); border:1px solid var(--border); padding:8px 16px; border-radius:10px; color:var(--accent); cursor:pointer; }
+.rgpd-note { font-size:0.78rem; opacity:0.75; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.3); border-radius:8px; padding:10px 12px; margin-top:10px; line-height:1.5; }
+.auto-info { font-size:0.82rem; opacity:0.7; }
+.auto-info strong { opacity:1; }
+#toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#111; color:#fff; padding:12px 22px; border-radius:10px; font-size:0.9rem; opacity:0; transition:opacity .3s; pointer-events:none; z-index:9999; }
+#toast.show { opacity:1; }
+</style>
 </head>
-
 <body>
+<div class="page-container">
 
-<div class="container">
+<div class="menu-return"><button onclick="window.location.href='index.html'">← Retour</button></div>
 
-    <button class="menu-btn" onclick="window.location.href='index.html'">⟵ Menu</button>
+<h1>📹 Vidéosurveillance</h1>
+<div class="subtitle">Registre des consultations et extractions — traçabilité RGPD</div>
 
-    <h2>Gestion des DAI Hors Service</h2>
+<div class="tabs">
+    <button class="tab active" id="tab-consultation" onclick="switchMode('consultation')">👁 Consultation flux</button>
+    <button class="tab" id="tab-extraction" onclick="switchMode('extraction')">💾 Extraction enregistrement</button>
+</div>
 
-    <!-- FORMULAIRE -->
-    <form id="hsForm">
+<div class="section">
+    <div class="auto-info">
+        <p><strong>Date :</strong> <span id="dateNow"></span> &nbsp;·&nbsp; <strong>Agent :</strong> <span id="agentNow"></span></p>
+    </div>
+</div>
 
-        <label>Site :</label>
-        <select id="site">
-            <option value="">Sélectionner un site</option>
-            <option value="Le Bon Marché">Le Bon Marché</option>
-            <option value="La Grande Épicerie Rive Gauche">La Grande Épicerie Rive Gauche</option>
-            <option value="Moët Hennessy">Moët Hennessy</option>
-            <option value="Magasin 3 – 115 Rue du Bac">Magasin 3 – 115 Rue du Bac</option>
-            <option value="La Grande Épicerie Rive Droite">La Grande Épicerie Rive Droite</option>
-            <option value="SAM">La Samaritaine</option>
-            <option value="Bagneux">Bagneux</option>
+<!-- ── MODE CONSULTATION ── -->
+<div id="form-consultation">
+    <div class="section">
+        <h2>👁 Consultation de flux vidéo</h2>
+        <label>Caméra(s) consultée(s)</label>
+        <input type="text" id="c_cameras" placeholder="Ex : CAM-03 Hall, CAM-12 Quai livraison">
+
+        <label>Zone / secteur</label>
+        <input type="text" id="c_zone" placeholder="Ex : Rez-de-chaussée, réserves">
+
+        <label>Type de consultation</label>
+        <select id="c_type">
+            <option value="">— Choisir —</option>
+            <option>Temps réel (live)</option>
+            <option>Relecture immédiate</option>
+            <option>Levée de doute</option>
+            <option>Suivi d'intervention</option>
         </select>
 
-        <label>Zone :</label>
-        <input type="text" id="zone" placeholder="Ex : Zone 12">
+        <label>Motif de la consultation</label>
+        <textarea id="c_motif" placeholder="Raison de la consultation (incident, ronde, alerte…)"></textarea>
 
-        <label>Boucle :</label>
-        <input type="text" id="boucle" placeholder="Ex : Boucle 3">
+        <label>Observations</label>
+        <textarea id="c_obs" placeholder="Ce qui a été observé, suites éventuelles"></textarea>
 
-        <label>Point :</label>
-        <input type="text" id="point" placeholder="Ex : Point 45">
-
-        <label>Adresse :</label>
-        <input type="text" id="adresse" placeholder="Ex : 12.3.45">
-
-        <label>Date & heure de mise hors service :</label>
-        <input type="datetime-local" id="date_hs">
-
-        <label>Motif :</label>
-        <textarea id="motif" placeholder="Décrivez le motif…"></textarea>
-
-        <button type="submit">Déclarer hors service</button>
-    </form>
-
-    <div id="message"></div>
-
-    <h3 style="margin-top:40px;">DAI actuellement hors service</h3>
-
-    <div class="table-wrapper">
-        <table>
-            <colgroup>
-                <col class="col-site">
-                <col class="col-zone">
-                <col class="col-boucle">
-                <col class="col-point">
-                <col class="col-adresse">
-                <col class="col-date">
-                <col class="col-motif">
-                <col class="col-action">
-            </colgroup>
-            <thead>
-                <tr>
-                    <th>Site</th>
-                    <th>Zone</th>
-                    <th>Boucle</th>
-                    <th>Point</th>
-                    <th>Adresse</th>
-                    <th>Date HS</th>
-                    <th>Motif</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="hsList"></tbody>
-        </table>
+        <div class="rgpd-note">
+            ℹ️ Toute consultation de flux est tracée (agent, date, motif) conformément au RGPD
+            et au règlement intérieur sur la vidéoprotection.
+        </div>
     </div>
+</div>
+
+<!-- ── MODE EXTRACTION ── -->
+<div id="form-extraction" style="display:none;">
+    <div class="section">
+        <h2>💾 Extraction d'enregistrement</h2>
+
+        <label>Demandeur</label>
+        <input type="text" id="e_demandeur" placeholder="Nom du demandeur">
+
+        <label>Qualité du demandeur</label>
+        <select id="e_qualite">
+            <option value="">— Choisir —</option>
+            <option>Interne — Direction</option>
+            <option>Interne — Sûreté</option>
+            <option>Police nationale</option>
+            <option>Gendarmerie</option>
+            <option>Autorité judiciaire</option>
+            <option>Assurance</option>
+        </select>
+
+        <label>Base légale de la demande</label>
+        <select id="e_base">
+            <option value="">— Choisir —</option>
+            <option>Réquisition judiciaire</option>
+            <option>Réquisition OPJ</option>
+            <option>Plainte / enquête interne</option>
+            <option>Sinistre / assurance</option>
+            <option>Droit d'accès personne concernée</option>
+        </select>
+
+        <label>N° de réquisition / PV / référence</label>
+        <input type="text" id="e_ref" placeholder="Référence du document justificatif">
+
+        <label>Période concernée — début</label>
+        <input type="datetime-local" id="e_debut">
+        <label>Période concernée — fin</label>
+        <input type="datetime-local" id="e_fin">
+
+        <label>Caméra(s) concernée(s)</label>
+        <input type="text" id="e_cameras" placeholder="Ex : CAM-03, CAM-07">
+
+        <label>Motif détaillé</label>
+        <textarea id="e_motif" placeholder="Objet de l'extraction"></textarea>
+
+        <label>Destinataire de l'extraction</label>
+        <input type="text" id="e_destinataire" placeholder="À qui le support est remis">
+
+        <label>Support de remise</label>
+        <select id="e_support">
+            <option value="">— Choisir —</option>
+            <option>Clé USB chiffrée</option>
+            <option>Transfert sécurisé</option>
+            <option>Remise en main propre</option>
+            <option>Gravure DVD</option>
+        </select>
+
+        <div class="rgpd-note">
+            ⚖️ L'extraction n'est légale que sur base d'une demande justifiée (réquisition, plainte,
+            droit d'accès). Conservez le justificatif. L'enregistrement de cette extraction au registre
+            est obligatoire et opposable.
+        </div>
+    </div>
+</div>
+
+<button class="btn" id="btnSave" onclick="enregistrer()">💾 Enregistrer au registre</button>
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<div id="toast"></div>
+
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
-
 <script>
-    // Config loaded from supabaseClient.js
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh3cWxhamR5dG54YXZxaWdtemlvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5Mzg1NjgsImV4cCI6MjA4OTUxNDU2OH0.riGzQlfEPmo9SVK9Rs_fl33DnC5RR5qd2OUhgk4Twvs" // Mets ta clé ici
+let mode = "consultation";
 
-    // Using supabaseClient from supabaseClient.js
+function switchMode(m) {
+    mode = m;
+    document.getElementById("tab-consultation").classList.toggle("active", m === "consultation");
+    document.getElementById("tab-extraction").classList.toggle("active", m === "extraction");
+    document.getElementById("form-consultation").style.display = (m === "consultation") ? "block" : "none";
+    document.getElementById("form-extraction").style.display = (m === "extraction") ? "block" : "none";
+}
 
-    // INSERTION
-    document.getElementById("hsForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
+function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg; t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 3500);
+}
 
-        const site = document.getElementById("site").value;
-        const zone = document.getElementById("zone").value;
-        const boucle = document.getElementById("boucle").value;
-        const point = document.getElementById("point").value;
-        const adresse = document.getElementById("adresse").value;
-        const dateRaw = document.getElementById("date_hs").value;
-        // Ajouter le fuseau horaire local pour éviter le décalage UTC
-        const tzOffset = -new Date().getTimezoneOffset();
-        const tzSign = tzOffset >= 0 ? "+" : "-";
-        const tzH = String(Math.floor(Math.abs(tzOffset)/60)).padStart(2,"0");
-        const tzM = String(Math.abs(tzOffset)%60).padStart(2,"0");
-        const date_hs = dateRaw ? dateRaw + ":00" + tzSign + tzH + ":" + tzM : null;
-        const motif = document.getElementById("motif").value;
+document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("dateNow").textContent = new Date().toLocaleString("fr-FR");
+    document.getElementById("agentNow").textContent = localStorage.getItem("nom") || "—";
+    // ?action=extraction ouvre directement le bon onglet
+    const action = new URLSearchParams(location.search).get("action");
+    if (action === "extraction") switchMode("extraction");
+});
 
-        const agent = "NomAgent"; 
-        const statut = "hors_service";
+async function enregistrer() {
+    const btn = document.getElementById("btnSave");
+    const agent = localStorage.getItem("nom") || "—";
+    let payload, titre, description, champs;
 
-        const { error } = await supabaseClient
-            .from("dai_hors_service")
-            .insert([{ site, zone, boucle, point, adresse, date_hs, motif, agent, statut }]);
-
-        const msg = document.getElementById("message");
-
-        if (error) {
-            msg.innerHTML = `<div class="error">Erreur : ${error.message}</div>`;
-        } else {
-            msg.innerHTML = `<div class="success">Mise hors service enregistrée.</div>`;
-            document.getElementById("hsForm").reset();
-            loadHS();
-        }
-    });
-
-    // AFFICHAGE
-    async function loadHS() {
-        const { data, error } = await supabaseClient
-            .from("dai_hors_service")
-            .select("*")
-            .eq("statut", "hors_service")
-            .order("date_hs", { ascending: false });
-
-        const list = document.getElementById("hsList");
-        list.innerHTML = "";
-
-        if (error) {
-            list.innerHTML = `<tr class="empty-row"><td colspan="8">Erreur chargement : ${error.message}</td></tr>`;
-            return;
-        }
-
-        if (!data || data.length === 0) {
-            list.innerHTML = `<tr class="empty-row"><td colspan="8">Aucune DAI actuellement hors service.</td></tr>`;
-            return;
-        }
-
-        /* Échappement HTML pour éviter qu'un motif/adresse contenant < > & ne casse la mise en page */
-        const esc = (s) => {
-            if (s === null || s === undefined) return "";
-            const d = document.createElement("div");
-            d.textContent = String(s);
-            return d.innerHTML;
+    if (mode === "consultation") {
+        const cameras = document.getElementById("c_cameras").value.trim();
+        const motif   = document.getElementById("c_motif").value.trim();
+        if (!cameras || !motif) { showToast("⚠️ Renseigne au moins les caméras et le motif."); return; }
+        champs = {
+            cameras,
+            zone:   document.getElementById("c_zone").value.trim(),
+            type:   document.getElementById("c_type").value,
+            motif,
+            observations: document.getElementById("c_obs").value.trim()
         };
+        titre = "Consultation vidéo — " + cameras;
+        description = "Consultation de flux vidéo\n" +
+            "Caméras : " + cameras + "\n" +
+            "Zone : " + (champs.zone || "—") + "\n" +
+            "Type : " + (champs.type || "—") + "\n" +
+            "Motif : " + motif +
+            (champs.observations ? "\nObservations : " + champs.observations : "");
+    } else {
+        const demandeur = document.getElementById("e_demandeur").value.trim();
+        const base      = document.getElementById("e_base").value;
+        const cameras   = document.getElementById("e_cameras").value.trim();
+        if (!demandeur || !base || !cameras) { showToast("⚠️ Demandeur, base légale et caméras sont obligatoires."); return; }
+        champs = {
+            demandeur,
+            qualite:     document.getElementById("e_qualite").value,
+            base_legale: base,
+            reference:   document.getElementById("e_ref").value.trim(),
+            periode_debut: document.getElementById("e_debut").value,
+            periode_fin:   document.getElementById("e_fin").value,
+            cameras,
+            motif:       document.getElementById("e_motif").value.trim(),
+            destinataire: document.getElementById("e_destinataire").value.trim(),
+            support:     document.getElementById("e_support").value
+        };
+        titre = "Extraction vidéo — " + demandeur + " (" + base + ")";
+        description = "Extraction d'enregistrement vidéo\n" +
+            "Demandeur : " + demandeur + " (" + (champs.qualite || "—") + ")\n" +
+            "Base légale : " + base + (champs.reference ? " — réf. " + champs.reference : "") + "\n" +
+            "Période : " + (champs.periode_debut || "?") + " → " + (champs.periode_fin || "?") + "\n" +
+            "Caméras : " + cameras + "\n" +
+            "Motif : " + (champs.motif || "—") + "\n" +
+            "Destinataire : " + (champs.destinataire || "—") + " · Support : " + (champs.support || "—");
+    }
 
-        data.forEach(item => {
-            const dateFmt = item.date_hs
-                ? new Date(item.date_hs).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })
-                : "—";
-
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td class="cell-short" title="${esc(item.site)}">${esc(item.site) || "—"}</td>
-                <td class="cell-short" title="${esc(item.zone)}">${esc(item.zone) || "—"}</td>
-                <td class="cell-short" title="${esc(item.boucle)}">${esc(item.boucle) || "—"}</td>
-                <td class="cell-short" title="${esc(item.point)}">${esc(item.point) || "—"}</td>
-                <td class="cell-wrap"  title="${esc(item.adresse)}">${esc(item.adresse) || "—"}</td>
-                <td class="cell-short" title="${dateFmt}">${dateFmt}</td>
-                <td class="cell-wrap"  title="${esc(item.motif)}">${esc(item.motif) || "—"}</td>
-                <td><button type="button" class="btn-rs" onclick="remiseService('${item.id}')">Remettre en service</button></td>
-            `;
-            list.appendChild(row);
+    btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
+    try {
+        const { error } = await supabaseClient.from("rapports").insert({
+            type: (mode === "consultation") ? "video_consultation" : "video_extraction",
+            service: "surete",  // la vidéosurveillance relève toujours de la sûreté
+            titre,
+            description,
+            localisation: champs.zone || champs.cameras || "Vidéosurveillance",
+            statut: "cloture",
+            priorite: (mode === "extraction") ? "haute" : "normale",
+            meta: {
+                agent_nom: agent,
+                registre: "videosurveillance",
+                mode,
+                champs_specifiques: champs,
+                horodatage: new Date().toISOString()
+            }
         });
+        if (error) throw error;
+        showToast("✅ Enregistré au registre vidéosurveillance");
+        setTimeout(() => window.location.href = "index.html", 1200);
+    } catch (e) {
+        console.error(e);
+        showToast("❌ Erreur : " + (e.message || e));
+        btn.disabled = false; btn.textContent = "💾 Enregistrer au registre";
     }
-
-    // REMISE EN SERVICE -> suppression de la ligne dans Supabase
-    async function remiseService(id) {
-        if (!confirm("Confirmer la remise en service ? La ligne sera supprimée.")) {
-            return;
-        }
-
-        const { error } = await supabaseClient
-            .from("dai_hors_service")
-            .delete()
-            .eq("id", id);
-
-        const msg = document.getElementById("message");
-
-        if (error) {
-            msg.innerHTML = `<div class="error">Erreur suppression : ${error.message}</div>`;
-            return;
-        }
-
-        msg.innerHTML = `<div class="success">DAI remise en service (ligne supprimée).</div>`;
-        loadHS();
-    }
-
-    loadHS();
+}
 </script>
-
-<script src="security.js"></script>
 <script src="global.js"></script>
 <script src="notifications_global.js"></script>
 </body>

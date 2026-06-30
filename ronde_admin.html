@@ -6,311 +6,166 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Gestion des rondes</title>
+<title>Entrée & Sortie — Personnel / Société / Livraison</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="global.css">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
-
-/* HEADER */
-.header{display:flex;align-items:center;gap:12px;margin-bottom:28px}
-.back-btn{background:rgba(77,163,255,0.12);border:1px solid rgba(77,163,255,0.3);color:#4da3ff;padding:8px 14px;border-radius:10px;cursor:pointer;font:600 0.9rem 'DM Sans';transition:.2s}
-.back-btn:hover{background:#4da3ff;color:#0b0e17}
-.header h1{font-size:1.5rem;color:#4da3ff;letter-spacing:-0.5px;flex:1}
-
-/* SECTIONS */
-.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;margin-bottom:20px}
-.card h2{font-size:1.1rem;color:#4da3ff;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.card h2 .icon{font-size:1.3rem}
-
-/* FORMS */
-label{display:block;font-size:.85rem;font-weight:600;color:#8899bb;margin:12px 0 4px;letter-spacing:.3px}
-input,textarea,select{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:0.95rem 'DM Sans';transition:.2s}
-input:focus,textarea:focus,select:focus{outline:none;border-color:#4da3ff;box-shadow:0 0 0 3px rgba(77,163,255,0.15)}
-textarea{min-height:70px;resize:vertical}
-select option{background:#1a1e2e;color:#e0e4ef}
-
-/* BUTTONS */
-.btn{padding:12px 16px;border:none;border-radius:10px;font:600 0.95rem 'DM Sans';cursor:pointer;width:100%;transition:.2s;margin-top:12px}
-.btn-primary{background:linear-gradient(135deg,#4da3ff,#2b7de9);color:#fff;box-shadow:0 4px 16px rgba(77,163,255,0.25)}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(77,163,255,0.35)}
-.btn-danger{background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3)}
-.btn-danger:hover{background:#ef4444;color:#fff}
-.btn-secondary{background:rgba(255,255,255,0.08);color:#8899bb;border:1px solid rgba(255,255,255,0.12)}
-.btn-secondary:hover{background:rgba(255,255,255,0.15);color:#fff}
-.btn-sm{padding:6px 12px;font-size:.85rem;width:auto;margin:0;border-radius:8px}
-
-/* TAG TYPE SELECTOR */
-.tag-type-row{display:flex;gap:8px;margin:8px 0 12px}
-.tag-opt{flex:1;padding:10px;border-radius:10px;text-align:center;cursor:pointer;font-weight:600;font-size:.9rem;border:2px solid rgba(255,255,255,0.1);transition:.2s}
-.tag-opt.active{border-color:#4da3ff;background:rgba(77,163,255,0.12);color:#4da3ff}
-.tag-opt:hover{border-color:rgba(77,163,255,0.4)}
-
-/* TABLE */
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{padding:10px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.06);font-size:.9rem}
-th{color:#4da3ff;font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.5px}
-tr:hover td{background:rgba(255,255,255,0.03)}
-
-/* RONDE LIST */
-.ronde-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.ronde-card .info{flex:1;min-width:200px}
-.ronde-card .info strong{color:#e0e4ef;font-size:.95rem}
-.ronde-card .info small{display:block;color:#6b7a99;margin-top:2px;font-size:.8rem}
-.ronde-card .badges{display:flex;gap:6px;flex-wrap:wrap}
-.pill{padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:600}
-.pill-type{background:rgba(77,163,255,0.15);color:#4da3ff}
-.pill-pts{background:rgba(0,200,120,0.15);color:#00c878}
-.pill-status{background:rgba(255,180,50,0.15);color:#ffb432}
-
-/* EMPTY */
-.empty{text-align:center;padding:30px;color:#4a5578;font-size:.95rem}
-
-/* RESPONSIVE */
-@media(max-width:500px){.header h1{font-size:1.2rem}.ronde-card{flex-direction:column;align-items:flex-start}}
+h1 { color:var(--accent); text-align:center; margin-bottom:25px; font-size:1.8rem; }
+.menu-return { display:flex; justify-content:flex-start; margin-bottom:20px; }
+.menu-return button { background:var(--bg2); border:1px solid var(--border); padding:8px 16px; border-radius:10px; color:var(--accent); cursor:pointer; transition:0.25s; }
+.menu-return button:hover { background:var(--accent); color:#000; }
+.card { background:var(--card); border:1px solid var(--border); padding:20px; border-radius:14px; margin-bottom:25px; box-shadow:var(--shadow); }
+.info { margin-bottom:8px; font-size:1rem; opacity:0.9; }
+h3 { margin-top:20px; margin-bottom:8px; color:var(--accent); font-size:1.2rem; }
+input, select { width:100%; padding:12px; margin-top:6px; border-radius:10px; border:1px solid var(--border); background:var(--bg2); color:var(--text); font-size:1rem; }
+select option { background:var(--card); color:var(--text); }
+textarea { width:100%; height:150px; background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--text); resize:none; margin-top:10px; }
+button { margin-top:15px; padding:14px; background:linear-gradient(135deg,#7ab8ff,#4d9dff); border:none; border-radius:10px; color:#0a0f1c; cursor:pointer; width:100%; font-size:1.1rem; font-weight:700; box-shadow:0 4px 12px rgba(122,184,255,0.4); transition:0.25s; }
+button:hover { transform:translateY(-2px); }
+button:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+.btn-secondary { background:var(--accent); color:#000; font-weight:600; }
+.hidden { display:none; }
 </style>
 </head>
 <body>
+<h1>Entrée & Sortie — Personnel / Société / Livraison</h1>
+<div class="menu-return"><button onclick="location.href='index.html'">⟵ Menu</button></div>
 
-<div class="header">
-    <button class="back-btn" onclick="location.href='index.html'">⟵</button>
-    <h1>Gestion des rondes</h1>
+<div class="card">
+    <div class="info">👤 Agent : <span id="nom"></span></div>
+    <div class="info">🎖 Statut : <span id="statut"></span></div>
+    <div class="info">📅 Date : <span id="dateDuJour"></span></div>
 </div>
 
-<!-- ZONES DE PASSAGE -->
 <div class="card">
-    <h2><span class="icon">📍</span> Zones de passage</h2>
-    <div style="display:flex;gap:8px">
-        <input type="text" id="zoneInput" placeholder="Ex : Escalier A, Local TGBT, Parking -1" style="flex:1">
-        <button class="btn btn-primary btn-sm" onclick="ajouterZone()" style="width:auto;margin:0">+ Ajouter</button>
-    </div>
-    <table id="zonesTableWrap"><thead><tr><th>Zone</th><th style="width:60px"></th></tr></thead>
-    <tbody id="zonesTable"></tbody></table>
-</div>
-
-<!-- CRÉER UNE RONDE -->
-<div class="card">
-    <h2><span class="icon">🛡</span> Créer une ronde</h2>
-
-    <label>Nom de la ronde</label>
-    <input type="text" id="nomRonde" placeholder="Ex : Ronde ouverture matin">
-
-    <label>Type</label>
-    <select id="typeRonde">
-        <option value="ronde_ouverture">🌅 Ronde d'ouverture</option>
-        <option value="ronde_travaux">🏗 Ronde Travaux</option>
-        <option value="ronde_permis_feu">🔥 Ronde Permis feu</option>
-        <option value="ronde_issues_secours">🚪 Ronde Issues de secours</option>
-        <option value="ronde_surface_vente">🛍 Ronde Surface de vente</option>
-        <option value="ronde_technique">⚙️ Ronde Technique</option>
-        <option value="ronde_fermeture">🌙 Ronde de fermeture</option>
+    <h3>Type d'entrée</h3>
+    <select id="typeEntree">
+        <option value="personnel">Personnel</option>
+        <option value="societe">Société</option>
+        <option value="livraison">Livraison</option>
     </select>
 
-    <label>Description</label>
-    <textarea id="descRonde" placeholder="Instructions pour l'agent…"></textarea>
-
-    <button class="btn btn-primary" onclick="creerRonde()">Créer la ronde →</button>
-</div>
-
-<!-- POINTS DE PASSAGE -->
-<div class="card" id="sectionPoints" style="display:none">
-    <h2><span class="icon">📡</span> Points de passage — <span id="rondeNomDisplay"></span></h2>
-
-    <label>Zone</label>
-    <select id="zoneSelect"></select>
-
-    <label>Type de pointeau</label>
-    <div class="tag-type-row">
-        <div class="tag-opt active" id="optNFC" onclick="setTagType('nfc')">📱 NFC</div>
-        <div class="tag-opt" id="optBLE" onclick="setTagType('ble')">📡 BLE</div>
+    <div id="blocSociete">
+        <h3>Nom de la société ou employé</h3>
+        <select id="societe">
+            <option value="Le Bon Marché">Le Bon Marché</option>
+            <option value="La Grande Épicerie Rive Gauche">La Grande Épicerie Rive Gauche</option>
+            <option value="La Samaritaine">La Samaritaine</option>
+            <option value="Autre">Autre (à préciser)</option>
+        </select>
+        <input type="text" id="autreSociete" placeholder="Nom personnalisé" class="hidden">
     </div>
 
-    <label id="labelTagId">UID du tag NFC</label>
-    <input type="text" id="tagId" placeholder="Ex : 04:A2:B3:C4:D5:E6:F7">
+    <h3 id="labelNb">Nombre de personnes</h3>
+    <input type="number" id="nbPersonnes" min="1" placeholder="Ex : 3">
 
-    <button class="btn btn-secondary" onclick="ajouterPoint()">+ Ajouter ce point</button>
+    <div id="blocLivraison" class="hidden">
+        <h3>Société de livraison</h3>
+        <select id="livraisonSociete">
+            <option value="Chronopost">Chronopost</option>
+            <option value="Colissimo">Colissimo</option>
+            <option value="DHL">DHL</option>
+            <option value="UPS">UPS</option>
+            <option value="FedEx">FedEx</option>
+            <option value="Autre">Autre (à préciser)</option>
+        </select>
+        <input type="text" id="livraisonAutre" placeholder="Nom personnalisé" class="hidden">
+        <h3>Nombre de colis / palettes</h3>
+        <input type="number" id="nbColis" min="1" placeholder="Ex : 12">
+    </div>
 
-    <table><thead><tr><th>#</th><th>Zone</th><th>Type</th><th>ID Tag</th><th></th></tr></thead>
-    <tbody id="tablePoints"></tbody></table>
+    <h3>Heure d'entrée</h3><input type="time" id="heureEntree">
+    <h3>Heure de sortie</h3><input type="time" id="heureSortie">
+    <p style="font-size:0.85rem; opacity:0.7; margin-top:4px;">
+        💡 Laisser l'heure de sortie vide pour créer un rapport « ouvert »
+        à clôturer plus tard depuis la page « Rapports ouverts ».
+    </p>
+    <h3>Observations (optionnel)</h3><textarea id="observations" placeholder="Notes supplémentaires…"></textarea>
 
-    <button class="btn btn-primary" onclick="sauvegarderRonde()" style="margin-top:16px">💾 Enregistrer la ronde</button>
+    <button id="save">💾 Enregistrer</button>
+    <button class="btn-secondary" onclick="window.print()">📄 Exporter en PDF</button>
+    <button class="btn-secondary" onclick="location.href='rapport_entree_sortie_ouverts.html'">📂 Voir les rapports ouverts</button>
 </div>
 
-<!-- RONDES EXISTANTES -->
-<div class="card">
-    <h2><span class="icon">📋</span> Rondes enregistrées</h2>
-    <div id="listeRondes"><div class="empty">Chargement…</div></div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
 <script>
-if(typeof showToast!=="function") window.showToast=function(m,e){alert(m)};
+document.getElementById("nom").textContent = localStorage.getItem("nom");
+document.getElementById("statut").textContent = localStorage.getItem("statut");
+document.getElementById("dateDuJour").textContent = new Date().toLocaleDateString("fr-FR");
 
-/* ============================================================
-   ZONES (localStorage pour persistance locale)
-============================================================ */
-let zones = JSON.parse(localStorage.getItem("ronde_zones") || "[]");
+document.getElementById("typeEntree").addEventListener("change", function() {
+    const t = this.value;
+    document.getElementById("blocSociete").classList.toggle("hidden", t==="livraison");
+    document.getElementById("blocLivraison").classList.toggle("hidden", t!=="livraison");
+    document.getElementById("labelNb").textContent = t==="livraison" ? "Nombre de colis / palettes" : "Nombre de personnes";
+});
+document.getElementById("societe").addEventListener("change", function() { document.getElementById("autreSociete").classList.toggle("hidden", this.value!=="Autre"); });
+document.getElementById("livraisonSociete").addEventListener("change", function() { document.getElementById("livraisonAutre").classList.toggle("hidden", this.value!=="Autre"); });
 
-function saveZones() { localStorage.setItem("ronde_zones", JSON.stringify(zones)); }
+document.getElementById("save").addEventListener("click", async () => {
+    const btn = document.getElementById("save");
+    btn.disabled = true; btn.textContent = "⏳ Enregistrement...";
 
-function afficherZones() {
-    const tbody = document.getElementById("zonesTable");
-    tbody.innerHTML = "";
-    if (zones.length === 0) { tbody.innerHTML = '<tr><td colspan="2" style="color:#4a5578;text-align:center">Aucune zone</td></tr>'; }
-    zones.forEach((z, i) => {
-        tbody.innerHTML += `<tr>
-            <td>${z}</td>
-            <td><button class="btn-danger btn-sm" onclick="supprimerZone(${i})">✕</button></td>
-        </tr>`;
-    });
-    remplirZonesSelect();
-}
-
-function ajouterZone() {
-    const z = document.getElementById("zoneInput").value.trim();
-    if (!z) return;
-    zones.push(z);
-    saveZones();
-    document.getElementById("zoneInput").value = "";
-    afficherZones();
-}
-
-function supprimerZone(i) { zones.splice(i, 1); saveZones(); afficherZones(); }
-
-function remplirZonesSelect() {
-    const s = document.getElementById("zoneSelect");
-    s.innerHTML = "";
-    zones.forEach(z => { const o = document.createElement("option"); o.value = z; o.textContent = z; s.appendChild(o); });
-}
-
-afficherZones();
-
-/* ============================================================
-   TAG TYPE (NFC / BLE)
-============================================================ */
-let tagType = "nfc";
-
-function setTagType(t) {
-    tagType = t;
-    document.getElementById("optNFC").classList.toggle("active", t === "nfc");
-    document.getElementById("optBLE").classList.toggle("active", t === "ble");
-    document.getElementById("labelTagId").textContent = t === "nfc" ? "UID du tag NFC" : "ID Balise BLE";
-    document.getElementById("tagId").placeholder = t === "nfc" ? "Ex : 04:A2:B3:C4:D5:E6:F7" : "Ex : BEACON-TGBT-002";
-}
-
-/* ============================================================
-   CRÉATION DE RONDE
-============================================================ */
-let ronde = { nom: "", description: "", type: "", points: [] };
-
-function creerRonde() {
-    const nom = document.getElementById("nomRonde").value.trim();
-    if (!nom) { alert("Nom requis."); return; }
-    if (zones.length === 0) { alert("Ajoutez au moins une zone d'abord."); return; }
-    ronde = { nom, description: document.getElementById("descRonde").value.trim(), type: document.getElementById("typeRonde").value, points: [] };
-    document.getElementById("sectionPoints").style.display = "block";
-    document.getElementById("rondeNomDisplay").textContent = nom;
-    afficherPoints();
-}
-
-function ajouterPoint() {
-    const zone = document.getElementById("zoneSelect").value;
-    const id = document.getElementById("tagId").value.trim();
-    if (!zone) { alert("Sélectionnez une zone."); return; }
-    if (!id) { alert("Saisissez l'ID du tag."); return; }
-    ronde.points.push({ nom: zone, tagType: tagType, tagId: id, valide: false, horodatage: null });
-    document.getElementById("tagId").value = "";
-    afficherPoints();
-}
-
-function afficherPoints() {
-    const tbody = document.getElementById("tablePoints");
-    tbody.innerHTML = "";
-    ronde.points.forEach((p, i) => {
-        const icon = p.tagType === "nfc" ? "📱" : "📡";
-        tbody.innerHTML += `<tr>
-            <td>${i + 1}</td>
-            <td>${p.nom}</td>
-            <td>${icon} ${p.tagType.toUpperCase()}</td>
-            <td style="font-family:monospace;font-size:.85rem">${p.tagId}</td>
-            <td><button class="btn-danger btn-sm" onclick="supprimerPoint(${i})">✕</button></td>
-        </tr>`;
-    });
-}
-
-function supprimerPoint(i) { ronde.points.splice(i, 1); afficherPoints(); }
-
-async function sauvegarderRonde() {
-    if (ronde.points.length === 0) { alert("Ajoutez au moins un point de passage."); return; }
     try {
-        const { error } = await supabaseClient.from("rondes").insert({
-            type: ronde.type,
-            statut: "en_cours",
-            observations: ronde.description,
-            debut_at: new Date().toISOString(),
-            meta: {
-                nom: ronde.nom,
-                points: ronde.points
-            }
+        const type = document.getElementById("typeEntree").value;
+        let entreprise = "";
+        let nomPersonne = "";
+        let motif = "";
+        let nbPersonnes = null;
+        let nbColis = null;
+
+        if (type === "personnel" || type === "societe") {
+            entreprise = document.getElementById("societe").value;
+            if (entreprise === "Autre") entreprise = document.getElementById("autreSociete").value || "Non précisé";
+            motif = type === "personnel" ? "personnel" : "société";
+            nomPersonne = entreprise;
+            nbPersonnes = parseInt(document.getElementById("nbPersonnes").value || "0", 10) || null;
+        } else {
+            entreprise = document.getElementById("livraisonSociete").value;
+            if (entreprise === "Autre") entreprise = document.getElementById("livraisonAutre").value || "Non précisé";
+            motif = "livraison";
+            nomPersonne = entreprise;
+            nbColis = parseInt(document.getElementById("nbColis").value || "0", 10) || null;
+        }
+
+        const heureEntree = document.getElementById("heureEntree").value;
+        const heureSortie = document.getElementById("heureSortie").value;
+        const now = new Date();
+        let heureEntreeTs = null, heureSortieTs = null;
+        if (heureEntree) { const [h,m] = heureEntree.split(":"); heureEntreeTs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).toISOString(); }
+        if (heureSortie) { const [h,m] = heureSortie.split(":"); heureSortieTs = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m).toISOString(); }
+
+        // Validation : on doit au moins avoir l'heure d'entrée
+        if (!heureEntreeTs) {
+            throw new Error("L'heure d'entrée est obligatoire.");
+        }
+
+        const { error } = await supabaseClient.from("rapports_entree_sortie").insert({
+            type_mouvement: "entree",
+            type_entree:    type,
+            nom_personne:   nomPersonne,
+            entreprise:     entreprise,
+            motif:          motif,
+            nb_personnes:   nbPersonnes,
+            nb_colis:       nbColis,
+            badge_numero:   null,
+            zone:           null,
+            heure_entree:   heureEntreeTs,
+            heure_sortie:   heureSortieTs,
+            statut:         heureSortieTs ? "cloture" : "ouvert",
+            observations:   document.getElementById("observations").value,
+            agent_nom:      localStorage.getItem("nom") || null
         });
         if (error) throw error;
-        showToast("✅ Ronde « " + ronde.nom + " » enregistrée !");
-        document.getElementById("sectionPoints").style.display = "none";
-        document.getElementById("nomRonde").value = "";
-        document.getElementById("descRonde").value = "";
-        ronde = { nom: "", description: "", type: "", points: [] };
-        chargerRondes();
-    } catch (e) {
-        showToast("❌ " + (e.message || e), true);
+        showToast("✅ Rapport entrée/sortie enregistré !");
+        setTimeout(() => location.href="index.html", 1200);
+    } catch(e) {
+        showToast("❌ "+e.message, true);
+        btn.disabled = false; btn.textContent = "💾 Enregistrer";
     }
-}
-
-/* ============================================================
-   RONDES EXISTANTES
-============================================================ */
-async function chargerRondes() {
-    const { data, error } = await supabaseClient.from("rondes").select("*").order("created_at", { ascending: false }).limit(30);
-    const div = document.getElementById("listeRondes");
-
-    if (error) { div.innerHTML = '<div class="empty">Erreur : ' + error.message + '</div>'; return; }
-    if (!data || data.length === 0) { div.innerHTML = '<div class="empty">Aucune ronde enregistrée.</div>'; return; }
-
-    div.innerHTML = "";
-    data.forEach(r => {
-        const dt = new Date(r.created_at).toLocaleString("fr-FR");
-        const nom = (r.meta && r.meta.nom) || r.type || "Ronde";
-        const pts = (r.meta && r.meta.points) ? r.meta.points.length : 0;
-        const valides = (r.meta && r.meta.points) ? r.meta.points.filter(p => p.valide).length : 0;
-        const statusLabel = r.statut === "terminee" ? "Terminée" : "En cours";
-
-        const el = document.createElement("div");
-        el.className = "ronde-card";
-        el.innerHTML = `
-            <div class="info">
-                <strong>${nom}</strong>
-                <small>${dt} — ${r.observations || ""}</small>
-            </div>
-            <div class="badges">
-                <span class="pill pill-type">${r.type || "—"}</span>
-                <span class="pill pill-pts">${valides}/${pts} pts</span>
-                <span class="pill pill-status">${statusLabel}</span>
-                <button class="btn-danger btn-sm" onclick="supprimerRonde('${r.id}')">🗑</button>
-            </div>
-        `;
-        div.appendChild(el);
-    });
-}
-
-async function supprimerRonde(id) {
-    if (!confirm("Supprimer cette ronde ?")) return;
-    await supabaseClient.from("rondes").delete().eq("id", id);
-    chargerRondes();
-}
-
-chargerRondes();
+});
 </script>
 <script src="security.js"></script>
 <script src="global.js"></script>

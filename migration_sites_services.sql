@@ -1,82 +1,141 @@
--- ═══════════════════════════════════════════════════════════════
---  MIGRATION : tables sites & services + bootstrap super-admin
---  ----------------------------------------------------------------
---  À exécuter dans Supabase Studio → SQL Editor → New query.
---  Vérifie chaque section avant d'exécuter. Tout est idempotent.
--- ═══════════════════════════════════════════════════════════════
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8">
+<title>Signature numérique</title>
 
--- ─── 1. Table `sites` ──────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS public.sites (
-    code        TEXT PRIMARY KEY,
-    nom         TEXT NOT NULL,
-    created_at  TIMESTAMPTZ DEFAULT now(),
-    updated_at  TIMESTAMPTZ DEFAULT now()
-);
+<!-- 🎨 Design global -->
+<link rel="stylesheet" href="global.css">
 
--- ─── 2. Table `services` ───────────────────────────────────────
-CREATE TABLE IF NOT EXISTS public.services (
-    code        TEXT PRIMARY KEY,
-    nom         TEXT NOT NULL,
-    couleur     TEXT,
-    created_at  TIMESTAMPTZ DEFAULT now(),
-    updated_at  TIMESTAMPTZ DEFAULT now()
-);
+<style>
+/* Ajustements MINIMAUX pour le canvas (nécessaires) */
+.signature-container {
+    width: 100%;
+    max-width: 500px;
+    margin: auto;
+    text-align: center;
+}
 
--- ─── 3. Trigger updated_at (générique, réutilisable) ───────────
-CREATE OR REPLACE FUNCTION public.set_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = now();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+canvas {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    height: 220px;
+    border: 2px solid var(--border);
+    touch-action: none;
+}
+</style>
+</head>
 
-DROP TRIGGER IF EXISTS trg_sites_updated   ON public.sites;
-DROP TRIGGER IF EXISTS trg_services_updated ON public.services;
-CREATE TRIGGER trg_sites_updated    BEFORE UPDATE ON public.sites    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-CREATE TRIGGER trg_services_updated BEFORE UPDATE ON public.services FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+<body>
 
--- ─── 4. Seed initial (valeurs hard-codées actuelles) ───────────
-INSERT INTO public.sites (code, nom) VALUES
-    ('LBM',  'Le Bon Marché'),
-    ('SAM',  'Samaritaine'),
-    ('GERD', 'La Grande Épicerie Rive Droite'),
-    ('GERG', 'La Grande Épicerie Rive Gauche'),
-    ('MH',   'Moët Hennessy')
-ON CONFLICT (code) DO NOTHING;
 
-INSERT INTO public.services (code, nom, couleur) VALUES
-    ('incendie',          'Sécurité Incendie', '#ef4444'),
-    ('surete',            'Sûreté',            '#3b82f6'),
-    ('technique',         'Technique',         '#f59e0b'),
-    ('services_generaux', 'Services Généraux', '#10b981')
-ON CONFLICT (code) DO NOTHING;
 
--- ─── 5. RLS : lecture publique, écriture sous responsabilité front ──
--- L'application utilise l'anon key + check côté client (rôle superadmin).
--- Pour durcir : remplacer la policy d'écriture par une vérification JWT
--- custom une fois que l'edge function login renverra un JWT signé.
-ALTER TABLE public.sites    ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+<script>
+// Sécurisation : accès uniquement si connecté
+if (!localStorage.getItem("nom")) {
+    alert("Veuillez vous connecter");
+    window.location.href = "login.html";
+}
+</script>
 
-DROP POLICY IF EXISTS "sites_read_all"      ON public.sites;
-DROP POLICY IF EXISTS "sites_write_all"     ON public.sites;
-DROP POLICY IF EXISTS "services_read_all"   ON public.services;
-DROP POLICY IF EXISTS "services_write_all"  ON public.services;
+<div class="page-container">
 
-CREATE POLICY "sites_read_all"     ON public.sites    FOR SELECT USING (true);
-CREATE POLICY "sites_write_all"    ON public.sites    FOR ALL    USING (true) WITH CHECK (true);
-CREATE POLICY "services_read_all"  ON public.services FOR SELECT USING (true);
-CREATE POLICY "services_write_all" ON public.services FOR ALL    USING (true) WITH CHECK (true);
+<h1 class="title">Signature numérique</h1>
+<p style="text-align:center; opacity:0.8;">Veuillez signer ci-dessous :</p>
 
--- ─── 6. BOOTSTRAP DU PREMIER SUPER-ADMIN ───────────────────────
--- Remplacer 'TON_NOM_UTILISATEUR' par le `nom` exact (case-sensitive)
--- d'un compte existant dans la table `users`. Une fois ce user promu,
--- il pourra promouvoir les suivants via l'UI (gestion_de_compte.html).
---
--- DÉCOMMENTER LA LIGNE SUIVANTE ET METTRE LE BON NOM AVANT D'EXÉCUTER :
+<div class="signature-container">
+    <canvas id="sig"></canvas>
 
--- UPDATE public.users SET role = 'superadmin' WHERE nom = 'TON_NOM_UTILISATEUR';
+    <button class="btn" onclick="clearSig()">Effacer</button>
+    <button class="btn" onclick="saveSig()">Enregistrer la signature</button>
+    <button class="btn" onclick="location.href='accueil.html'">Retour à l’accueil</button>
+</div>
 
--- Vérifier ensuite :
--- SELECT id, nom, role, site_code, service FROM public.users WHERE role = 'superadmin';
+</div>
+
+<script>
+const canvas = document.getElementById("sig");
+const ctx = canvas.getContext("2d");
+
+let drawing = false;
+
+// Ajuste la taille réelle du canvas
+function resizeCanvas() {
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+}
+resizeCanvas();
+
+// Position relative
+function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+        x: (e.clientX || e.touches[0].clientX) - rect.left,
+        y: (e.clientY || e.touches[0].clientY) - rect.top
+    };
+}
+
+// Souris
+canvas.addEventListener("mousedown", e => {
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+});
+canvas.addEventListener("mousemove", e => {
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+});
+canvas.addEventListener("mouseup", () => drawing = false);
+canvas.addEventListener("mouseleave", () => drawing = false);
+
+// Touch (Android / iPhone)
+canvas.addEventListener("touchstart", e => {
+    e.preventDefault();
+    drawing = true;
+    const p = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+});
+canvas.addEventListener("touchmove", e => {
+    e.preventDefault();
+    if (!drawing) return;
+    const p = getPos(e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+});
+canvas.addEventListener("touchend", () => drawing = false);
+
+// Effacer
+function clearSig() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// Enregistrer
+function saveSig() {
+    const data = canvas.toDataURL("image/png");
+    const nom = localStorage.getItem("nom") || "inconnu";
+
+    localStorage.setItem("signature_" + nom, data);
+
+    alert("Signature enregistrée !");
+}
+</script>
+
+<script src="security.js"></script>
+<script src="global.js"></script>
+
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script src="notifications_global.js"></script>
+</body>
+</html>

@@ -1,17 +1,924 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<title>Redirection…</title>
-<meta http-equiv="refresh" content="0; url=consulter_pf.html">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
-<script>
-    // Préserve le query string et le hash le cas échéant
-    var dest = "consulter_pf.html" + (location.search || "") + (location.hash || "");
-    location.replace(dest);
-</script>
+  <meta charset="UTF-8">
+  <title>Permis Feu — Le Bon Marché</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- QR CODE LIB -->
+  <script src="vendor/qrious.min.js" crossorigin="anonymous"></script>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin: 0 0 8px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    input, textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      font-size: 0.9rem;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+    }
+
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .row > div {
+      flex: 1;
+    }
+
+    .btn {
+      width: 100%;
+      border-radius: 999px;
+      padding: 10px 14px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    canvas {
+      width: 100%;
+      height: 150px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+    }
+
+    /* ENTREPRISES : NOM À GAUCHE — BOUTON À DROITE */
+    .radio-group-left label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .radio-group-left label span {
+      flex: 1;
+    }
+
+    .radio-group-left input[type="radio"] {
+      margin-left: 12px;
+      transform: scale(1.3);
+    }
+
+    /* CONSIGNES */
+    .consignes-box {
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      font-size: 0.8rem;
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+
+    /* URGENCE */
+    .urgence-block {
+      margin: 16px 0 0;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(255, 0, 0, 0.06);
+      border: 1px solid rgba(255, 0, 0, 0.25);
+    }
+
+    .urgence-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    }
+
+    .urgence-btn {
+      width: 100%;
+      border-radius: 999px;
+      padding: 10px 14px;
+      border: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .urgence-call {
+      background: #f3f3f3;
+    }
+
+    #btn-urgence-feu {
+      background: linear-gradient(135deg, #ff6d00, #dd2c00);
+      color: #fff;
+    }
+
+    #btn-urgence-svv {
+      background: linear-gradient(135deg, #ff1744, #c62828);
+      color: #fff;
+    }
+
+    @media print {
+      .btn, #btn-urgence-feu, #btn-urgence-svv {
+        display: none !important;
+      }
+    }
+  </style>
 </head>
-<body style="font-family:system-ui;background:#0b0d10;color:#e6e8eb;text-align:center;padding:80px 20px;">
-    <p>Redirection vers <a href="consulter_pf.html" style="color:#d4af37;">consulter_pf.html</a>…</p>
+
+<body>
+
+  <!-- BANDEAU DOCUMENT NON MODIFIABLE -->
+  <div class="card" style="background:#fee2e2; border:1px solid #dc2626;">
+    <strong>📄 DOCUMENT NON MODIFIABLE — VERSION PDF CERTIFIÉE</strong><br>
+    Horodatage : <span id="horodatage"></span>
+  </div>
+
+  <!-- HEADER -->
+  <div class="card">
+    <h1>🔥 Permis Feu — Le Bon Marché</h1>
+    <p>ID : <span id="permis-id">Génération…</span></p>
+
+    <!-- QR CODE -->
+    <canvas id="qr-code" style="width:160px; height:160px; margin-top:10px; border-radius:8px;"></canvas>
+    <p style="font-size:0.8rem; color:#6b7280; margin-top:4px;">Scannez ce QR code pour consulter le permis feu</p>
+  </div><!-- ORDRE DE TRAVAIL -->
+  <div class="card">
+    <h2>Ordre de travail</h2>
+
+    <label>Nom complet</label>
+    <input type="text" id="odt-nom" placeholder="Nom complet de la personne donnant l'ordre">
+
+    <label>Fonction</label>
+    <input type="text" id="odt-fonction" placeholder="Fonction (ex : Chef de service)">
+  </div>
+
+  <!-- ENTREPRISE CONCERNÉE -->
+  <div class="card">
+    <h2>Entreprise concernée</h2>
+
+    <div class="radio-group-left">
+
+      <label>
+        <span>Le Bon Marché</span>
+        <input type="radio" name="ent-concernee" value="Le Bon Marché" checked>
+      </label>
+
+      <label>
+        <span>SEGEP RG</span>
+        <input type="radio" name="ent-concernee" value="SEGEP RG">
+      </label>
+
+      <label>
+        <span>SEGEP RD</span>
+        <input type="radio" name="ent-concernee" value="SEGEP RD">
+      </label>
+
+    </div>
+  </div>
+
+  <!-- ENTREPRISE EXTÉRIEURE -->
+  <div class="card">
+    <h2>Entreprise extérieure</h2>
+
+    <label>Raison sociale</label>
+    <input type="text" id="ext-raison-sociale" placeholder="Raison sociale">
+
+    <label>Représentant qualifié</label>
+    <input type="text" id="ext-representant" placeholder="Nom du représentant qualifié">
+  </div>
+
+  <!-- TRAVAIL À EXÉCUTER -->
+  <div class="card">
+    <h2>Travail à exécuter</h2>
+
+    <label>Magasin</label>
+    <select id="magasin">
+        <option value="">— Sélectionner le site —</option>
+        <option value="Le Bon Marché">Le Bon Marché</option>
+        <option value="La Grande Épicerie Rive Gauche">La Grande Épicerie Rive Gauche</option>
+        <option value="La Grande Épicerie Rive Droite">La Grande Épicerie Rive Droite</option>
+        <option value="La Samaritaine">La Samaritaine</option>
+        <option value="Entrepôt Bagneux">Entrepôt Bagneux</option>
+    </select>
+
+    <div class="row">
+      <div>
+        <label>Étage</label>
+        <input type="text" id="etage" placeholder="Ex : -1, RDC, 1er...">
+      </div>
+      <div>
+        <label>Zone / Canton</label>
+        <input type="text" id="zone-canton" placeholder="Zone / Canton">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label>Date</label>
+        <input type="date" id="date-permis">
+      </div>
+      <div>
+        <label>Horaires</label>
+        <input type="text" id="horaires" placeholder="08h00 - 18h00">
+      </div>
+    </div>
+
+    <label>Opération à effectuer</label>
+    <textarea id="operation" placeholder="Description des travaux (soudure, meulage, découpe...)"></textarea>
+
+    <label>Risques identifiés</label>
+    <textarea id="risques" placeholder="Risques identifiés (incendie, fumées, projections, etc.)"></textarea>
+
+    <label>Mesures de prévention</label>
+    <textarea id="mesures" placeholder="Mesures de prévention mises en place"></textarea>
+
+    <label>Moyens d’intervention</label>
+    <textarea id="moyens" placeholder="Extincteurs, RIA, moyens d’alerte, etc."></textarea>
+  </div>
+
+  <!-- VIGILANCE PROTECTION INCENDIE -->
+  <div class="card">
+    <h2>Vigilance — protection incendie de la zone</h2>
+
+    <label>Niveau de vigilance</label>
+    <select id="vigilance-niveau" onchange="updateVigilanceInfo()">
+        <option value="">— Sélectionner le niveau —</option>
+        <option value="verte">🟢 Vigilance — Sprinkler et détection fonctionnels</option>
+        <option value="orange">🟠 Vigilance ORANGE — Sprinkler HS zone chantier + caches détecteurs</option>
+        <option value="rouge">🔴 Vigilance ROUGE — Poste sprinkler vidangé, aucune protection</option>
+    </select>
+
+    <div id="vigilance-info" style="display:none;margin-top:10px;padding:12px 14px;border-radius:10px;font-size:.85rem;line-height:1.5;border:1px solid;"></div>
+
+    <!-- Installations impactées : visibles en vigilance Orange / Rouge -->
+    <div id="vigilance-installations" style="display:none;">
+      <div class="row">
+        <div>
+          <label>Poste(s) sprinkler impacté(s)</label>
+          <input type="text" id="vig-poste-sprinkler" placeholder="Ex : Poste 1, 92">
+        </div>
+        <div>
+          <label>Zone(s) de détection impactée(s)</label>
+          <input type="text" id="vig-zones-detection" placeholder="Ex : Z01 B">
+        </div>
+      </div>
+      <div style="font-size:.72rem;opacity:.6;margin-top:2px;">
+        Indiquer les n° de poste sprinkler et les zones de détection (ZD) concernés par le chantier.
+      </div>
+    </div>
+
+    <label style="margin-top:14px;">Plans de la zone (photo ou PDF)</label>
+    <input type="file" id="plans-files" accept="image/*,.pdf" multiple
+           style="width:100%;padding:10px;border-radius:10px;border:1px dashed #9ca3af;background:#f9fafb;color:#1f2937;font-size:.85rem;">
+    <div style="font-size:.72rem;opacity:.6;margin-top:4px;">
+        Photos compressées automatiquement · PDF jusqu'à 8 Mo. Obligatoire en vigilance Orange (plan de la zone sans sprinkler) — recommandé en Rouge.
+    </div>
+    <div id="plans-preview" style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;"></div>
+  </div>
+
+  <!-- SIGNATURES -->
+  <div class="card">
+    <h2>Signatures</h2>
+
+    <label>Signature du délivreur</label>
+    <canvas id="signature-delivreur"></canvas>
+    <button class="btn btn-secondary" id="clear-sign-delivreur">Effacer la signature du délivreur</button>
+
+    <hr style="margin:16px 0; border:none; border-top:1px solid #e5e7eb;">
+
+    <label>Signature de l’intervenant</label>
+    <canvas id="signature-intervenant"></canvas>
+    <button class="btn btn-secondary" id="clear-sign-intervenant">Effacer la signature de l’intervenant</button>
+
+    <div style="margin-top:10px;">
+      <input type="checkbox" id="mention-pris-connaissance">
+      <label for="mention-pris-connaissance">PRIS CONNAISSANCE</label>
+    </div>
+  </div>
+
+  <!-- HEURES DE PASSAGE -->
+  <div class="card">
+    <h2>Heures de passage</h2>
+
+    <div id="liste-passages"></div>
+
+    <button class="btn btn-secondary" id="btn-ajout-passage">
+      ➕ Ajouter un passage (heure actuelle)
+    </button>
+  </div>
+
+  <!-- URGENCE -->
+  <div class="card">
+    <h2>Urgence</h2>
+
+    <section class="urgence-block">
+
+      <!-- PC SÉCURITÉ -->
+      <div class="urgence-card">
+        <p class="urgence-label">
+          📞 Appeler le PC Sécurité en cas d’incendie ou secours à victime
+        </p>
+        <a href="tel:0145484794" class="urgence-btn urgence-call">
+          01 45 48 47 94
+        </a>
+        <p class="urgence-note">Appel direct — priorité haute</p>
+      </div>
+
+      <!-- Position dynamique -->
+      <div class="urgence-card">
+        <p class="urgence-label">📍 Position du permis feu</p>
+        <p class="urgence-location" id="urgence-location">
+          (en attente d'informations)
+        </p>
+      </div>
+
+      <!-- Bouton urgence feu -->
+      <button type="button"
+              class="urgence-btn"
+              id="btn-urgence-feu">
+        🔥 Déclarer une urgence incendie
+      </button>
+
+      <!-- Bouton secours à victime -->
+      <button type="button"
+              class="urgence-btn"
+              id="btn-urgence-svv"
+              style="margin-top:10px;">
+        🚑 Déclarer une urgence — Secours à victime
+      </button>
+
+    </section>
+  </div><!-- PROLONGATION DU PERMIS FEU -->
+  <div class="card">
+    <h2>Prolongation du permis feu</h2>
+
+    <label>Nouvelle date</label>
+    <input type="date" id="prolong-date">
+
+    <label>Nouvel horaire</label>
+    <input type="text" id="prolong-horaire" placeholder="Ex : 08h00 - 18h00">
+
+    <button class="btn btn-primary" id="btn-prolonger">
+      🔄 Prolonger le permis feu
+    </button>
+
+    <div id="historique-prolongations" style="margin-top:16px; font-size:0.9rem;">
+      <strong>Historique des prolongations :</strong>
+      <div id="historique-list" style="margin-top:8px; line-height:1.4;">
+        (aucune prolongation pour le moment)
+      </div>
+    </div>
+  </div>
+
+  <!-- CONSIGNES GÉNÉRALES -->
+  <div class="card">
+    <h2>Consignes générales de sécurité</h2>
+
+    <div class="consignes-box">
+    L’ordre d’évacuation, soit VERBAL par le personnel du Bon Marché, soit par les SIRENES, implique le départ immédiat des lieux de travail en bon ordre et dans le calme, sans repasser par les vestiaires et sans prendre les ascenseurs.
+
+Ne pas encombrer même pour un temps très court, les issues, les dégagements et les installations de sécurités.
+
+Prendre en considération l’existence dans l’environnement de détecteurs automatiques d’incendies ou d’extinction automatique.
+
+Ne pas fumer où que ce soit.
+
+Ne pas effectuer de travaux par points chauds dans les locaux recevant du public pendant l’ouverture des magasins.
+
+AVANT L’OPÉRATION ET AVANT TOUTE REPRISE DE TRAVAIL
+
+Vérifier que la protection Sprinkler (à minima) est bien en service dans la zone.
+
+Vérifier que les sources potentielles de gaz inflammables, liquides inflammables, poussière combustibles (papier, bois, farine…) sont à l’arrêt.
+
+Éloigner du point de travail les objets et les marchandises inflammables ou combustibles dans un rayon de 10m. Protection des installations fixes, par bâchages et/ou panneaux incombustibles.
+
+Vérifier que le matériel d’intervention est en parfait état de fonctionnement (tension de l’appareillage électrique, état des tuyaux des chalumeaux, absence de fuite aux robinets...).
+
+Procéder à une visite minutieuse de la zone :
+- Nettoyage du sol effectué.
+- Vérifier les communications éventuelles.
+- Absence d’éléments combustibles.
+
+Si travail dans un volume creux : dégazage + absence de poussières combustibles.
+
+Aveugler les ouvertures, interstices, fissures avec matériaux incombustibles.
+
+Repérer les moyens d’alerte et de premiers secours.
+
+PENDANT L’OPÉRATION
+
+Surveiller les projections incandescentes et les points d’impact.
+
+Surveiller les tuyauteries d’alimentation et la stabilité des bouteilles.
+
+Surveillance permanente + surveillance 1h après + jusqu’à 3h après.
+
+APRÈS L’OPÉRATION
+
+Inspection complète du lieu de travail et des locaux contigus.
+    </div>
+  </div>
+
+  <!-- RGPD -->
+  <div class="card" style="background:#fef3c7; border:1px solid #f59e0b;">
+    <strong>📌 Mention légale — RGPD</strong><br>
+    Ce document est conservé pendant <strong>10 ans</strong> conformément aux obligations légales du Bon Marché / La Grande Épicerie.<br>
+    Il est strictement non modifiable et archivé à des fins de traçabilité et d’audit.
+  </div>
+
+  <!-- VALIDATION -->
+  <div class="card">
+    <button class="btn btn-primary" id="btn-enregistrer">
+      ✔️ Enregistrer le permis feu
+    </button>
+  </div>
+
+  <!-- SCRIPTS -->
+  <script src="vendor/supabase.js" crossorigin="anonymous"></script>
+<script src="supabaseClient.js"></script>
+<script src="tenant.js"></script>
+<script>
+    // Fallback showToast
+    if (typeof showToast !== "function") {
+        window.showToast = function(msg, isError) { alert(msg); };
+    }
+
+    /* ============================================================
+       NUMÉRO DE PERMIS UNIQUE (PF-YYYYMMDD-HHMMSS)
+    ============================================================ */
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    const PERMIS_NUMERO = `PF-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+
+    document.getElementById("permis-id").textContent = PERMIS_NUMERO;
+
+    /* HORODATAGE */
+    document.getElementById("horodatage").textContent =
+      now.toLocaleString("fr-FR", { dateStyle: "full", timeStyle: "medium" });
+
+    /* QR CODE — unique par permis, scannable pour consulter le document */
+    const qrBaseUrl = window.location.href.replace(/[^/]*$/, '') + 'consulter_pf.html?pf=' + encodeURIComponent(PERMIS_NUMERO);
+    const qr = new QRious({
+      element: document.getElementById("qr-code"),
+      size: 160,
+      value: qrBaseUrl,
+      foreground: '#1d4ed8',
+      background: '#ffffff',
+      level: 'M'
+    });
+
+    /* ============================================================
+       SIGNATURES (canvas tactile + souris)
+    ============================================================ */
+    function initSignatureCanvas(canvasId, clearBtnId) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext("2d");
+      let drawing = false;
+      let hasContent = false;
+      let savedDataUrl = null;
+
+      function clearCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = Math.floor(rect.width);
+        canvas.height = 150;
+        ctx.fillStyle = "#f9fafb";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        hasContent = false;
+        savedDataUrl = null;
+      }
+
+      function safeResize() {
+        const rect = canvas.getBoundingClientRect();
+        const newW = Math.floor(rect.width);
+        if (newW === canvas.width && canvas.height === 150) return; // Rien n'a changé
+
+        // Sauvegarder le dessin avant resize
+        if (hasContent) {
+          try { savedDataUrl = canvas.toDataURL(); } catch(e) {}
+        }
+
+        canvas.width = newW;
+        canvas.height = 150;
+        ctx.fillStyle = "#f9fafb";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Restaurer le dessin
+        if (savedDataUrl) {
+          const img = new Image();
+          img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          img.src = savedDataUrl;
+        }
+      }
+
+      clearCanvas();
+
+      // Debounce le resize (500ms) pour ignorer les micro-resizes du scroll mobile
+      let resizeTimer = null;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(safeResize, 500);
+      });
+
+      function getPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+        const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+        return { x, y };
+      }
+
+      canvas.addEventListener("mousedown", (e) => { drawing = true; hasContent = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); });
+      canvas.addEventListener("mousemove", (e) => { if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle="#111827"; ctx.lineWidth=2; ctx.stroke(); });
+      canvas.addEventListener("mouseup", () => drawing = false);
+      canvas.addEventListener("mouseleave", () => drawing = false);
+
+      canvas.addEventListener("touchstart", (e) => { e.preventDefault(); drawing = true; hasContent = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
+      canvas.addEventListener("touchmove", (e) => { e.preventDefault(); if (!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.strokeStyle="#111827"; ctx.lineWidth=2; ctx.stroke(); }, { passive: false });
+      canvas.addEventListener("touchend", () => drawing = false);
+
+      document.getElementById(clearBtnId).addEventListener("click", clearCanvas);
+
+      return () => canvas.toDataURL("image/png");
+    }
+
+    const getSignDelivreur = initSignatureCanvas("signature-delivreur", "clear-sign-delivreur");
+    const getSignIntervenant = initSignatureCanvas("signature-intervenant", "clear-sign-intervenant");
+
+    /* ============================================================
+       HEURES DE PASSAGE
+    ============================================================ */
+    const passages = [];
+    const listePassages = document.getElementById("liste-passages");
+
+    document.getElementById("btn-ajout-passage").addEventListener("click", () => {
+      const h = new Date().toLocaleTimeString("fr-FR", { hour:"2-digit", minute:"2-digit" });
+      passages.push(h);
+      const div = document.createElement("div");
+      div.className = "passage-item";
+      div.textContent = `${h} — Passage effectué`;
+      listePassages.appendChild(div);
+    });
+
+    /* ============================================================
+       POSITION DYNAMIQUE URGENCE
+    ============================================================ */
+    function updateUrgencePosition() {
+      const m = document.getElementById("magasin").value || "(magasin ?)";
+      const e = document.getElementById("etage").value || "(étage ?)";
+      const z = document.getElementById("zone-canton").value || "(zone ?)";
+      document.getElementById("urgence-location").textContent = `${m} — ${e} — ${z}`;
+    }
+    document.getElementById("magasin").addEventListener("change", updateUrgencePosition);
+    document.getElementById("etage").addEventListener("input", updateUrgencePosition);
+    document.getElementById("zone-canton").addEventListener("input", updateUrgencePosition);
+
+    /* URGENCES — page intervenant : on notifie le PC Sécurité, mais aucune
+       alarme locale (ni son ni bannière) ne se joue sur ce téléphone. */
+    document.getElementById("btn-urgence-feu").addEventListener("click", () => {
+      if(!confirm("🔥 Confirmer : URGENCE INCENDIE\n\nLe PC Sécurité sera notifié immédiatement.")) return;
+      const lieu = [document.getElementById("magasin").value, document.getElementById("etage").value, document.getElementById("zone-canton").value].filter(Boolean).join(" — ");
+      const msgFull = "Permis feu " + PERMIS_NUMERO + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—");
+
+      if (typeof sendGlobalNotification === "function") {
+          sendGlobalNotification("🔥 URGENCE INCENDIE", msgFull, "alarme", "critique");
+      }
+      alert("🔥 URGENCE INCENDIE — Le PC Sécurité est notifié.");
+    });
+    document.getElementById("btn-urgence-svv").addEventListener("click", () => {
+      if(!confirm("🚑 Confirmer : URGENCE SECOURS À VICTIME\n\nLe PC Sécurité sera notifié immédiatement.")) return;
+      const lieu = [document.getElementById("magasin").value, document.getElementById("etage").value, document.getElementById("zone-canton").value].filter(Boolean).join(" — ");
+      const msgFull = "Permis feu " + PERMIS_NUMERO + "\nLieu : " + (lieu || "Non précisé") + "\nAgent : " + (localStorage.getItem("nom") || "—");
+
+      if (typeof sendGlobalNotification === "function") {
+          sendGlobalNotification("🚑 URGENCE SECOURS À VICTIME", msgFull, "alarme", "critique");
+      }
+      alert("🚑 URGENCE — Secours à victime. Le PC Sécurité est notifié.");
+    });
+
+    /* ============================================================
+       PROLONGATION
+    ============================================================ */
+    let historiqueProlongations = [];
+
+    document.getElementById("btn-prolonger").addEventListener("click", () => {
+      const nd = document.getElementById("prolong-date").value;
+      const nh = document.getElementById("prolong-horaire").value;
+      if (!nd || !nh) { alert("Renseigner la nouvelle date et le nouvel horaire."); return; }
+
+      historiqueProlongations.push({
+        ancienne_date: document.getElementById("date-permis").value,
+        ancien_horaire: document.getElementById("horaires").value,
+        horodatage: new Date().toLocaleString("fr-FR")
+      });
+
+      document.getElementById("date-permis").value = nd;
+      document.getElementById("horaires").value = nh;
+
+      const list = document.getElementById("historique-list");
+      list.innerHTML = historiqueProlongations
+        .map(p => `• ${p.ancienne_date} (${p.ancien_horaire}) — prolongé le ${p.horodatage}`)
+        .join("<br>");
+
+      alert("Permis prolongé avec succès.");
+    });
+
+    /* ============================================================
+       ENREGISTREMENT COMPLET DANS SUPABASE
+    ============================================================ */
+    document.getElementById("btn-enregistrer").addEventListener("click", async () => {
+      const btn = document.getElementById("btn-enregistrer");
+      btn.disabled = true;
+      btn.textContent = "⏳ Enregistrement…";
+
+      try {
+        // Entreprise sélectionnée par radio
+        const entRadio = document.querySelector('input[name="ent-concernee"]:checked');
+        const entrepriseConcernee = entRadio ? entRadio.value : "";
+
+        // Entreprise extérieure
+        const extRaisonSociale = document.getElementById("ext-raison-sociale").value.trim();
+        const extRepresentant = document.getElementById("ext-representant").value.trim();
+
+        // Vigilance protection incendie
+        const vigNiveau = document.getElementById("vigilance-niveau").value;
+        if (!vigNiveau) {
+            showToast("⚠️ Sélectionnez le niveau de vigilance protection incendie", true);
+            btn.disabled = false; btn.textContent = "✔️ Enregistrer le permis feu";
+            const vigEl = document.getElementById("vigilance-niveau");
+            vigEl.scrollIntoView({behavior:"smooth", block:"center"});
+            vigEl.focus();
+            return;
+        }
+        if (vigNiveau === "orange" && _plansData.length === 0) {
+            showToast("⚠️ Vigilance ORANGE : le plan de la zone sans sprinkler est obligatoire", true);
+            btn.disabled = false; btn.textContent = "✔️ Enregistrer le permis feu";
+            document.getElementById("plans-files").scrollIntoView({behavior:"smooth", block:"center"});
+            return;
+        }
+
+        // Localisation
+        const magasin = document.getElementById("magasin").value.trim();
+        const etage = document.getElementById("etage").value.trim();
+        const zoneCanton = document.getElementById("zone-canton").value.trim();
+        const lieu = [magasin, etage, zoneCanton].filter(Boolean).join(" — ");
+
+        // Dates
+        const datePermis = document.getElementById("date-permis").value;
+        const horaires = document.getElementById("horaires").value.trim();
+
+        // Travaux
+        const operation = document.getElementById("operation").value.trim();
+        const risques = document.getElementById("risques").value.trim();
+        const mesures = document.getElementById("mesures").value.trim();
+        const moyens = document.getElementById("moyens").value.trim();
+
+        // Ordre de travail
+        const odtNom = document.getElementById("odt-nom").value.trim();
+        const odtFonction = document.getElementById("odt-fonction").value.trim();
+
+        // Signatures (base64)
+        const signDelivreur = getSignDelivreur();
+        const signIntervenant = getSignIntervenant();
+        const prisConnaissance = document.getElementById("mention-pris-connaissance").checked;
+
+        // Description synthétique
+        const description = [
+          operation ? "Opération : " + operation : "",
+          risques ? "Risques : " + risques : "",
+          mesures ? "Mesures : " + mesures : "",
+          moyens ? "Moyens : " + moyens : ""
+        ].filter(Boolean).join("\n");
+
+        const { error } = await supabaseClient.from("permis_feu").insert({
+          numero:      PERMIS_NUMERO,
+          entreprise:  extRaisonSociale || entrepriseConcernee,
+          lieu:        lieu || null,
+          description: description || null,
+          date_debut:  datePermis ? datePermis + "T00:00:00" : new Date().toISOString(),
+          statut:      "actif",
+          agent_nom:   localStorage.getItem("nom") || null,
+          meta: {
+            numero: PERMIS_NUMERO,
+            qr_url: qrBaseUrl,
+            entreprise_concernee: entrepriseConcernee,
+            ext_raison_sociale: extRaisonSociale,
+            ext_representant: extRepresentant,
+            odt_nom: odtNom,
+            odt_fonction: odtFonction,
+            magasin, etage, zone_canton: zoneCanton,
+            horaires,
+            operation, risques, mesures, moyens,
+            signature_delivreur: signDelivreur,
+            signature_intervenant: signIntervenant,
+            pris_connaissance: prisConnaissance,
+            passages: passages,
+            prolongations: historiqueProlongations,
+            vigilance: {
+              niveau: vigNiveau,
+              label: VIGILANCE_REF[vigNiveau].label,
+              details: VIGILANCE_REF[vigNiveau].details,
+              consignes: VIGILANCE_REF[vigNiveau].consignes,
+              poste_sprinkler: (document.getElementById("vig-poste-sprinkler").value || "").trim() || null,
+              zones_detection: (document.getElementById("vig-zones-detection").value || "").trim() || null
+            },
+            plans: _plansData
+          }
+        });
+
+        if (error) throw error;
+
+        showToast("✅ Permis feu " + PERMIS_NUMERO + " enregistré !");
+        btn.textContent = "✅ Enregistré";
+
+        setTimeout(() => location.href = "consulter_pf.html", 1500);
+      } catch (e) {
+        console.error(e);
+        showToast("❌ " + (e.message || e), true);
+        btn.disabled = false;
+        btn.textContent = "✔️ Enregistrer le permis feu";
+      }
+    });
+  </script>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   VIGILANCE PROTECTION INCENDIE — référentiel des 3 niveaux
+   ═══════════════════════════════════════════════════════════════ */
+const VIGILANCE_REF = {
+  verte: {
+    label: "Vigilance",
+    couleur: "#16a34a", bg: "rgba(34,197,94,.10)", border: "rgba(34,197,94,.4)",
+    details: "Poste sprinkler EN SERVICE et détection incendie FONCTIONNELLE sur la zone de travaux.",
+    consignes: "Surveillance normale du permis feu : rondes aux heures de passage, vérification 2h après la fin des travaux."
+  },
+  orange: {
+    label: "Vigilance ORANGE",
+    couleur: "#ea580c", bg: "rgba(234,88,12,.10)", border: "rgba(234,88,12,.45)",
+    details: "Sprinkler NON FONCTIONNEL sur la zone de chantier (plan de la zone intégré au permis). Détection incendie présente mais avec CACHES DÉTECTEURS posés.",
+    consignes: "Surveillance renforcée : rondes rapprochées sur la zone, retrait des caches détecteurs OBLIGATOIRE en fin de travaux (à vérifier à la clôture), moyens d'extinction doublés à proximité immédiate."
+  },
+  rouge: {
+    label: "Vigilance ROUGE",
+    couleur: "#dc2626", bg: "rgba(220,38,38,.12)", border: "rgba(220,38,38,.5)",
+    details: "Poste sprinkler VIDANGÉ — AUCUNE protection automatique NI détection incendie sur la zone.",
+    consignes: "Surveillance humaine PERMANENTE de la zone pendant toute la durée des travaux + 2h après. Agent de sécurité incendie dédié. Moyens d'extinction renforcés sur site. Liaison directe PC Sécurité. Remise en service du poste à confirmer à la clôture."
+  }
+};
+
+function updateVigilanceInfo() {
+  const niveau = document.getElementById("vigilance-niveau").value;
+  const box = document.getElementById("vigilance-info");
+  const inst = document.getElementById("vigilance-installations");
+  // Postes/zones impactés : pertinents dès que la protection est dégradée
+  if (inst) inst.style.display = (niveau === "orange" || niveau === "rouge") ? "block" : "none";
+  if (!niveau || !VIGILANCE_REF[niveau]) { box.style.display = "none"; return; }
+  const r = VIGILANCE_REF[niveau];
+  box.style.display = "block";
+  box.style.background = r.bg;
+  box.style.borderColor = r.border;
+  box.style.color = "#1f2937"; /* page claire : texte sombre */
+  box.innerHTML = '<div style="font-weight:700;color:' + r.couleur + ';margin-bottom:6px;">' + r.label + '</div>'
+                + '<div style="margin-bottom:6px;">' + r.details + '</div>'
+                + '<div style="opacity:.85;font-size:.8rem;"><strong>Consignes :</strong> ' + r.consignes + '</div>';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PLANS DE LA ZONE — lecture, compression, prévisualisation
+   Images : recadrées à 1400 px max, JPEG qualité 0.72 (≈200-400 Ko)
+   PDF : accepté tel quel jusqu'à 2,5 Mo (base64 dans meta JSONB)
+   ═══════════════════════════════════════════════════════════════ */
+let _plansData = [];   // [{ name, type:"image"|"pdf", data:(dataURL) }]
+
+function _compressImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const MAX = 1400;
+      let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) {
+        const ratio = Math.min(MAX / w, MAX / h);
+        w = Math.round(w * ratio); h = Math.round(h * ratio);
+      }
+      const cv = document.createElement("canvas");
+      cv.width = w; cv.height = h;
+      cv.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(cv.toDataURL("image/jpeg", 0.72));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Image illisible")); };
+    img.src = url;
+  });
+}
+
+function _renderPlansPreview() {
+  const box = document.getElementById("plans-preview");
+  box.innerHTML = _plansData.map((p, i) =>
+    '<div style="position:relative;width:110px;">'
+    + (p.type === "image"
+        ? '<img src="' + p.data + '" style="width:110px;height:80px;object-fit:cover;border-radius:8px;border:1px solid #d1d5db;">'
+        : '<div style="width:110px;height:80px;border-radius:8px;border:1px solid #d1d5db;background:#f3f4f6;display:flex;align-items:center;justify-content:center;font-size:1.6rem;">📄</div>')
+    + '<div style="font-size:.62rem;opacity:.7;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + p.name + '</div>'
+    + '<button type="button" onclick="_removePlan(' + i + ')" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;border:none;background:#dc2626;color:#fff;font-size:.8rem;cursor:pointer;line-height:1;">✕</button>'
+    + '</div>'
+  ).join("");
+}
+function _removePlan(i) { _plansData.splice(i, 1); _renderPlansPreview(); }
+
+document.getElementById("plans-files").addEventListener("change", async function () {
+  for (const file of Array.from(this.files || [])) {
+    try {
+      if (_plansData.length >= 4) { showToast("⚠️ 4 plans maximum", true); break; }
+      /* Plafond global : le base64 gonfle de ~33 % et l'ensemble part dans
+         une seule requête d'insertion — au-delà de ~20 Mo cumulés, l'API
+         peut rejeter l'enregistrement. */
+      const totalActuel = _plansData.reduce((s, p) => s + (p.data ? p.data.length : 0), 0);
+      if (totalActuel + file.size * 1.34 > 20 * 1024 * 1024) {
+        showToast("⚠️ " + file.name + " : taille totale des plans dépassée (20 Mo max au total)", true);
+        continue;
+      }
+      if (file.type === "application/pdf") {
+        if (file.size > 8 * 1024 * 1024) { showToast("⚠️ " + file.name + " : PDF trop lourd (max 8 Mo) — compressez-le ou préférez une photo du plan", true); continue; }
+        const data = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => res(r.result);
+          r.onerror = () => rej(new Error("Lecture impossible"));
+          r.readAsDataURL(file);
+        });
+        _plansData.push({ name: file.name, type: "pdf", data });
+      } else if (file.type.startsWith("image/")) {
+        const data = await _compressImage(file);
+        _plansData.push({ name: file.name, type: "image", data });
+      } else {
+        showToast("⚠️ " + file.name + " : format non pris en charge (image ou PDF)", true);
+      }
+    } catch (e) { showToast("❌ " + file.name + " : " + (e.message || e), true); }
+  }
+  this.value = "";
+  _renderPlansPreview();
+});
+</script>
+<script src="security.js"></script>
+<script src="global.js"></script>
+<script>
+/* Page INTERVENANT (formulaire permis feu) : jamais d'alarme sonore ni de
+   bannière plein écran ici — réservées au PC Sécurité et aux agents. */
+window.AURA_ALARM_SILENT = true;
+</script>
+<script src="notifications_global.js"></script>
 </body>
 </html>

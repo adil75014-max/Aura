@@ -6,155 +6,544 @@
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Interventions - LBM Sécurité</title>
+<title>Gestion des vérifications</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- 🎨 Design global -->
-<link rel="stylesheet" href="global.css">
-
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-/* 🎨 Styles spécifiques à cette page */
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
 
-h1 {
-    text-align: center;
-    margin-bottom: 25px;
-    color: var(--accent);
-    font-size: 1.9rem;
-    font-weight: 600;
-    text-shadow: 0 0 12px rgba(111,179,255,0.4);
-}
+.header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.back-btn{background:rgba(77,163,255,0.12);border:1px solid rgba(77,163,255,0.3);color:#4da3ff;padding:8px 14px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';transition:.2s}
+.back-btn:hover{background:#4da3ff;color:#0b0e17}
+.header h1{font-size:1.4rem;color:#4da3ff;flex:1;letter-spacing:-.5px}
 
-/* Bouton retour */
-.menu-return {
-    margin-bottom: 25px;
-}
+/* TABS */
+.tabs{display:flex;gap:6px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px}
+.tab{padding:10px 18px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);color:#6b7a99;transition:.2s;white-space:nowrap}
+.tab.active{background:rgba(77,163,255,0.12);border-color:#4da3ff;color:#4da3ff}
+.tab:hover{border-color:rgba(77,163,255,0.3)}
 
-.menu-return button {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 10px 18px;
-    border-radius: 12px;
-    color: var(--accent);
-    font-size: 0.95rem;
-    cursor: pointer;
-    transition: 0.25s;
-}
+.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;margin-bottom:16px;display:none}
+.card.active{display:block}
+.card h2{font-size:1.05rem;color:#4da3ff;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 
-.menu-return button:hover {
-    background: var(--accent);
-    color: #000;
-}
+label{display:block;font-size:.85rem;font-weight:600;color:#8899bb;margin:12px 0 4px;letter-spacing:.3px}
+input,textarea,select{width:100%;padding:11px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:.95rem 'DM Sans';transition:.2s}
+input:focus,textarea:focus,select:focus{outline:none;border-color:#4da3ff;box-shadow:0 0 0 3px rgba(77,163,255,0.15)}
+textarea{min-height:60px;resize:vertical}
 
-/* Sections */
-.section {
-    background: var(--card);
-    border: 1px solid var(--border);
-    padding: 20px;
-    border-radius: 16px;
-    margin-bottom: 28px;
-    box-shadow: var(--shadow);
-}
+.btn{padding:12px 16px;border:none;border-radius:10px;font:600 .95rem 'DM Sans';cursor:pointer;width:100%;transition:.2s;margin-top:10px}
+.btn-primary{background:linear-gradient(135deg,#4da3ff,#2b7de9);color:#fff;box-shadow:0 4px 16px rgba(77,163,255,0.25)}
+.btn-primary:hover{transform:translateY(-1px)}
+.btn-secondary{background:rgba(255,255,255,0.06);color:#8899bb;border:1px solid rgba(255,255,255,0.1)}
+.btn-danger{background:rgba(239,68,68,0.12);color:#f87171;border:1px solid rgba(239,68,68,0.25)}
+.btn-sm{padding:6px 12px;font-size:.85rem;width:auto;margin:0;border-radius:8px}
+.btn-success{background:rgba(0,200,120,0.12);color:#00c878;border:1px solid rgba(0,200,120,0.3)}
 
-.section h2 {
-    color: var(--accent);
-    margin-bottom: 14px;
-    font-size: 1.25rem;
-    font-weight: 600;
-}
+/* PALETTE DES TYPES DE CHAMPS (style GuardTek) */
+.fields-palette{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin:14px 0}
+.field-type{display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;cursor:pointer;font:600 .85rem 'DM Sans';color:#cbd2e0;transition:.2s;text-align:left}
+.field-type:hover{background:rgba(77,163,255,0.1);border-color:#4da3ff;color:#4da3ff;transform:translateY(-1px)}
+.field-type .ft-icon{font-size:1.1rem;width:24px;text-align:center;flex-shrink:0;color:#4da3ff}
 
-/* Boutons */
-.btn {
-    width: 100%;
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 14px;
-    border-radius: 12px;
-    color: var(--text);
-    font-size: 1rem;
-    cursor: pointer;
-    transition: 0.25s;
-    margin-bottom: 12px;
-    text-align: left;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
+/* LISTE DES CHAMPS AJOUTÉS */
+.fields-builder{margin-top:18px}
+.builder-empty{text-align:center;color:#4a5578;padding:30px;font-size:.9rem;background:rgba(0,0,0,0.2);border:1px dashed rgba(255,255,255,0.08);border-radius:10px}
 
-.btn:hover {
-    background: var(--accent);
-    color: #000;
-    transform: translateY(-1px);
-}
+.field-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:14px;margin-bottom:10px;position:relative}
+.field-card.group{background:rgba(77,163,255,0.06);border-color:rgba(77,163,255,0.25)}
+.field-head{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.field-num{width:28px;height:28px;border-radius:50%;background:rgba(77,163,255,0.18);color:#4da3ff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
+.field-type-badge{font-size:.75rem;color:#6b7a99;background:rgba(255,255,255,0.04);padding:3px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:5px}
+.field-actions{margin-left:auto;display:flex;gap:6px}
+.field-body{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-body.full{grid-template-columns:1fr}
+.field-body label{margin-top:0}
+.field-body input,.field-body textarea,.field-body select{padding:8px 12px;font-size:.9rem}
 
-.empty {
-    opacity: 0.7;
-    font-size: 0.9rem;
-    text-align: center;
-    padding: 12px;
+/* OPTIONS LIST (pour menus déroulants, listes, etc.) */
+.options-list{margin-top:6px}
+.opt-row{display:flex;gap:6px;margin-bottom:4px}
+.opt-row input{flex:1;padding:7px 10px;font-size:.85rem}
+.opt-row .btn-sm{padding:6px 10px;font-size:.8rem}
+
+/* TEMPLATE CARDS */
+.tpl-card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;margin-bottom:10px}
+.tpl-card .tpl-header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.tpl-card .tpl-name{font-weight:700;font-size:1rem;color:#e0e4ef}
+.tpl-card .tpl-meta{font-size:.8rem;color:#6b7a99;margin-top:4px}
+.tpl-card .tpl-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pill{padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:600}
+.pill-pts{background:rgba(0,200,120,0.15);color:#00c878}
+
+/* HISTORY */
+.hist-item{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.hist-item .hist-info{flex:1;min-width:180px}
+.hist-item .hist-info strong{color:#e0e4ef}
+.hist-item .hist-info small{display:block;color:#6b7a99;margin-top:2px}
+.pill-ok{background:rgba(0,200,120,0.15);color:#00c878}
+.pill-ko{background:rgba(239,68,68,0.15);color:#f87171}
+
+.empty{text-align:center;padding:30px;color:#4a5578;font-size:.9rem}
+
+/* CHECKBOX REQUIRED */
+.required-row{display:flex;align-items:center;gap:8px;padding:8px 0;font-size:.85rem;color:#8899bb;cursor:pointer}
+.required-row input[type=checkbox]{width:auto;cursor:pointer}
+
+@media (max-width:600px){
+    .field-body{grid-template-columns:1fr}
+    .fields-palette{grid-template-columns:repeat(2,1fr)}
 }
 </style>
 </head>
-
 <body>
 
-<h1>Interventions</h1>
-
-<div class="menu-return">
-    <button onclick="window.location.href='index.html'">⟵ Retour au menu</button>
+<div class="header">
+    <button class="back-btn" onclick="location.href='index.html'">⟵</button>
+    <h1>Gestion des vérifications</h1>
 </div>
 
-<!-- INTERVENTIONS CLASSIQUES -->
-<div class="section">
-    <h2>Interventions classiques</h2>
-
-    <button class="btn" onclick="location.href='report.html?type=intervention'">📄 Intervention classique</button>
-    <button class="btn" onclick="location.href='create_intervention_report.html'">⚡ Intervention avancée</button>
-    <button class="btn" onclick="location.href='report.html?type=verification'">📄 Vérification classique</button>
-    <button class="btn" onclick="location.href='create_verification_report.html'">🔥 Vérification incendie avancée</button>
+<div class="tabs">
+    <div class="tab active" onclick="showTab('tabCreate',this)">➕ Créer un modèle</div>
+    <div class="tab" onclick="showTab('tabTemplates',this)">📋 Modèles existants</div>
+    <div class="tab" onclick="showTab('tabHistory',this)">📊 Historique</div>
 </div>
 
-<!-- INTERVENTIONS PERSONNALISÉES -->
-<div class="section">
-    <h2>Interventions personnalisées (modèles)</h2>
-    <div id="customList"></div>
-</div><script>
-/* ============================================================
-   CHARGEMENT DES MODÈLES PERSONNALISÉS
-============================================================ */
-function loadCustomForms() {
-    const container = document.getElementById("customList");
-    container.innerHTML = "";
+<!-- TAB 1 : CRÉER UN MODÈLE -->
+<div class="card active" id="tabCreate">
+    <h2>📝 Nouveau modèle de vérification</h2>
 
-    const models = JSON.parse(localStorage.getItem("customForms") || "[]");
+    <label>Nom du modèle</label>
+    <input type="text" id="tplName" placeholder="Ex : J1 Baie SSI, J4 EPI, Sprinkler…">
 
-    if (models.length === 0) {
-        container.innerHTML = "<div class='empty'>Aucun modèle créé pour l’instant.</div>";
-        return;
-    }
+    <label style="margin-top:18px">Ajouter un élément au modèle</label>
+    <div class="fields-palette" id="fieldsPalette"></div>
 
-    models.forEach(m => {
-        const btn = document.createElement("button");
-        btn.className = "btn";
-        btn.innerHTML = "📄 " + m.title;
-        btn.onclick = () => {
-            location.href = "dynamic_report.html?form=" + m.id;
-        };
-        container.appendChild(btn);
-    });
-}
+    <label style="margin-top:18px">Structure du modèle</label>
+    <div class="fields-builder" id="fieldsBuilder"></div>
 
-loadCustomForms();
-</script>
+    <button class="btn btn-primary" onclick="saveTemplate()" style="margin-top:20px">💾 Enregistrer le modèle</button>
+    <div id="createMsg" style="margin-top:10px;font-size:.9rem;text-align:center"></div>
+</div>
 
-<!-- 🔐 Sécurité -->
-<script src="security.js"></script>
+<!-- TAB 2 : MODÈLES EXISTANTS -->
+<div class="card" id="tabTemplates">
+    <h2>📋 Modèles de vérifications</h2>
+    <div id="templatesList"><div class="empty">Chargement…</div></div>
+</div>
 
-<!-- 🎨 Thème global -->
-<script src="global.js"></script>
+<!-- TAB 3 : HISTORIQUE -->
+<div class="card" id="tabHistory">
+    <h2>📊 Vérifications effectuées</h2>
+    <div id="historyList"><div class="empty">Chargement…</div></div>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
+<script>
+if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
+
+/* ════════════════════════════════════════════════════════════════
+   TYPES DE CHAMPS DISPONIBLES (style GuardTek)
+═════════════════════════════════════════════════════════════════ */
+const FIELD_TYPES = [
+    { code: "groupe",      icon: "📁", label: "Nouveau Groupe" },
+    { code: "menu",        icon: "▾",  label: "Menu déroulant" },
+    { code: "checkbox",    icon: "☑",  label: "Case à cocher" },
+    { code: "textarea",    icon: "≡",  label: "Texte multi-ligne" },
+    { code: "heure",       icon: "🕐", label: "Heure" },
+    { code: "signature",   icon: "✍",  label: "Signature" },
+    { code: "libelle",     icon: "🏷", label: "Libellé (info)" },
+    { code: "ouinon",      icon: "⊙",  label: "Oui / Non" },
+    { code: "nombre",      icon: "#",  label: "Nombre" },
+    { code: "gps",         icon: "📍", label: "Localisation GPS" },
+    { code: "radio",       icon: "◉",  label: "Liste (1 choix)" },
+    { code: "image",       icon: "📤", label: "Téléchargement image" },
+    { code: "texte",       icon: "✎",  label: "Texte une ligne" },
+    { code: "email",       icon: "✉",  label: "Email" },
+    { code: "date",        icon: "📅", label: "Date" },
+    { code: "codebarre",   icon: "▦",  label: "Code-barres" },
+    { code: "photo",       icon: "🖼", label: "Image (capture)" },
+    { code: "liste_perso", icon: "≣",  label: "Liste personnalisée" }
+];
+
+/* ════════════════════════════════════════════════════════════════
+   BUILDER — éléments ajoutés
+═════════════════════════════════════════════════════════════════ */
+let fields = [];
+
+function renderPalette() {
+    const div = document.getElementById("fieldsPalette");
+    div.innerHTML = FIELD_TYPES.map(ft => `
+        <div class="field-type" onclick="addField('${ft.code}')">
+            <span class="ft-icon">${ft.icon}</span>
+            <span>${ft.label}</span>
+        </div>
+    `).join("");
+}
+
+function addField(typeCode) {
+    const t = FIELD_TYPES.find(f => f.code === typeCode);
+    if (!t) return;
+    const newField = {
+        id: "f_" + Date.now() + "_" + Math.floor(Math.random()*1000),
+        type: typeCode,
+        label: "",
+        zone: "",
+        required: false,
+        options: (typeCode === "menu" || typeCode === "radio" || typeCode === "liste_perso") ? ["Option 1", "Option 2"] : []
+    };
+    fields.push(newField);
+    renderBuilder();
+}
+
+function removeField(id) {
+    fields = fields.filter(f => f.id !== id);
+    renderBuilder();
+}
+
+function moveFieldUp(id) {
+    const i = fields.findIndex(f => f.id === id);
+    if (i > 0) { [fields[i-1], fields[i]] = [fields[i], fields[i-1]]; renderBuilder(); }
+}
+
+function moveFieldDown(id) {
+    const i = fields.findIndex(f => f.id === id);
+    if (i < fields.length - 1) { [fields[i+1], fields[i]] = [fields[i], fields[i+1]]; renderBuilder(); }
+}
+
+function updateField(id, prop, value) {
+    const f = fields.find(x => x.id === id);
+    if (!f) return;
+    f[prop] = value;
+}
+
+function addOption(id) {
+    const f = fields.find(x => x.id === id);
+    if (!f) return;
+    f.options.push("Nouvelle option");
+    renderBuilder();
+}
+
+function removeOption(id, idx) {
+    const f = fields.find(x => x.id === id);
+    if (!f || !f.options) return;
+    f.options.splice(idx, 1);
+    renderBuilder();
+}
+
+function updateOption(id, idx, value) {
+    const f = fields.find(x => x.id === id);
+    if (!f || !f.options) return;
+    f.options[idx] = value;
+}
+
+function renderBuilder() {
+    const div = document.getElementById("fieldsBuilder");
+    if (fields.length === 0) {
+        div.innerHTML = '<div class="builder-empty">Cliquez sur un type d\'élément ci-dessus pour commencer.</div>';
+        return;
+    }
+    div.innerHTML = fields.map((f, i) => renderFieldCard(f, i)).join("");
+}
+
+function renderFieldCard(f, idx) {
+    const t = FIELD_TYPES.find(x => x.code === f.type);
+    const isGroup = f.type === "groupe";
+    const isLibelle = f.type === "libelle";
+    const hasOptions = ["menu", "radio", "liste_perso"].includes(f.type);
+    const showZone = !isGroup && !isLibelle;
+
+    let optionsHtml = "";
+    if (hasOptions) {
+        optionsHtml = `
+            <div style="grid-column:1/-1">
+                <label style="margin-top:6px">Options</label>
+                <div class="options-list">
+                    ${(f.options || []).map((opt, i) => `
+                        <div class="opt-row">
+                            <input type="text" value="${escapeAttr(opt)}" oninput="updateOption('${f.id}',${i},this.value)">
+                            <button class="btn-danger btn-sm" onclick="removeOption('${f.id}',${i})">✕</button>
+                        </div>
+                    `).join("")}
+                    <button class="btn-secondary btn-sm" onclick="addOption('${f.id}')" style="margin-top:4px">+ Ajouter une option</button>
+                </div>
+            </div>
+        `;
+    }
+
+    const labelPlaceholder = isGroup ? "Nom du groupe (ex: Baie SSI)"
+                          : isLibelle ? "Texte informatif (ex: Vérifier visuellement chaque voyant)"
+                          : "Libellé du champ (ex: État du voyant rouge)";
+
+    return `
+        <div class="field-card ${isGroup ? 'group' : ''}">
+            <div class="field-head">
+                <div class="field-num">${idx + 1}</div>
+                <span class="field-type-badge">${t.icon} ${t.label}</span>
+                <div class="field-actions">
+                    <button class="btn-secondary btn-sm" onclick="moveFieldUp('${f.id}')" title="Monter">↑</button>
+                    <button class="btn-secondary btn-sm" onclick="moveFieldDown('${f.id}')" title="Descendre">↓</button>
+                    <button class="btn-danger btn-sm" onclick="removeField('${f.id}')" title="Supprimer">✕</button>
+                </div>
+            </div>
+            <div class="field-body ${(showZone && !hasOptions) ? '' : 'full'}">
+                <div>
+                    <label>${isGroup ? "Nom du groupe" : "Libellé"}</label>
+                    <input type="text" value="${escapeAttr(f.label)}" placeholder="${labelPlaceholder}" oninput="updateField('${f.id}','label',this.value)">
+                </div>
+                ${showZone ? `
+                <div>
+                    <label>Zone (optionnel)</label>
+                    <input type="text" value="${escapeAttr(f.zone)}" placeholder="Ex: PC Sécurité, Niveau -1…" oninput="updateField('${f.id}','zone',this.value)">
+                </div>
+                ` : ''}
+                ${optionsHtml}
+                ${(!isGroup && !isLibelle) ? `
+                <div style="grid-column:1/-1">
+                    <label class="required-row">
+                        <input type="checkbox" ${f.required ? 'checked' : ''} onchange="updateField('${f.id}','required',this.checked)">
+                        <span>Champ obligatoire</span>
+                    </label>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function escapeAttr(s) {
+    if (!s) return "";
+    return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+renderPalette();
+renderBuilder();
+
+/* ════════════════════════════════════════════════════════════════
+   TABS
+═════════════════════════════════════════════════════════════════ */
+function showTab(id, btn) {
+    document.querySelectorAll(".card").forEach(c => c.classList.remove("active"));
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    if (btn) btn.classList.add("active");
+    if (id === "tabTemplates") loadTemplates();
+    if (id === "tabHistory") loadHistory();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   SAUVEGARDER UN MODÈLE
+═════════════════════════════════════════════════════════════════ */
+async function saveTemplate() {
+    const name = document.getElementById("tplName").value.trim();
+    const msg = document.getElementById("createMsg");
+    msg.textContent = "";
+
+    if (!name) { msg.textContent = "❌ Nom du modèle requis."; msg.style.color = "#f87171"; return; }
+    if (fields.length === 0) { msg.textContent = "❌ Ajoutez au moins un élément."; msg.style.color = "#f87171"; return; }
+
+    // Vérifier que chaque champ a un libellé
+    const empty = fields.find(f => !f.label || f.label.trim() === "");
+    if (empty) { msg.textContent = "❌ Tous les éléments doivent avoir un libellé."; msg.style.color = "#f87171"; return; }
+
+    // Calculer ordre = max + 1
+    const { data: existing } = await supabaseClient
+        .from("verifications_types")
+        .select("ordre")
+        .order("ordre", { ascending: false })
+        .limit(1);
+    const ordre = (existing && existing.length) ? existing[0].ordre + 1 : 1;
+
+    // Convertir fields → checkpoints (compatible avec verification_agent.html)
+    const checkpoints = fields.map(f => ({
+        id: f.id,
+        type: f.type,
+        label: f.label,
+        zone: f.zone || "",
+        required: !!f.required,
+        options: f.options || []
+    }));
+
+    const { error } = await supabaseClient
+        .from("verifications_types")
+        .insert({
+            label: name,
+            ordre: ordre,
+            checkpoints: checkpoints
+        });
+
+    if (error) { msg.textContent = "❌ " + error.message; msg.style.color = "#f87171"; return; }
+
+    msg.textContent = "✅ Modèle « " + name + " » créé !"; msg.style.color = "#00c878";
+    document.getElementById("tplName").value = "";
+    fields = [];
+    renderBuilder();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CHARGER LES MODÈLES
+═════════════════════════════════════════════════════════════════ */
+async function loadTemplates() {
+    const { data, error } = await supabaseClient
+        .from("verifications_types")
+        .select("*")
+        .order("ordre", { ascending: true });
+
+    const div = document.getElementById("templatesList");
+
+    if (error) { div.innerHTML = '<div class="empty">Erreur : ' + error.message + '</div>'; return; }
+    if (!data || data.length === 0) { div.innerHTML = '<div class="empty">Aucun modèle créé.</div>'; return; }
+
+    div.innerHTML = data.map(t => {
+        const cps = t.checkpoints || [];
+        const pts = cps.length;
+        const groupes = cps.filter(c => c.type === "groupe").length;
+        return `
+        <div class="tpl-card">
+            <div class="tpl-header">
+                <div>
+                    <div class="tpl-name">${escapeAttr(t.label)}</div>
+                    <div class="tpl-meta">
+                        <span class="pill pill-pts">${pts} élément${pts > 1 ? "s" : ""}</span>
+                        ${groupes ? `<span class="pill" style="background:rgba(77,163,255,0.15);color:#4da3ff">${groupes} groupe${groupes > 1 ? "s" : ""}</span>` : ""}
+                        — Créé le ${new Date(t.created_at).toLocaleDateString("fr-FR")}
+                    </div>
+                </div>
+            </div>
+            <div class="tpl-actions">
+                <button class="btn-success btn-sm" onclick="lancerVerification('${t.id}')">▶ Lancer</button>
+                <button class="btn-secondary btn-sm" onclick="voirCheckpoints('${t.id}')">👁 Voir la structure</button>
+                <button class="btn-secondary btn-sm" onclick="editTemplate('${t.id}','${escapeAttr(t.label).replace(/'/g,"\\'")}')">✏️ Renommer</button>
+                <button class="btn-danger btn-sm" onclick="deleteTemplate('${t.id}')">🗑</button>
+            </div>
+            <div id="cp-detail-${t.id}" style="display:none;margin-top:10px"></div>
+        </div>`;
+    }).join("");
+}
+
+function voirCheckpoints(id) {
+    const div = document.getElementById("cp-detail-" + id);
+    if (div.style.display === "block") { div.style.display = "none"; return; }
+
+    supabaseClient.from("verifications_types").select("checkpoints").eq("id", id).single()
+        .then(({ data }) => {
+            const cps = data.checkpoints || [];
+            if (cps.length === 0) { div.innerHTML = '<div style="color:#4a5578;padding:8px">Aucun élément.</div>'; }
+            else {
+                div.innerHTML = cps.map((cp, i) => {
+                    const t = FIELD_TYPES.find(x => x.code === cp.type) || { icon: "•", label: cp.type };
+                    return `
+                    <div class="field-card ${cp.type === 'groupe' ? 'group' : ''}" style="margin-bottom:6px">
+                        <div class="field-head">
+                            <div class="field-num">${i + 1}</div>
+                            <span class="field-type-badge">${t.icon} ${t.label}</span>
+                            ${cp.required ? '<span class="pill" style="background:rgba(239,68,68,0.15);color:#f87171">Obligatoire</span>' : ''}
+                        </div>
+                        <div style="font-weight:600;font-size:.92rem">${escapeAttr(cp.label)}</div>
+                        ${cp.zone ? `<div style="font-size:.8rem;color:#6b7a99;margin-top:2px">📍 ${escapeAttr(cp.zone)}</div>` : ''}
+                        ${(cp.options && cp.options.length) ? `<div style="font-size:.8rem;color:#6b7a99;margin-top:4px">Options : ${cp.options.map(escapeAttr).join(" · ")}</div>` : ''}
+                    </div>`;
+                }).join("");
+            }
+            div.style.display = "block";
+        });
+}
+
+async function editTemplate(id, oldLabel) {
+    const label = prompt("Nouveau nom :", oldLabel);
+    if (!label) return;
+    await supabaseClient.from("verifications_types").update({ label }).eq("id", id);
+    loadTemplates();
+}
+
+async function deleteTemplate(id) {
+    if (!confirm("Supprimer ce modèle de vérification ?")) return;
+    await supabaseClient.from("verifications_types").delete().eq("id", id);
+    loadTemplates();
+}
+
+/* ════════════════════════════════════════════════════════════════
+   LANCER UNE VÉRIFICATION
+═════════════════════════════════════════════════════════════════ */
+async function lancerVerification(templateId) {
+    const { data: tpl } = await supabaseClient
+        .from("verifications_types")
+        .select("*")
+        .eq("id", templateId)
+        .single();
+
+    if (!tpl) { alert("Modèle introuvable."); return; }
+
+    const cps = (tpl.checkpoints || []).map(cp => ({
+        ...cp,
+        valeur: null,
+        commentaire: "",
+        horodatage: null
+    }));
+
+    const { data, error } = await supabaseClient
+        .from("verifications")
+        .insert({
+            type: tpl.label,
+            resultat: "en_cours",
+            agent_nom: localStorage.getItem("nom") || null,
+            meta: {
+                template_id: templateId,
+                template_label: tpl.label,
+                checkpoints: cps
+            }
+        })
+        .select();
+
+    if (error) { alert("❌ " + error.message); return; }
+
+    const verifId = data[0].id;
+    location.href = `verification_agent.html?id=${verifId}`;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   HISTORIQUE
+═════════════════════════════════════════════════════════════════ */
+async function loadHistory() {
+    const { data, error } = await supabaseClient
+        .from("verifications")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+    const div = document.getElementById("historyList");
+    if (error) { div.innerHTML = '<div class="empty">Erreur : ' + error.message + '</div>'; return; }
+    if (!data || data.length === 0) { div.innerHTML = '<div class="empty">Aucune vérification effectuée.</div>'; return; }
+
+    div.innerHTML = data.map(v => {
+        const dt = new Date(v.created_at).toLocaleString("fr-FR");
+        const cps = (v.meta && v.meta.checkpoints) || [];
+        const fillable = cps.filter(c => c.type !== "groupe" && c.type !== "libelle");
+        const total = fillable.length;
+        const filled = fillable.filter(c => c.valeur !== null && c.valeur !== undefined && c.valeur !== "").length;
+        const statusPill = v.resultat === "en_cours"
+            ? '<span class="pill" style="background:rgba(255,180,50,0.15);color:#ffb432">En cours</span>'
+            : '<span class="pill pill-ok">Terminé</span>';
+
+        return `
+        <div class="hist-item">
+            <div class="hist-info">
+                <strong>${escapeAttr(v.type || "—")}</strong>
+                <small>${dt} — ${escapeAttr(v.agent_nom || "—")} — ${filled}/${total} renseignés</small>
+            </div>
+            ${statusPill}
+            ${v.resultat === "en_cours" ? `<button class="btn-success btn-sm" onclick="location.href='verification_agent.html?id=${v.id}'">▶ Reprendre</button>` : ""}
+        </div>`;
+    }).join("");
+}
+
+loadTemplates();
+</script>
+<script src="security.js"></script>
+<script src="global.js"></script>
 <script src="notifications_global.js"></script>
 </body>
 </html>

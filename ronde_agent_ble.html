@@ -2,617 +2,511 @@
 <html lang="fr">
 <head>
 <meta http-equiv="X-Content-Type-Options" content="nosniff">
-<meta http-equiv="X-Frame-Options" content="DENY">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="robots" content="noindex, nofollow">
 <meta charset="UTF-8">
-<title>Ronde agent — NFC / BLE</title>
+<title>Contrôle d'accès — Sûreté</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<link rel="stylesheet" href="global.css">
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif;padding:16px 16px 80px}
-
-.header{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-.back-btn{background:rgba(77,163,255,0.12);border:1px solid rgba(77,163,255,0.3);color:#4da3ff;padding:8px 14px;border-radius:10px;cursor:pointer;font:600 .9rem 'DM Sans';transition:.2s}
-.back-btn:hover{background:#4da3ff;color:#0b0e17}
-.header h1{font-size:1.4rem;color:#4da3ff;letter-spacing:-.5px;flex:1}
-
-.card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:20px;margin-bottom:16px}
-.card h2{font-size:1.05rem;color:#4da3ff;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-
-/* SCAN MODE SELECTOR */
-.mode-row{display:flex;gap:8px;margin-bottom:16px}
-.mode-btn{flex:1;padding:14px 10px;border-radius:12px;text-align:center;cursor:pointer;font:600 .9rem 'DM Sans';border:2px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.03);color:#8899bb;transition:.25s}
-.mode-btn.active{border-color:#4da3ff;background:rgba(77,163,255,0.1);color:#4da3ff;box-shadow:0 0 16px rgba(77,163,255,0.15)}
-.mode-btn:hover{border-color:rgba(77,163,255,0.4)}
-.mode-btn .mode-icon{font-size:1.6rem;display:block;margin-bottom:4px}
-
-/* PROGRESS */
-.progress-wrap{margin:12px 0 6px}
-.progress-bar-bg{background:rgba(255,255,255,0.08);border-radius:99px;height:12px;overflow:hidden}
-.progress-bar-fill{height:100%;width:0%;background:linear-gradient(90deg,#4da3ff,#00d4ff);border-radius:99px;transition:width .4s ease}
-.progress-text{text-align:right;font-size:.8rem;color:#6b7a99;margin-top:4px}
-
-/* SCAN BUTTON */
-.scan-btn{width:100%;padding:16px;border:none;border-radius:14px;font:700 1.1rem 'DM Sans';cursor:pointer;transition:.25s;position:relative;overflow:hidden}
-.scan-btn.idle{background:linear-gradient(135deg,#4da3ff,#2b7de9);color:#fff;box-shadow:0 4px 20px rgba(77,163,255,0.3)}
-.scan-btn.scanning{background:linear-gradient(135deg,#00c878,#00a060);color:#fff;animation:pulse 1.5s infinite}
-.scan-btn:hover{transform:translateY(-1px)}
-@keyframes pulse{0%,100%{box-shadow:0 0 10px rgba(0,200,120,0.3)}50%{box-shadow:0 0 30px rgba(0,200,120,0.6)}}
-
-/* NFC TAP ANIMATION */
-.nfc-tap-zone{display:none;text-align:center;padding:30px;margin:16px 0}
-.nfc-tap-zone.active{display:block}
-.nfc-circle{width:120px;height:120px;border-radius:50%;border:3px dashed #4da3ff;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;font-size:3rem;animation:nfcPulse 2s infinite}
-@keyframes nfcPulse{0%,100%{border-color:rgba(77,163,255,0.3);transform:scale(1)}50%{border-color:#4da3ff;transform:scale(1.05)}}
-.nfc-tap-text{color:#8899bb;font-size:.95rem}
-
-/* POINTS */
-.point{padding:14px;border-radius:12px;margin-bottom:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);display:flex;align-items:center;gap:12px;transition:.2s}
-.point.current{border-color:#4da3ff;background:rgba(77,163,255,0.06);box-shadow:0 0 12px rgba(77,163,255,0.15)}
-.point.done{border-color:rgba(0,200,120,0.4);background:rgba(0,200,120,0.06)}
-.point-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0}
-.point.pending .point-num{background:rgba(255,255,255,0.08);color:#6b7a99}
-.point.current .point-num{background:#4da3ff;color:#fff}
-.point.done .point-num{background:#00c878;color:#fff}
-.point-info{flex:1;min-width:0}
-.point-name{font-weight:600;font-size:.95rem}
-.point-detail{font-size:.8rem;color:#6b7a99;margin-top:2px}
-.point-tag{font-size:.7rem;padding:2px 8px;border-radius:999px;font-weight:600}
-.tag-nfc{background:rgba(77,163,255,0.15);color:#4da3ff}
-.tag-ble{background:rgba(255,180,50,0.15);color:#ffb432}
-.point-actions{flex-shrink:0}
-.btn-validate{padding:6px 12px;border:1px solid rgba(0,200,120,0.4);background:rgba(0,200,120,0.1);color:#00c878;border-radius:8px;font:600 .8rem 'DM Sans';cursor:pointer}
-.btn-validate:hover{background:#00c878;color:#fff}
-
-/* LOG */
-.log{font-size:.8rem;max-height:180px;overflow-y:auto;background:rgba(0,0,0,0.3);padding:12px;border-radius:10px;margin-top:8px}
-.log-line{margin-bottom:4px;color:#8899bb;line-height:1.4}
-.log-line strong{color:#4da3ff}
-.log-line.success strong{color:#00c878}
-.log-line.error strong{color:#f87171}
-
-/* COMMENT */
-textarea{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#e0e4ef;font:0.9rem 'DM Sans';min-height:60px;resize:vertical}
-input[type="file"]{color:#8899bb;font-size:.85rem;margin:6px 0}
-
-.btn{padding:12px 16px;border:none;border-radius:10px;font:600 .95rem 'DM Sans';cursor:pointer;width:100%;transition:.2s;margin-top:10px}
-.btn-primary{background:linear-gradient(135deg,#4da3ff,#2b7de9);color:#fff}
-.btn-secondary{background:rgba(255,255,255,0.08);color:#8899bb;border:1px solid rgba(255,255,255,0.12)}
-
-/* MODAL */
-.modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);backdrop-filter:blur(8px);display:none;justify-content:center;align-items:center;padding:16px;z-index:999}
-.modal-bg.active{display:flex}
-.modal-box{background:#141824;border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:24px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto}
-.modal-box h2{color:#4da3ff;margin-bottom:16px}
+:root { --acc:#3b82f6; --acc2:#06b6d4; --ok:#10b981; --warn:#f59e0b; --bad:#ef4444; }
+body { margin:0; padding:16px; background:radial-gradient(circle at top,#0f1830,#080b14 60%); color:#e8ebf0; font-family:system-ui,sans-serif; }
+.bar { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px; }
+.bar h1 { font-size:1.3rem; margin:0; flex:1; min-width:200px; display:flex; align-items:center; gap:8px; }
+.btn { background:#16203a; border:1px solid #283042; color:#e8ebf0; border-radius:8px; padding:8px 13px; cursor:pointer; font-size:.85rem; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+.btn:hover { background:#1d2942; }
+.btn.acc2 { background:linear-gradient(135deg,var(--acc2),#0e7490); border:none; color:#fff; font-weight:700; }
+.postes { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+.poste { flex:1; min-width:120px; padding:12px; border-radius:10px; border:1px solid #283042; background:#0e1626; cursor:pointer; text-align:center; }
+.poste.active { background:linear-gradient(135deg,var(--acc),#1e40af); border-color:var(--acc); }
+.poste .pn { font-weight:800; font-size:1.05rem; }
+.poste .ps { font-size:.72rem; opacity:.8; }
+.card { background:#0e1626; border:1px solid #232c40; border-radius:14px; padding:16px; margin-bottom:16px; }
+.card h2 { font-size:1rem; margin:0 0 12px; color:#9ec5ff; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+@media(max-width:880px){ .grid{ grid-template-columns:1fr; } }
+.cats { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.cat { flex:1; min-width:80px; padding:9px 6px; border-radius:8px; border:1px solid #283042; background:#111b2e; cursor:pointer; font-size:.82rem; text-align:center; font-weight:600; }
+.cat.active { background:#1e3a5f; border-color:var(--acc); color:#fff; }
+label { display:block; font-size:.82rem; margin-top:10px; font-weight:600; opacity:.9; }
+input, select, textarea { width:100%; box-sizing:border-box; padding:9px; margin-top:4px; background:#0a1120; border:1px solid #283042; border-radius:8px; color:#e8ebf0; font-size:.9rem; }
+.sens-row { display:flex; gap:8px; margin-top:14px; }
+.sens-row .btn { flex:1; justify-content:center; }
+.sens-row .btn.sel-in { background:linear-gradient(135deg,var(--ok),#047857); border:none; color:#fff; font-weight:700; }
+.sens-row .btn.sel-out { background:linear-gradient(135deg,var(--bad),#b91c1c); border:none; color:#fff; font-weight:700; }
+.consigne-head { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px; }
+.consigne-chip { background:#0a1120; border:1px solid #232c40; border-radius:10px; padding:8px 14px; text-align:center; }
+.consigne-chip .n { font-size:1.5rem; font-weight:800; }
+.consigne-chip .l { font-size:.7rem; opacity:.75; }
+.consigne-chip.ko .n { color:var(--warn); }
+.consigne-chip.ok .n { color:var(--ok); }
+.badge-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:8px; }
+.bdg { border-radius:10px; padding:9px; border:1px solid #232c40; background:#0a1120; cursor:pointer; transition:.15s; position:relative; }
+.bdg .id { font-weight:800; font-size:.95rem; }
+.bdg .who { font-size:.72rem; opacity:.85; margin-top:3px; line-height:1.25; min-height:1.2em; }
+.bdg .since { font-size:.66rem; opacity:.6; margin-top:2px; }
+.bdg.free { border-color:#1f3a2e; }
+.bdg.free .id { color:var(--ok); }
+.bdg.free:hover { background:#0d1a14; }
+.bdg.out { border-color:#3a2330; background:#1a1016; }
+.bdg.out .id { color:var(--bad); }
+.bdg.out:hover { background:#241218; }
+.bdg.overstay { border-color:var(--warn); box-shadow:0 0 0 1px var(--warn) inset; }
+.bdg .dot { position:absolute; top:8px; right:8px; width:8px; height:8px; border-radius:50%; }
+.bdg.free .dot { background:var(--ok); }
+.bdg.out .dot { background:var(--bad); }
+.presence { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.pchip { flex:1; min-width:70px; background:#0a1120; border:1px solid #232c40; border-radius:10px; padding:8px; text-align:center; }
+.pchip .n { font-size:1.4rem; font-weight:800; color:var(--acc2); }
+.pchip .l { font-size:.7rem; opacity:.75; }
+.logsearch { display:flex; gap:8px; margin-bottom:10px; }
+.logsearch input { margin-top:0; }
+.log { max-height:340px; overflow-y:auto; }
+.entry { padding:9px 11px; border-radius:9px; margin-bottom:7px; background:#0a1120; border:1px solid #1d2740; border-left:3px solid #283042; font-size:.85rem; }
+.entry.in { border-left-color:var(--ok); }
+.entry.out { border-left-color:var(--bad); }
+.entry .top { display:flex; justify-content:space-between; gap:8px; }
+.entry .nm { font-weight:700; }
+.entry .meta { font-size:.74rem; opacity:.7; margin-top:3px; display:flex; gap:10px; flex-wrap:wrap; }
+.entry .badge-cat { font-size:.68rem; padding:1px 7px; border-radius:999px; background:#1e3a5f; }
+.empty { opacity:.6; text-align:center; padding:20px; font-size:.85rem; }
+.scan { background:#0a1120; border:1px dashed var(--acc2); border-radius:8px; padding:10px; margin-bottom:10px; }
+.scan input { border-style:dashed; }
+.intg { font-size:.75rem; opacity:.8; background:rgba(59,130,246,.08); border:1px solid rgba(59,130,246,.3); border-radius:8px; padding:8px 11px; margin-top:10px; line-height:1.5; }
+#toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#111; padding:12px 22px; border-radius:10px; opacity:0; transition:.3s; pointer-events:none; z-index:999; max-width:90%; text-align:center; }
+#toast.show { opacity:1; }
 </style>
 </head>
 <body>
-
-<div class="header">
-    <button class="back-btn" onclick="location.href='index.html'">⟵</button>
-    <h1>Ronde en cours</h1>
+<div class="bar">
+    <h1>🛂 Contrôle d'accès <span style="font-size:.8rem;opacity:.65;font-weight:500" id="siteLbl"></span></h1>
+    <button class="btn" onclick="configBadges()">🎫 Lot de badges</button>
+    <button class="btn" onclick="fichePassation()">🖨️ Fiche de passation</button>
+    <button class="btn acc2" onclick="ouvrirParametres()">⚙️ Laisser-passer</button>
+    <button class="btn" onclick="exportCSV()">⬇️ Export</button>
+    <a class="btn" href="index.html">← Retour</a>
 </div>
-
-<!-- INFOS RONDE -->
+<div class="postes" id="postes">
+    <div class="poste" data-poste="porte5"   onclick="setPoste('porte5')">  <div class="pn">Porte 5</div>  <div class="ps">Accès employés</div></div>
+    <div class="poste" data-poste="porte115" onclick="setPoste('porte115')"><div class="pn">Porte 115</div><div class="ps">Sociétés · Visiteurs · Livreurs</div></div>
+    <div class="poste" data-poste="porte16"  onclick="setPoste('porte16')"> <div class="pn">Porte 16</div> <div class="ps">Accès mixte</div></div>
+</div>
 <div class="card">
-    <h2><span style="font-size:1.3rem">🛡</span> <span id="rondeNom">Chargement…</span></h2>
-    <div style="font-size:.9rem;color:#6b7a99;margin-bottom:12px" id="rondeDesc"></div>
-
-    <div class="progress-wrap">
-        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
-        <div class="progress-text" id="progressText">0 / 0</div>
+    <h2>🎫 Badges visiteurs — consigne pièce d'identité
+        <span style="font-size:.72rem;font-weight:500;opacity:.7" id="consigneRappel"></span></h2>
+    <div id="consigneAlert" style="display:none; margin-bottom:12px; padding:10px 14px; border-radius:10px; font-size:.86rem; font-weight:600;"></div>
+    <div class="consigne-head">
+        <div class="consigne-chip ok"><div class="n" id="cFree">–</div><div class="l">Badges dispo</div></div>
+        <div class="consigne-chip ko"><div class="n" id="cOut">–</div><div class="l">Badges sortis</div></div>
+        <div class="consigne-chip ko"><div class="n" id="cPieces">–</div><div class="l">Pièces en consigne</div></div>
+    </div>
+    <div class="badge-grid" id="badgeGrid"></div>
+    <div class="intg" style="margin-top:12px;">
+        💡 <b>Remettre un badge</b> : catégorie « Visiteur » ci-dessous, attribue un badge libre et indique la pièce gardée en consigne. Un <b>ticket avec QR</b> s'imprime automatiquement.
+        <b>Restituer</b> : scanne le QR du ticket (ou clique le badge rouge) → la sortie est enregistrée et le rappel de rendre la pièce s'affiche.
     </div>
 </div>
-
-<!-- MODE DE SCAN -->
-<div class="card">
-    <h2><span style="font-size:1.3rem">📡</span> Mode de validation</h2>
-    <div class="mode-row">
-        <div class="mode-btn active" id="modeNFC" onclick="setMode('nfc')">
-            <span class="mode-icon">📱</span> NFC
+<div class="grid">
+    <div class="card">
+        <h2>➕ Enregistrer un passage</h2>
+        <div class="scan">
+            <label style="margin-top:0">🔖 Scan badge / laisser-passer</label>
+            <input type="text" id="scanField" placeholder="Scanner ou saisir un code, puis Entrée" autocomplete="off">
         </div>
-        <div class="mode-btn" id="modeBLE" onclick="setMode('ble')">
-            <span class="mode-icon">📡</span> BLE
+        <div class="cats" id="cats">
+            <div class="cat active" data-cat="employe"  onclick="setCat('employe')">👤 Employé</div>
+            <div class="cat" data-cat="societe"  onclick="setCat('societe')">🏢 Société</div>
+            <div class="cat" data-cat="visiteur" onclick="setCat('visiteur')">🎫 Visiteur</div>
+            <div class="cat" data-cat="livreur"  onclick="setCat('livreur')">📦 Livreur</div>
         </div>
-        <div class="mode-btn" id="modeManuel" onclick="setMode('manuel')">
-            <span class="mode-icon">✋</span> Manuel
+        <div id="fields"></div>
+        <div class="sens-row">
+            <button class="btn sel-in"  onclick="enregistrer('entree')">↓ ENTRÉE</button>
+            <button class="btn sel-out" onclick="enregistrer('sortie')">↑ SORTIE</button>
         </div>
+        <div class="intg" id="intgNote"></div>
     </div>
-
-    <!-- NFC TAP ZONE -->
-    <div class="nfc-tap-zone active" id="nfcZone">
-        <div class="nfc-circle">📱</div>
-        <div class="nfc-tap-text" id="nfcStatus">Appuyez sur « Scanner » puis approchez le pointeau NFC</div>
-    </div>
-
-    <button class="scan-btn idle" id="btnScan" onclick="toggleScan()">
-        ▶ Démarrer le scan
-    </button>
-</div>
-
-<!-- POINTS DE PASSAGE -->
-<div class="card">
-    <h2><span style="font-size:1.3rem">📍</span> Points de passage</h2>
-    <div id="pointsList"></div>
-</div>
-
-<!-- JOURNAL -->
-<div class="card">
-    <h2><span style="font-size:1.3rem">📝</span> Journal</h2>
-    <div class="log" id="log"></div>
-</div>
-
-<!-- COMMENTAIRE / MEDIA -->
-<div class="card">
-    <h2><span style="font-size:1.3rem">💬</span> Commentaire & médias</h2>
-    <textarea id="commentaire" placeholder="Ajouter un commentaire…"></textarea>
-    <label style="display:block;margin-top:8px;font-size:.85rem;color:#6b7a99">📸 Photos / 🎥 Vidéos</label>
-    <input type="file" id="medias" accept="image/*,video/*" multiple>
-    <button class="btn btn-secondary" onclick="ajouterCommentaire()">Ajouter au journal</button>
-</div>
-
-<!-- RAPPORT -->
-<div class="card">
-    <button class="btn btn-primary" onclick="ouvrirRapport()">📋 Rapport final</button>
-</div>
-
-<!-- MODAL RAPPORT -->
-<div class="modal-bg" id="modalRapport" onclick="if(event.target===this)fermerRapport()">
-    <div class="modal-box">
-        <h2>📋 Rapport de ronde</h2>
-        <div id="rapportContent"></div>
-        <button class="btn btn-primary" onclick="exportPDF()" style="margin-top:16px">📄 Exporter PDF</button>
-        <button class="btn btn-secondary" onclick="fermerRapport()">Fermer</button>
+    <div class="card">
+        <h2>📊 Présence en cours</h2>
+        <div class="presence" id="presence"></div>
+        <h2 style="margin-top:14px">📋 Journal — traçabilité</h2>
+        <div class="logsearch">
+            <input type="text" id="searchField" placeholder="🔍 Rechercher…" oninput="renderLog()">
+            <select id="filterPoste" onchange="renderLog()" style="max-width:130px;margin-top:0">
+                <option value="">Tous postes</option>
+                <option value="porte5">Porte 5</option>
+                <option value="porte115">Porte 115</option>
+                <option value="porte16">Porte 16</option>
+            </select>
+        </div>
+        <div class="log" id="log"><div class="empty">Chargement…</div></div>
     </div>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<div id="toast"></div>
+<div id="qrStage" style="display:none"></div>
+<div id="caModalOv" style="position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px" onclick="if(event.target===this)closeCaModal()">
+    <div id="caModal" style="background:#0e1626;border:1px solid #2a3550;border-radius:16px;max-width:420px;width:100%;max-height:88vh;overflow-y:auto;padding:22px"></div>
+</div>
+<script src="vendor/qrcodejs.min.js"></script>
+<script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
-<script>
-if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
-
-/* ============================================================
-   STATE
-============================================================ */
-let rondeCourante = null;
-let rondeDbId = null;
-let indexCourant = 0;
-let scanActif = false;
-let scanMode = "nfc";
-let bleScanHandle = null;
-let ndefReader = null;
-
-/* ============================================================
-   CHARGEMENT DE LA RONDE
-============================================================ */
-async function chargerRonde() {
-    const { data } = await supabaseClient
-        .from("rondes")
-        .select("*")
-        .eq("statut", "en_cours")
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-    if (data && data.length > 0) {
-        const r = data[0];
-        rondeDbId = r.id;
-        rondeCourante = {
-            nom: (r.meta && r.meta.nom) || r.type || "Ronde",
-            description: r.observations || "",
-            type: r.type,
-            points: (r.meta && r.meta.points) || []
-        };
-        logMsg("Ronde chargée : " + rondeCourante.nom);
-    } else {
-        rondeCourante = { nom: "Aucune ronde en cours", description: "Créez une ronde depuis la page Admin.", type: "", points: [] };
-        logMsg("Aucune ronde en cours trouvée.", "error");
-    }
-
-    document.getElementById("rondeNom").textContent = rondeCourante.nom;
-    document.getElementById("rondeDesc").textContent = rondeCourante.description;
-    indexCourant = trouverProchain();
-    afficherPoints();
-    majProgression();
-
-    // Auto-detect best mode
-    if (rondeCourante.points.some(p => p.tagType === "nfc")) setMode("nfc");
-    else if (rondeCourante.points.some(p => p.tagType === "ble")) setMode("ble");
-}
-
-function trouverProchain() {
-    for (let i = 0; i < rondeCourante.points.length; i++) {
-        if (!rondeCourante.points[i].valide) return i;
-    }
-    return rondeCourante.points.length;
-}
-
-/* ============================================================
-   MODE DE SCAN
-============================================================ */
-function setMode(m) {
-    scanMode = m;
-    document.getElementById("modeNFC").classList.toggle("active", m === "nfc");
-    document.getElementById("modeBLE").classList.toggle("active", m === "ble");
-    document.getElementById("modeManuel").classList.toggle("active", m === "manuel");
-    document.getElementById("nfcZone").classList.toggle("active", m === "nfc");
-
-    if (scanActif) stopScan();
-
-    // Update button label
-    const btn = document.getElementById("btnScan");
-    if (m === "manuel") {
-        btn.style.display = "none";
-    } else {
-        btn.style.display = "";
-        btn.textContent = m === "nfc" ? "▶ Scanner NFC" : "▶ Scanner BLE";
-    }
-}
-
-/* ============================================================
-   SCAN — TOGGLE
-============================================================ */
-function toggleScan() {
-    if (scanActif) stopScan();
-    else startScan();
-}
-
-async function startScan() {
-    if (scanMode === "nfc") await startNFC();
-    else if (scanMode === "ble") await startBLE();
-}
-
-function stopScan() {
-    scanActif = false;
-    const btn = document.getElementById("btnScan");
-    btn.className = "scan-btn idle";
-    btn.textContent = scanMode === "nfc" ? "▶ Scanner NFC" : "▶ Scanner BLE";
-
-    if (bleScanHandle && bleScanHandle.active) bleScanHandle.stop();
-    document.getElementById("nfcStatus").textContent = "Scan arrêté.";
-    logMsg("Scan arrêté.");
-}
-
-/* ============================================================
-   NFC SCAN (GuardTek-style)
-============================================================ */
-async function startNFC() {
-    if (!("NDEFReader" in window)) {
-        document.getElementById("nfcStatus").textContent = "⚠️ NFC non supporté. Utilisez le mode Manuel.";
-        logMsg("NFC non disponible sur cet appareil.", "error");
-        return;
-    }
-
-    try {
-        ndefReader = new NDEFReader();
-        await ndefReader.scan();
-        scanActif = true;
-
-        const btn = document.getElementById("btnScan");
-        btn.className = "scan-btn scanning";
-        btn.textContent = "⏹ Arrêter le scan NFC";
-
-        document.getElementById("nfcStatus").textContent = "📡 En attente… Approchez un pointeau NFC";
-        logMsg("Scan NFC démarré — approchez un tag.");
-
-        ndefReader.onreading = (event) => {
-            const uid = event.serialNumber || "";
-            logMsg(`Tag NFC détecté : ${uid}`);
-            document.getElementById("nfcStatus").textContent = "✅ Tag détecté : " + uid;
-            matchAndValidate(uid, "nfc");
-        };
-
-        ndefReader.onreadingerror = () => {
-            logMsg("Erreur lecture NFC — réessayez.", "error");
-        };
-    } catch (e) {
-        logMsg("Erreur NFC : " + e.message, "error");
-        document.getElementById("nfcStatus").textContent = "❌ Erreur : " + e.message;
-    }
-}
-
-/* ============================================================
-   BLE SCAN
-============================================================ */
-async function startBLE() {
-    if (!navigator.bluetooth || !navigator.bluetooth.requestLEScan) {
-        logMsg("BLE non supporté. Utilisez NFC ou Manuel.", "error");
-        return;
-    }
-
-    try {
-        bleScanHandle = await navigator.bluetooth.requestLEScan({ acceptAllAdvertisements: true });
-        scanActif = true;
-
-        const btn = document.getElementById("btnScan");
-        btn.className = "scan-btn scanning";
-        btn.textContent = "⏹ Arrêter le scan BLE";
-
-        logMsg("Scan BLE démarré.");
-
-        navigator.bluetooth.addEventListener("advertisementreceived", onBLEAdvert);
-    } catch (e) {
-        logMsg("Erreur BLE : " + e.message, "error");
-    }
-}
-
-function onBLEAdvert(event) {
-    if (!scanActif) return;
-    const id = event.device && event.device.id ? event.device.id : "";
-    const name = event.device && event.device.name ? event.device.name : "";
-    const rssi = event.rssi;
-
-    if (rssi < -80) return; // Trop loin
-
-    const identifier = name || id;
-    matchAndValidate(identifier, "ble", rssi);
-}
-
-/* ============================================================
-   MATCHING — cherche le tag parmi les points non validés
-============================================================ */
-function matchAndValidate(tagId, type, rssi) {
-    if (!rondeCourante || !rondeCourante.points.length) return;
-
-    // Chercher le tag dans TOUS les points non validés (pas juste le courant)
-    const normalizedTag = tagId.toLowerCase().replace(/[:\-\s]/g, "");
-
-    for (let i = 0; i < rondeCourante.points.length; i++) {
-        const p = rondeCourante.points[i];
-        if (p.valide) continue;
-
-        const normalizedPoint = (p.tagId || "").toLowerCase().replace(/[:\-\s]/g, "");
-
-        if (normalizedTag === normalizedPoint ||
-            normalizedTag.includes(normalizedPoint) ||
-            normalizedPoint.includes(normalizedTag)) {
-
-            validerPoint(i, rssi);
-            return;
-        }
-    }
-
-    logMsg(`Tag « ${tagId} » non reconnu pour cette ronde.`);
-}
-
-/* ============================================================
-   VALIDATION D'UN POINT
-============================================================ */
-async function validerPoint(index, rssi) {
-    const p = rondeCourante.points[index];
-    if (p.valide) return;
-
-    p.valide = true;
-    p.horodatage = new Date().toLocaleString("fr-FR");
-    if (rssi !== undefined) p.rssi = rssi;
-
-    logMsg(`✅ Point validé : « ${p.nom} »`, "success");
-
-    // Vibration feedback
-    if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-
-    await sauvegarderRonde();
-    indexCourant = trouverProchain();
-    afficherPoints();
-    majProgression();
-
-    // Ronde terminée ?
-    if (indexCourant >= rondeCourante.points.length) {
-        logMsg("🎉 Ronde terminée !", "success");
-        stopScan();
-        if (rondeDbId) {
-            await supabaseClient.from("rondes").update({
-                statut: "terminee",
-                fin_at: new Date().toISOString()
-            }).eq("id", rondeDbId);
-        }
-        showToast("✅ Ronde terminée et enregistrée !");
-    }
-}
-
-/* Validation manuelle (mode Manuel) */
-async function validerManuellement(index) {
-    if (!confirm(`Valider manuellement « ${rondeCourante.points[index].nom} » ?`)) return;
-    rondeCourante.points[index].validation_manuelle = true;
-    await validerPoint(index);
-}
-
-/* ============================================================
-   SAUVEGARDE SUPABASE
-============================================================ */
-async function sauvegarderRonde() {
-    if (!rondeDbId) return;
-    try {
-        await supabaseClient.from("rondes").update({
-            observations: rondeCourante.description,
-            meta: { nom: rondeCourante.nom, points: rondeCourante.points }
-        }).eq("id", rondeDbId);
-    } catch (e) {
-        console.warn("Erreur sauvegarde ronde :", e);
-    }
-}
-
-/* ============================================================
-   AFFICHAGE
-============================================================ */
-function afficherPoints() {
-    const div = document.getElementById("pointsList");
-    div.innerHTML = "";
-
-    if (!rondeCourante || rondeCourante.points.length === 0) {
-        div.innerHTML = '<div style="text-align:center;color:#4a5578;padding:20px">Aucun point de passage.</div>';
-        return;
-    }
-
-    rondeCourante.points.forEach((p, i) => {
-        const status = p.valide ? "done" : (i === indexCourant ? "current" : "pending");
-        const tagIcon = p.tagType === "nfc" ? "📱" : (p.tagType === "ble" ? "📡" : "🏷");
-        const tagClass = p.tagType === "nfc" ? "tag-nfc" : "tag-ble";
-
-        let detail = "";
-        if (p.valide && p.horodatage) {
-            detail = `✅ ${p.horodatage}` + (p.validation_manuelle ? " (manuel)" : "");
-        } else {
-            detail = `${tagIcon} ${p.tagId || "—"}`;
-        }
-
-        const manualBtn = (!p.valide && scanMode === "manuel")
-            ? `<button class="btn-validate" onclick="validerManuellement(${i})">✓</button>`
-            : "";
-
-        div.innerHTML += `
-            <div class="point ${status}">
-                <div class="point-num">${i + 1}</div>
-                <div class="point-info">
-                    <div class="point-name">${escapeHtml(p.nom)} <span class="point-tag ${tagClass}">${escapeHtml((p.tagType||"").toUpperCase())}</span></div>
-                    <div class="point-detail">${detail}</div>
-                </div>
-                <div class="point-actions">${manualBtn}</div>
-            </div>
-        `;
-    });
-}
-
-function majProgression() {
-    if (!rondeCourante) return;
-    const total = rondeCourante.points.length;
-    const valides = rondeCourante.points.filter(p => p.valide).length;
-    const pct = total === 0 ? 0 : Math.round((valides / total) * 100);
-    document.getElementById("progressBar").style.width = pct + "%";
-    document.getElementById("progressText").textContent = `${valides} / ${total} points validés — ${pct}%`;
-}
-
-/* ============================================================
-   JOURNAL
-============================================================ */
-function logMsg(msg, type = "") {
-    const div = document.getElementById("log");
-    const line = document.createElement("div");
-    line.className = "log-line" + (type ? " " + type : "");
-    line.innerHTML = `<strong>[${new Date().toLocaleTimeString("fr-FR")}]</strong> ${msg}`;
-    div.prepend(line);
-}
-
-async function ajouterCommentaire() {
-    const txt = document.getElementById("commentaire").value.trim();
-    if (!txt) return;
-    logMsg(`💬 ${txt}`);
-
-    // Rattacher au point courant
-    const point = rondeCourante.points[indexCourant] || rondeCourante.points[rondeCourante.points.length - 1];
-    if (point) {
-        if (!point.commentaires) point.commentaires = [];
-        point.commentaires.push({ texte: txt, date: new Date().toLocaleString("fr-FR") });
-        await sauvegarderRonde();
-    }
-
-    document.getElementById("commentaire").value = "";
-    document.getElementById("medias").value = "";
-}
-
-/* ============================================================
-   RAPPORT FINAL
-============================================================ */
-function ouvrirRapport() {
-    if (!rondeCourante) return;
-    const pts = rondeCourante.points;
-    const total = pts.length;
-    const valides = pts.filter(p => p.valide).length;
-
-    let html = `
-        <p><strong>Ronde :</strong> ${rondeCourante.nom}</p>
-        <p><strong>Type :</strong> ${rondeCourante.type}</p>
-        <p><strong>Progression :</strong> ${valides}/${total} points</p>
-        <p><strong>Agent :</strong> ${localStorage.getItem("nom") || "—"}</p>
-        <hr style="border-color:rgba(255,255,255,0.1);margin:12px 0">
-    `;
-
-    pts.forEach((p, i) => {
-        const icon = p.valide ? "✅" : "❌";
-        const mode = p.validation_manuelle ? "(validation manuelle)" : "";
-        html += `<div style="margin-bottom:12px">
-            <strong style="color:#4da3ff">${i + 1}. ${p.nom}</strong> ${icon} ${mode}<br>
-            <span style="color:#6b7a99;font-size:.85rem">
-                ${p.valide ? "Validé le " + p.horodatage : "Non validé"}
-                ${p.tagType ? " — " + p.tagType.toUpperCase() + " : " + (p.tagId || "") : ""}
-            </span>`;
-
-        if (p.commentaires && p.commentaires.length) {
-            p.commentaires.forEach(c => {
-                html += `<div style="margin-top:4px;padding:6px 10px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:.85rem">
-                    💬 ${escapeHtml(c.texte)} <span style="color:#6b7a99;font-size:.75rem">(${escapeHtml(c.date)})</span>
-                </div>`;
-            });
-        }
-        html += `</div>`;
-    });
-
-    document.getElementById("rapportContent").innerHTML = html;
-    document.getElementById("modalRapport").classList.add("active");
-}
-
-function fermerRapport() { document.getElementById("modalRapport").classList.remove("active"); }
-
-async function exportPDF() {
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF("p", "mm", "a4");
-    const M = 10;
-    let y = 20;
-
-    pdf.setFillColor(15, 20, 35);
-    pdf.rect(0, 0, 210, 40, "F");
-    pdf.setFontSize(18);
-    pdf.setTextColor(77, 163, 255);
-    pdf.text("Rapport de ronde", M, 28);
-
-    y = 50;
-    pdf.setFontSize(10);
-    pdf.setTextColor(0);
-
-    const lines = [
-        `Ronde : ${rondeCourante.nom}`,
-        `Type : ${rondeCourante.type}`,
-        `Agent : ${localStorage.getItem("nom") || "—"}`,
-        `Date : ${new Date().toLocaleString("fr-FR")}`,
-        `Progression : ${rondeCourante.points.filter(p => p.valide).length} / ${rondeCourante.points.length}`
-    ];
-    lines.forEach(l => { pdf.text(l, M, y); y += 6; });
-    y += 4;
-
-    rondeCourante.points.forEach((p, i) => {
-        if (y > 270) { pdf.addPage(); y = 20; }
-        pdf.setFontSize(11);
-        pdf.setTextColor(0, 80, 180);
-        pdf.text(`${i + 1}. ${p.nom}`, M, y); y += 5;
-        pdf.setFontSize(9);
-        pdf.setTextColor(60);
-        pdf.text(`Statut : ${p.valide ? "Validé" : "Non validé"}${p.horodatage ? " — " + p.horodatage : ""}`, M + 5, y); y += 5;
-        pdf.text(`Tag : ${(p.tagType || "").toUpperCase()} ${p.tagId || ""}`, M + 5, y); y += 5;
-        if (p.commentaires) {
-            p.commentaires.forEach(c => {
-                pdf.text(`💬 ${c.texte}`, M + 5, y); y += 5;
-            });
-        }
-        y += 3;
-    });
-
-    pdf.setFontSize(8);
-    pdf.setTextColor(120);
-    pdf.text("LBM Sécurité — SEGEP RG", M, 290);
-    pdf.save(`Ronde_${rondeCourante.nom.replace(/[^a-zA-Z0-9]/g, "_")}_${Date.now()}.pdf`);
-    showToast("📄 PDF exporté");
-}
-
-/* ============================================================
-   INIT
-============================================================ */
-chargerRonde();
-</script>
-<script src="security.js"></script>
 <script src="global.js"></script>
-<script src="notifications_global.js"></script>
+<script>
+let poste = localStorage.getItem("ca_poste") || "porte5";
+let categorie = "employe";
+let journal = [];
+const OVERSTAY_H = 4;
+function showToast(m){ const t=document.getElementById("toast"); t.innerHTML=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),3500); }
+function getBadgePool(){
+    const raw=localStorage.getItem("ca_badges");
+    if(raw){ try{ return JSON.parse(raw); }catch(e){} }
+    const def=[]; for(let i=1;i<=20;i++) def.push("V"+String(i).padStart(2,"0"));
+    return def;
+}
+function configBadges(){
+    const cur=getBadgePool().join(", ");
+    const v=prompt("Lot de badges visiteurs (séparés par des virgules).\nEx : V01, V02, … ou ACCUEIL-1, ACCUEIL-2 :", cur);
+    if(v===null) return;
+    const arr=v.split(",").map(s=>s.trim()).filter(Boolean);
+    if(!arr.length){ showToast("Lot inchangé"); return; }
+    localStorage.setItem("ca_badges", JSON.stringify(arr));
+    render(); showToast("🎫 Lot de "+arr.length+" badges enregistré");
+}
+const CHAMPS = {
+    employe:  [["nom","Nom de l'employé",true],["badge","N° badge",false],["destination","Destination / service",false]],
+    societe:  [["societe","Société",true],["nom","Intervenant",true],["motif","Motif intervention",false],["laissez_passer","N° laisser-passer",false],["destination","Zone / contact",false]],
+    visiteur: [],
+    livreur:  [["societe","Transporteur",true],["nom","Livreur",false],["destination","Destinataire",false],["motif","Nb colis / nature",false]]
+};
+function setPoste(p){
+    poste=p; localStorage.setItem("ca_poste",p);
+    document.querySelectorAll(".poste").forEach(el=>el.classList.toggle("active",el.dataset.poste===p));
+    if(p==="porte5") setCat("employe"); else if(p==="porte115") setCat("societe");
+}
+function setCat(c){
+    categorie=c;
+    document.querySelectorAll(".cat").forEach(el=>el.classList.toggle("active",el.dataset.cat===c));
+    renderFields();
+}
+function getBadgeStatus(){
+    const status={};
+    getBadgePool().forEach(b=>status[b]={out:false});
+    [...journal].reverse().forEach(r=>{
+        if(r.categorie!=="visiteur" || !r.badge) return;
+        if(!(r.badge in status)) status[r.badge]={out:false};
+        if(r.sens==="entree") status[r.badge]={out:true, nom:r.nom, societe:r.societe, since:r.created_at, piece:(r.meta&&r.meta.piece_consigne)||null, entryId:r.id};
+        else if(r.sens==="sortie") status[r.badge]={out:false};
+    });
+    return status;
+}
+function renderFields(){
+    const wrap=document.getElementById("fields");
+    if(categorie==="visiteur"){
+        const status=getBadgeStatus();
+        const libres=getBadgePool().filter(b=>!status[b] || !status[b].out);
+        wrap.innerHTML = `
+            <label>Nom du visiteur *</label>
+            <input type="text" id="f_nom" autocomplete="off">
+            <label>Société / personne visitée (hôte)</label>
+            <input type="text" id="f_societe" autocomplete="off">
+            <label>Motif de la visite</label>
+            <input type="text" id="f_motif" autocomplete="off">
+            <label>🎫 Badge attribué * <span style="opacity:.6;font-weight:400">(${libres.length} libre(s))</span></label>
+            <select id="f_badge">
+                <option value="">— Choisir un badge libre —</option>
+                ${libres.map(b=>`<option value="${escapeAttr(b)}">${escapeHtml(b)}</option>`).join("")}
+            </select>
+            <label>🪪 Pièce d'identité gardée en consigne *</label>
+            <select id="f_piece">
+                <option value="">— Type de pièce —</option>
+                <option>Carte nationale d'identité</option>
+                <option>Passeport</option>
+                <option>Permis de conduire</option>
+                <option>Titre de séjour</option>
+                <option>Badge entreprise externe</option>
+                <option>Autre</option>
+            </select>
+            <div class="intg" style="margin-top:10px">
+                ⚖️ La pièce est conservée le temps de la visite et <b>restituée au retour du badge</b>. Aucune photocopie n'est stockée (RGPD) — seule la traçabilité de l'échange est enregistrée.
+            </div>`;
+        return;
+    }
+    wrap.innerHTML = CHAMPS[categorie].map(([id,label,req])=>`
+        <label>${escapeHtml(label)}${req?' *':''}</label>
+        <input type="text" id="f_${id}" autocomplete="off">`).join("");
+}
+async function enregistrer(sens){
+    const agent = localStorage.getItem("nom") || "—";
+    if(categorie==="visiteur"){
+        const nom=(document.getElementById("f_nom").value||"").trim();
+        const badge=document.getElementById("f_badge").value;
+        const piece=document.getElementById("f_piece").value;
+        if(sens==="entree"){
+            if(!nom){ showToast("⚠️ Nom du visiteur requis"); return; }
+            if(!badge){ showToast("⚠️ Attribue un badge"); return; }
+            if(!piece){ showToast("⚠️ Indique la pièce gardée en consigne"); return; }
+        }
+        const row={ poste, categorie:"visiteur", sens, service:"surete", agent,
+            nom, societe:(document.getElementById("f_societe").value||"").trim(),
+            motif:(document.getElementById("f_motif").value||"").trim(),
+            badge: badge||null, meta: sens==="entree" ? { piece_consigne:piece } : {} };
+        const ins = await _insert(row, sens==="entree"
+            ? "↓ Visiteur entré — badge "+badge+" remis (pièce : "+piece+" en consigne)"
+            : "↑ Visiteur sorti");
+        if(ins && sens==="entree") genererTicketVisiteur(ins);
+        return;
+    }
+    const data={};
+    CHAMPS[categorie].forEach(([id])=>{ const el=document.getElementById("f_"+id); if(el) data[id]=el.value.trim(); });
+    const manquants=CHAMPS[categorie].filter(([id,l,req])=>req && !data[id]);
+    if(manquants.length){ showToast("⚠️ Champ requis : "+manquants[0][1]); return; }
+    await _insert({ poste, categorie, sens, service:"surete", agent,
+        nom:data.nom||null, societe:data.societe||null, badge:data.badge||null,
+        laissez_passer:data.laissez_passer||null, motif:data.motif||null, destination:data.destination||null, meta:{} },
+        (sens==="entree"?"↓ Entrée":"↑ Sortie")+" enregistrée");
+}
+async function _insert(row, msg){
+    try{
+        const { data:ins, error } = await supabaseClient.from("controle_acces").insert(row).select().single();
+        if(error) throw error;
+        showToast(msg);
+        document.querySelectorAll("#fields input, #fields select").forEach(el=>el.value="");
+        document.getElementById("scanField").value="";
+        pushToLaisserPasser(ins||row);
+        await charger();
+        return ins||row;
+    }catch(e){ console.error(e); showToast("❌ "+(e.message||e)); return null; }
+}
+async function restituerBadge(badge){
+    const status=getBadgeStatus()[badge];
+    if(!status || !status.out){ showToast("Ce badge est déjà disponible"); return; }
+    const piece = status.piece || "pièce d'identité";
+    if(!confirm("Restituer le badge "+badge+" ?\n\nVisiteur : "+(status.nom||"—")+"\nÀ rendre : "+piece+"\n\nLa sortie sera enregistrée.")) return;
+    await _insert({ poste, categorie:"visiteur", sens:"sortie", service:"surete",
+        agent: localStorage.getItem("nom")||"—",
+        nom:status.nom||null, societe:status.societe||null, badge,
+        lie_a: status.entryId||null, meta:{ piece_restituee: status.piece||null } },
+        "✅ Badge "+badge+" restitué — <b>rends la "+piece+"</b> au visiteur");
+}
+function render(){ renderBadgeBoard(); renderPresence(); renderLog(); if(categorie==="visiteur") renderFields(); }
+let _badgesOut = [];
+function renderBadgeBoard(){
+    const status=getBadgeStatus();
+    const pool=getBadgePool();
+    let free=0,out=0,pieces=0,over=0;
+    _badgesOut=[];
+    document.getElementById("badgeGrid").innerHTML = pool.map(b=>{
+        const s=status[b]||{out:false};
+        if(s.out){
+            out++; if(s.piece) pieces++;
+            const mins=s.since?Math.floor((Date.now()-new Date(s.since))/60000):0;
+            const isOver = mins >= OVERSTAY_H*60;
+            if(isOver) over++;
+            const dur = mins<60?(mins+" min"):(Math.floor(mins/60)+"h"+String(mins%60).padStart(2,"0"));
+            _badgesOut.push({ badge:b, nom:s.nom, societe:s.societe, piece:s.piece, since:s.since, dur, over:isOver });
+            return `<div class="bdg out ${isOver?'overstay':''}" onclick="restituerBadge('${escapeAttr(b)}')" title="Cliquer pour restituer">
+                <span class="dot"></span><div class="id">${escapeHtml(b)}</div>
+                <div class="who">${escapeHtml(s.nom||"—")}</div>
+                <div class="since">${isOver?'⚠️ ':''}sorti depuis ${dur}${s.piece?' · '+escapeHtml(pieceCourt(s.piece)):''}</div></div>`;
+        }
+        free++;
+        return `<div class="bdg free" title="Badge disponible"><span class="dot"></span>
+            <div class="id">${escapeHtml(b)}</div><div class="who">Disponible</div><div class="since">&nbsp;</div></div>`;
+    }).join("");
+    document.getElementById("cFree").textContent=free;
+    document.getElementById("cOut").textContent=out;
+    document.getElementById("cPieces").textContent=pieces;
+    document.getElementById("consigneRappel").textContent = pieces>0 ? (pieces+" pièce(s) à rendre dans le tiroir") : "Aucune pièce en consigne";
+    updateConsigneAlert(out, pieces, over);
+}
+function updateConsigneAlert(out, pieces, over){
+    const el=document.getElementById("consigneAlert");
+    if(!el) return;
+    const h=new Date().getHours();
+    const finDeService = h>=19 || h<7; // rappel renforcé en fin de journée / nuit
+    if(out===0){ el.style.display="none"; return; }
+    el.style.display="block";
+    if(over>0){
+        el.style.background="rgba(245,158,11,.12)"; el.style.border="1px solid var(--warn)"; el.style.color="#fcd34d";
+        el.innerHTML="⚠️ <b>"+over+" badge(s) en dépassement</b> ("+OVERSTAY_H+"h+) — visiteur(s) toujours présent(s). "+pieces+" pièce(s) en consigne.";
+    } else if(finDeService){
+        el.style.background="rgba(239,68,68,.12)"; el.style.border="1px solid var(--bad)"; el.style.color="#fca5a5";
+        el.innerHTML="🔔 <b>Fin de service :</b> "+out+" badge(s) non rendu(s), "+pieces+" pièce(s) encore dans le tiroir. Vérifie avant la passation.";
+    } else {
+        el.style.background="rgba(6,182,212,.10)"; el.style.border="1px solid rgba(6,182,212,.4)"; el.style.color="#67e8f9";
+        el.innerHTML="🪪 "+out+" visiteur(s) présent(s) · "+pieces+" pièce(s) en consigne.";
+    }
+}
+/* Fiche de passation imprimable — l'innovation pour les huissiers :
+   recense les pièces encore dans le tiroir au moment de la relève d'équipe. */
+function closeCaModal(){ document.getElementById("caModalOv").style.display="none"; }
+function openCaModal(html){ document.getElementById("caModal").innerHTML=html; document.getElementById("caModalOv").style.display="flex"; }
+
+function fichePassation(){
+    const posteLbl={porte5:"Porte 5",porte115:"Porte 115",porte16:"Porte 16"}[poste]||poste;
+    const agent=localStorage.getItem("nom")||"—";
+    const site=(window.AuraTenant&&AuraTenant.label)?AuraTenant.label():(localStorage.getItem("site_code")||"");
+    const now=new Date().toLocaleString("fr-FR");
+    const rows=_badgesOut.length ? _badgesOut.map(b=>`
+        <tr style="border-top:1px solid #232c40">
+            <td style="padding:7px 4px;font-weight:700">${escapeHtml(b.badge)}</td>
+            <td style="padding:7px 4px">${escapeHtml(b.nom||"—")}</td>
+            <td style="padding:7px 4px">${escapeHtml(b.piece?pieceCourt(b.piece):"—")}</td>
+            <td style="padding:7px 4px;white-space:nowrap">${escapeHtml(b.dur)}${b.over?' ⚠️':''}</td>
+        </tr>`).join("") : `<tr><td colspan="4" style="text-align:center;color:#67e8f9;padding:16px">Aucun badge sorti — tiroir vide ✔</td></tr>`;
+    openCaModal(`
+        <h2 style="color:#9ec5ff;margin:0 0 4px;font-size:1.1rem">📋 Passation — pièces en consigne</h2>
+        <div style="font-size:12px;color:#9aa7bd;margin-bottom:14px">${escapeHtml(site)} · ${escapeHtml(posteLbl)} · ${escapeHtml(now)} · ${escapeHtml(agent)}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+            <thead><tr style="color:#9aa7bd;font-size:11px;text-transform:uppercase">
+                <th style="text-align:left;padding-bottom:4px">Badge</th><th style="text-align:left">Visiteur</th><th style="text-align:left">Pièce</th><th style="text-align:left">Depuis</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>
+        <p style="font-size:13px;margin-top:14px"><b>${_badgesOut.length} badge(s) sorti(s)</b> — autant de pièces d'identité à transmettre dans le tiroir de consigne.</p>
+        <div style="font-size:11px;color:#7c8aa5;line-height:1.5">RGPD : aucune copie des pièces n'est conservée, seule la traçabilité de l'échange l'est. Les pièces listées doivent être physiquement présentes dans le tiroir.</div>
+        <button class="btn primary" onclick="closeCaModal()" style="margin-top:16px;width:100%">Fermer</button>
+    `);
+}
+function pieceCourt(p){
+    return ({"Carte nationale d'identité":"CNI","Passeport":"Passeport","Permis de conduire":"Permis","Titre de séjour":"Titre séj.","Badge entreprise externe":"Badge ext."})[p]||p;
+}
+function renderPresence(){
+    const dedans={ employe:0, societe:0, visiteur:0, livreur:0 };
+    const cle=r=>(r.categorie||"")+"|"+((r.nom||r.societe||r.badge||"")+"").toLowerCase();
+    const etat={};
+    [...journal].reverse().forEach(r=>{ const k=cle(r); if(r.sens==="entree") etat[k]={cat:r.categorie}; else if(r.sens==="sortie") delete etat[k]; });
+    Object.values(etat).forEach(e=>{ if(dedans[e.cat]!==undefined) dedans[e.cat]++; });
+    const labels={employe:"Employés",societe:"Sociétés",visiteur:"Visiteurs",livreur:"Livreurs"};
+    document.getElementById("presence").innerHTML=Object.keys(labels).map(c=>`
+        <div class="pchip"><div class="n">${dedans[c]}</div><div class="l">${labels[c]}</div></div>`).join("");
+}
+function renderLog(){
+    const q=(document.getElementById("searchField").value||"").toLowerCase();
+    const fp=document.getElementById("filterPoste").value;
+    const cats={employe:"👤 Employé",societe:"🏢 Société",visiteur:"🎫 Visiteur",livreur:"📦 Livreur"};
+    const posteLbl={porte5:"Porte 5",porte115:"Porte 115",porte16:"Porte 16"};
+    let list=journal;
+    if(fp) list=list.filter(r=>r.poste===fp);
+    if(q) list=list.filter(r=>[r.nom,r.societe,r.badge,r.laissez_passer,r.motif,r.destination,r.agent].some(v=>(v||"").toLowerCase().includes(q)));
+    const el=document.getElementById("log");
+    if(!list.length){ el.innerHTML='<div class="empty">Aucun passage.</div>'; return; }
+    el.innerHTML=list.map(r=>{
+        const h=new Date(r.created_at).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+        const titre=r.nom||r.societe||"—";
+        const sub=[r.societe&&r.nom?r.societe:null,r.destination,r.motif].filter(Boolean).join(" · ");
+        const piece=(r.meta&&(r.meta.piece_consigne||r.meta.piece_restituee))||null;
+        return `<div class="entry ${r.sens==='entree'?'in':'out'}">
+            <div class="top"><span class="nm">${escapeHtml(titre)}</span>
+                <span>${r.sens==='entree'?'↓ Entrée':'↑ Sortie'} · ${escapeHtml(h)}</span></div>
+            <div class="meta">
+                <span class="badge-cat">${cats[r.categorie]||r.categorie}</span>
+                <span>📍 ${escapeHtml(posteLbl[r.poste]||r.poste)}</span>
+                ${r.badge?`<span>🎫 ${escapeHtml(r.badge)}</span>`:''}
+                ${piece?`<span>🪪 ${escapeHtml(pieceCourt(piece))}</span>`:''}
+                ${r.laissez_passer?`<span>LP ${escapeHtml(r.laissez_passer)}</span>`:''}
+                ${sub?`<span>${escapeHtml(sub)}</span>`:''}
+                <span>👮 ${escapeHtml(r.agent||'—')}</span></div></div>`;
+    }).join("");
+}
+function pushToLaisserPasser(row){
+    const url=localStorage.getItem("ca_webhook"); if(!url) return;
+    try{ fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({source:"AuraSentinelle",evenement:"controle_acces",poste:row.poste,categorie:row.categorie,sens:row.sens,nom:row.nom,societe:row.societe,badge:row.badge,laissez_passer:row.laissez_passer,piece:(row.meta&&row.meta.piece_consigne)||null,motif:row.motif,destination:row.destination,agent:row.agent,horodatage:new Date().toISOString()})}).catch(()=>{}); }catch(e){}
+}
+function ouvrirParametres(){
+    const cur=localStorage.getItem("ca_webhook")||"";
+    const v=prompt("URL du logiciel de laisser-passer (webhook POST JSON).\nLaisser vide pour désactiver :",cur);
+    if(v===null) return;
+    if(v.trim()==="") localStorage.removeItem("ca_webhook"); else localStorage.setItem("ca_webhook",v.trim());
+    updateIntgNote(); showToast("⚙️ Paramètre mis à jour");
+}
+function updateIntgNote(){
+    const url=localStorage.getItem("ca_webhook");
+    document.getElementById("intgNote").innerHTML = url
+        ? "🔗 Connecté au logiciel laisser-passer — chaque passage est transmis automatiquement."
+        : "ℹ️ Aucun logiciel laisser-passer connecté. Branche-le via « ⚙️ Laisser-passer » ou exporte en CSV.";
+}
+async function charger(){
+    const todayStart=new Date(); todayStart.setHours(0,0,0,0);
+    try{
+        const { data, error } = await supabaseClient.from("controle_acces")
+            .select("*").gte("created_at",todayStart.toISOString()).order("created_at",{ascending:false});
+        if(error) throw error;
+        journal=data||[];
+    }catch(e){ console.error(e); journal=[]; }
+    render();
+}
+function exportCSV(){
+    if(!journal.length){ showToast("Rien à exporter"); return; }
+    const cols=["created_at","poste","categorie","sens","nom","societe","badge","laissez_passer","motif","destination","agent"];
+    const esc=v=>'"'+String(v==null?"":v).replace(/"/g,'""')+'"';
+    const rows=journal.map(r=>{ const o={...r, piece:(r.meta&&(r.meta.piece_consigne||r.meta.piece_restituee))||""}; return cols.concat(["piece"]).map(c=>esc(o[c])).join(";"); });
+    const csv=[cols.concat(["piece"]).join(";")].concat(rows).join("\n");
+    const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"});
+    const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download="controle_acces_"+new Date().toISOString().split("T")[0]+".csv"; a.click();
+    showToast("⬇️ Export CSV généré");
+}
+document.getElementById("scanField").addEventListener("keydown",e=>{
+    if(e.key!=="Enter") return;
+    let code=e.target.value.trim(); if(!code) return;
+    // QR ticket visiteur : "AURACA|<badge>|<entryId>" → restitution directe
+    if(code.indexOf("AURACA|")===0){
+        const badge=code.split("|")[1];
+        e.target.value="";
+        if(badge){ restituerBadge(badge); return; }
+    }
+    const st=getBadgeStatus()[code];
+    if(st && st.out){ restituerBadge(code); e.target.value=""; return; }
+    const t=document.getElementById("f_badge")||document.getElementById("f_laissez_passer");
+    if(t){ t.value=code; showToast("🔖 "+code+" — choisis Entrée/Sortie"); }
+});
+
+/* Ticket visiteur imprimable avec QR — scanné au retour pour restituer le badge */
+function genererTicketVisiteur(ins){
+    const token = "AURACA|"+(ins.badge||"")+"|"+(ins.id||"");
+    let dataUrl="";
+    try{
+        if(window.QRCode){
+            const stage=document.getElementById("qrStage");
+            stage.innerHTML="";
+            new QRCode(stage,{ text:token, width:220, height:220, correctLevel:QRCode.CorrectLevel.M });
+            const cv=stage.querySelector("canvas");
+            if(cv) dataUrl=cv.toDataURL("image/png");
+            else { const img=stage.querySelector("img"); if(img) dataUrl=img.src; }
+        }
+    }catch(e){ console.warn("QR:",e); }
+
+    const posteLbl={porte5:"Porte 5",porte115:"Porte 115",porte16:"Porte 16"}[ins.poste]||ins.poste||"";
+    const site=(window.AuraTenant&&AuraTenant.label)?AuraTenant.label():(localStorage.getItem("site_code")||"");
+    const dt=new Date(ins.created_at||Date.now()).toLocaleString("fr-FR");
+    const piece=(ins.meta&&ins.meta.piece_consigne)?pieceCourt(ins.meta.piece_consigne):"—";
+
+    openCaModal(`
+        <div style="text-align:center">
+            <div style="font-size:12px;letter-spacing:.5px;color:#9ec5ff;text-transform:uppercase">${escapeHtml(site)} · Ticket visiteur</div>
+            <div style="font-size:36px;font-weight:800;margin:6px 0 2px">🎫 ${escapeHtml(ins.badge||"—")}</div>
+            <div style="font-size:18px;font-weight:700">${escapeHtml(ins.nom||"—")}</div>
+            ${ins.societe?`<div style="font-size:13px;color:#9aa7bd;margin-top:3px">${escapeHtml(ins.societe)}</div>`:""}
+            ${ins.motif?`<div style="font-size:13px;color:#9aa7bd">Motif : ${escapeHtml(ins.motif)}</div>`:""}
+            <div style="font-size:13px;color:#9aa7bd;margin-top:3px">${escapeHtml(posteLbl)} · ${escapeHtml(dt)}</div>
+            <div style="font-size:13px;color:#9aa7bd">Pièce en consigne : <b style="color:#e8ebf0">${escapeHtml(piece)}</b></div>
+            <div style="margin:16px auto 8px;background:#fff;display:inline-block;padding:12px;border-radius:12px">
+                ${dataUrl?`<img src="${dataUrl}" alt="QR" style="width:190px;height:190px;display:block">`:'<span style="color:#b91c1c">QR indisponible</span>'}
+            </div>
+            <div style="font-size:12px;color:#fca5a5;font-weight:700">⚠️ Présenter ce QR au retour pour récupérer la pièce</div>
+            <div style="font-size:11px;color:#7c8aa5;margin-top:8px;line-height:1.5">Le visiteur peut en faire une capture d'écran. Au retour, on scanne ce QR au poste → restitution automatique. Aucune donnée personnelle stockée hors traçabilité (RGPD).</div>
+            <button class="btn primary" onclick="closeCaModal()" style="margin-top:14px;width:100%">Fermer</button>
+        </div>
+    `);
+}
+document.addEventListener("DOMContentLoaded",()=>{
+    try{ document.getElementById("siteLbl").textContent="· "+(window.AuraTenant?AuraTenant.label():(localStorage.getItem("site_code")||"")); }catch(e){}
+    setPoste(poste); renderFields(); updateIntgNote(); charger();
+    setInterval(charger,60000);
+});
+</script>
 </body>
 </html>

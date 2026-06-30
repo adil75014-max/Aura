@@ -599,7 +599,10 @@ const TYPE_LABELS = {
     'entree_sortie':          'Entrée / Sortie',
     'intervention_exterieure':'Intervention entreprise extérieure',
     'interv_ext':             'Intervention entreprise extérieure',
-    'permis_feu':             'Permis feu établi'
+    'permis_feu':             'Permis feu établi',
+    'laissez_passer':         'Laissez-passer',
+    'dem_stockage':           'Demande de stockage',
+    'dem_popup':              'Demande pop-up / projet'
 };
 
 /* Retourne le libellé complet d'un type. Si le type est inconnu,
@@ -737,6 +740,27 @@ async function loadAllData() {
             .select('*')
             .order('created_at', { ascending: false });
         if (pfErr) console.warn('[Dashboard] Permis feu : ', pfErr.message);
+
+        // 8b) Load laissez-passer (sûreté)
+        const { data: laissezPasser, error: lpErr } = await supabaseClient
+            .from("laissez_passer")
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (lpErr) console.warn('[Dashboard] Laissez-passer : ', lpErr.message);
+
+        // 8c) Load demandes de stockage (incendie)
+        const { data: demStockage, error: stkErr } = await supabaseClient
+            .from("demandes_stockage")
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (stkErr) console.warn('[Dashboard] Demandes stockage : ', stkErr.message);
+
+        // 8d) Load demandes pop-up / projet (incendie)
+        const { data: demPopup, error: popErr } = await supabaseClient
+            .from("demandes_popup")
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (popErr) console.warn('[Dashboard] Demandes pop-up : ', popErr.message);
 
         // 9) Unify into a single array
         allData = [];
@@ -977,6 +1001,76 @@ async function loadAllData() {
             });
         });
 
+        // 8b) Laissez-passer (sûreté)
+        (laissezPasser || []).forEach(lp => {
+            const dt = new Date(lp.created_at);
+            const lieu = lp.etablissement || lp.marque_zone || '—';
+            const resume = [lp.numero, lp.societe_intervenante, lp.nature_travaux].filter(Boolean).join(' · ');
+            allData.push({
+                source: 'laissez_passer',
+                date: dt.toISOString().split('T')[0],
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
+                datetime: dt,
+                type: 'laissez_passer',
+                typeLabel: 'Laissez-passer',
+                agent: lp.nom_demandeur || '—',
+                lieu: lieu,
+                resume: resume || lp.nom_demandeur || '—',
+                statut: lp.statut || 'en_attente',
+                priorite: lp.delai_inferieur_24h ? 'haute' : 'normale',
+                id: lp.id,
+                description: lp.besoins_lp || '',
+                meta: lp,
+                raw: lp
+            });
+        });
+
+        // 8c) Demandes de stockage (incendie)
+        (demStockage || []).forEach(s => {
+            const dt = new Date(s.created_at);
+            const resume = [s.numero, s.nature_marchandises, s.quantite].filter(Boolean).join(' · ');
+            allData.push({
+                source: 'dem_stockage',
+                date: dt.toISOString().split('T')[0],
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
+                datetime: dt,
+                type: 'dem_stockage',
+                typeLabel: 'Demande de stockage',
+                agent: s.nom_demandeur || '—',
+                lieu: [s.etablissement, s.emplacement].filter(Boolean).join(' · ') || '—',
+                resume: resume || '—',
+                statut: s.statut || 'en_attente',
+                priorite: s.matieres_dangereuses ? 'haute' : 'normale',
+                id: s.id,
+                description: s.nature_marchandises || '',
+                meta: s,
+                raw: s
+            });
+        });
+
+        // 8d) Demandes pop-up / projet (incendie)
+        (demPopup || []).forEach(p => {
+            const dt = new Date(p.created_at);
+            const resume = [p.numero, p.intitule].filter(Boolean).join(' · ');
+            allData.push({
+                source: 'dem_popup',
+                date: dt.toISOString().split('T')[0],
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
+                datetime: dt,
+                type: 'dem_popup',
+                typeLabel: (p.type_demande === 'projet' ? 'Demande projet' : 'Demande pop-up'),
+                agent: p.nom_demandeur || '—',
+                lieu: [p.etablissement, p.emplacement].filter(Boolean).join(' · ') || '—',
+                resume: resume || '—',
+                statut: p.statut || 'en_attente',
+                priorite: 'normale',
+                id: p.id,
+                description: p.description || '',
+                meta: p,
+                raw: p
+            });
+        });
+
         // Sort by most recent
         allData.sort((a, b) => b.datetime - a.datetime);
 
@@ -991,7 +1085,10 @@ async function loadAllData() {
             dai:          dai          || [],
             entreeSortie: entreeSortie || [],
             intExt:       intExt       || [],
-            permisFeu:    permisFeu    || []
+            permisFeu:    permisFeu    || [],
+            laissezPasser: laissezPasser || [],
+            demStockage:  demStockage  || [],
+            demPopup:     demPopup     || []
         };
 
         // Initialiser les onglets services au premier load uniquement
@@ -1040,9 +1137,13 @@ function updateIndicators(rapports, rondes, verifs, extra) {
     const entreeSortie = extra.entreeSortie || [];
     const intExt       = extra.intExt || [];
     const permisFeu    = extra.permisFeu || [];
+    const laissezPasser = extra.laissezPasser || [];
+    const demStockage  = extra.demStockage || [];
+    const demPopup     = extra.demPopup || [];
 
     const total = rapports.length + rondes.length + verifs.length
-                + dai.length + entreeSortie.length + intExt.length + permisFeu.length;
+                + dai.length + entreeSortie.length + intExt.length + permisFeu.length
+                + laissezPasser.length + demStockage.length + demPopup.length;
     document.getElementById('indTotal').textContent = total;
 
     // Ce mois (basé sur allData qui contient déjà toutes les sources unifiées)
@@ -1893,7 +1994,7 @@ function _rowMatchesService(row, service) {
     if (!service || service === "all") return true;
     const rawService = (row.raw && row.raw.service) ? String(row.raw.service).toLowerCase() : null;
     if (rawService) return rawService === service;
-    const sourceMap = { dai: "incendie", permis_feu: "incendie" };
+    const sourceMap = { dai: "incendie", permis_feu: "incendie", dem_stockage: "incendie", dem_popup: "incendie", laissez_passer: "surete" };
     if (sourceMap[row.source]) return sourceMap[row.source] === service;
     const inferred = _mapTypeToService(row.type);
     if (inferred) return inferred === service;
@@ -1988,6 +2089,9 @@ function applyServiceFilter() {
     const fEs       = rawR.entreeSortie.filter(filterCross);
     const fIe       = rawR.intExt.filter(filterCross);
     const fPf       = rawR.permisFeu.filter(filterPf);
+    const fLp       = (rawR.laissezPasser || []).filter(() => svc === "all" || svc === "surete");
+    const fStk      = (rawR.demStockage  || []).filter(() => svc === "all" || svc === "incendie");
+    const fPop      = (rawR.demPopup     || []).filter(() => svc === "all" || svc === "incendie");
 
     // Filtre allData (unifié) pour la table affichée
     allData = rawR.allData.filter(row => _rowMatchesService(row, svc));
@@ -1998,7 +2102,8 @@ function applyServiceFilter() {
 
     // Re-calcule les KPI sur les sous-ensembles filtrés
     updateIndicators(fRapports, fRondes, fVerifs, {
-        dai: fDai, entreeSortie: fEs, intExt: fIe, permisFeu: fPf
+        dai: fDai, entreeSortie: fEs, intExt: fIe, permisFeu: fPf,
+        laissezPasser: fLp, demStockage: fStk, demPopup: fPop
     });
 
     // Re-applique les filtres UI existants (type/statut/date/...) puis re-render
@@ -2007,16 +2112,17 @@ function applyServiceFilter() {
 
 /* Sources pertinentes par service (les autres n'ont pas de sens métier) */
 const SOURCES_BY_SERVICE = {
-    all:               ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu"],
-    incendie:          ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu"],
-    surete:            ["rapports","rondes"],
+    all:               ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu","dem_stockage","dem_popup","laissez_passer"],
+    incendie:          ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu","dem_stockage","dem_popup"],
+    surete:            ["rapports","rondes","laissez_passer"],
     technique:         ["rapports","interv_ext"],
     services_generaux: ["rapports","entree_sortie"]
 };
 const SOURCE_LABELS = {
     rapports:"📋 Rapports", rondes:"🔄 Rondes", verifications:"🔍 Vérifications",
     dai:"🚨 DAI Hors Service", entree_sortie:"🚪 Entrées / Sorties",
-    interv_ext:"🏗 Interventions extérieures", permis_feu:"🔥 Permis feu"
+    interv_ext:"🏗 Interventions extérieures", permis_feu:"🔥 Permis feu",
+    dem_stockage:"📦 Demandes stockage", dem_popup:"🪟 Pop-up / projet", laissez_passer:"🪪 Laissez-passer"
 };
 
 /* Reconstruit les listes déroulantes source + type d'après le service actif
@@ -2069,6 +2175,18 @@ function setupRealtime() {
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'verifications' }, () => {
             showToast('🔔 Nouvelle vérification détectée, rechargement…');
+            setTimeout(loadAllData, 500);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'laissez_passer' }, () => {
+            showToast('🔔 Mise à jour laissez-passer, rechargement…');
+            setTimeout(loadAllData, 500);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'demandes_stockage' }, () => {
+            showToast('🔔 Mise à jour demande de stockage, rechargement…');
+            setTimeout(loadAllData, 500);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'demandes_popup' }, () => {
+            showToast('🔔 Mise à jour demande pop-up / projet, rechargement…');
             setTimeout(loadAllData, 500);
         })
         .subscribe();

@@ -212,7 +212,7 @@ function renderFields(){
             <input type="text" id="f_societe" autocomplete="off">
             <label>Motif de la visite</label>
             <input type="text" id="f_motif" autocomplete="off">
-            <label>🎫 Badge attribué * <span style="opacity:.6;font-weight:400">(${libres.length} libre(s))</span></label>
+            <label>🎫 Badge attribué * <span id="f_badge_count" style="opacity:.6;font-weight:400">(${libres.length} libre(s))</span></label>
             <select id="f_badge">
                 <option value="">— Choisir un badge libre —</option>
                 ${libres.map(b=>`<option value="${escapeAttr(b)}">${escapeHtml(b)}</option>`).join("")}
@@ -289,7 +289,22 @@ async function restituerBadge(badge){
         lie_a: status.entryId||null, meta:{ piece_restituee: status.piece||null } },
         "✅ Badge "+badge+" restitué — <b>rends la "+piece+"</b> au visiteur");
 }
-function render(){ renderBadgeBoard(); renderPresence(); renderLog(); if(categorie==="visiteur") renderFields(); }
+/* Rafraîchit UNIQUEMENT la liste des badges libres + le compteur, sans
+   reconstruire le formulaire → la saisie en cours du visiteur est préservée
+   pendant la synchronisation (toutes les 60 s ou après un passage). */
+function refreshBadgeOptions(){
+    const sel = document.getElementById("f_badge");
+    if(!sel) return;                       // formulaire visiteur non affiché
+    const status = getBadgeStatus();
+    const libres = getBadgePool().filter(b=>!status[b] || !status[b].out);
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Choisir un badge libre —</option>' +
+        libres.map(b=>`<option value="${escapeAttr(b)}">${escapeHtml(b)}</option>`).join("");
+    if(current && libres.indexOf(current) !== -1) sel.value = current;  // garde la sélection si encore libre
+    const cnt = document.getElementById("f_badge_count");
+    if(cnt) cnt.textContent = "("+libres.length+" libre(s))";
+}
+function render(){ renderBadgeBoard(); renderPresence(); renderLog(); if(categorie==="visiteur") refreshBadgeOptions(); }
 let _badgesOut = [];
 function renderBadgeBoard(){
     const status=getBadgeStatus();

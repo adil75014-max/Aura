@@ -8,6 +8,16 @@
     <meta charset="UTF-8">
     <title>LBM Incendie – Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+      /* Anti-flash thème : applique le thème sauvegardé AVANT le 1er rendu,
+         et coupe les transitions tant que la page n'est pas chargée. */
+      (function(){
+        var d = document.documentElement;
+        try{ var t = localStorage.getItem("theme"); if(t==="dark"||t==="light") d.setAttribute("data-theme", t); }catch(e){}
+        d.classList.add("preload");
+        window.addEventListener("load", function(){ requestAnimationFrame(function(){ d.classList.remove("preload"); }); });
+      })();
+    </script>
     <script src="app-config.js"></script>
 
     <script>
@@ -52,7 +62,13 @@
             padding: 0;
             box-sizing: border-box;
             font-family: system-ui, sans-serif;
-            transition: background var(--transition), color var(--transition), border var(--transition);
+        }
+        /* Pendant le chargement : aucune transition (évite l'animation de thème au login) */
+        html.preload * { transition: none !important; }
+        /* Transition de couleurs UNIQUEMENT pendant le basculement de thème (sinon tout est instantané) */
+        html.theming, html.theming *,
+        html.theming *::before, html.theming *::after {
+            transition: background-color var(--transition), color var(--transition), border-color var(--transition) !important;
         }
 
         body {
@@ -2151,9 +2167,12 @@ function toggleSidebar() { document.getElementById("sidebar").classList.toggle("
 function cycleTheme() {
     const html = document.documentElement;
     const next = html.getAttribute("data-theme") === "light" ? "dark" : "light";
+    html.classList.add("theming");
     html.setAttribute("data-theme", next);
     localStorage.setItem("theme", next);
     document.getElementById("themeLabel").textContent = next === "light" ? "Mode sombre" : "Mode clair";
+    clearTimeout(html._themeT);
+    html._themeT = setTimeout(function(){ html.classList.remove("theming"); }, 320);
 }
 
 function logout() { localStorage.clear(); window.location.href = "login.html"; }

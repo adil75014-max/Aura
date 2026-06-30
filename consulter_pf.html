@@ -131,6 +131,43 @@ body{background:#0b0e17;color:#e0e4ef;font-family:'DM Sans',system-ui,sans-serif
     <div class="modal-box" id="modalPermisContent"></div>
 </div>
 
+<div class="modal-bg" id="pfSignModal" onclick="if(event.target===this)fermerSignature()">
+    <div class="modal-box" style="max-width:560px">
+        <h2>✍️ Compléter &amp; signer le permis feu</h2>
+        <p style="color:#9aa7bd;font-size:.85rem;margin-bottom:14px">Le donneur d'ordre a déjà signé lors de la demande. Renseignez la <b>vigilance</b> et le(s) <b>plan(s)</b>, puis faites signer le <b>PC sécurité (délivreur)</b> et l'<b>intervenant</b>.</p>
+
+        <h3>🛡️ Vigilance protection incendie</h3>
+        <select id="pfVigNiveau" onchange="pfVigChange()" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:#0f1420;color:#e0e4ef;font-size:.88rem;margin-top:4px">
+            <option value="">— Niveau de vigilance —</option>
+            <option value="verte">🟢 Vigilance — Sprinkler et détection fonctionnels</option>
+            <option value="orange">🟠 Vigilance ORANGE — Sprinkler HS zone chantier + caches détecteurs</option>
+            <option value="rouge">🔴 Vigilance ROUGE — Poste sprinkler vidangé, aucune protection</option>
+        </select>
+        <div id="pfVigInfo" style="display:none;margin-top:8px;padding:10px 12px;border-radius:9px;font-size:.82rem;line-height:1.5;border:1px solid"></div>
+        <div id="pfVigInst" style="display:none;margin-top:8px">
+            <input id="pfVigSprinkler" placeholder="Poste(s) sprinkler impacté(s) — ex : Poste 1, 92" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:#0f1420;color:#e0e4ef;font-size:.85rem;margin-bottom:6px">
+            <input id="pfVigZones" placeholder="Zone(s) de détection impactée(s) — ex : Z01 B" style="width:100%;padding:9px 11px;border-radius:9px;border:1px solid rgba(255,255,255,.18);background:#0f1420;color:#e0e4ef;font-size:.85rem">
+        </div>
+
+        <h3 style="margin-top:18px">🗺️ Plans de la zone</h3>
+        <input type="file" id="pfPlans" accept="image/*,.pdf" multiple onchange="pfPlansChange()" style="width:100%;padding:9px;border-radius:9px;border:1px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.04);color:#e0e4ef;font-size:.82rem">
+        <div style="font-size:.72rem;opacity:.6;margin-top:4px">Photos compressées automatiquement · PDF jusqu'à 8 Mo. Obligatoire en vigilance Orange, recommandé en Rouge.</div>
+        <div id="pfPlansExisting" style="font-size:.78rem;color:#9ec5ff;margin-top:6px"></div>
+        <div id="pfPlansPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"></div>
+
+        <h3 style="margin-top:18px">Signature du délivreur (PC sécurité) *</h3>
+        <div style="background:#fff;border-radius:10px;overflow:hidden"><canvas id="sigDeliv" style="display:block;width:100%;height:150px;touch-action:none"></canvas></div>
+        <button type="button" class="admin-btn" onclick="clearSig('deliv')" style="margin-top:6px">↺ Effacer</button>
+        <h3 style="margin-top:18px">Signature de l'intervenant</h3>
+        <div style="background:#fff;border-radius:10px;overflow:hidden"><canvas id="sigInter" style="display:block;width:100%;height:150px;touch-action:none"></canvas></div>
+        <button type="button" class="admin-btn" onclick="clearSig('inter')" style="margin-top:6px">↺ Effacer</button>
+        <div class="modal-actions">
+            <button class="btn-cloturer" onclick="enregistrerSignatures()">✅ Enregistrer les signatures</button>
+            <button class="btn-close" onclick="fermerSignature()">Annuler</button>
+        </div>
+    </div>
+</div>
+
 <script src="vendor/supabase.js" crossorigin="anonymous"></script>
 <script src="supabaseClient.js"></script>
 <script src="tenant.js"></script>
@@ -421,11 +458,14 @@ async function ouvrirPermis(id){
     /* Bouton Clôturer UNIQUEMENT pour le PC Sécurité (pas en mode lecture seule / QR code) */
     const cloBtn = (clos || READ_ONLY) ? "" : `<button class="btn-cloturer" onclick="cloturerPermis('${p.id}')">\u2705 Clôturer</button>`;
 
+    /* Bouton "Compléter / signer" pour le PC (pas en lecture seule / pas clôturé) */
+    const signBtn = (clos || READ_ONLY) ? "" : `<button class="btn-cloturer" style="background:#1d4ed8" onclick="ouvrirSignature('${p.id}')">\u270d\ufe0f ${m.a_completer_par_pc ? "Compl\u00e9ter / signer" : "Signer"}</button>`;
+
     /* Bandeau d'information en mode lecture seule */
     const roBanner = READ_ONLY ? `<div class="ro-banner">\ud83d\udd12 Consultation intervenant — mode lecture seule. Pour clôturer, s'adresser au PC Sécurité.</div>` : "";
 
     html = roBanner + html;
-    html+=`<div class="modal-actions">${cloBtn}<button class="btn-pdf" onclick="printPermis('${p.id}')">\ud83d\udda8\ufe0f Imprimer</button><button class="btn-pdf" onclick="exportPDF('${p.id}')">\ud83d\udcc4 PDF</button><button class="btn-close" onclick="fermerPermis()">Fermer</button></div>`;
+    html+=`<div class="modal-actions">${cloBtn}${signBtn}<button class="btn-pdf" onclick="printPermis('${p.id}')">\ud83d\udda8\ufe0f Imprimer</button><button class="btn-pdf" onclick="exportPDF('${p.id}')">\ud83d\udcc4 PDF</button><button class="btn-close" onclick="fermerPermis()">Fermer</button></div>`;
 
     document.getElementById("modalPermisContent").innerHTML=html;
     document.getElementById("modalPermis").classList.add("active");
@@ -434,6 +474,166 @@ async function ouvrirPermis(id){
 }
 
 function fermerPermis(){document.getElementById("modalPermis").classList.remove("active");}
+
+/* ════════ COMPLÉTER / SIGNER LE PERMIS (PC) ════════ */
+let _pfSignId=null, _sigDeliv=null, _sigInter=null;
+function makeSig(canvas){
+  const ctx=canvas.getContext("2d"); let drawing=false, dirty=false;
+  function fit(){
+    const r=canvas.getBoundingClientRect();
+    const w=Math.floor(r.width)||canvas.parentElement&&canvas.parentElement.clientWidth||300;
+    let saved=null; try{ if(dirty) saved=canvas.toDataURL(); }catch(e){}
+    canvas.width=w; canvas.height=150;
+    ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,150);
+    if(saved){ const img=new Image(); img.onload=function(){ctx.drawImage(img,0,0,w,150);}; img.src=saved; }
+  }
+  function pos(e){ const r=canvas.getBoundingClientRect(); const t=(e.touches&&e.touches[0])?e.touches[0]:e; return {x:t.clientX-r.left,y:t.clientY-r.top}; }
+  function down(e){ drawing=true; dirty=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); }
+  function move(e){ if(!drawing)return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.strokeStyle="#111827"; ctx.lineWidth=2; ctx.lineCap="round"; ctx.stroke(); }
+  function up(){ drawing=false; }
+  canvas.addEventListener("mousedown",down); canvas.addEventListener("mousemove",move);
+  window.addEventListener("mouseup",up); canvas.addEventListener("mouseleave",up);
+  canvas.addEventListener("touchstart",function(e){e.preventDefault();down(e);},{passive:false});
+  canvas.addEventListener("touchmove",function(e){e.preventDefault();move(e);},{passive:false});
+  canvas.addEventListener("touchend",function(e){e.preventDefault();up();},{passive:false});
+  return { fit:fit, clear:function(){ dirty=false; fit(); }, isEmpty:function(){ return !dirty; }, toDataURL:function(){ return dirty?canvas.toDataURL("image/png"):null; } };
+}
+/* Référentiel vigilance (identique au formulaire permis feu) */
+const PF_VIG_REF = {
+  verte:  { label:"Vigilance",        couleur:"#16a34a", bg:"rgba(34,197,94,.10)", border:"rgba(34,197,94,.4)",
+            details:"Poste sprinkler EN SERVICE et détection incendie FONCTIONNELLE sur la zone de travaux.",
+            consignes:"Surveillance normale : rondes aux heures de passage, vérification 2h après la fin des travaux." },
+  orange: { label:"Vigilance ORANGE", couleur:"#ea580c", bg:"rgba(234,88,12,.10)", border:"rgba(234,88,12,.45)",
+            details:"Sprinkler NON FONCTIONNEL sur la zone de chantier (plan intégré au permis). Détection présente mais avec CACHES DÉTECTEURS posés.",
+            consignes:"Surveillance renforcée : rondes rapprochées, retrait des caches détecteurs OBLIGATOIRE en fin de travaux (à vérifier à la clôture), moyens d'extinction doublés à proximité." },
+  rouge:  { label:"Vigilance ROUGE",  couleur:"#dc2626", bg:"rgba(220,38,38,.12)", border:"rgba(220,38,38,.5)",
+            details:"Poste sprinkler VIDANGÉ — AUCUNE protection automatique NI détection incendie sur la zone.",
+            consignes:"Surveillance humaine PERMANENTE pendant toute la durée des travaux + 2h après. Agent SSIAP dédié. Moyens d'extinction renforcés. Liaison directe PC. Remise en service du poste à confirmer à la clôture." }
+};
+function pfVigChange(){
+  const niveau=(document.getElementById("pfVigNiveau")||{}).value||"";
+  const info=document.getElementById("pfVigInfo");
+  const inst=document.getElementById("pfVigInst");
+  if(inst) inst.style.display=(niveau==="orange"||niveau==="rouge")?"block":"none";
+  if(!niveau||!PF_VIG_REF[niveau]){ if(info) info.style.display="none"; return; }
+  const r=PF_VIG_REF[niveau];
+  info.style.display="block"; info.style.background=r.bg; info.style.borderColor=r.border; info.style.color="#e0e4ef";
+  info.innerHTML='<div style="font-weight:700;color:'+r.couleur+';margin-bottom:4px">'+r.label+'</div>'+
+                 '<div style="margin-bottom:4px">'+r.details+'</div>'+
+                 '<div style="opacity:.85;font-size:.78rem"><strong>Consignes :</strong> '+r.consignes+'</div>';
+}
+
+/* Plans : compression image (1400px / JPEG 0.72), PDF tel quel ≤8 Mo */
+let _pfPlansData=[];
+function _pfCompressImg(file){
+  return new Promise(function(resolve,reject){
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=function(){ URL.revokeObjectURL(url); const MAX=1400; let w=img.width,h=img.height;
+      if(w>MAX||h>MAX){ const r=Math.min(MAX/w,MAX/h); w=Math.round(w*r); h=Math.round(h*r); }
+      const cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(img,0,0,w,h);
+      resolve(cv.toDataURL("image/jpeg",0.72)); };
+    img.onerror=function(){ URL.revokeObjectURL(url); reject(new Error("image")); };
+    img.src=url;
+  });
+}
+async function pfPlansChange(){
+  const inp=document.getElementById("pfPlans"); if(!inp||!inp.files) return;
+  for(const f of inp.files){
+    try{
+      if((f.type||"").indexOf("image/")===0){ const data=await _pfCompressImg(f); _pfPlansData.push({name:f.name,type:"image",data}); }
+      else if(f.type==="application/pdf"||/\.pdf$/i.test(f.name)){
+        if(f.size>8*1024*1024){ alert("PDF trop lourd (max 8 Mo) : "+f.name); continue; }
+        const data=await new Promise(function(res,rej){ const r=new FileReader(); r.onload=function(){res(r.result);}; r.onerror=rej; r.readAsDataURL(f); });
+        _pfPlansData.push({name:f.name,type:"pdf",data});
+      }
+    }catch(e){ console.warn(e); }
+  }
+  inp.value=""; renderPfPlans();
+}
+function renderPfPlans(){
+  const box=document.getElementById("pfPlansPreview"); if(!box) return;
+  box.innerHTML=_pfPlansData.map(function(pl,i){
+    const del='<button type="button" onclick="pfDelPlan('+i+')" style="position:absolute;top:-6px;right:-6px;background:#dc2626;color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;line-height:1">×</button>';
+    return pl.type==="image"
+      ? '<div style="position:relative"><img src="'+pl.data+'" style="width:84px;height:64px;object-fit:cover;border-radius:8px;border:1px solid rgba(255,255,255,.2)">'+del+'</div>'
+      : '<div style="position:relative;width:84px;height:64px;border-radius:8px;border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.06);font-size:.58rem;text-align:center;padding:4px;color:#e0e4ef">📄 '+esc(pl.name||"PDF")+del+'</div>';
+  }).join("");
+}
+function pfDelPlan(i){ _pfPlansData.splice(i,1); renderPfPlans(); }
+
+async function ouvrirSignature(id){
+  _pfSignId=id; _pfPlansData=[];
+  document.getElementById("pfSignModal").classList.add("active");
+  const sel=document.getElementById("pfVigNiveau"); if(sel) sel.value="";
+  ["pfVigSprinkler","pfVigZones"].forEach(function(k){ const e=document.getElementById(k); if(e) e.value=""; });
+  document.getElementById("pfPlansPreview").innerHTML="";
+  document.getElementById("pfPlansExisting").innerHTML="";
+  pfVigChange();
+  setTimeout(function(){
+    _sigDeliv=makeSig(document.getElementById("sigDeliv"));
+    _sigInter=makeSig(document.getElementById("sigInter"));
+    _sigDeliv.fit(); _sigInter.fit();
+  },50);
+  /* Pré-remplissage depuis le permis existant (vigilance + nb de plans déjà présents) */
+  try{
+    const { data:p } = await supabaseClient.from("permis_feu").select("meta").eq("id",id).single();
+    const m=(p&&p.meta)||{};
+    if(m.vigilance&&m.vigilance.niveau&&sel){
+      sel.value=m.vigilance.niveau;
+      const sp=document.getElementById("pfVigSprinkler"); if(sp) sp.value=m.vigilance.poste_sprinkler||"";
+      const zo=document.getElementById("pfVigZones"); if(zo) zo.value=m.vigilance.zones_detection||"";
+      pfVigChange();
+    }
+    const np=(m.plans||[]).length;
+    if(np) document.getElementById("pfPlansExisting").innerHTML="📎 "+np+" plan(s) déjà au permis — les nouveaux s'ajouteront.";
+  }catch(e){}
+}
+function fermerSignature(){ document.getElementById("pfSignModal").classList.remove("active"); }
+function clearSig(w){ if(w==="deliv"&&_sigDeliv)_sigDeliv.clear(); if(w==="inter"&&_sigInter)_sigInter.clear(); }
+async function enregistrerSignatures(){
+  if(!_pfSignId) return;
+  const sd=_sigDeliv?_sigDeliv.toDataURL():null;
+  const si=_sigInter?_sigInter.toDataURL():null;
+  if(!sd){ alert("La signature du délivreur (PC sécurité) est obligatoire."); return; }
+  try{
+    const { data:p, error:e1 } = await supabaseClient.from("permis_feu").select("meta").eq("id",_pfSignId).single();
+    if(e1) throw e1;
+    const cur = (p && p.meta) || {};
+    const meta = Object.assign({}, cur, {
+      signature_delivreur: sd,
+      signature_intervenant: si || cur.signature_intervenant || null,
+      a_completer_par_pc: false,
+      signe_par: localStorage.getItem("nom") || null,
+      signe_le: new Date().toISOString()
+    });
+
+    /* Vigilance (si un niveau est sélectionné) */
+    const vn = (document.getElementById("pfVigNiveau") || {}).value || "";
+    if (vn && PF_VIG_REF[vn]) {
+      const r = PF_VIG_REF[vn];
+      meta.vigilance = {
+        niveau: vn, label: r.label, details: r.details, consignes: r.consignes,
+        poste_sprinkler: (document.getElementById("pfVigSprinkler").value || "").trim() || null,
+        zones_detection: (document.getElementById("pfVigZones").value || "").trim() || null
+      };
+    }
+
+    /* Plans : on ajoute les nouveaux aux éventuels plans déjà présents */
+    if (_pfPlansData.length) meta.plans = (cur.plans || []).concat(_pfPlansData);
+
+    /* Garde-fou : vigilance dégradée sans aucun plan */
+    const totalPlans = (meta.plans || cur.plans || []).length;
+    if ((vn === "orange" || vn === "rouge") && totalPlans === 0) {
+      if (!confirm("Vigilance " + vn.toUpperCase() + " sans plan de zone joint. Enregistrer quand même ?")) return;
+    }
+
+    const { error:e2 } = await supabaseClient.from("permis_feu").update({ meta: meta }).eq("id",_pfSignId);
+    if(e2) throw e2;
+    fermerSignature();
+    ouvrirPermis(_pfSignId);
+    if(typeof chargerPermisFeu==="function") chargerPermisFeu();
+  }catch(e){ alert("Erreur : "+(e.message||e)); }
+}
 
 /* ═══════════════════════════════════════════════════════════════
    IMPRESSION — fiche A4 pour le tableau de suivi du PC Sécurité

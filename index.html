@@ -2175,6 +2175,55 @@ function cycleTheme() {
     html._themeT = setTimeout(function(){ html.classList.remove("theming"); }, 320);
 }
 
+/* Bannière d'accueil : prévient les admins/superviseurs des demandes en attente
+   de validation, selon leur service (sûreté → LP ; incendie → stockage + pop-up).
+   Le superadmin voit tout. Cliquable pour aller directement valider. */
+async function checkPendingValidations() {
+    try {
+        const role = (localStorage.getItem("role") || "").toLowerCase();
+        if (!["admin", "superadmin", "superviseur"].includes(role)) return;
+        if (typeof supabaseClient === "undefined" || !supabaseClient) return;
+        const svc = (localStorage.getItem("service") || "").toLowerCase();
+        const isSuper = role === "superadmin";
+
+        async function cnt(table, tweak) {
+            let q = supabaseClient.from(table).select("id", { count: "exact", head: true }).eq("statut", "en_attente");
+            if (tweak) q = tweak(q);
+            const { count } = await q;
+            return count || 0;
+        }
+
+        const items = [];
+        if (svc === "surete" || isSuper) {
+            const n = await cnt("laissez_passer", q => q.eq("archive", false));
+            if (n) items.push({ n, label: "laissez-passer", link: "lp_validation.html" });
+        }
+        if (svc === "incendie" || isSuper) {
+            const ns = await cnt("demandes_stockage");
+            if (ns) items.push({ n: ns, label: "stockage", link: "stockage_validation.html" });
+            const np = await cnt("demandes_popup");
+            if (np) items.push({ n: np, label: "pop-up / projet", link: "popup_validation.html" });
+        }
+        if (!items.length) return;
+
+        const total = items.reduce((s, i) => s + i.n, 0);
+        const container = document.getElementById("cardsContainer");
+        if (!container || !container.parentNode) return;
+        let banner = document.getElementById("pendingValBanner");
+        if (!banner) {
+            banner = document.createElement("div");
+            banner.id = "pendingValBanner";
+            container.parentNode.insertBefore(banner, container);
+        }
+        banner.style.cssText = "margin:0 0 16px;padding:14px 18px;border-radius:14px;background:linear-gradient(135deg,rgba(234,179,8,.18),rgba(234,88,12,.12));border:1px solid rgba(234,179,8,.5);color:var(--text);";
+        banner.innerHTML =
+            '<div style="font-weight:800;margin-bottom:8px;font-size:.95rem">🔔 ' + total + ' demande(s) en attente de validation</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
+            items.map(i => '<button onclick="window.location.href=\'' + i.link + '\'" style="cursor:pointer;border:1px solid rgba(0,0,0,.12);border-radius:999px;padding:7px 14px;font-weight:700;font-size:.84rem;background:rgba(255,255,255,.25);color:var(--text)">' + i.n + ' ' + i.label + ' →</button>').join("") +
+            '</div>';
+    } catch (e) { /* silencieux : la bannière est non bloquante */ }
+}
+
 function logout() { localStorage.clear(); window.location.href = "login.html"; }
 
 /* ══════════════════════════════════════════════════════
@@ -3665,13 +3714,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
     renderDashboardCards();
 
-    /* ─── Card "Valider les LP" : visible pour Admin / Superviseur / Sûreté ───
-       Le dashboard est filtré par service ; la sûreté l'a déjà. On l'ajoute
-       pour les Admin/Superviseur des autres services s'ils ne l'ont pas. */
+    /* ─── Card "Valider les LP" : UNIQUEMENT dans le service sûreté ───
+       Les cartes sûreté la contiennent déjà ; on ne l'injecte donc nulle part
+       ailleurs (demande de Marvin : présente seulement dans la sûreté). */
     try {
         const _r = (localStorage.getItem("role") || "").toLowerCase();
         const _s = (localStorage.getItem("service") || "").toLowerCase();
-        const canValidateLP = ["admin","superadmin","superviseur"].includes(_r) || _s === "surete";
+        const canValidateLP = _s === "surete";
         const container = document.getElementById("cardsContainer");
         if (canValidateLP && container && !container.innerHTML.includes("lp_validation.html")) {
             const card = document.createElement("div");
@@ -3682,6 +3731,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             container.prepend(card);
         }
     } catch(_) {}
+
+    /* ─── Alerte "validations en attente" pour les admins (accueil) ─── */
+    checkPendingValidations();
 
     /* ─── Fond radar immersif pour le service sûreté ─── */
     if (_activeService === "surete") {

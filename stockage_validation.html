@@ -126,6 +126,7 @@ function render(){
       <div class="block"><div class="k">Marchandises</div>${r.nature_marchandises||"—"}</div>
       ${r.matieres_dangereuses?`<div class="block"><div class="k">Matières dangereuses</div>${r.matieres_details||"Non précisé"}</div>`:""}
       ${r.mesures_prevention?`<div class="block"><div class="k">Mesures de prévention</div>${r.mesures_prevention}</div>`:""}
+      ${(r.meta&&Array.isArray(r.meta.fichiers)&&r.meta.fichiers.length)?`<div class="block"><div class="k">📎 Pièces jointes (${r.meta.fichiers.length})</div>${r.meta.fichiers.map(f=>`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--cyan);display:inline-block;margin:2px 10px 2px 0;font-weight:600;">⬇ ${f.name||"fichier"}</a>`).join("")}</div>`:""}
       ${r.statut==="valide" && r.conditions_validation?`<div class="cond">✅ Validée par ${r.valide_par||"—"} le ${fmt(r.valide_le)} — Conditions : ${r.conditions_validation}</div>`:""}
       ${r.statut==="valide" && !r.conditions_validation?`<div class="cond">✅ Validée par ${r.valide_par||"—"} le ${fmt(r.valide_le)}</div>`:""}
       ${r.statut==="refuse"?`<div class="refus">⛔ Refusée par ${r.valide_par||"—"} — ${r.motif_refus||"Non précisé"}</div>`:""}

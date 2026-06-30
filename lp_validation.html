@@ -111,6 +111,7 @@
     <div class="tab" data-f="refuse" onclick="setFilter('refuse')">Refusés <span class="badge" id="b-bad">0</span></div>
     <div class="tab" data-f="demande_annulation" onclick="setFilter('demande_annulation')">Annulations <span class="badge" id="b-ann">0</span></div>
     <div class="tab" data-f="all" onclick="setFilter('all')">Tous</div>
+    <div class="tab" data-f="archive" onclick="setFilter('archive')">🗄 Archives <span class="badge" id="b-arch">0</span></div>
   </div>
 
   <div class="toolbar">
@@ -174,6 +175,8 @@ const _isSurete = _service === "surete";
 })();
 /* Transmission du QR : affichage + partage natif (pas d'envoi serveur) */
 let _all = [];
+let _archives = [];
+let _archivesLoaded = false;
 let _filter = "en_attente";
 
 function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
@@ -196,6 +199,7 @@ function statutPill(p){
 function setFilter(f){
   _filter = f;
   document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t.dataset.f===f));
+  if(f==="archive" && !_archivesLoaded){ loadArchives().then(render); return; }
   render();
 }
 
@@ -318,12 +322,15 @@ function cardHtml(p){
     ${p.statut==="demande_annulation"?`<div class="cancel-req">🔄 <strong>Annulation demandée</strong>${p.annulation_demandee_le?" le "+fmt(p.annulation_demandee_le):""}${p.annulation_motif?` — « ${esc(p.annulation_motif)} »`:""}</div>`:""}
 
     <div class="actions">
+      ${p.archive ? `<button class="btn btn-ghost" onclick="restaurer('${p.id}')">♻️ Restaurer</button>` : `
       ${isWait?`<button class="btn btn-ok" onclick="valider('${p.id}')">✅ Valider &amp; afficher le QR</button>
                 <button class="btn btn-bad" onclick="refuser('${p.id}')">✖️ Refuser</button>`:""}
       ${p.statut==="valide"?`<button class="btn btn-ghost" onclick="renvoyer('${p.id}')">🪪 Afficher le QR</button>
                 <button class="btn btn-bad" onclick="annuler('${p.id}')">🚫 Annuler</button>`:""}
       ${p.statut==="demande_annulation"?`<button class="btn btn-bad" onclick="confirmerAnnulation('${p.id}')">✅ Confirmer l'annulation</button>
                 <button class="btn btn-ghost" onclick="rejeterAnnulation('${p.id}')">↩️ Rejeter (restaurer)</button>`:""}
+      ${["valide","refuse","annule"].includes(p.statut)?`<button class="btn btn-ghost" onclick="archiver('${p.id}')">🗄 Archiver</button>`:""}
+      `}
     </div>
   </div>`;
 }
@@ -333,7 +340,9 @@ function render(){
   const q = (document.getElementById("search")?.value || "").trim();
   const etabSel = document.getElementById("etabFilter")?.value || "";
 
-  let list = _filter==="all" ? _all : _all.filter(p=>p.statut===_filter);
+  let list = _filter==="archive" ? _archives
+           : _filter==="all"     ? _all
+           : _all.filter(p=>p.statut===_filter);
   list = list.filter(p => matchSearch(p, q));
   if(etabSel) list = list.filter(p => (p.etablissement||"") === etabSel);
 
@@ -709,6 +718,37 @@ async function copierLien(){
   catch(_){ document.getElementById("qrModalLink").select(); document.execCommand("copy"); showToast("🔗 Lien copié"); }
 }
 
+async function loadArchives(){
+  const { data, error } = await supabaseClient.from("laissez_passer")
+    .select("*").eq("archive", true).order("created_at",{ascending:false});
+  if(error){ showToast("❌ "+esc(error.message), true); return; }
+  let rows = data||[];
+  // Même cloisonnement Samaritaine que la liste courante
+  const site = (localStorage.getItem("site_code") || localStorage.getItem("site") || "").toLowerCase();
+  const isSamAgent = _isSurete && site.includes("sam");
+  if(isSamAgent){ rows = rows.filter(p => (p.etablissement||"") === "samaritaine"); }
+  else if(_isSurete && !_isAdmin){ rows = rows.filter(p => (p.etablissement||"") !== "samaritaine"); }
+  _archives = rows; _archivesLoaded = true;
+  const b = document.getElementById("b-arch"); if(b) b.textContent = rows.length;
+}
+
+async function archiver(id){
+  if(!confirm("Archiver ce laissez-passer ? Il sortira des listes courantes (toujours consultable dans l'onglet Archives).")) return;
+  const { error } = await supabaseClient.from("laissez_passer").update({ archive:true }).eq("id", id);
+  if(error){ showToast("❌ "+esc(error.message), true); return; }
+  showToast("🗄 LP archivé");
+  _archivesLoaded = false;
+  if(_filter==="archive"){ await loadArchives(); render(); } else { load(); }
+}
+
+async function restaurer(id){
+  const { error } = await supabaseClient.from("laissez_passer").update({ archive:false }).eq("id", id);
+  if(error){ showToast("❌ "+esc(error.message), true); return; }
+  showToast("♻️ LP restauré");
+  _archivesLoaded = false;
+  if(_filter==="archive"){ await loadArchives(); render(); } else { load(); }
+}
+
 async function load(){
   const { data, error } = await supabaseClient.from("laissez_passer")
     .select("*").eq("archive", false).order("created_at",{ascending:false});
@@ -737,7 +777,7 @@ async function load(){
 
 // Realtime : la liste se met à jour sans rechargement
 supabaseClient.channel("lp_realtime")
-  .on("postgres_changes",{ event:"*", schema:"public", table:"laissez_passer" }, ()=>{ load(); })
+  .on("postgres_changes",{ event:"*", schema:"public", table:"laissez_passer" }, ()=>{ load(); if(_filter==="archive"){ _archivesLoaded=false; loadArchives().then(render); } })
   .subscribe();
 
 load();

@@ -1029,6 +1029,44 @@ async function supprimerBadge(id) {
         }
     } catch (e) { console.warn("[Init] super-admin role:", e); }
 
+    // ─── Admin (non super-admin) : création cloisonnée à SON service / établissement ───
+    //  - ne peut pas créer de compte Admin ni SuperAdmin
+    //  - site + service verrouillés sur son propre périmètre
+    //  (⚠️ ce cloisonnement front est un confort : l'edge function create-user doit
+    //   l'imposer côté serveur — forcer site_code/service de l'appelant, refuser role admin.)
+    try {
+        const r = (localStorage.getItem("role") || "").toLowerCase();
+        if (r && r !== "superadmin") {
+            const roleSel = document.getElementById("roleUser");
+            if (roleSel) Array.from(roleSel.options).forEach(o => {
+                if (["admin", "superadmin"].includes((o.value || "").toLowerCase())) o.remove();
+            });
+            const mySite = localStorage.getItem("site_code") || "";
+            const mySrv  = (localStorage.getItem("service") || "").toLowerCase();
+            const siteSel = document.getElementById("siteUser");
+            const srvSel  = document.getElementById("serviceUser");
+            if (siteSel && mySite) {
+                if (!Array.from(siteSel.options).some(o => o.value === mySite)) {
+                    const o = document.createElement("option"); o.value = mySite; o.textContent = mySite; siteSel.appendChild(o);
+                }
+                siteSel.value = mySite; siteSel.disabled = true; siteSel.style.opacity = "0.7";
+            }
+            if (srvSel && mySrv) {
+                if (!Array.from(srvSel.options).some(o => o.value === mySrv)) {
+                    const o = document.createElement("option"); o.value = mySrv; o.textContent = mySrv; srvSel.appendChild(o);
+                }
+                srvSel.value = mySrv; srvSel.disabled = true; srvSel.style.opacity = "0.7";
+            }
+            const btn = document.querySelector('button[onclick="creerCompte()"]');
+            if (btn && btn.parentNode) {
+                const hint = document.createElement("div");
+                hint.style.cssText = "font-size:.78rem;color:#94a3b8;margin:4px 0 2px;";
+                hint.textContent = "Vous créez des comptes pour votre service et votre établissement.";
+                btn.parentNode.insertBefore(hint, btn);
+            }
+        }
+    } catch (e) { console.warn("[Init] admin scope:", e); }
+
     // Charger les comptes en priorité
     await chargerComptes();
     // Puis les logs (non bloquant)

@@ -2082,8 +2082,9 @@ function generateSidebar() {
 
     MENU.forEach((section, index) => {
         /* Restriction d'accès par rôle : on ignore la section si l'utilisateur
-           n'en fait pas partie (ex : Administration & IA → admin + superviseur seulement) */
-        if (Array.isArray(section.visibleFor) && !section.visibleFor.includes(userRole)) {
+           n'en fait pas partie (ex : Administration & IA → admin + superviseur seulement).
+           Le super admin (superadmin) voit toutes les sections. */
+        if (Array.isArray(section.visibleFor) && userRole !== "superadmin" && !section.visibleFor.includes(userRole)) {
             return;
         }
 

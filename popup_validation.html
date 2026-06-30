@@ -76,7 +76,7 @@
 <script>
 (function(){
   const role=(localStorage.getItem("role")||"").toLowerCase();
-  if(role!=="admin" && role!=="superviseur"){ alert("Accès réservé aux valideurs (superviseur / admin)."); window.location.href="index.html"; }
+  if(role!=="admin" && role!=="superviseur" && role!=="superadmin"){ alert("Accès réservé aux valideurs (superviseur / admin)."); window.location.href="index.html"; }
 })();
 
 let _all=[], _filter="en_attente";

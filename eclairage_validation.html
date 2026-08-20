@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validation éclairage — Aura</title>
+<script src="vendor/supabase.js"></script>
+<style>
+  :root{ --bg:#eef1f6; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+         --cyan:#0891b2; --ok:#16a34a; --warn:#ea580c; --bad:#dc2626; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+  header{background:linear-gradient(135deg,#0e1626,#1e3a5f);color:#fff;padding:22px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 2px 14px rgba(14,22,38,.25);}
+  header .logo{font-size:1.7rem;background:rgba(255,255,255,.1);width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;}
+  header h1{font-size:1.2rem;margin:0;font-weight:800;}
+  header .sub{font-size:.76rem;opacity:.7;}
+  header a{margin-left:auto;color:#cbd5e1;text-decoration:none;font-size:.85rem;padding:8px 14px;border:1px solid rgba(255,255,255,.15);border-radius:9px;}
+  .wrap{max-width:880px;margin:0 auto;padding:18px 16px 70px;}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+  @media(max-width:560px){.kpis{grid-template-columns:repeat(2,1fr);}}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center;}
+  .kpi .n{font-size:1.6rem;font-weight:800;}
+  .kpi .l{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-top:2px;}
+  .kpi.wait .n{color:#a16207;} .kpi.ok .n{color:#15803d;} .kpi.bad .n{color:#b91c1c;}
+  .filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .fbtn{padding:9px 15px;border:1px solid var(--line);background:#fff;border-radius:999px;font-size:.82rem;font-weight:700;cursor:pointer;color:var(--muted);}
+  .fbtn.active{background:linear-gradient(135deg,#0e1626,#1e3a5f);color:#fff;border-color:transparent;}
+  .item{background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+  .item.wait{border-left:4px solid #eab308;}
+  .item-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;}
+  .item-title{font-weight:800;font-size:1.05rem;flex:1;}
+  .item-sub{font-size:.78rem;color:var(--muted);margin-top:2px;font-weight:400;}
+  .st{font-size:.7rem;font-weight:800;border-radius:999px;padding:4px 12px;white-space:nowrap;text-transform:uppercase;}
+  .st-wait{background:rgba(234,179,8,.15);color:#a16207;border:1px solid rgba(234,179,8,.4);}
+  .st-ok{background:rgba(22,163,74,.13);color:#15803d;border:1px solid rgba(22,163,74,.4);}
+  .st-bad{background:rgba(220,38,38,.12);color:#b91c1c;border:1px solid rgba(220,38,38,.4);}
+  .st-exp{background:rgba(100,116,139,.13);color:#475569;border:1px solid rgba(100,116,139,.35);}
+  .dz{font-size:.66rem;font-weight:800;border-radius:6px;padding:2px 7px;background:rgba(220,38,38,.1);color:#b91c1c;text-transform:uppercase;margin-left:6px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 18px;font-size:.85rem;margin:10px 0;}
+  .grid .k{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;}
+  .block{margin-top:8px;font-size:.85rem;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;}
+  .block .k{color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;margin-bottom:3px;}
+  .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .btn-sm{padding:10px 16px;border:none;border-radius:10px;font-size:.85rem;font-weight:700;cursor:pointer;}
+  .b-ok{background:var(--ok);color:#fff;} .b-bad{background:var(--bad);color:#fff;} .b-ghost{background:#e2e8f0;color:#334155;}
+  .cond{margin-top:8px;font-size:.82rem;background:rgba(22,163,74,.06);border:1px solid rgba(22,163,74,.25);border-radius:9px;padding:9px 11px;color:#15803d;}
+  .refus{margin-top:8px;font-size:.82rem;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.25);border-radius:9px;padding:9px 11px;color:#b91c1c;}
+  .empty{text-align:center;color:var(--muted);padding:50px 20px;}
+  .empty .big{font-size:2.6rem;display:block;margin-bottom:8px;opacity:.5;}
+</style>
+</head>
+<body>
+<header>
+  <span class="logo">📦</span>
+  <div><h1>Validation éclairage</h1><div class="sub">Services incendie &amp; technique</div></div>
+  <a href="index.html">← Accueil</a>
+</header>
+<div class="wrap">
+  <div class="kpis">
+    <div class="kpi wait"><div class="n" id="kWait">0</div><div class="l">En attente</div></div>
+    <div class="kpi ok"><div class="n" id="kOk">0</div><div class="l">Validées</div></div>
+    <div class="kpi bad"><div class="n" id="kBad">0</div><div class="l">Refusées</div></div>
+    <div class="kpi"><div class="n" id="kTot">0</div><div class="l">Total</div></div>
+  </div>
+  <div class="filters" id="filters">
+    <button class="fbtn active" data-f="en_attente" onclick="setFilter('en_attente')">⏳ En attente</button>
+    <button class="fbtn" data-f="valide" onclick="setFilter('valide')">✅ Validées</button>
+    <button class="fbtn" data-f="refuse" onclick="setFilter('refuse')">⛔ Refusées</button>
+    <button class="fbtn" data-f="all" onclick="setFilter('all')">Tout</button>
+  </div>
+  <div id="list"><div class="empty"><span class="big">⏳</span>Chargement…</div></div>
+</div>
+
+<script src="supabaseClient.js"></script>
+<script>
+/* ── Garde de rôle : admin / superviseur uniquement ── */
+(function(){
+  const role=(localStorage.getItem("role")||"").toLowerCase();
+  if(role!=="admin" && role!=="superviseur" && role!=="superadmin"){
+    alert("Accès réservé aux valideurs (superviseur / admin).");
+    window.location.href="index.html";
+  }
+})();
+
+let _all=[], _filter="en_attente";
+const fmt = d => d ? new Date(d).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}) : "—";
+function statutPill(s){
+  const m={en_attente:["st-wait","⏳ En attente"],valide:["st-ok","✅ Validée"],refuse:["st-bad","⛔ Refusée"],annule:["st-exp","🚫 Annulée"],cloture:["st-exp","📁 Clôturée"]};
+  const [c,l]=m[s]||["st-exp",s||"—"]; return `<span class="st ${c}">${l}</span>`;
+}
+
+async function charger(){
+  const { data, error } = await supabaseClient.from("demandes_eclairage").select("*").order("created_at",{ascending:false});
+  if(error){ document.getElementById("list").innerHTML=`<div class="empty"><span class="big">⚠️</span>${error.message}</div>`; return; }
+  _all=data||[];
+  document.getElementById("kWait").textContent=_all.filter(x=>x.statut==="en_attente").length;
+  document.getElementById("kOk").textContent=_all.filter(x=>x.statut==="valide").length;
+  document.getElementById("kBad").textContent=_all.filter(x=>x.statut==="refuse").length;
+  document.getElementById("kTot").textContent=_all.length;
+  render();
+}
+function setFilter(f){ _filter=f; document.querySelectorAll(".fbtn").forEach(b=>b.classList.toggle("active",b.dataset.f===f)); render(); }
+
+async function ouvrirPiece(e, path, fallbackUrl){
+  e.preventDefault();
+  try{
+    if(path){
+      const { data, error } = await supabaseClient.storage.from("demandes-pieces").createSignedUrl(path, 3600);
+      if(!error && data && data.signedUrl){ window.open(data.signedUrl, "_blank"); return; }
+    }
+  }catch(_){}
+  if(fallbackUrl){ window.open(fallbackUrl, "_blank"); return; }
+  alert("Fichier indisponible.");
+}
+function render(){
+  const list=document.getElementById("list");
+  let rows=_all;
+  if(_filter!=="all") rows=_all.filter(r=>r.statut===_filter);
+  if(!rows.length){ list.innerHTML=`<div class="empty"><span class="big">📭</span>Aucune demande dans cette catégorie.</div>`; return; }
+  list.innerHTML=rows.map(r=>`
+    <div class="item ${r.statut==='en_attente'?'wait':''}">
+      <div class="item-head">
+        <div class="item-title">${r.numero||"Éclairage"} ${r.urgent?'<span class="dz">⚠️ Urgent</span>':''}
+          <div class="item-sub">${r.nom_demandeur||"—"}${r.departement?" · "+r.departement:""} · déposée le ${fmt(r.created_at)}</div>
+        </div>
+        ${statutPill(r.statut)}
+      </div>
+      <div class="grid">
+        <div><div class="k">Établissement</div>${r.etablissement||"—"}</div>
+        <div><div class="k">Emplacement / zone</div>${r.emplacement||"—"}</div>
+        <div><div class="k">Type de demande</div>${r.type_demande||"—"}</div>
+        <div><div class="k">Urgent</div>${r.urgent?"⚠️ Oui":"Non"}</div>
+        <div><div class="k">Du</div>${fmt(r.date_debut)}</div>
+        <div><div class="k">Au</div>${fmt(r.date_fin)}</div>
+      </div>
+      ${r.description?`<div class="block"><div class="k">Précisions</div>${r.description}</div>`:""}
+      ${(r.meta&&Array.isArray(r.meta.fichiers)&&r.meta.fichiers.length)?`<div class="block"><div class="k">📎 Pièces jointes (${r.meta.fichiers.length})</div>${r.meta.fichiers.map(f=>`<a href="#" onclick="ouvrirPiece(event,'${f.path||""}','${f.url||""}')" style="color:var(--cyan);display:inline-block;margin:2px 10px 2px 0;font-weight:600;cursor:pointer;">⬇ ${f.name||"fichier"}</a>`).join("")}</div>`:""}
+      ${r.statut==="valide" && r.conditions_validation?`<div class="cond">✅ Validée par ${r.valide_par||"—"} le ${fmt(r.valide_le)} — Conditions : ${r.conditions_validation}</div>`:""}
+      ${r.statut==="valide" && !r.conditions_validation?`<div class="cond">✅ Validée par ${r.valide_par||"—"} le ${fmt(r.valide_le)}</div>`:""}
+      ${r.statut==="refuse"?`<div class="refus">⛔ Refusée par ${r.valide_par||"—"} — ${r.motif_refus||"Non précisé"}</div>`:""}
+      <div class="actions">
+        ${r.statut==="en_attente"?`
+          <button class="btn-sm b-ok" onclick="valider('${r.id}')">✅ Valider</button>
+          <button class="btn-sm b-bad" onclick="refuser('${r.id}')">⛔ Refuser</button>`:""}
+        ${r.statut==="valide"?`<button class="btn-sm b-ghost" onclick="cloturer('${r.id}')">📁 Clôturer</button>`:""}
+        ${(r.statut==="valide"||r.statut==="refuse")?`<button class="btn-sm b-ghost" onclick="rouvrir('${r.id}')">↩️ Remettre en attente</button>`:""}
+      </div>
+    </div>`).join("");
+}
+
+const who = () => localStorage.getItem("nom") || "Incendie";
+async function maj(id, fields, msg){
+  const { error } = await supabaseClient.from("demandes_eclairage").update(fields).eq("id",id);
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast(msg); charger();
+}
+async function valider(id){
+  const cond = prompt("Conditions de validation (optionnel) :","");
+  if(cond===null) return;
+  maj(id,{statut:"valide",conditions_validation:cond||null,motif_refus:null,valide_par:who(),valide_le:new Date().toISOString()},"✅ Éclairage validé");
+}
+async function refuser(id){
+  const motif = prompt("Motif du refus :");
+  if(motif===null) return;
+  maj(id,{statut:"refuse",motif_refus:motif||"Non précisé",valide_par:who(),valide_le:new Date().toISOString()},"Demande refusée");
+}
+async function cloturer(id){ if(!confirm("Clôturer cette demande (traitée) ?")) return; maj(id,{statut:"cloture"},"📁 Clôturée"); }
+async function rouvrir(id){ maj(id,{statut:"en_attente",motif_refus:null,conditions_validation:null,valide_par:null,valide_le:null},"↩️ Remise en attente"); }
+
+charger();
+/* Rafraîchissement léger toutes les 30s */
+setInterval(()=>{ if(document.visibilityState==="visible") charger(); }, 30000);
+</script>
+<script src="global.js"></script>
+</body>
+</html>

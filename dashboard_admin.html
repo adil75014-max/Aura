@@ -602,7 +602,8 @@ const TYPE_LABELS = {
     'permis_feu':             'Permis feu établi',
     'laissez_passer':         'Laissez-passer',
     'dem_stockage':           'Demande de stockage',
-    'dem_popup':              'Demande pop-up / projet'
+    'dem_popup':              'Demande pop-up / projet',
+    'dem_eclairage':          "Demande d'éclairage"
 };
 
 /* Retourne le libellé complet d'un type. Si le type est inconnu,
@@ -761,6 +762,13 @@ async function loadAllData() {
             .select('*')
             .order('created_at', { ascending: false });
         if (popErr) console.warn('[Dashboard] Demandes pop-up : ', popErr.message);
+
+        // 8e) Load demandes d'éclairage (incendie & technique)
+        const { data: demEclairage, error: eclErr } = await supabaseClient
+            .from("demandes_eclairage")
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (eclErr) console.warn('[Dashboard] Demandes éclairage : ', eclErr.message);
 
         // 9) Unify into a single array
         allData = [];
@@ -1071,6 +1079,29 @@ async function loadAllData() {
             });
         });
 
+        // 8e) Demandes d'éclairage (incendie & technique)
+        (demEclairage || []).forEach(p => {
+            const dt = new Date(p.created_at);
+            const resume = [p.numero, p.type_demande].filter(Boolean).join(' · ');
+            allData.push({
+                source: 'dem_eclairage',
+                date: dt.toISOString().split('T')[0],
+                heure: dt.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }),
+                datetime: dt,
+                type: 'dem_eclairage',
+                typeLabel: "Demande d'éclairage",
+                agent: p.nom_demandeur || '—',
+                lieu: [p.etablissement, p.emplacement].filter(Boolean).join(' · ') || '—',
+                resume: resume || '—',
+                statut: p.statut || 'en_attente',
+                priorite: p.urgent ? 'haute' : 'normale',
+                id: p.id,
+                description: p.description || '',
+                meta: p,
+                raw: p
+            });
+        });
+
         // Sort by most recent
         allData.sort((a, b) => b.datetime - a.datetime);
 
@@ -1088,7 +1119,8 @@ async function loadAllData() {
             permisFeu:    permisFeu    || [],
             laissezPasser: laissezPasser || [],
             demStockage:  demStockage  || [],
-            demPopup:     demPopup     || []
+            demPopup:     demPopup     || [],
+            demEclairage: demEclairage || []
         };
 
         // Initialiser les onglets services au premier load uniquement
@@ -1994,6 +2026,7 @@ function _rowMatchesService(row, service) {
     if (!service || service === "all") return true;
     const rawService = (row.raw && row.raw.service) ? String(row.raw.service).toLowerCase() : null;
     if (rawService) return rawService === service;
+    if (row.source === "dem_eclairage") return service === "incendie" || service === "technique";
     const sourceMap = { dai: "incendie", permis_feu: "incendie", dem_stockage: "incendie", dem_popup: "incendie", laissez_passer: "surete" };
     if (sourceMap[row.source]) return sourceMap[row.source] === service;
     const inferred = _mapTypeToService(row.type);
@@ -2112,17 +2145,17 @@ function applyServiceFilter() {
 
 /* Sources pertinentes par service (les autres n'ont pas de sens métier) */
 const SOURCES_BY_SERVICE = {
-    all:               ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu","dem_stockage","dem_popup","laissez_passer"],
-    incendie:          ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu","dem_stockage","dem_popup"],
+    all:               ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu","dem_stockage","dem_popup","dem_eclairage","laissez_passer"],
+    incendie:          ["rapports","rondes","verifications","dai","entree_sortie","interv_ext","permis_feu","dem_stockage","dem_popup","dem_eclairage"],
     surete:            ["rapports","rondes","laissez_passer"],
-    technique:         ["rapports","interv_ext"],
+    technique:         ["rapports","interv_ext","dem_eclairage"],
     services_generaux: ["rapports","entree_sortie"]
 };
 const SOURCE_LABELS = {
     rapports:"📋 Rapports", rondes:"🔄 Rondes", verifications:"🔍 Vérifications",
     dai:"🚨 DAI Hors Service", entree_sortie:"🚪 Entrées / Sorties",
     interv_ext:"🏗 Interventions extérieures", permis_feu:"🔥 Permis feu",
-    dem_stockage:"📦 Demandes stockage", dem_popup:"🪟 Pop-up / projet", laissez_passer:"🪪 Laissez-passer"
+    dem_stockage:"📦 Demandes stockage", dem_popup:"🪟 Pop-up / projet", dem_eclairage:"💡 Éclairage", laissez_passer:"🪪 Laissez-passer"
 };
 
 /* Reconstruit les listes déroulantes source + type d'après le service actif
@@ -2187,6 +2220,10 @@ function setupRealtime() {
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'demandes_popup' }, () => {
             showToast('🔔 Mise à jour demande pop-up / projet, rechargement…');
+            setTimeout(loadAllData, 500);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'demandes_eclairage' }, () => {
+            showToast("🔔 Mise à jour demande d'éclairage, rechargement…");
             setTimeout(loadAllData, 500);
         })
         .subscribe();

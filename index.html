@@ -1768,6 +1768,7 @@ incendie: [
             { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" },
             { icon: "📦", label: "Validation stockage", link: "stockage_validation.html" },
             { icon: "🪟", label: "Validation pop-up / projet", link: "popup_validation.html" },
+            { icon: "💡", label: "Validation éclairage", link: "eclairage_validation.html" },
             { icon: "🤖", label: "Analyse IA – Tous les rapports", link: "#" },
             { icon: "⚠️", label: "Analyse IA – Anomalies", link: "#" },
             { icon: "🚧", label: "Analyse IA – Hors Service", link: "#" },
@@ -1899,6 +1900,7 @@ technique: [
         items: [
             { icon: "👤", label: "Gestion des comptes", link: "gestion_de_compte.html" },
             { icon: "📝", label: "Gestion des rapports", link: "gestion_des_rapports.html" },
+            { icon: "💡", label: "Validation éclairage", link: "eclairage_validation.html" },
             { icon: "🎛️", label: "Éditeur de menu", link: "menu_admin.html" }
         ]
     }
@@ -2203,6 +2205,10 @@ async function checkPendingValidations() {
             if (ns) items.push({ n: ns, label: "stockage", link: "stockage_validation.html" });
             const np = await cnt("demandes_popup");
             if (np) items.push({ n: np, label: "pop-up / projet", link: "popup_validation.html" });
+        }
+        if (svc === "incendie" || svc === "technique" || isSuper) {
+            const ne = await cnt("demandes_eclairage");
+            if (ne) items.push({ n: ne, label: "éclairage", link: "eclairage_validation.html" });
         }
         if (!items.length) return;
 

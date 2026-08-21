@@ -89,9 +89,20 @@ tr:hover td{background:rgba(255,255,255,0.03)}
     <tbody id="zonesTable"></tbody></table>
 </div>
 
+<!-- ACCÈS ASSISTANT -->
+<a href="assistant_ronde.html" style="display:block;text-decoration:none;background:linear-gradient(135deg,#2563eb,#1e3a8a);color:#fff;border-radius:16px;padding:16px 18px;margin-bottom:16px;font-weight:800;">
+  🧭 Mode assistant guidé <span style="font-weight:500;opacity:.9;">— idéal pour débuter (3 étapes simples)</span> →
+</a>
+
 <!-- CRÉER UNE RONDE -->
 <div class="card">
-    <h2><span class="icon">🛡</span> Créer une ronde</h2>
+    <h2><span class="icon">🛡</span> Créer / modifier une ronde</h2>
+
+    <label>Repartir d'une ronde existante (ou en créer une nouvelle)</label>
+    <select id="rondeExistante" onchange="chargerRondeExistante()">
+      <option value="">— Nouvelle ronde —</option>
+    </select>
+    <div style="font-size:.8rem;color:#64748b;margin:4px 0 12px;">Choisissez une ronde pour lui ajouter/modifier des points, ou laissez « Nouvelle ronde » pour en créer une.</div>
 
     <label>Nom de la ronde</label>
     <input type="text" id="nomRonde" placeholder="Ex : Ronde ouverture matin">
@@ -127,7 +138,11 @@ tr:hover td{background:rgba(255,255,255,0.03)}
     </div>
 
     <label id="labelTagId">UID du tag NFC</label>
-    <input type="text" id="tagId" placeholder="Ex : 04:A2:B3:C4:D5:E6:F7">
+    <div style="display:flex;gap:8px;align-items:stretch;">
+      <input type="text" id="tagId" placeholder="Ex : 04:A2:B3:C4:D5:E6:F7" style="flex:1;">
+      <button type="button" class="btn btn-secondary" id="btnScan" onclick="scanNFC()" style="white-space:nowrap;margin:0;">📶 Scanner</button>
+    </div>
+    <div id="nfcHint" style="font-size:.8rem;color:#64748b;margin:4px 0 0;">Activez le NFC, appuyez sur « Scanner » puis approchez le tag : le code se place tout seul, sans ouvrir de page (Chrome sur Android).</div>
 
     <button class="btn btn-secondary" onclick="ajouterPoint()">+ Ajouter ce point</button>
 
@@ -207,12 +222,62 @@ function setTagType(t) {
    CRÉATION DE RONDE
 ============================================================ */
 let ronde = { nom: "", description: "", type: "", points: [] };
+let _editRondeId = null;
+let _rondesCache = [];
 
 function creerRonde() {
     const nom = document.getElementById("nomRonde").value.trim();
     if (!nom) { alert("Nom requis."); return; }
     if (zones.length === 0) { alert("Ajoutez au moins une zone d'abord."); return; }
+    _editRondeId = null;
+    document.getElementById("rondeExistante").value = "";
     ronde = { nom, description: document.getElementById("descRonde").value.trim(), type: document.getElementById("typeRonde").value, points: [] };
+    document.getElementById("sectionPoints").style.display = "block";
+    document.getElementById("rondeNomDisplay").textContent = nom;
+    afficherPoints();
+}
+
+async function scanNFC() {
+    if (tagType !== "nfc") { showToast("Le scan direct concerne les tags NFC. Pour le BLE, saisissez l'ID.", true); return; }
+    if (!("NDEFReader" in window)) { showToast("Scan NFC non supporté ici. Utilisez Chrome sur Android, ou saisissez l'UID à la main.", true); return; }
+    try {
+        const reader = new NDEFReader();
+        await reader.scan();
+        showToast("📶 Approchez le tag NFC…");
+        reader.onreading = (event) => {
+            let uid = event.serialNumber || "";
+            if (!uid && event.message) {
+                for (const rec of event.message.records) {
+                    if (rec.recordType === "text") { try { uid = new TextDecoder(rec.encoding || "utf-8").decode(rec.data); } catch(_){} break; }
+                }
+            }
+            if (uid) { document.getElementById("tagId").value = uid.toUpperCase(); showToast("✅ Tag lu : " + uid.toUpperCase()); }
+            else showToast("Tag lu mais UID vide — saisissez-le à la main.", true);
+        };
+        reader.onreadingerror = () => showToast("Lecture NFC échouée, réessayez.", true);
+    } catch (e) {
+        showToast("NFC indisponible : " + (e.message || e) + " (vérifiez que le NFC est activé).", true);
+    }
+}
+
+function chargerRondeExistante() {
+    const id = document.getElementById("rondeExistante").value;
+    if (!id) {
+        _editRondeId = null;
+        document.getElementById("nomRonde").value = "";
+        document.getElementById("descRonde").value = "";
+        ronde = { nom: "", description: "", type: "", points: [] };
+        document.getElementById("sectionPoints").style.display = "none";
+        return;
+    }
+    const r = _rondesCache.find(x => String(x.id) === String(id));
+    if (!r) return;
+    _editRondeId = r.id;
+    const nom = (r.meta && r.meta.nom) || r.type || "Ronde";
+    document.getElementById("nomRonde").value = nom;
+    document.getElementById("descRonde").value = r.observations || "";
+    if (r.type) { const ts = document.getElementById("typeRonde"); if ([...ts.options].some(o => o.value === r.type)) ts.value = r.type; }
+    ronde = { nom, description: r.observations || "", type: r.type || "", points: (r.meta && r.meta.points) ? JSON.parse(JSON.stringify(r.meta.points)) : [] };
     document.getElementById("sectionPoints").style.display = "block";
     document.getElementById("rondeNomDisplay").textContent = nom;
     afficherPoints();
@@ -247,22 +312,31 @@ function supprimerPoint(i) { ronde.points.splice(i, 1); afficherPoints(); }
 
 async function sauvegarderRonde() {
     if (ronde.points.length === 0) { alert("Ajoutez au moins un point de passage."); return; }
+    ronde.nom = document.getElementById("nomRonde").value.trim() || ronde.nom;
+    ronde.description = document.getElementById("descRonde").value.trim();
+    ronde.type = document.getElementById("typeRonde").value;
     try {
-        const { error } = await supabaseClient.from("rondes").insert({
-            type: ronde.type,
-            statut: "en_cours",
-            observations: ronde.description,
-            debut_at: new Date().toISOString(),
-            meta: {
-                nom: ronde.nom,
-                points: ronde.points
-            }
-        });
-        if (error) throw error;
-        showToast("✅ Ronde « " + ronde.nom + " » enregistrée !");
+        if (_editRondeId) {
+            const { error } = await supabaseClient.from("rondes").update({
+                type: ronde.type, observations: ronde.description,
+                meta: { nom: ronde.nom, points: ronde.points }
+            }).eq("id", _editRondeId);
+            if (error) throw error;
+            showToast("✅ Ronde « " + ronde.nom + " » mise à jour !");
+        } else {
+            const { error } = await supabaseClient.from("rondes").insert({
+                type: ronde.type, statut: "en_cours", observations: ronde.description,
+                debut_at: new Date().toISOString(),
+                meta: { nom: ronde.nom, points: ronde.points }
+            });
+            if (error) throw error;
+            showToast("✅ Ronde « " + ronde.nom + " » enregistrée !");
+        }
         document.getElementById("sectionPoints").style.display = "none";
         document.getElementById("nomRonde").value = "";
         document.getElementById("descRonde").value = "";
+        document.getElementById("rondeExistante").value = "";
+        _editRondeId = null;
         ronde = { nom: "", description: "", type: "", points: [] };
         chargerRondes();
     } catch (e) {
@@ -278,6 +352,8 @@ async function chargerRondes() {
     const div = document.getElementById("listeRondes");
 
     if (error) { div.innerHTML = '<div class="empty">Erreur : ' + error.message + '</div>'; return; }
+    _rondesCache = data || [];
+    (function(){ const sel=document.getElementById("rondeExistante"); if(sel){ const cur=sel.value; sel.innerHTML='<option value="">— Nouvelle ronde —</option>'+(data||[]).map(r=>`<option value="${r.id}">${esc((r.meta&&r.meta.nom)||r.type||"Ronde")}</option>`).join(""); sel.value=cur; } })();
     if (!data || data.length === 0) { div.innerHTML = '<div class="empty">Aucune ronde enregistrée.</div>'; return; }
 
     div.innerHTML = "";
@@ -299,6 +375,7 @@ async function chargerRondes() {
                 <span class="pill pill-type">${esc(r.type)||"—"}</span>
                 <span class="pill pill-pts">${valides}/${pts} pts</span>
                 <span class="pill pill-status">${statusLabel}</span>
+                <button class="btn-secondary btn-sm" onclick="document.getElementById('rondeExistante').value='${r.id}';chargerRondeExistante();window.scrollTo({top:0,behavior:'smooth'});">✏️</button>
                 <button class="btn-danger btn-sm" onclick="supprimerRonde('${r.id}')">🗑</button>
             </div>
         `;

@@ -47,25 +47,36 @@
   .refus{margin-top:8px;font-size:.82rem;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.25);border-radius:9px;padding:9px 11px;color:#b91c1c;}
   .empty{text-align:center;color:var(--muted);padding:50px 20px;}
   .empty .big{font-size:2.6rem;display:block;margin-bottom:8px;opacity:.5;}
+  .st-prog{background:#dbeafe;color:#1e40af;}
+  .st-cours{background:#fef3c7;color:#92400e;}
+  .item.stx-a_planifier{border-left:4px solid #64748b;}
+  .item.stx-programme{border-left:4px solid #2563eb;}
+  .item.stx-en_cours{border-left:4px solid #f59e0b;}
+  .item.stx-solde{border-left:4px solid #16a34a;}
+  .item.stx-annule{border-left:4px solid #dc2626;opacity:.7;}
 </style>
 </head>
 <body>
 <header>
   <span class="logo">📦</span>
   <div><h1>Validation éclairage</h1><div class="sub">Services incendie &amp; technique</div></div>
+  <button id="btnExport" onclick="exportCSV()" style="display:none;margin-left:auto;margin-right:10px;padding:8px 14px;border:1px solid var(--cyan);background:transparent;color:var(--cyan);border-radius:8px;font-weight:700;cursor:pointer;">⬇ Export CSV</button>
   <a href="index.html">← Accueil</a>
 </header>
 <div class="wrap">
   <div class="kpis">
-    <div class="kpi wait"><div class="n" id="kWait">0</div><div class="l">En attente</div></div>
-    <div class="kpi ok"><div class="n" id="kOk">0</div><div class="l">Validées</div></div>
-    <div class="kpi bad"><div class="n" id="kBad">0</div><div class="l">Refusées</div></div>
-    <div class="kpi"><div class="n" id="kTot">0</div><div class="l">Total</div></div>
+    <div class="kpi wait"><div class="n" id="kPlan">0</div><div class="l">À planifier</div></div>
+    <div class="kpi"><div class="n" id="kProg">0</div><div class="l">Programmé</div></div>
+    <div class="kpi"><div class="n" id="kCours">0</div><div class="l">En cours</div></div>
+    <div class="kpi ok"><div class="n" id="kSolde">0</div><div class="l">Soldé</div></div>
+    <div class="kpi"><div class="n" id="kTaux">0%</div><div class="l">Taux de réalisation</div></div>
   </div>
   <div class="filters" id="filters">
-    <button class="fbtn active" data-f="en_attente" onclick="setFilter('en_attente')">⏳ En attente</button>
-    <button class="fbtn" data-f="valide" onclick="setFilter('valide')">✅ Validées</button>
-    <button class="fbtn" data-f="refuse" onclick="setFilter('refuse')">⛔ Refusées</button>
+    <button class="fbtn active" data-f="a_planifier" onclick="setFilter('a_planifier')">📋 À planifier</button>
+    <button class="fbtn" data-f="programme" onclick="setFilter('programme')">📅 Programmé</button>
+    <button class="fbtn" data-f="en_cours" onclick="setFilter('en_cours')">▶️ En cours</button>
+    <button class="fbtn" data-f="solde" onclick="setFilter('solde')">✅ Soldé</button>
+    <button class="fbtn" data-f="annule" onclick="setFilter('annule')">🚫 Annulé</button>
     <button class="fbtn" data-f="all" onclick="setFilter('all')">Tout</button>
   </div>
   <div id="list"><div class="empty"><span class="big">⏳</span>Chargement…</div></div>
@@ -73,19 +84,19 @@
 
 <script src="supabaseClient.js"></script>
 <script>
-/* ── Garde de rôle : admin / superviseur uniquement ── */
-(function(){
-  const role=(localStorage.getItem("role")||"").toLowerCase();
-  if(role!=="admin" && role!=="superviseur" && role!=="superadmin"){
-    alert("Accès réservé aux valideurs (superviseur / admin).");
-    window.location.href="index.html";
-  }
-})();
+/* ── Profils technique → rôles Aura ──
+   Technicien (agent/stationnaire) = lecture seule
+   Chef d'équipe (superviseur)     = lecture + export
+   Responsable (admin) / Admin DSI (superadmin) = accès total (valider, modifier, clôturer) */
+const ROLE = (localStorage.getItem("role")||"").toLowerCase();
+const CAN_ACT    = ["admin","superadmin"].includes(ROLE);
+const CAN_EXPORT = ["superviseur","admin","superadmin"].includes(ROLE);
+(function(){ if(!ROLE){ alert("Connexion requise."); window.location.href="index.html"; } })();
 
-let _all=[], _filter="en_attente";
+let _all=[], _filter="a_planifier";
 const fmt = d => d ? new Date(d).toLocaleString("fr-FR",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}) : "—";
 function statutPill(s){
-  const m={en_attente:["st-wait","⏳ En attente"],valide:["st-ok","✅ Validée"],refuse:["st-bad","⛔ Refusée"],annule:["st-exp","🚫 Annulée"],cloture:["st-exp","📁 Clôturée"]};
+  const m={a_planifier:["st-wait","📋 À planifier"],programme:["st-prog","📅 Programmé"],en_cours:["st-cours","▶️ En cours"],solde:["st-ok","✅ Soldé"],annule:["st-exp","🚫 Annulé"],en_attente:["st-wait","📋 À planifier"]};
   const [c,l]=m[s]||["st-exp",s||"—"]; return `<span class="st ${c}">${l}</span>`;
 }
 
@@ -93,10 +104,13 @@ async function charger(){
   const { data, error } = await supabaseClient.from("demandes_eclairage").select("*").order("created_at",{ascending:false});
   if(error){ document.getElementById("list").innerHTML=`<div class="empty"><span class="big">⚠️</span>${error.message}</div>`; return; }
   _all=data||[];
-  document.getElementById("kWait").textContent=_all.filter(x=>x.statut==="en_attente").length;
-  document.getElementById("kOk").textContent=_all.filter(x=>x.statut==="valide").length;
-  document.getElementById("kBad").textContent=_all.filter(x=>x.statut==="refuse").length;
-  document.getElementById("kTot").textContent=_all.length;
+  const c=st=>_all.filter(x=>x.statut===st).length;
+  document.getElementById("kPlan").textContent=c("a_planifier")+c("en_attente");
+  document.getElementById("kProg").textContent=c("programme");
+  document.getElementById("kCours").textContent=c("en_cours");
+  document.getElementById("kSolde").textContent=c("solde");
+  const base=_all.filter(x=>x.statut!=="annule").length;
+  document.getElementById("kTaux").textContent = base ? Math.round(c("solde")/base*100)+"%" : "0%";
   render();
 }
 function setFilter(f){ _filter=f; document.querySelectorAll(".fbtn").forEach(b=>b.classList.toggle("active",b.dataset.f===f)); render(); }
@@ -118,32 +132,41 @@ function render(){
   if(_filter!=="all") rows=_all.filter(r=>r.statut===_filter);
   if(!rows.length){ list.innerHTML=`<div class="empty"><span class="big">📭</span>Aucune demande dans cette catégorie.</div>`; return; }
   list.innerHTML=rows.map(r=>`
-    <div class="item ${r.statut==='en_attente'?'wait':''}">
+    <div class="item stx-${r.statut}">
       <div class="item-head">
-        <div class="item-title">${r.numero||"Éclairage"} ${r.urgent?'<span class="dz">⚠️ Urgent</span>':''}
-          <div class="item-sub">${r.nom_demandeur||"—"}${r.departement?" · "+r.departement:""} · déposée le ${fmt(r.created_at)}</div>
+        <div class="item-title">${r.numero||"Éclairage"} ${r.urgent?'<span class="dz">⚠️ Urgent</span>':''}${r.intervention_type==="externe"?' <span class="dz" style="background:#f59e0b;color:#000">🚚 Externe</span>':''}
+          <div class="item-sub">${r.nom_demandeur||"—"}${r.departement?" · "+r.departement:""}${r.tel_demandeur?" · ☎ "+r.tel_demandeur:""} · déposée le ${fmt(r.created_at)}</div>
         </div>
         ${statutPill(r.statut)}
       </div>
       <div class="grid">
-        <div><div class="k">Établissement</div>${r.etablissement||"—"}</div>
-        <div><div class="k">Emplacement / zone</div>${r.emplacement||"—"}</div>
-        <div><div class="k">Type de demande</div>${r.type_demande||"—"}</div>
-        <div><div class="k">Urgent</div>${r.urgent?"⚠️ Oui":"Non"}</div>
-        <div><div class="k">Du</div>${fmt(r.date_debut)}</div>
-        <div><div class="k">Au</div>${fmt(r.date_fin)}</div>
+        <div><div class="k">Magasin</div>${r.magasin||r.etablissement||"—"}</div>
+        <div><div class="k">Intervention</div>${r.intervention_type==="externe"?"🚚 Externe (LP requis)":"🏢 Interne (BM/GEP)"}</div>
+        <div><div class="k">Marque / Zone</div>${r.marque_zone||"—"}</div>
+        <div><div class="k">Type d'intervention</div>${r.type_intervention||r.type_demande||"—"}</div>
+        <div><div class="k">Canton</div>${r.canton||"—"}</div>
+        <div><div class="k">Besoin éclairage</div>${r.besoin_eclairage||"—"}</div>
+        <div><div class="k">Climatisation</div>${r.climatisation||"—"}</div>
+        <div><div class="k">Localisation</div>${r.localisation||r.emplacement||"—"}</div>
+        <div><div class="k">Du</div>${fmt(r.date_debut)}${r.heure_debut?" "+r.heure_debut:""}</div>
+        <div><div class="k">Au</div>${fmt(r.date_fin)}${r.heure_fin?" "+r.heure_fin:""}</div>
+        <div><div class="k">Durée</div>${r.duree_heures?r.duree_heures+" h":"—"}${r.duree_jours?" ("+r.duree_jours+" j)":""}</div>
       </div>
-      ${r.description?`<div class="block"><div class="k">Précisions</div>${r.description}</div>`:""}
+      ${(r.societe_nom||r.societe_contact)?`<div class="block"><div class="k">Société intervenante</div>${r.societe_nom||"—"}${r.societe_contact?" · "+r.societe_contact:""}${r.societe_tel?" · "+r.societe_tel:""}${r.societe_email?" · "+r.societe_email:""}</div>`:""}
+      ${(r.nature_travaux||r.description)?`<div class="block"><div class="k">Nature des travaux</div>${r.nature_travaux||r.description}</div>`:""}
+      ${r.remarques?`<div class="block"><div class="k">Remarques</div>${r.remarques}</div>`:""}
       ${(r.meta&&Array.isArray(r.meta.fichiers)&&r.meta.fichiers.length)?`<div class="block"><div class="k">📎 Pièces jointes (${r.meta.fichiers.length})</div>${r.meta.fichiers.map(f=>`<a href="#" onclick="ouvrirPiece(event,'${f.path||""}','${f.url||""}')" style="color:var(--cyan);display:inline-block;margin:2px 10px 2px 0;font-weight:600;cursor:pointer;">⬇ ${f.name||"fichier"}</a>`).join("")}</div>`:""}
-      ${r.statut==="valide" && r.conditions_validation?`<div class="cond">✅ Validée par ${r.valide_par||"—"} le ${fmt(r.valide_le)} — Conditions : ${r.conditions_validation}</div>`:""}
-      ${r.statut==="valide" && !r.conditions_validation?`<div class="cond">✅ Validée par ${r.valide_par||"—"} le ${fmt(r.valide_le)}</div>`:""}
-      ${r.statut==="refuse"?`<div class="refus">⛔ Refusée par ${r.valide_par||"—"} — ${r.motif_refus||"Non précisé"}</div>`:""}
+      ${(r.statut==="programme"||r.statut==="en_cours"||r.statut==="solde")&&r.valide_par?`<div class="cond">📅 Traitée par ${r.valide_par} le ${fmt(r.valide_le)}</div>`:""}
+      ${r.statut==="annule"?`<div class="refus">🚫 Annulée${r.motif_refus?" — "+r.motif_refus:""}</div>`:""}
       <div class="actions">
-        ${r.statut==="en_attente"?`
-          <button class="btn-sm b-ok" onclick="valider('${r.id}')">✅ Valider</button>
-          <button class="btn-sm b-bad" onclick="refuser('${r.id}')">⛔ Refuser</button>`:""}
-        ${r.statut==="valide"?`<button class="btn-sm b-ghost" onclick="cloturer('${r.id}')">📁 Clôturer</button>`:""}
-        ${(r.statut==="valide"||r.statut==="refuse")?`<button class="btn-sm b-ghost" onclick="rouvrir('${r.id}')">↩️ Remettre en attente</button>`:""}
+        ${CAN_ACT ? `
+        ${r.statut==="a_planifier"||r.statut==="en_attente"?`<button class="btn-sm b-ok" onclick="programmer('${r.id}')">📅 Programmer</button>`:""}
+        ${r.statut==="programme"?`<button class="btn-sm b-ok" onclick="demarrer('${r.id}')">▶️ Démarrer</button>`:""}
+        ${(r.statut==="programme"||r.statut==="en_cours")?`<button class="btn-sm b-ghost" onclick="solder('${r.id}')">✅ Solder</button>`:""}
+        ${(r.statut!=="solde"&&r.statut!=="annule")?`<button class="btn-sm b-bad" onclick="annuler('${r.id}')">🚫 Annuler</button>`:""}
+        ${(r.statut==="solde"||r.statut==="annule")?`<button class="btn-sm b-ghost" onclick="rouvrir('${r.id}')">↩️ Remettre à planifier</button>`:""}
+        ${r.statut!=="solde"?`<button class="btn-sm b-ghost" onclick="modifierEcl('${r.id}')">✏️ Modifier</button>`:""}
+        ` : `<span style="opacity:.55;font-size:.8rem;">🔒 Lecture seule (${ROLE||"—"})</span>`}
       </div>
     </div>`).join("");
 }
@@ -154,23 +177,105 @@ async function maj(id, fields, msg){
   if(error){ showToast("❌ "+error.message, true); return; }
   showToast(msg); charger();
 }
-async function valider(id){
-  const cond = prompt("Conditions de validation (optionnel) :","");
-  if(cond===null) return;
-  maj(id,{statut:"valide",conditions_validation:cond||null,motif_refus:null,valide_par:who(),valide_le:new Date().toISOString()},"✅ Éclairage validé");
+async function programmer(id){ maj(id,{statut:"programme",valide_par:who(),valide_le:new Date().toISOString()},"📅 Programmée"); }
+async function demarrer(id){ maj(id,{statut:"en_cours"},"▶️ En cours"); }
+async function solder(id){ if(!confirm("Marquer cette demande comme soldée (travaux terminés) ?")) return; maj(id,{statut:"solde"},"✅ Soldée"); }
+async function annuler(id){ const motif=prompt("Motif d'annulation (optionnel) :",""); if(motif===null) return; maj(id,{statut:"annule",motif_refus:motif||null},"🚫 Annulée"); }
+
+if(CAN_EXPORT){ document.addEventListener("DOMContentLoaded",()=>{ const b=document.getElementById("btnExport"); if(b) b.style.display="inline-block"; }); }
+function exportCSV(){
+  if(!_all||!_all.length){ showToast("Aucune donnée à exporter", true); return; }
+  const cols=["numero","date_demande","nom_demandeur","prenom","tel_demandeur","email_demandeur","departement","societe_nom","societe_contact","societe_email","societe_tel","marque_zone","type_intervention","nature_travaux","magasin","intervention_type","canton","besoin_eclairage","climatisation","date_debut","date_fin","heure_debut","heure_fin","duree_heures","duree_jours","localisation","remarques","statut"];
+  const cell=x=>{ x=(x==null?"":String(x)).replace(/"/g,'""'); return /[;\n"]/.test(x)?'"'+x+'"':x; };
+  const csv="\uFEFF"+cols.join(";")+"\n"+_all.map(r=>cols.map(c=>cell(r[c])).join(";")).join("\n");
+  const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));
+  a.download="demandes_eclairage_"+new Date().toISOString().slice(0,10)+".csv"; a.click();
 }
-async function refuser(id){
-  const motif = prompt("Motif du refus :");
-  if(motif===null) return;
-  maj(id,{statut:"refuse",motif_refus:motif||"Non précisé",valide_par:who(),valide_le:new Date().toISOString()},"Demande refusée");
+
+let _editId=null;
+async function modifierEcl(id){
+  const { data:r, error } = await supabaseClient.from("demandes_eclairage").select("*").eq("id",id).single();
+  if(error||!r){ showToast("❌ Demande introuvable", true); return; }
+  _editId=id;
+  const S=(k,val)=>{const e=document.getElementById(k); if(e) e.value=(val==null?"":val);};
+  const full=(r.nom_demandeur||""), pre=(r.prenom||"");
+  S("e_prenom",pre); S("e_nom", pre&&full.endsWith(pre)?full.slice(0,full.length-pre.length).trim():full);
+  S("e_tel",r.tel_demandeur); S("e_email",r.email_demandeur); S("e_dep",r.departement);
+  S("e_soc_nom",r.societe_nom); S("e_soc_contact",r.societe_contact); S("e_soc_email",r.societe_email); S("e_soc_tel",r.societe_tel);
+  S("e_marque",r.marque_zone); S("e_type",r.type_intervention||r.type_demande); S("e_magasin",r.magasin||r.etablissement); S("e_canton",r.canton);
+  S("e_besoin",r.besoin_eclairage); S("e_clim",r.climatisation); S("e_localisation",r.localisation||r.emplacement);
+  S("e_dd", r.date_debut?String(r.date_debut).slice(0,10):""); S("e_hd", r.heure_debut||(r.date_debut?String(r.date_debut).slice(11,16):""));
+  S("e_df", r.date_fin?String(r.date_fin).slice(0,10):""); S("e_hf", r.heure_fin||(r.date_fin?String(r.date_fin).slice(11,16):""));
+  S("e_nature",r.nature_travaux||r.description); S("e_remarques",r.remarques);
+  document.getElementById("eclEdit").style.display="flex";
 }
-async function cloturer(id){ if(!confirm("Clôturer cette demande (traitée) ?")) return; maj(id,{statut:"cloture"},"📁 Clôturée"); }
-async function rouvrir(id){ maj(id,{statut:"en_attente",motif_refus:null,conditions_validation:null,valide_par:null,valide_le:null},"↩️ Remise en attente"); }
+function closeEcl(){ document.getElementById("eclEdit").style.display="none"; _editId=null; }
+async function saveEcl(){
+  if(!_editId) return;
+  const g=id=>{const e=document.getElementById(id); return e?e.value.trim():"";};
+  const nom=g("e_nom"), pre=g("e_prenom"), dd=g("e_dd"), hd=g("e_hd"), df=g("e_df"), hf=g("e_hf");
+  const fields={
+    nom_demandeur:(nom+" "+pre).trim(), prenom:pre, tel_demandeur:g("e_tel"), email_demandeur:g("e_email"), departement:g("e_dep"),
+    societe_nom:g("e_soc_nom"), societe_contact:g("e_soc_contact"), societe_email:g("e_soc_email"), societe_tel:g("e_soc_tel"),
+    marque_zone:g("e_marque"), type_intervention:g("e_type"), type_demande:g("e_type"), magasin:g("e_magasin"), etablissement:g("e_magasin"),
+    canton:g("e_canton"), besoin_eclairage:g("e_besoin"), climatisation:g("e_clim"),
+    localisation:g("e_localisation"), emplacement:g("e_localisation"),
+    nature_travaux:g("e_nature"), description:g("e_nature"), remarques:g("e_remarques"),
+    heure_debut:hd||null, heure_fin:hf||null
+  };
+  if(dd&&hd) fields.date_debut=new Date(dd+"T"+hd).toISOString(); else if(dd) fields.date_debut=new Date(dd).toISOString();
+  if(df&&hf) fields.date_fin=new Date(df+"T"+hf).toISOString(); else if(df) fields.date_fin=new Date(df).toISOString();
+  if(fields.date_debut&&fields.date_fin){ const ms=new Date(fields.date_fin)-new Date(fields.date_debut); if(ms>0){ fields.duree_heures=+(ms/3600000).toFixed(1); fields.duree_jours=+(ms/86400000).toFixed(2);} }
+  const { error } = await supabaseClient.from("demandes_eclairage").update(fields).eq("id",_editId);
+  if(error){ showToast("❌ "+error.message, true); return; }
+  showToast("💾 Demande modifiée"); closeEcl(); charger();
+}
+async function rouvrir(id){ maj(id,{statut:"a_planifier",motif_refus:null,conditions_validation:null},"↩️ Remise à planifier"); }
 
 charger();
 /* Rafraîchissement léger toutes les 30s */
 setInterval(()=>{ if(document.visibilityState==="visible") charger(); }, 30000);
 </script>
 <script src="global.js"></script>
+<style>
+#eclEdit label{display:flex;flex-direction:column;font-size:.75rem;color:#9aa7bd;gap:4px;}
+#eclEdit input,#eclEdit textarea{background:#1a2130;border:1px solid rgba(255,255,255,.15);color:#e0e4ef;border-radius:8px;padding:8px;font-size:.85rem;font-family:inherit;}
+</style>
+<div id="eclEdit" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:flex-start;justify-content:center;padding:24px;overflow:auto;">
+  <div style="background:#0f1420;color:#e0e4ef;border:1px solid rgba(255,255,255,.12);border-radius:14px;max-width:840px;width:100%;padding:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <b style="font-size:1.05rem;">✏️ Modifier la demande d'éclairage</b>
+      <button onclick="closeEcl()" style="border:none;background:rgba(255,255,255,.1);color:#e0e4ef;border-radius:8px;padding:6px 11px;cursor:pointer;">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <label>Nom<input id="e_nom"></label>
+      <label>Prénom<input id="e_prenom"></label>
+      <label>Téléphone<input id="e_tel"></label>
+      <label>Email<input id="e_email"></label>
+      <label>Département<input id="e_dep"></label>
+      <label>Société<input id="e_soc_nom"></label>
+      <label>Contact société<input id="e_soc_contact"></label>
+      <label>Email contact<input id="e_soc_email"></label>
+      <label>Tél. intervenant<input id="e_soc_tel"></label>
+      <label>Marque / Zone<input id="e_marque"></label>
+      <label>Type d'intervention<input id="e_type"></label>
+      <label>Magasin<input id="e_magasin"></label>
+      <label>Canton<input id="e_canton"></label>
+      <label>Besoin éclairage<input id="e_besoin"></label>
+      <label>Climatisation<input id="e_clim"></label>
+      <label>Localisation<input id="e_localisation"></label>
+      <label>Date début<input id="e_dd" type="date"></label>
+      <label>Heure début<input id="e_hd" type="time"></label>
+      <label>Date fin<input id="e_df" type="date"></label>
+      <label>Heure fin<input id="e_hf" type="time"></label>
+    </div>
+    <label style="display:block;margin-top:10px;color:#9aa7bd;font-size:.75rem;">Nature des travaux<textarea id="e_nature" rows="2" style="width:100%;margin-top:4px;"></textarea></label>
+    <label style="display:block;margin-top:8px;color:#9aa7bd;font-size:.75rem;">Remarques<textarea id="e_remarques" rows="2" style="width:100%;margin-top:4px;"></textarea></label>
+    <div style="margin-top:14px;display:flex;gap:10px;">
+      <button class="btn-sm b-ok" onclick="saveEcl()">💾 Enregistrer</button>
+      <button class="btn-sm b-ghost" onclick="closeEcl()">Annuler</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

@@ -181,48 +181,137 @@ if(typeof showToast!=="function") window.showToast=function(m){alert(m)};
    STATE
 ============================================================ */
 let rondeCourante = null;
-let rondeDbId = null;
+let rondeDbId = null;      // id de l'EXÉCUTION en cours (jamais le modèle)
+let rondeMeta = {};        // meta complet de l'exécution (kind, modele_id, agent_nom, nom, points)
 let indexCourant = 0;
 let scanActif = false;
 let scanMode = "nfc";
 let bleScanHandle = null;
 let ndefReader = null;
+let autoScanArmed = false;
 
 /* ============================================================
    CHARGEMENT DE LA RONDE
 ============================================================ */
-async function chargerRonde() {
-    const { data } = await supabaseClient
-        .from("rondes")
-        .select("*")
-        .eq("statut", "en_cours")
-        .order("created_at", { ascending: false })
-        .limit(1);
+function estModele(r) { return !(r.meta && r.meta.kind === "execution"); }
 
-    if (data && data.length > 0) {
-        const r = data[0];
-        rondeDbId = r.id;
-        rondeCourante = {
-            nom: (r.meta && r.meta.nom) || r.type || "Ronde",
-            description: r.observations || "",
-            type: r.type,
-            points: (r.meta && r.meta.points) || []
-        };
-        logMsg("Ronde chargée : " + rondeCourante.nom);
-    } else {
-        rondeCourante = { nom: "Aucune ronde en cours", description: "Créez une ronde depuis la page Admin.", type: "", points: [] };
-        logMsg("Aucune ronde en cours trouvée.", "error");
+async function chargerRonde() {
+    const params = new URLSearchParams(location.search);
+    const execId  = params.get("exec");
+    const modeleId = params.get("modele");
+    const type = params.get("type");
+
+    // 1) Une exécution précise est demandée (reprise ou lancement direct)
+    if (execId) {
+        const { data } = await supabaseClient.from("rondes").select("*").eq("id", execId).limit(1);
+        if (data && data.length) { chargerExecution(data[0]); return; }
+        logMsg("Exécution introuvable.", "error");
     }
 
+    // 2) Un modèle précis est demandé → on démarre une exécution
+    if (modeleId) {
+        const { data } = await supabaseClient.from("rondes").select("*").eq("id", modeleId).limit(1);
+        if (data && data.length) { await demarrerDepuisModele(data[0]); return; }
+        logMsg("Modèle introuvable.", "error");
+    }
+
+    // 3) Sinon on liste les modèles disponibles (éventuellement filtrés par ?type=)
+    const { data: all } = await supabaseClient.from("rondes").select("*").order("created_at", { ascending: false }).limit(100);
+    let modeles = (all || []).filter(estModele);
+    if (type) {
+        const parType = modeles.filter(m => m.type === type);
+        if (parType.length === 1) { await demarrerDepuisModele(parType[0]); return; }
+        if (parType.length > 1) modeles = parType;   // plusieurs → on affiche le choix filtré
+    }
+    afficherSelecteur(modeles);
+}
+
+// Crée une NOUVELLE exécution à partir d'un modèle (le modèle n'est jamais modifié)
+async function demarrerDepuisModele(modele) {
+    const pointsDef = (modele.meta && modele.meta.points) || [];
+    const pointsExec = pointsDef.map(p => ({ nom: p.nom, tagType: p.tagType, tagId: p.tagId, valide: false, horodatage: null }));
+    const agent = (localStorage.getItem("nom") || "").trim() || "Inconnu";
+    try {
+        const { data, error } = await supabaseClient.from("rondes").insert({
+            type: modele.type,
+            statut: "en_cours",
+            observations: modele.observations || "",
+            debut_at: new Date().toISOString(),
+            meta: { kind: "execution", modele_id: modele.id, nom: (modele.meta && modele.meta.nom) || modele.type || "Ronde", agent_nom: agent, points: pointsExec }
+        }).select();
+        if (error) throw error;
+        chargerExecution(data[0]);
+    } catch (e) {
+        logMsg("Erreur démarrage : " + (e.message || e), "error");
+        showToast("❌ " + (e.message || e), true);
+    }
+}
+
+// Charge une exécution en mémoire et prépare l'écran de pointage
+function chargerExecution(r) {
+    rondeDbId = r.id;
+    rondeMeta = r.meta || {};
+    const agent = rondeMeta.agent_nom || localStorage.getItem("nom") || "—";
+    rondeCourante = {
+        nom: rondeMeta.nom || r.type || "Ronde",
+        description: r.observations || "",
+        type: r.type,
+        points: rondeMeta.points || []
+    };
+    document.getElementById("selecteurRonde") && (document.getElementById("selecteurRonde").style.display = "none");
+    document.querySelectorAll(".card").forEach(c => { if (c.dataset.hideExec) c.style.display = ""; });
     document.getElementById("rondeNom").textContent = rondeCourante.nom;
-    document.getElementById("rondeDesc").textContent = rondeCourante.description;
+    document.getElementById("rondeDesc").textContent =
+        "👤 " + agent + " · Début : " + new Date(r.debut_at || r.created_at).toLocaleString("fr-FR")
+        + (rondeCourante.description ? " · " + rondeCourante.description : "");
+    logMsg("Ronde démarrée par " + agent + " : " + rondeCourante.nom);
+
     indexCourant = trouverProchain();
     afficherPoints();
     majProgression();
 
-    // Auto-detect best mode
-    if (rondeCourante.points.some(p => p.tagType === "nfc")) setMode("nfc");
-    else if (rondeCourante.points.some(p => p.tagType === "ble")) setMode("ble");
+    // Mode auto-détecté puis armement automatique du scan
+    if (rondeCourante.points.some(p => p.tagType === "ble")) setMode("ble");
+    else setMode("nfc");
+    armerScanAuto();
+}
+
+// Sélecteur : liste des rondes disponibles (le « menu » des rondes)
+function afficherSelecteur(modeles) {
+    let box = document.getElementById("selecteurRonde");
+    if (!box) {
+        box = document.createElement("div");
+        box.className = "card";
+        box.id = "selecteurRonde";
+        document.querySelector(".header").insertAdjacentElement("afterend", box);
+    }
+    // masque les cartes de pointage tant qu'aucune ronde n'est choisie
+    document.querySelectorAll(".card").forEach(c => { if (c !== box) { c.dataset.hideExec = "1"; c.style.display = "none"; } });
+
+    document.getElementById("rondeNom").textContent = "Choisir une ronde";
+    document.getElementById("rondeDesc").textContent = "";
+
+    if (!modeles || modeles.length === 0) {
+        box.innerHTML = '<h2><span style="font-size:1.3rem">🛡</span> Aucune ronde disponible</h2>'
+            + '<div style="color:#6b7a99;font-size:.9rem;margin-bottom:12px">Créez d\'abord une ronde depuis la gestion des rondes.</div>'
+            + '<a class="btn btn-primary" style="display:block;text-align:center;text-decoration:none" href="ronde_admin.html">➕ Gérer les rondes</a>';
+        return;
+    }
+    box.innerHTML = '<h2><span style="font-size:1.3rem">🛡</span> Choisir une ronde à effectuer</h2>'
+        + modeles.map(m => {
+            const nom = (m.meta && m.meta.nom) || m.type || "Ronde";
+            const pts = (m.meta && m.meta.points) ? m.meta.points.length : 0;
+            return `<button class="btn btn-secondary" style="text-align:left;display:flex;justify-content:space-between;align-items:center;gap:10px"
+                        onclick="lancerModele('${m.id}')">
+                        <span>🛡 ${escapeHtml(nom)}</span>
+                        <span style="font-size:.8rem;color:#6b7a99">${pts} pointeau${pts>1?"x":""} ›</span>
+                    </button>`;
+        }).join("");
+}
+
+async function lancerModele(id) {
+    const { data } = await supabaseClient.from("rondes").select("*").eq("id", id).limit(1);
+    if (data && data.length) await demarrerDepuisModele(data[0]);
 }
 
 function trouverProchain() {
@@ -276,6 +365,29 @@ function stopScan() {
     if (bleScanHandle && bleScanHandle.active) bleScanHandle.stop();
     document.getElementById("nfcStatus").textContent = "Scan arrêté.";
     logMsg("Scan arrêté.");
+}
+
+/* ============================================================
+   ARMEMENT AUTOMATIQUE DU SCAN
+   Le navigateur EXIGE un geste utilisateur pour démarrer le NFC/BLE
+   (sécurité Web NFC). On arme donc la lecture au TOUT PREMIER appui
+   sur l'écran : plus besoin de viser le bouton. Une fois lancée, la
+   lecture reste active en continu pour tous les pointeaux de la ronde.
+============================================================ */
+function armerScanAuto() {
+    if (scanMode === "manuel") return;
+    const nfcStatus = document.getElementById("nfcStatus");
+    if (nfcStatus && scanMode === "nfc") nfcStatus.textContent = "👆 Touchez l'écran une fois pour activer la lecture, puis approchez les pointeaux.";
+    if (autoScanArmed) return;
+    autoScanArmed = true;
+    const onFirst = function (ev) {
+        // on laisse les boutons/liens gérer eux-mêmes leur action
+        if (ev.target && ev.target.closest && ev.target.closest("button, a, .mode-btn")) return;
+        if (!scanActif && scanMode !== "manuel") startScan();
+        document.removeEventListener("pointerdown", onFirst);
+    };
+    // léger différé pour ne pas capter le geste qui vient d'ouvrir la page
+    setTimeout(function () { document.addEventListener("pointerdown", onFirst); }, 300);
 }
 
 /* ============================================================
@@ -428,9 +540,10 @@ async function validerManuellement(index) {
 async function sauvegarderRonde() {
     if (!rondeDbId) return;
     try {
+        rondeMeta = Object.assign({}, rondeMeta, { nom: rondeCourante.nom, points: rondeCourante.points });
         await supabaseClient.from("rondes").update({
             observations: rondeCourante.description,
-            meta: { nom: rondeCourante.nom, points: rondeCourante.points }
+            meta: rondeMeta
         }).eq("id", rondeDbId);
     } catch (e) {
         console.warn("Erreur sauvegarde ronde :", e);
@@ -528,7 +641,7 @@ function ouvrirRapport() {
         <p><strong>Ronde :</strong> ${rondeCourante.nom}</p>
         <p><strong>Type :</strong> ${rondeCourante.type}</p>
         <p><strong>Progression :</strong> ${valides}/${total} points</p>
-        <p><strong>Agent :</strong> ${localStorage.getItem("nom") || "—"}</p>
+        <p><strong>Agent :</strong> ${rondeMeta.agent_nom || localStorage.getItem("nom") || "—"}</p>
         <hr style="border-color:rgba(255,255,255,0.1);margin:12px 0">
     `;
 
@@ -577,7 +690,7 @@ async function exportPDF() {
     const lines = [
         `Ronde : ${rondeCourante.nom}`,
         `Type : ${rondeCourante.type}`,
-        `Agent : ${localStorage.getItem("nom") || "—"}`,
+        `Agent : ${rondeMeta.agent_nom || localStorage.getItem("nom") || "—"}`,
         `Date : ${new Date().toLocaleString("fr-FR")}`,
         `Progression : ${rondeCourante.points.filter(p => p.valide).length} / ${rondeCourante.points.length}`
     ];

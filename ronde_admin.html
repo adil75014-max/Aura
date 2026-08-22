@@ -316,21 +316,23 @@ async function sauvegarderRonde() {
     ronde.description = document.getElementById("descRonde").value.trim();
     ronde.type = document.getElementById("typeRonde").value;
     try {
+        // Un modèle ne stocke que la DÉFINITION des points (pas de validation/horodatage :
+        // ceux-ci appartiennent aux exécutions). Le modèle est réutilisable indéfiniment.
+        const pointsModele = ronde.points.map(p => ({ nom: p.nom, tagType: p.tagType, tagId: p.tagId }));
         if (_editRondeId) {
             const { error } = await supabaseClient.from("rondes").update({
                 type: ronde.type, observations: ronde.description,
-                meta: { nom: ronde.nom, points: ronde.points }
+                meta: { kind: "modele", nom: ronde.nom, points: pointsModele }
             }).eq("id", _editRondeId);
             if (error) throw error;
-            showToast("✅ Ronde « " + ronde.nom + " » mise à jour !");
+            showToast("✅ Modèle de ronde « " + ronde.nom + " » mis à jour !");
         } else {
             const { error } = await supabaseClient.from("rondes").insert({
-                type: ronde.type, statut: "en_cours", observations: ronde.description,
-                debut_at: new Date().toISOString(),
-                meta: { nom: ronde.nom, points: ronde.points }
+                type: ronde.type, statut: "terminee", observations: ronde.description,
+                meta: { kind: "modele", nom: ronde.nom, points: pointsModele }
             });
             if (error) throw error;
-            showToast("✅ Ronde « " + ronde.nom + " » enregistrée !");
+            showToast("✅ Modèle de ronde « " + ronde.nom + " » enregistré !");
         }
         document.getElementById("sectionPoints").style.display = "none";
         document.getElementById("nomRonde").value = "";
@@ -347,34 +349,36 @@ async function sauvegarderRonde() {
 /* ============================================================
    RONDES EXISTANTES
 ============================================================ */
+// Un modèle = tout ce qui n'est PAS une exécution (les anciennes rondes sans
+// meta.kind sont considérées comme des modèles pour ne rien perdre).
+function estModele(r) { return !(r.meta && r.meta.kind === "execution"); }
+
 async function chargerRondes() {
-    const { data, error } = await supabaseClient.from("rondes").select("*").order("created_at", { ascending: false }).limit(30);
+    const { data, error } = await supabaseClient.from("rondes").select("*").order("created_at", { ascending: false }).limit(100);
     const div = document.getElementById("listeRondes");
 
     if (error) { div.innerHTML = '<div class="empty">Erreur : ' + error.message + '</div>'; return; }
-    _rondesCache = data || [];
-    (function(){ const sel=document.getElementById("rondeExistante"); if(sel){ const cur=sel.value; sel.innerHTML='<option value="">— Nouvelle ronde —</option>'+(data||[]).map(r=>`<option value="${r.id}">${esc((r.meta&&r.meta.nom)||r.type||"Ronde")}</option>`).join(""); sel.value=cur; } })();
-    if (!data || data.length === 0) { div.innerHTML = '<div class="empty">Aucune ronde enregistrée.</div>'; return; }
+    const modeles = (data || []).filter(estModele);
+    _rondesCache = modeles;
+    (function(){ const sel=document.getElementById("rondeExistante"); if(sel){ const cur=sel.value; sel.innerHTML='<option value="">— Nouvelle ronde —</option>'+modeles.map(r=>`<option value="${r.id}">${esc((r.meta&&r.meta.nom)||r.type||"Ronde")}</option>`).join(""); sel.value=cur; } })();
+    if (modeles.length === 0) { div.innerHTML = '<div class="empty">Aucune ronde enregistrée. Créez-en une ci-dessus.</div>'; return; }
 
     div.innerHTML = "";
-    data.forEach(r => {
-        const dt = new Date(r.created_at).toLocaleString("fr-FR");
+    modeles.forEach(r => {
         const nom = (r.meta && r.meta.nom) || r.type || "Ronde";
         const pts = (r.meta && r.meta.points) ? r.meta.points.length : 0;
-        const valides = (r.meta && r.meta.points) ? r.meta.points.filter(p => p.valide).length : 0;
-        const statusLabel = r.statut === "terminee" ? "Terminée" : "En cours";
 
         const el = document.createElement("div");
         el.className = "ronde-card";
         el.innerHTML = `
             <div class="info">
                 <strong>${esc(nom)}</strong>
-                <small>${dt} — ${esc(r.observations)}</small>
+                <small>${esc(r.observations) || "Ronde réutilisable"}</small>
             </div>
             <div class="badges">
                 <span class="pill pill-type">${esc(r.type)||"—"}</span>
-                <span class="pill pill-pts">${valides}/${pts} pts</span>
-                <span class="pill pill-status">${statusLabel}</span>
+                <span class="pill pill-pts">${pts} pointeau${pts>1?"x":""}</span>
+                <button class="btn-primary btn-sm" onclick="lancerRonde('${r.id}')">▶ Lancer</button>
                 <button class="btn-secondary btn-sm" onclick="document.getElementById('rondeExistante').value='${r.id}';chargerRondeExistante();window.scrollTo({top:0,behavior:'smooth'});">✏️</button>
                 <button class="btn-danger btn-sm" onclick="supprimerRonde('${r.id}')">🗑</button>
             </div>
@@ -383,8 +387,31 @@ async function chargerRondes() {
     });
 }
 
+// Lance une exécution à partir d'un modèle : crée une NOUVELLE entrée d'exécution
+// (le modèle reste intact et réutilisable) puis ouvre la page agent.
+async function lancerRonde(modeleId) {
+    const r = _rondesCache.find(x => String(x.id) === String(modeleId));
+    if (!r) { alert("Modèle introuvable."); return; }
+    const pointsDef = (r.meta && r.meta.points) || [];
+    const pointsExec = pointsDef.map(p => ({ nom: p.nom, tagType: p.tagType, tagId: p.tagId, valide: false, horodatage: null }));
+    const agent = (localStorage.getItem("nom") || "").trim() || "Inconnu";
+    try {
+        const { data, error } = await supabaseClient.from("rondes").insert({
+            type: r.type,
+            statut: "en_cours",
+            observations: r.observations || "",
+            debut_at: new Date().toISOString(),
+            meta: { kind: "execution", modele_id: r.id, nom: (r.meta && r.meta.nom) || r.type || "Ronde", agent_nom: agent, points: pointsExec }
+        }).select();
+        if (error) throw error;
+        location.href = "ronde_agent_ble.html?exec=" + data[0].id;
+    } catch (e) {
+        alert("❌ " + (e.message || e));
+    }
+}
+
 async function supprimerRonde(id) {
-    if (!confirm("Supprimer cette ronde ?")) return;
+    if (!confirm("Supprimer ce modèle de ronde ? (les exécutions déjà réalisées sont conservées)")) return;
     await supabaseClient.from("rondes").delete().eq("id", id);
     chargerRondes();
 }

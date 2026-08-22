@@ -174,14 +174,14 @@ function renderPoints(){
 async function enregistrer(){
   const btn=document.getElementById("btnSave"); btn.disabled=true; btn.textContent="Enregistrement…";
   try{
+    const pointsModele = points.map(p => ({ nom: p.nom, tagType: p.tagType, tagId: p.tagId }));
     const { error } = await supabaseClient.from("rondes").insert({
-      type: typeChoisi, statut: "en_cours",
+      type: typeChoisi, statut: "terminee",
       observations: document.getElementById("desc").value.trim(),
-      debut_at: new Date().toISOString(),
-      meta: { nom: document.getElementById("nom").value.trim(), points }
+      meta: { kind: "modele", nom: document.getElementById("nom").value.trim(), points: pointsModele }
     });
     if(error) throw error;
-    toast("✅ Ronde créée !");
+    toast("✅ Modèle de ronde créé !");
     setTimeout(()=>{ location.href="ronde_admin.html"; }, 1200);
   }catch(e){
     toast("❌ "+(e.message||e)); btn.disabled=false; btn.textContent="💾 Créer la ronde";

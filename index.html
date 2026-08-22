@@ -120,7 +120,42 @@
             font-size: 1.8rem;
             cursor: pointer;
             display: none;            /* masqué sur ordinateur : la sidebar y est visible */
+            position: relative;
+            z-index: 10001;           /* reste TOUJOURS au-dessus de la sidebar (9999) pour pouvoir refermer */
         }
+        /* Voile derrière la sidebar : un appui n'importe où ferme le menu */
+        .sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 9998;            /* juste sous la sidebar */
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+        }
+        .sidebar-backdrop.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        /* Bouton de fermeture dans l'en-tête du menu */
+        .sidebar-close {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg2);
+            color: var(--text);
+            font-size: 1.3rem;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sidebar-close:hover { background: var(--accent); color: #000; }
         /* Anti-débordement topbar (desktop, vue superadmin chargée) */
         #searchBar { min-width: 0; }
         .top-right { flex-shrink: 0; }
@@ -1230,9 +1265,11 @@
 </div>
 
 <div class="sidebar" id="sidebar">
+    <button type="button" class="sidebar-close" onclick="closeSidebar()" aria-label="Fermer le menu">✕</button>
     <h2 style="text-align:center; margin-top:20px; color:var(--accent);">Menu</h2>
     <div id="sidebarContent"></div>
 </div>
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
 
 <div class="content">
     <!-- ═══════════════════════════════════════════════════════════════
@@ -2205,7 +2242,30 @@ function generateSidebar() {
     });
 }
 
-function toggleSidebar() { document.getElementById("sidebar").classList.toggle("show"); }
+function openSidebar() {
+    var sb = document.getElementById("sidebar");
+    var bd = document.getElementById("sidebarBackdrop");
+    if (sb) { sb.style.left = ""; sb.classList.add("show"); }   // purge un éventuel style.left résiduel
+    if (bd) bd.classList.add("show");
+}
+function closeSidebar() {
+    var sb = document.getElementById("sidebar");
+    var bd = document.getElementById("sidebarBackdrop");
+    if (sb) sb.classList.remove("show");
+    if (bd) bd.classList.remove("show");
+}
+function toggleSidebar() {
+    var sb = document.getElementById("sidebar");
+    if (sb && sb.classList.contains("show")) closeSidebar();
+    else openSidebar();
+}
+// Fermer le menu dès qu'on clique un lien du menu (mobile)
+document.addEventListener("click", function (e) {
+    var link = e.target.closest ? e.target.closest("#sidebarContent a, #sidebarContent button") : null;
+    if (link) closeSidebar();
+});
+// Échap ferme le menu
+document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeSidebar(); });
 
 /* ══════════════════════════════════════════════════════
    THEME / AUTH
@@ -3079,10 +3139,7 @@ function openSupervision() {
     document.getElementById("supervisionScreen").style.display = "flex";
     coRefreshAll();
     // Fermer la sidebar si elle est ouverte
-    const sidebar = document.getElementById("sidebar");
-    if (sidebar) sidebar.style.left = "-320px";
-    const overlay = document.getElementById("overlay");
-    if (overlay) overlay.style.display = "none";
+    if (typeof closeSidebar === "function") closeSidebar();
 }
 
 // Auto-ouverture supervision si paramètre ?supervision=1

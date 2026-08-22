@@ -573,6 +573,22 @@ async function startNFCLogin() {
     }
 }
 
+/* Armement auto du badge : le navigateur impose un geste utilisateur pour
+   démarrer le NFC. On arme donc la lecture au 1er appui sur l'écran — plus
+   besoin de viser le bouton « Se connecter avec le badge ». */
+(function armerBadgeAuto() {
+    if (!("NDEFReader" in window)) return;   // iOS / non supporté : rien à armer
+    var armed = false;
+    function onFirst(ev) {
+        if (ev.target && ev.target.closest && ev.target.closest("input, button, a")) return;
+        if (armed || _nfcScanning) return;
+        armed = true;
+        document.removeEventListener("pointerdown", onFirst);
+        try { startNFCLogin(); } catch (e) {}
+    }
+    document.addEventListener("pointerdown", onFirst);
+})();
+
 async function loginWithBadge(uid) {
     var statusEl = document.getElementById("nfcStatus");
     var errorMsg = document.getElementById("errorMsg");

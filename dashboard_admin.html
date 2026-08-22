@@ -796,7 +796,7 @@ async function loadAllData() {
             });
         });
 
-        (rondes || []).forEach(r => {
+        (rondes || []).filter(r => !(r.meta && r.meta.kind === "modele")).forEach(r => {
             const dt = new Date(r.debut_at || r.created_at);
             const agent = resolveAgent(r.agent_id, r.meta);
             const typeKey = normalizeType(r.type || '');

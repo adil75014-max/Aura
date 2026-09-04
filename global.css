@@ -1,99 +1,115 @@
-/* ---------------------------------------------------------
-   🎨 THEME GLOBAL (clair / sombre)
---------------------------------------------------------- */
-
-:root {
-    --transition: 0.25s ease;
+/* =====================================================================
+   THÈME « CONFORMITÉ + » appliqué à Aura — reskin global de toutes les pages
+   (override des variables en !important pour primer sur les styles inline)
+   ===================================================================== */
+:root,
+html,
+html[data-theme="light"],
+html[data-theme="dark"]{
+  /* fonds */
+  --bg:#0a0e1a !important; --bg-main:#0a0e1a !important; --bg2:#131a2c !important;
+  --card:#131a2c !important; --bg-card:#131a2c !important; --panel:#131a2c !important; --glass:rgba(19,26,44,.7) !important;
+  --ink:#0e1424 !important; --ink-0:#0a0e1a !important; --ink-1:#0e1424 !important; --ink-2:#131a2c !important; --ink-3:#182036 !important;
+  --workbg:#131a2c !important; --techbg:#131a2c !important; --infobg:#131a2c !important;
+  /* textes */
+  --text:#ffffff !important; --text-main:#ffffff !important; --text-bright:#ffffff !important;
+  --tx:#ffffff !important; --txb:#ffffff !important; --txd:#8b96b5 !important;
+  --muted:#8b96b5 !important; --text-dim:#8b96b5 !important;
+  /* lignes / ombres / rayons */
+  --border:rgba(255,255,255,.08) !important; --line:rgba(255,255,255,.08) !important;
+  --workbd:rgba(255,255,255,.08) !important; --techbd:rgba(255,255,255,.08) !important; --infobd:rgba(255,255,255,.08) !important;
+  --shadow:0 12px 34px rgba(0,0,0,.35) !important;
+  --radius:18px !important; --radius-lg:22px !important; --r:18px !important;
+  /* accent (l'or Aura devient le bleu des modules) */
+  --accent:#4d7cff !important; --gold:#4d7cff !important; --gold-dim:rgba(77,124,255,.18) !important; --goldg:linear-gradient(120deg,#3547b8,#4d7cff) !important;
+  /* sémantique */
+  --ok:#2fcf7a !important; --green:#2fcf7a !important; --success:#2fcf7a !important; --green-dim:rgba(47,207,122,.16) !important;
+  --warn:#ffb020 !important; --yellow:#ffb020 !important; --orange:#ffb020 !important;
+  --bad:#ff5566 !important; --red:#ff5566 !important; --danger:#ff5566 !important; --red-dim:rgba(255,85,102,.16) !important;
+  --cyan:#38bdf8 !important; --violet:#a78bfa !important; --violet-dim:rgba(167,139,250,.16) !important; --purple:#a78bfa !important; --tech:#a78bfa !important; --work:#38bdf8 !important;
 }
+html{color-scheme:dark;}
+body{background:var(--bg)!important;color:#fff!important;font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif!important;}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#26314d;border-radius:8px}
+::selection{background:rgba(77,124,255,.35)}
 
-/* 🌞 MODE CLAIR */
-html[data-theme="light"] {
-    --bg: #f3f4f6;
-    --bg2: rgba(255,255,255,0.8);
-    --text: #111827;
-    --card: #ffffff;
-    --border: rgba(0,0,0,0.08);
-    --shadow: 0 4px 10px rgba(0,0,0,0.06);
-    --accent: #d4af37;
+/* ---------- Barre supérieure ---------- */
+.topbar{background:#0b101d!important;border-bottom:1px solid rgba(255,255,255,.08)!important;box-shadow:none!important;backdrop-filter:blur(14px)}
+.topbar,.top-left,.top-right{color:#fff!important}
+.hamburger{color:#fff!important}
+
+/* ---------- Cartes ---------- */
+.card,.section,.block,.detail-field,.table-wrapper,.filter-group{
+  background:var(--card)!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:18px!important;
+  box-shadow:none!important;color:#fff!important;
 }
+.card:hover{transform:translateY(-3px);border-color:rgba(77,124,255,.55)!important}
+.section-header{color:#fff!important;font-weight:700!important}
+.section-header:hover{background:rgba(255,255,255,.04)!important;color:#fff!important}
+.section-content{color:#c7cfe4!important}
 
-/* 🌙 MODE SOMBRE */
-html[data-theme="dark"] {
-    --bg: #111827;
-    --bg2: rgba(31,41,55,0.9);
-    --text: #e5e7eb;
-    --card: #1f2933;
-    --border: rgba(249,250,251,0.08);
-    --shadow: none;
-    --accent: #9ca3af;
+/* ---------- Boutons ---------- */
+button,.btn{
+  font-family:inherit!important;font-weight:700!important;border-radius:14px!important;cursor:pointer;
+  border:1px solid rgba(255,255,255,.15)!important;background:#182036!important;color:#fff!important;
+  padding:11px 16px!important;transition:transform .12s ease,background .15s ease,border-color .15s ease!important;
 }
+button:hover,.btn:hover{background:#1d2740!important;color:#fff!important;border-color:rgba(77,124,255,.5)!important}
+.btn:active,button:active{transform:translateY(1px)}
+.btn-primary,button.primary,.fbtn.primary{background:linear-gradient(120deg,#3547b8,#4d7cff)!important;border-color:transparent!important;color:#fff!important;box-shadow:0 8px 22px rgba(77,124,255,.3)!important}
+.btn-primary:hover{filter:brightness(1.05)!important}
+.btn-secondary,.btn-ghost{background:#182036!important;border:1px solid rgba(255,255,255,.15)!important;color:#fff!important}
+.btn-danger{background:linear-gradient(120deg,#b8354a,#ff5566)!important;border-color:transparent!important;color:#fff!important}
+.btn-sm,.fbtn{padding:8px 12px!important;font-size:.85rem!important;border-radius:11px!important}
+.menu-return{color:#8b96b5!important}
 
-/* ---------------------------------------------------------
-   🧱 STYLE GLOBAL
---------------------------------------------------------- */
-
-body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: system-ui, sans-serif;
-    transition: background var(--transition), color var(--transition);
-    padding: 20px;
+/* ---------- Champs ---------- */
+input,select,textarea{
+  background:#0e1424!important;border:1px solid rgba(255,255,255,.15)!important;color:#fff!important;
+  border-radius:12px!important;padding:11px 13px!important;font-family:inherit!important;outline:none!important;
 }
+input:focus,select:focus,textarea:focus{border-color:#4d7cff!important}
+input::placeholder,textarea::placeholder{color:#5f6a86!important}
+label,.field-label,.hint{color:#8b96b5!important}
+.field-label{text-transform:uppercase;letter-spacing:.08em;font-size:.68rem!important;font-weight:700!important}
+.field-value,.detail-field .field-value{color:#fff!important;font-weight:600!important}
 
-/* ---------------------------------------------------------
-   🧩 CARTES (style identique à l’index)
---------------------------------------------------------- */
+/* ---------- Tableaux ---------- */
+.table-wrapper{padding:6px!important;overflow:auto}
+table{width:100%;border-collapse:collapse;color:#fff!important}
+th,td{border-bottom:1px solid rgba(255,255,255,.08)!important;padding:11px 12px!important;text-align:left!important}
+th{color:#8b96b5!important;font-size:.72rem!important;text-transform:uppercase;letter-spacing:.06em;font-weight:700!important;background:transparent!important}
+tr:hover td{background:rgba(255,255,255,.03)!important}
 
-.card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    padding: 20px;
-    border-radius: 14px;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow);
-    transition: transform .2s ease, border-color .2s ease;
-}
+/* ---------- Badges / pills / statut ---------- */
+.badge,.pill{display:inline-flex;align-items:center;gap:6px;font-size:.72rem!important;font-weight:800!important;
+  padding:4px 10px!important;border-radius:999px!important;border:1px solid rgba(255,255,255,.14)!important;background:rgba(255,255,255,.06)!important;color:#fff!important}
+.badge.ok,.pill.ok,.badge.success,.badge.green,.pill.green{background:rgba(47,207,122,.16)!important;color:#2fcf7a!important;border-color:transparent!important}
+.badge.warn,.pill.warn,.badge.yellow{background:rgba(255,176,32,.16)!important;color:#ffb020!important;border-color:transparent!important}
+.badge.danger,.pill.danger,.badge.bad,.badge.red,.pill.red{background:rgba(255,85,102,.16)!important;color:#ff5566!important;border-color:transparent!important}
+.badge.info,.pill.info{background:rgba(77,124,255,.18)!important;color:#4d7cff!important;border-color:transparent!important}
+.dot{width:9px!important;height:9px!important;border-radius:50%!important;display:inline-block}
+.dot.ok,.dot.green{background:#2fcf7a!important}.dot.warn{background:#ffb020!important}.dot.bad,.dot.danger,.dot.red{background:#ff5566!important}
 
-.card:hover {
-    transform: translateY(-4px);
-    border-color: var(--accent);
-}
+/* ---------- KPI ---------- */
+.kpi,.kpis>*{background:var(--card)!important;border:1px solid rgba(255,255,255,.08)!important;border-radius:16px!important;padding:14px!important;color:#fff!important}
+.kpi .n,.kpi .big,.kpi .k,.kpi .value,.big{font-size:1.7rem!important;font-weight:800!important;letter-spacing:-.02em;color:#fff!important}
+.kpi .l,.kpi .label{font-size:.72rem!important;color:#8b96b5!important;font-weight:600!important}
 
-/* ---------------------------------------------------------
-   🔘 BOUTONS
---------------------------------------------------------- */
+/* ---------- Onglets ---------- */
+.tab{color:#8b96b5!important;font-weight:700!important;border-radius:10px!important;background:transparent!important;border:none!important}
+.tab.active{background:#4d7cff!important;color:#fff!important}
 
-button {
-    background: var(--bg2);
-    border: 1px solid var(--border);
-    padding: 8px 14px;
-    border-radius: 8px;
-    color: var(--text);
-    cursor: pointer;
-    transition: background var(--transition), color var(--transition), border var(--transition);
-}
+/* ---------- États vides / hint ---------- */
+.empty{color:#8b96b5!important;text-align:center;padding:28px 16px}
+.hint{font-size:.78rem!important}
 
-button:hover {
-    background: var(--accent);
-    color: #000;
-}
+/* ---------- Cartes d'accueil (grille) ---------- */
+.cards-container,#cardsContainer,.grid{gap:14px!important}
+.cards-container .card,#cardsContainer .card{border-radius:18px!important}
 
-/* ---------------------------------------------------------
-   📱 RESPONSIVE
---------------------------------------------------------- */
-
-@media (max-width: 480px) {
-    body {
-        padding: 14px;
-    }
-
-    .card {
-        padding: 16px;
-        border-radius: 12px;
-    }
-
-    button {
-        padding: 6px 12px;
-        font-size: 0.85rem;
-    }
-}
+/* ---------- Sidebar ---------- */
+.sidebar{background:#0b101d!important;border-right:1px solid rgba(255,255,255,.08)!important;color:#fff!important}
+.sidebar a,.sidebar .item{color:#c7cfe4!important}
+.sidebar a:hover,.sidebar .item:hover{background:rgba(77,124,255,.14)!important;color:#fff!important}
